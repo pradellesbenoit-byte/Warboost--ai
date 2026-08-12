@@ -1,2 +1,183 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WarBoost — Command Center</title><style>body{margin:0;background:#080b12;color:#f7f8fb;font-family:Arial,sans-serif} .wrap{max-width:1100px;margin:auto;padding:20px}.hero{padding:70px 0;text-align:center}.red{color:#ef4444}.btn{display:inline-block;padding:12px 18px;background:#ef4444;color:white;border-radius:10px;text-decoration:none;font-weight:bold}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.card{background:#111827;border:1px solid #29364d;border-radius:16px;padding:20px}.tool{display:grid;grid-template-columns:1fr 1fr;gap:15px;background:#111827;padding:20px;border-radius:18px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}input,select{width:100%;padding:10px;background:#080e18;color:white;border:1px solid #29364d;border-radius:8px;box-sizing:border-box}.result{background:#080e18;padding:18px;border-radius:14px}.rec{padding:12px;border-bottom:1px solid #ffffff18}.roster{overflow:auto}table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:10px;border-bottom:1px solid #ffffff18;text-align:left}th{color:#aebbd0}footer{margin-top:50px;padding:30px 0;border-top:1px solid #ffffff18;color:#91a0b8}@media(max-width:750px){.grid,.tool{grid-template-columns:1fr}.fields{grid-template-columns:1fr}}</style></head><body><div class="wrap"><nav><b>War<span class="red">Boost</span></b></nav><header class="hero"><p>WARBOOST • COMMAND CENTER</p><h1>Ton compte.<br><span class="red">Ton alliance. Ton plan.</span></h1><p>Assistant indépendant pour joueurs, R5 et R4.</p><a class="btn" href="#r5">Ouvrir le Command Center</a></header><section id="analyse"><h2>🎮 Analyse joueur</h2><div class="tool"><div><div class="fields"><label>QG<input id="hq" value="30" type="number"></label><label>Drone<input id="drone" value="20" type="number"></label><label>Technologie<input id="tech" value="30" type="number"></label><label>Équipement<input id="gear" value="20" type="number"></label></div><button class="btn" style="border:0;margin-top:15px;cursor:pointer" onclick="go()">Générer le plan</button></div><div class="result" id="result"><h3>Priorités</h3><p>Renseigne ton compte.</p></div></div></section><section id="r5"><h2>👑 Command Center R5</h2><div class="grid"><div class="card">🧭 <b>Tableau de bord</b><p>Activité, alertes, objectifs et tâches.</p></div><div class="card">👥 <b>Gestion des R4</b><p>Attribuer et suivre les responsabilités.</p></div><div class="card">⚔️ <b>Plan de guerre</b><p>Participants, rôles et consignes.</p></div><div class="card">📅 <b>Calendrier</b><p>Événements et responsables.</p></div><div class="card">📢 <b>Messages</b><p>Préparer les annonces d'alliance.</p></div><div class="card">📈 <b>Rapport hebdo</b><p>Résumé pour la réunion R5/R4.</p></div></div></section><section><h2>🛡️ Outils R4</h2><div class="grid"><div class="card">⚔️ <b>Warlord</b><p>Guerre, attaque, défense, territoire.</p></div><div class="card">📣 <b>Recruiter</b><p>Candidatures, recrutement, intégration.</p></div><div class="card">❤️ <b>Muse</b><p>Communication, cohésion, moral.</p></div><div class="card">📋 <b>Butler</b><p>Organisation, planning, événements.</p></div><div class="card">🚨 <b>Alertes R4</b><p>Tâches en retard et actions urgentes.</p></div><div class="card">🏆 <b>Préparation événements</b><p>Checklist, participants et responsables.</p></div></div></section><section><h2>👥 Roster alliance</h2><div class="roster"><table><thead><tr><th>Joueur</th><th>Rang</th><th>Puissance</th><th>Activité</th><th>Responsable</th></tr></thead><tbody id="rows"></tbody></table></div><button class="btn" style="margin-top:12px;border:0;cursor:pointer" onclick="add()">+ Ajouter</button></section><footer>© 2026 WarBoost — prototype indépendant. Vérifier domaine, marques, conditions d'utilisation, RGPD, CGV et paiement avant commercialisation.</footer></div><script>function go(){let x=[['Équipement',+gear.value],['Drone',+drone.value],['Technologie',+tech.value],['QG',+hq.value]].sort((a,b)=>a[1]-b[1]);result.innerHTML='<h3>Priorités</h3>'+x.map((v,i)=>'<div class="rec"><b>'+(i+1)+'. '+v[0]+'</b><br><small>Indicateur le plus en retard parmi les données saisies.</small></div>').join('')}let n=0;function add(){n++;rows.insertAdjacentHTML('beforeend','<tr><td><input placeholder="Joueur '+n+'"></td><td><select><option>R5</option><option selected>R4</option><option>R3</option><option>R2</option><option>R1</option></select></td><td><input placeholder="180M"></td><td><select><option>🟢 Actif</option><option>🟡 À surveiller</option><option>🔴 Inactif</option></select></td><td><input placeholder="R5/R4"></td></tr>')}add();add();add();</script></body></html>
-<!-- Vercel redeploy -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WarBoost - Command Center</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#070b12;
+  color:white;
+}
+header{
+  padding:25px 20px;
+  text-align:center;
+  background:#0c1220;
+  border-bottom:1px solid #202a3a;
+}
+.logo{
+  font-weight:bold;
+  font-size:22px;
+}
+.logo span{color:#ff4545}
+h1{
+  font-size:36px;
+  margin:25px 0 10px;
+}
+.red{color:#ff4545}
+.subtitle{color:#aab3c5}
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:25px 18px 60px;
+}
+.card{
+  background:#111a2b;
+  border:1px solid #1e2b40;
+  border-radius:18px;
+  padding:22px;
+  margin:20px 0;
+}
+h2{margin-top:0}
+label{
+  display:block;
+  margin-top:15px;
+  color:#dce2ec;
+}
+input,select{
+  width:100%;
+  padding:15px;
+  margin-top:6px;
+  border-radius:10px;
+  border:1px solid #334158;
+  background:#07101d;
+  color:white;
+  font-size:16px;
+}
+button{
+  margin-top:20px;
+  padding:15px 22px;
+  border:0;
+  border-radius:10px;
+  background:#ff4545;
+  color:white;
+  font-weight:bold;
+  font-size:16px;
+  cursor:pointer;
+}
+.result{
+  margin-top:20px;
+  background:#07101d;
+  padding:20px;
+  border-radius:14px;
+}
+.priority{
+  padding:13px 0;
+  border-bottom:1px solid #263044;
+}
+.badge{
+  display:inline-block;
+  background:#ff4545;
+  padding:5px 10px;
+  border-radius:20px;
+  font-size:12px;
+}
+footer{
+  text-align:center;
+  color:#778196;
+  padding:25px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">WAR<span>BOOST</span></div>
+  <h1>Ton compte.<br><span class="red">Ton alliance. Ton plan.</span></h1>
+  <p class="subtitle">Assistant indépendant pour joueurs, R5 et R4.</p>
+</header>
+
+<div class="container">
+
+<div class="card">
+<h2>🎮 Analyse joueur</h2>
+
+<label>QG</label>
+<input id="qg" type="number" value="30">
+
+<label>Puissance totale (millions)</label>
+<input id="power" type="number" value="175">
+
+<label>Drone (millions)</label>
+<input id="drone" type="number" value="6.8" step="0.1">
+
+<label>Technologie (%)</label>
+<input id="tech" type="number" value="70">
+
+<label>Équipement (%)</label>
+<input id="gear" type="number" value="65">
+
+<label>Escouade principale</label>
+<select id="squad">
+<option>Avion</option>
+<option>Tank</option>
+<option>Missile</option>
+</select>
+
+<button onclick="analyse()">⚡ Générer mon plan</button>
+
+<div class="result" id="result">
+Renseigne ton compte puis génère ton plan.
+</div>
+</div>
+
+<div class="card">
+<h2>🧠 Command Center R5</h2>
+<p>Module de gestion d'alliance WarBoost.</p>
+
+<div class="priority">
+<strong>⚔️ Guerre</strong><br>
+Organisation des joueurs et priorités de combat.
+</div>
+
+<div class="priority">
+<strong>🏆 VS Alliance</strong><br>
+Planification des journées et optimisation des points.
+</div>
+
+<div class="priority">
+<strong>👥 Membres</strong><br>
+Suivi des R4, R3, R2 et R1.
+</div>
+
+<div class="priority">
+<strong>📅 Planning</strong><br>
+Préparation des événements de l'alliance.
+</div>
+</div>
+
+</div>
+
+<footer>
+WarBoost v5 • Assistant indépendant
+</footer>
+
+<script>
+function analyse(){
+
+const qg=Number(document.getElementById("qg").value);
+const power=Number(document.getElementById("power").value);
+const drone=Number(document.getElementById("drone").value);
+const tech=Number(document.getElementById("tech").value);
+const gear=Number(document.getElementById("gear").value);
+const squad=document.getElementById("squad").value;
+
+let priorities=[];
+
+if(gear < 80) priorities.push("1. 🛡️ Équipement — améliore en priorité l'équipement de ton escouade principale.");
+if(drone < 10) priorities.push("2. 🚁 Drone —
