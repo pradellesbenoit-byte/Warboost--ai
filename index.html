@@ -3,83 +3,223 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WarBoost V7</title>
+<title>WarBoost V8</title>
 
 <style>
 *{box-sizing:border-box}
+
+:root{
+  --bg:#070b12;
+  --panel:#111b2e;
+  --panel2:#08111e;
+  --border:#283852;
+  --red:#ff474d;
+  --text:#fff;
+  --muted:#aab5c8;
+  --green:#4be29a;
+  --yellow:#ffd45c;
+}
+
 body{
- margin:0;background:#070b12;color:#fff;
- font-family:Arial,sans-serif
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Arial,sans-serif;
 }
+
 header{
- padding:25px 18px;text-align:center;
- background:#0c1220;border-bottom:1px solid #263044
+  background:#0c1220;
+  padding:24px 18px;
+  text-align:center;
+  border-bottom:1px solid var(--border);
 }
-.logo{font-size:28px;font-weight:900}
-.logo span{color:#ff474d}
-.subtitle{color:#aab4c8;margin-top:8px}
+
+.logo{
+  font-size:29px;
+  font-weight:900;
+}
+
+.logo span{color:var(--red)}
+
+.subtitle{
+  margin-top:8px;
+  color:var(--muted);
+}
 
 nav{
- display:grid;grid-template-columns:1fr 1fr;
- gap:10px;padding:15px;position:sticky;top:0;
- background:#070b12;z-index:10
+  position:sticky;
+  top:0;
+  z-index:20;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  padding:12px;
+  background:rgba(7,11,18,.97);
 }
-nav button,.mainBtn{
- border:0;border-radius:14px;padding:15px;
- background:#ff474d;color:white;font-weight:bold;
- font-size:15px
-}
-nav button{background:#151e2f}
-nav button.active{background:#ff474d}
 
-main{max-width:800px;margin:auto;padding:12px}
+nav button{
+  border:0;
+  padding:14px 8px;
+  border-radius:14px;
+  background:#151f31;
+  color:#fff;
+  font-weight:800;
+  font-size:15px;
+}
+
+nav button.active{background:var(--red)}
+
+main{
+  max-width:850px;
+  margin:auto;
+  padding:12px;
+}
+
 .page{display:none}
 .page.active{display:block}
 
 .card{
- background:#111b2e;border:1px solid #263653;
- border-radius:22px;padding:22px;margin:15px 0
+  margin:15px 0;
+  padding:22px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:23px;
 }
-h1{font-size:26px}
-h2{margin-top:5px}
-label{display:block;color:#cbd3df;margin:14px 0 7px}
+
+h1,h2,h3{margin-top:5px}
+
+p{line-height:1.45}
+
+.small{
+  color:var(--muted);
+  font-size:14px;
+}
+
+label{
+  display:block;
+  margin:15px 0 7px;
+  color:#d6dce6;
+}
 
 input,select,textarea{
- width:100%;background:#08111e;color:white;
- border:1px solid #34445e;border-radius:14px;
- padding:15px;font-size:17px
+  width:100%;
+  padding:15px;
+  border:1px solid #354763;
+  border-radius:14px;
+  background:var(--panel2);
+  color:#fff;
+  font-size:17px;
 }
-textarea{min-height:100px}
 
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.hero{
- padding:15px;background:#091321;
- border-radius:15px;margin:10px 0
+textarea{
+  min-height:105px;
+  resize:vertical;
 }
+
+.grid2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.btn{
+  width:100%;
+  margin-top:20px;
+  border:0;
+  border-radius:14px;
+  padding:16px;
+  background:var(--red);
+  color:#fff;
+  font-size:17px;
+  font-weight:900;
+}
+
+.btn2{
+  background:#263753;
+}
+
 .result{
- background:#07111d;border-radius:18px;
- padding:20px;margin-top:20px
+  margin-top:20px;
+  padding:20px;
+  background:#07111d;
+  border-radius:18px;
 }
-.score{
- text-align:center;font-size:48px;font-weight:bold;
- margin:15px
-}
-.good{color:#4be29a}
-.warn{color:#ffd45c}
-.bad{color:#ff6469}
+
 .item{
- border-bottom:1px solid #273244;
- padding:13px 0;line-height:1.4
+  padding:14px 0;
+  border-bottom:1px solid #283448;
+  line-height:1.45;
 }
+
+.item:last-child{border-bottom:0}
+
+.score{
+  text-align:center;
+  font-size:48px;
+  font-weight:900;
+  margin:12px 0;
+}
+
+.good{color:var(--green)}
+.warn{color:var(--yellow)}
+.bad{color:#ff6469}
+
+.hero{
+  background:#091321;
+  border:1px solid #263650;
+  border-radius:18px;
+  padding:16px;
+  margin:12px 0;
+}
+
 .tag{
- display:inline-block;background:#263653;
- border-radius:20px;padding:7px 11px;margin:4px
+  display:inline-block;
+  padding:7px 11px;
+  margin:3px;
+  background:#263753;
+  border-radius:20px;
+  font-size:13px;
 }
-.small{color:#aab4c8;font-size:14px}
-footer{text-align:center;color:#7f8ba0;padding:30px}
+
+.member{
+  background:#091321;
+  border:1px solid #283852;
+  border-radius:15px;
+  padding:14px;
+  margin:10px 0;
+}
+
+.memberTop{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+}
+
+.memberTop button{
+  border:0;
+  background:#451c24;
+  color:#fff;
+  border-radius:10px;
+  padding:8px 10px;
+}
+
+.notice{
+  border-left:4px solid var(--yellow);
+  padding:12px;
+  background:#151b25;
+  border-radius:9px;
+  margin:10px 0;
+}
+
+footer{
+  color:#7f8ba0;
+  text-align:center;
+  padding:30px 15px;
+}
 
 @media(max-width:600px){
- .grid{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -87,298 +227,1057 @@ footer{text-align:center;color:#7f8ba0;padding:30px}
 <body>
 
 <header>
- <div class="logo">WAR<span>BOOST</span> V7</div>
- <div class="subtitle">Assistant Last War • Joueurs • R4 • R5</div>
+  <div class="logo">WAR<span>BOOST</span> V8</div>
+  <div class="subtitle">Joueur • R4 • R5 • Alliance • Saison</div>
 </header>
 
 <nav>
- <button onclick="showPage('player',this)" class="active">🎮 Mon compte</button>
- <button onclick="showPage('command',this)">🧠 R5 / R4</button>
- <button onclick="showPage('vs',this)">🏆 VS Alliance</button>
- <button onclick="showPage('season',this)">🌍 Saison</button>
+  <button class="active" onclick="showPage('player',this)">🎮 Mon compte</button>
+  <button onclick="showPage('command',this)">🧠 R5 / R4</button>
+  <button onclick="showPage('vs',this)">🏆 VS</button>
+  <button onclick="showPage('season',this)">🌍 Saison</button>
 </nav>
 
 <main>
 
+<!-- ================= JOUEUR ================= -->
+
 <section id="player" class="page active">
- <div class="card">
-  <h1>🎮 Analyse joueur</h1>
-  <p class="small">Renseigne ton compte pour obtenir tes priorités de progression.</p>
 
-  <div class="grid">
-   <div><label>QG</label><input id="qg" type="number" value="35"></div>
-   <div><label>Puissance (millions)</label><input id="power" type="number" step=".1" value="175"></div>
-   <div><label>Drone (millions)</label><input id="drone" type="number" step=".1" value="6.8"></div>
-   <div><label>Technologie (%)</label><input id="tech" type="number" value="80"></div>
-   <div><label>Équipement (%)</label><input id="gear" type="number" value="70"></div>
-   <div>
-    <label>Escouade principale</label>
-    <select id="squad">
-     <option>Avion</option>
-     <option>Tank</option>
-     <option>Missile</option>
-    </select>
-   </div>
-  </div>
+<div class="card">
+<h1>🎮 Analyse avancée</h1>
+<p class="small">WarBoost recherche les points faibles de ton compte et classe tes priorités.</p>
 
-  <h2>⭐ Mes 5 héros</h2>
+<div class="grid2">
 
-  <div id="heroes"></div>
+<div>
+<label>QG</label>
+<input id="qg" type="number" value="35">
+</div>
 
-  <button class="mainBtn" onclick="analyse()">⚡ ANALYSER MON COMPTE</button>
-  <div id="analysis" class="result">Renseigne ton compte puis lance l'analyse.</div>
- </div>
+<div>
+<label>Puissance totale (M)</label>
+<input id="power" type="number" step=".1" value="175">
+</div>
+
+<div>
+<label>Puissance escouade 1 (M)</label>
+<input id="squadPower" type="number" step=".1" placeholder="Ex : 32.5">
+</div>
+
+<div>
+<label>Escouade principale</label>
+<select id="squad">
+<option>Avion</option>
+<option>Tank</option>
+<option>Missile</option>
+</select>
+</div>
+
+<div>
+<label>Drone (M)</label>
+<input id="drone" type="number" step=".1" value="6.8">
+</div>
+
+<div>
+<label>Niveau drone</label>
+<input id="droneLevel" type="number" placeholder="Ex : 150">
+</div>
+
+<div>
+<label>Technologie (%)</label>
+<input id="tech" type="number" value="80">
+</div>
+
+<div>
+<label>Équipement global (%)</label>
+<input id="gear" type="number" value="70">
+</div>
+
+</div>
+
+<h2 style="margin-top:30px">⭐ Escouade principale</h2>
+<p class="small">Pour chaque héros : nom, niveau, étoiles, arme exclusive et équipement moyen.</p>
+
+<div id="heroes"></div>
+
+<button class="btn" onclick="analysePlayer()">⚡ ANALYSER MON COMPTE</button>
+
+<div id="analysis" class="result">
+Renseigne ton compte puis lance l'analyse.
+</div>
+</div>
+
 </section>
+
+<!-- ================= R5 / R4 ================= -->
 
 <section id="command" class="page">
- <div class="card">
-  <h1>🧠 Command Center R5 / R4</h1>
-  <p>Centre de pilotage de l'alliance.</p>
 
-  <label>Nom de l'alliance</label>
-  <input id="alliance" placeholder="Ex : ALL4">
+<div class="card">
+<h1>🧠 Command Center R5 / R4</h1>
 
-  <label>Nombre de membres</label>
-  <input id="members" type="number" placeholder="Ex : 98">
+<div class="grid2">
 
-  <label>Objectif actuel</label>
-  <select id="objective">
-   <option>Guerre</option>
-   <option>VS Alliance</option>
-   <option>Développement</option>
-   <option>Événement saisonnier</option>
-  </select>
+<div>
+<label>Alliance</label>
+<input id="alliance" placeholder="Ex : ALL4">
+</div>
 
-  <button class="mainBtn" onclick="r5Plan()">🧠 GÉNÉRER LE PLAN R5/R4</button>
-  <div id="r5result" class="result">Configure ton alliance pour générer les consignes.</div>
- </div>
+<div>
+<label>Serveur</label>
+<input id="server" placeholder="Ex : 884">
+</div>
 
- <div class="card">
-  <h2>👥 Gestion des membres</h2>
-  <p class="small">Ajoute des notes importantes pour ton équipe de direction.</p>
-  <textarea id="memberNotes" placeholder="R4 actifs, joueurs forts, joueurs absents, groupes de combat..."></textarea>
-  <button class="mainBtn" onclick="saveData()">💾 Sauvegarder</button>
- </div>
+<div>
+<label>Nombre de membres</label>
+<input id="memberCount" type="number" placeholder="Ex : 98">
+</div>
 
- <div class="card">
-  <h2>⚔️ Organisation guerre</h2>
-  <div class="item"><strong>R5</strong><br>Direction générale, décisions et coordination.</div>
-  <div class="item"><strong>R4 Guerre</strong><br>Appels, cibles, groupes et horaires.</div>
-  <div class="item"><strong>R4 Membres</strong><br>Présences, activité et remplacement.</div>
-  <div class="item"><strong>R3/R2/R1</strong><br>Exécution des consignes et soutien.</div>
- </div>
+<div>
+<label>Objectif principal</label>
+<select id="objective">
+<option>Guerre</option>
+<option>VS Alliance</option>
+<option>Développement</option>
+<option>Événement saisonnier</option>
+<option>Recrutement</option>
+</select>
+</div>
+
+</div>
+
+<label>Situation actuelle</label>
+<textarea id="situation" placeholder="Ex : guerre demain 20h, manque de participation, besoin d'organiser les R4..."></textarea>
+
+<button class="btn" onclick="generateCommandPlan()">🧠 GÉNÉRER LE PLAN R5/R4</button>
+
+<div id="commandResult" class="result">
+Configure ton alliance puis génère le plan.
+</div>
+</div>
+
+<div class="card">
+<h2>👥 Membres & rôles</h2>
+
+<div class="grid2">
+<div>
+<label>Pseudo</label>
+<input id="newMemberName" placeholder="Pseudo">
+</div>
+
+<div>
+<label>Grade</label>
+<select id="newMemberRank">
+<option>R5</option>
+<option>R4</option>
+<option>R3</option>
+<option>R2</option>
+<option>R1</option>
+</select>
+</div>
+
+<div>
+<label>Puissance (M)</label>
+<input id="newMemberPower" type="number" step=".1">
+</div>
+
+<div>
+<label>Spécialité</label>
+<select id="newMemberRole">
+<option>Combat</option>
+<option>VS</option>
+<option>Saison</option>
+<option>Recrutement</option>
+<option>Organisation</option>
+<option>Soutien</option>
+</select>
+</div>
+</div>
+
+<button class="btn btn2" onclick="addMember()">➕ AJOUTER LE MEMBRE</button>
+
+<div id="membersList"></div>
+</div>
+
+<div class="card">
+<h2>⚔️ Assistant de guerre</h2>
+
+<label>Heure prévue</label>
+<input id="warTime" placeholder="Ex : 20:30">
+
+<label>Objectif / cible</label>
+<input id="warTarget" placeholder="Ex : défendre le centre, attaquer alliance X...">
+
+<label>Consigne spéciale</label>
+<textarea id="warNote" placeholder="Boucliers, téléportations, regroupement, groupes..."></textarea>
+
+<button class="btn" onclick="generateWar()">⚔️ PRÉPARER LA GUERRE</button>
+
+<div id="warResult" class="result">
+Prépare une consigne prête à envoyer.
+</div>
+</div>
+
+<div class="card">
+<h2>📢 Générateur de message alliance</h2>
+
+<label>Type de message</label>
+<select id="messageType">
+<option>Annonce importante</option>
+<option>Guerre</option>
+<option>VS</option>
+<option>Rappel</option>
+<option>Félicitations</option>
+</select>
+
+<label>Information à transmettre</label>
+<textarea id="messageInput"></textarea>
+
+<button class="btn btn2" onclick="generateMessage()">📢 CRÉER LE MESSAGE</button>
+
+<div id="messageResult" class="result"></div>
+</div>
+
 </section>
+
+<!-- ================= VS ================= -->
 
 <section id="vs" class="page">
- <div class="card">
-  <h1>🏆 VS Alliance</h1>
-  <p class="small">Planificateur hebdomadaire.</p>
 
-  <label>Jour</label>
-  <select id="vsday" onchange="vsPlan()">
-   <option value="1">Jour 1</option>
-   <option value="2">Jour 2</option>
-   <option value="3">Jour 3</option>
-   <option value="4">Jour 4</option>
-   <option value="5">Jour 5</option>
-   <option value="6">Jour 6</option>
-  </select>
+<div class="card">
+<h1>🏆 VS Alliance</h1>
 
-  <div id="vsresult" class="result"></div>
- </div>
+<label>Jour VS</label>
+<select id="vsDay" onchange="generateVS()">
+<option value="1">Jour 1</option>
+<option value="2">Jour 2</option>
+<option value="3">Jour 3</option>
+<option value="4">Jour 4</option>
+<option value="5">Jour 5</option>
+<option value="6">Jour 6</option>
+</select>
+
+<label>Objectif alliance de points</label>
+<input id="vsTarget" type="number" placeholder="Ex : 500000000">
+
+<button class="btn" onclick="generateVS()">🏆 PLAN DU JOUR</button>
+
+<div id="vsResult" class="result"></div>
+</div>
+
+<div class="card">
+<h2>📦 Banque de préparation</h2>
+
+<label>Accélérateurs disponibles (heures)</label>
+<input id="speedups" type="number">
+
+<label>Fragments héros</label>
+<input id="fragments" type="number">
+
+<label>Ressources économisées</label>
+<select id="resourcesSaved">
+<option>Faibles</option>
+<option>Moyennes</option>
+<option>Bonnes</option>
+<option>Très importantes</option>
+</select>
+
+<button class="btn btn2" onclick="vsPreparation()">📊 ANALYSER MES RÉSERVES</button>
+
+<div id="vsPrepResult" class="result"></div>
+</div>
+
 </section>
 
+<!-- ================= SAISON ================= -->
+
 <section id="season" class="page">
- <div class="card">
-  <h1>🌍 Centre Saison</h1>
 
-  <label>Saison actuelle</label>
-  <select id="seasonNumber">
-   <option>Saison 1</option>
-   <option>Saison 2</option>
-   <option>Saison 3</option>
-   <option>Saison 4</option>
-   <option selected>Saison 5</option>
-   <option>Saison suivante</option>
-  </select>
+<div class="card">
+<h1>🌍 Centre Saison</h1>
 
-  <label>Profession</label>
-  <select id="profession">
-   <option>Ingénieur</option>
-   <option>Chef de guerre</option>
-  </select>
+<div class="grid2">
+<div>
+<label>Saison</label>
+<select id="seasonNumber">
+<option>Saison 1</option>
+<option>Saison 2</option>
+<option>Saison 3</option>
+<option>Saison 4</option>
+<option selected>Saison 5</option>
+<option>Saison suivante</option>
+</select>
+</div>
 
-  <button class="mainBtn" onclick="seasonPlan()">🌍 ANALYSER LA SAISON</button>
-  <div id="seasonResult" class="result">Choisis ta saison et ta profession.</div>
- </div>
+<div>
+<label>Profession</label>
+<select id="profession">
+<option>Ingénieur</option>
+<option>Chef de guerre</option>
+</select>
+</div>
+</div>
+
+<label>Priorité actuelle</label>
+<select id="seasonPriority">
+<option>Puissance</option>
+<option>Combat</option>
+<option>Développement</option>
+<option>Alliance</option>
+<option>Événement</option>
+</select>
+
+<button class="btn" onclick="generateSeason()">🌍 ANALYSER MA SAISON</button>
+
+<div id="seasonResult" class="result"></div>
+</div>
+
+<div class="card">
+<h2>📅 Planning alliance</h2>
+
+<label>Événement</label>
+<input id="eventName" placeholder="Ex : guerre, boss, événement saisonnier">
+
+<label>Date / heure</label>
+<input id="eventDate" placeholder="Ex : samedi 20h">
+
+<label>Responsable</label>
+<input id="eventLeader" placeholder="Pseudo du R4 responsable">
+
+<button class="btn btn2" onclick="addEvent()">➕ AJOUTER AU PLANNING</button>
+
+<div id="eventsList"></div>
+</div>
+
 </section>
 
 </main>
 
-<footer>WarBoost V7 • Assistant indépendant pour Last War</footer>
+<footer>
+WarBoost V8 • Assistant indépendant Last War
+</footer>
 
 <script>
-const heroes=document.getElementById("heroes");
+
+const $ = id => document.getElementById(id);
+
+function num(id){
+  const el=$(id);
+  if(!el)return 0;
+  return Number(String(el.value).replace(",","."))||0;
+}
+
+function showPage(id,button){
+  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+
+  $(id).classList.add("active");
+  button.classList.add("active");
+}
+
+/* ================= HEROS ================= */
 
 for(let i=1;i<=5;i++){
- heroes.innerHTML+=`
- <div class="hero">
-  <strong>⭐ Héros ${i}</strong>
-  <div class="grid">
-   <input id="hn${i}" placeholder="Nom du héros">
-   <input id="hl${i}" type="number" placeholder="Niveau" value="150">
-   <input id="hs${i}" type="number" min="0" max="5" step=".1" placeholder="Étoiles">
-   <input id="hw${i}" type="number" placeholder="Arme exclusive">
-   <input id="hg${i}" type="number" placeholder="Équipement moyen">
+
+  $("heroes").innerHTML+=`
+
+  <div class="hero">
+
+  <h3>⭐ Héros ${i}</h3>
+
+  <div class="grid2">
+
+  <input id="heroName${i}" placeholder="Nom du héros">
+
+  <input id="heroLevel${i}" type="number" value="150" placeholder="Niveau">
+
+  <input id="heroStars${i}" type="number" min="0" max="5" step=".1" placeholder="Étoiles">
+
+  <input id="heroWeapon${i}" type="number" placeholder="Arme exclusive">
+
+  <input id="heroGear${i}" type="number" placeholder="Équipement moyen">
+
   </div>
- </div>`;
+
+  </div>
+
+  `;
 }
 
-function showPage(id,btn){
- document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
- document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
- document.getElementById(id).classList.add("active");
- btn.classList.add("active");
+/* ================= ANALYSE JOUEUR ================= */
+
+function analysePlayer(){
+
+  const qg=num("qg");
+  const power=num("power");
+  const squadPower=num("squadPower");
+  const drone=num("drone");
+  const droneLevel=num("droneLevel");
+  const tech=num("tech");
+  const gear=num("gear");
+  const squad=$("squad").value;
+
+  let score=0;
+  let priorities=[];
+
+  score+=Math.min(15,(qg/35)*15);
+  score+=Math.min(15,(power/200)*15);
+  score+=Math.min(15,(drone/10)*15);
+  score+=Math.min(15,(tech/100)*15);
+  score+=Math.min(15,(gear/100)*15);
+
+  let heroScore=0;
+
+  for(let i=1;i<=5;i++){
+
+    const name=$("heroName"+i).value || "Héros "+i;
+    const level=num("heroLevel"+i);
+    const stars=num("heroStars"+i);
+    const weapon=num("heroWeapon"+i);
+    const heroGear=num("heroGear"+i);
+
+    heroScore+=Math.min(2,level/150*2);
+    heroScore+=Math.min(1.5,stars/5*1.5);
+    heroScore+=Math.min(1,weapon/30);
+    heroScore+=Math.min(.5,heroGear/50*.5);
+
+    if(level && level<150){
+      priorities.push({
+        p:90+(150-level),
+        t:"⬆️ "+name+" : monte son niveau."
+      });
+    }
+
+    if(stars>0 && stars<5){
+      priorities.push({
+        p:88+(5-stars)*4,
+        t:"⭐ "+name+" : fragments et étoiles prioritaires."
+      });
+    }
+
+    if(weapon>0 && weapon<20){
+      priorities.push({
+        p:86+(20-weapon),
+        t:"🔥 "+name+" : arme exclusive à renforcer."
+      });
+    }
+
+    if(heroGear>0 && heroGear<40){
+      priorities.push({
+        p:84+(40-heroGear),
+        t:"🛡️ "+name+" : équipement individuel en retard."
+      });
+    }
+  }
+
+  score+=Math.min(25,heroScore);
+
+  if(gear<80){
+    priorities.push({
+      p:100-gear,
+      t:"🛡️ Équipement global : améliore en priorité ton escouade principale."
+    });
+  }
+
+  if(drone<10){
+    priorities.push({
+      p:96+(10-drone),
+      t:"🚁 Drone : composants, niveau et compétences sont encore une priorité."
+    });
+  }
+
+  if(tech<85){
+    priorities.push({
+      p:95+(85-tech),
+      t:"🔬 Technologie : concentre tes recherches sur les bonus de combat."
+    });
+  }
+
+  if(squadPower && power){
+
+    const ratio=(squadPower/power)*100;
+
+    if(ratio<20){
+      priorities.push({
+        p:98,
+        t:"⚡ Ta puissance semble trop dispersée : concentre davantage tes ressources sur l'escouade 1."
+      });
+    }
+  }
+
+  priorities.push({
+    p:60,
+    t:"🎯 Escouade "+squad+" : continue à privilégier cette équipe avant les escouades secondaires."
+  });
+
+  if(droneLevel && droneLevel<150){
+    priorities.push({
+      p:82,
+      t:"🚁 Niveau drone "+droneLevel+" : continue sa progression."
+    });
+  }
+
+  priorities.sort((a,b)=>b.p-a.p);
+
+  score=Math.min(100,Math.round(score));
+
+  const cls=score>=80?"good":score>=60?"warn":"bad";
+
+  let html=
+  `<div class="small">WARBOOST SCORE</div>
+   <div class="score ${cls}">${score}/100</div>`;
+
+  if(score>=85){
+    html+=`<p class="good"><strong>🔥 Compte très solide.</strong></p>`;
+  }else if(score>=70){
+    html+=`<p class="warn"><strong>⚔️ Bon compte, mais plusieurs gains sont encore disponibles.</strong></p>`;
+  }else{
+    html+=`<p class="bad"><strong>🔧 Plusieurs améliorations prioritaires sont détectées.</strong></p>`;
+  }
+
+  html+=`<h2>🎯 TOP PRIORITÉS</h2>`;
+
+  priorities.slice(0,6).forEach((x,i)=>{
+    html+=`<div class="item"><strong>${i+1}.</strong> ${x.t}</div>`;
+  });
+
+  $("analysis").innerHTML=html;
+
+  save();
 }
 
-function val(id){
- return Number(document.getElementById(id).value)||0;
+/* ================= R5 R4 ================= */
+
+function generateCommandPlan(){
+
+  const alliance=$("alliance").value || "Alliance";
+  const server=$("server").value || "?";
+  const count=num("memberCount");
+  const objective=$("objective").value;
+  const situation=$("situation").value;
+
+  let html=`
+  <h2>👑 PLAN ${alliance}</h2>
+
+  <span class="tag">🌐 Serveur ${server}</span>
+  <span class="tag">👥 ${count||"?"} membres</span>
+  <span class="tag">🎯 ${objective}</span>
+
+  <div class="item">
+  <strong>1. 👑 R5 — Direction</strong><br>
+  Fixer un objectif unique et une heure précise.
+  </div>
+
+  <div class="item">
+  <strong>2. 🧠 R4 — Responsabilités</strong><br>
+  Nommer au minimum un responsable Guerre, VS, Membres et Saison.
+  </div>
+
+  <div class="item">
+  <strong>3. 👥 Membres</strong><br>
+  Séparer combattants, joueurs de soutien et joueurs à accompagner.
+  </div>
+
+  <div class="item">
+  <strong>4. 📢 Communication</strong><br>
+  Une annonce courte : objectif + heure + action demandée.
+  </div>
+
+  <div class="item">
+  <strong>5. 📊 Contrôle</strong><br>
+  Après l'événement, identifier absences, réussites et points à corriger.
+  </div>
+  `;
+
+  if(situation){
+    html+=`
+    <div class="notice">
+    <strong>Situation renseignée :</strong><br>
+    ${escapeHtml(situation)}
+    </div>`;
+  }
+
+  $("commandResult").innerHTML=html;
+
+  save();
 }
 
-function analyse(){
- let qg=val("qg"),power=val("power"),drone=val("drone");
- let tech=val("tech"),gear=val("gear");
- let squad=document.getElementById("squad").value;
+/* ================= MEMBRES ================= */
 
- let score=0;
- score+=Math.min(20,qg/35*20);
- score+=Math.min(20,tech/100*20);
- score+=Math.min(20,gear/100*20);
- score+=Math.min(20,drone/10*20);
- score+=Math.min(20,power/200*20);
- score=Math.round(score);
+let members=[];
 
- let priorities=[];
+function addMember(){
 
- if(gear<80) priorities.push("🛡️ ÉQUIPEMENT — priorité élevée : améliore d'abord l'équipement de ton escouade principale.");
- if(drone<10) priorities.push("🚁 DRONE — continue composants, niveau et compétences.");
- if(tech<85) priorities.push("🔬 TECHNOLOGIE — concentre les recherches sur les bonus de combat.");
- if(power<200) priorities.push("⚡ PUISSANCE — privilégie les améliorations permanentes.");
- priorities.push("✈️ "+squad.toUpperCase()+" — concentre tes ressources sur cette escouade.");
+  const name=$("newMemberName").value.trim();
 
- for(let i=1;i<=5;i++){
-  let name=document.getElementById("hn"+i).value||("Héros "+i);
-  let level=val("hl"+i);
-  let stars=val("hs"+i);
-  let weapon=val("hw"+i);
-  let hgear=val("hg"+i);
+  if(!name){
+    alert("Entre le pseudo du membre.");
+    return;
+  }
 
-  if(level && level<150) priorities.push("⬆️ "+name+" — monte son niveau.");
-  if(stars && stars<5) priorities.push("⭐ "+name+" — fragments/étoiles à améliorer.");
-  if(weapon && weapon<20) priorities.push("🔥 "+name+" — arme exclusive à renforcer.");
-  if(hgear && hgear<40) priorities.push("🛡️ "+name+" — équipement individuel en retard.");
- }
+  members.push({
+    name,
+    rank:$("newMemberRank").value,
+    power:num("newMemberPower"),
+    role:$("newMemberRole").value
+  });
 
- let cls=score>=80?"good":score>=60?"warn":"bad";
+  $("newMemberName").value="";
+  $("newMemberPower").value="";
 
- document.getElementById("analysis").innerHTML=
- `<div class="small">WARBOOST SCORE</div>
-  <div class="score ${cls}">${score}/100</div>
-  <h2>🎯 Priorités</h2>`+
- priorities.slice(0,8).map((p,i)=>`<div class="item"><strong>${i+1}.</strong> ${p}</div>`).join("");
-
- saveData();
+  renderMembers();
+  save();
 }
 
-function r5Plan(){
- let alliance=document.getElementById("alliance").value||"ton alliance";
- let members=val("members");
- let objective=document.getElementById("objective").value;
-
- document.getElementById("r5result").innerHTML=`
- <h2>🎯 Plan ${alliance}</h2>
- <span class="tag">👥 ${members||"?"} membres</span>
- <span class="tag">🎯 ${objective}</span>
-
- <div class="item"><strong>1. R5 — Commandement</strong><br>
- Fixer l'objectif, les horaires et valider les décisions importantes.</div>
-
- <div class="item"><strong>2. R4 — Répartition</strong><br>
- Attribuer des responsables Guerre, VS, Membres et Saison.</div>
-
- <div class="item"><strong>3. ⚔️ Combat</strong><br>
- Séparer les gros combattants, renforts et joueurs de soutien.</div>
-
- <div class="item"><strong>4. 📢 Communication</strong><br>
- Une consigne courte, un horaire précis et une cible clairement annoncée.</div>
-
- <div class="item"><strong>5. 👥 Suivi</strong><br>
- Contrôler activité, participation et progression des membres.</div>`;
-
- saveData();
+function deleteMember(index){
+  members.splice(index,1);
+  renderMembers();
+  save();
 }
+
+function renderMembers(){
+
+  let html="";
+
+  members.forEach((m,i)=>{
+
+    html+=`
+    <div class="member">
+
+    <div class="memberTop">
+    <strong>${escapeHtml(m.name)} • ${m.rank}</strong>
+    <button onclick="deleteMember(${i})">✕</button>
+    </div>
+
+    <div class="small">
+    ⚡ ${m.power||"?"} M • ${m.role}
+    </div>
+
+    </div>
+    `;
+  });
+
+  if(!members.length){
+    html=`<p class="small">Aucun membre enregistré.</p>`;
+  }
+
+  $("membersList").innerHTML=html;
+}
+
+/* ================= GUERRE ================= */
+
+function generateWar(){
+
+  const time=$("warTime").value || "heure à définir";
+  const target=$("warTarget").value || "objectif à définir";
+  const note=$("warNote").value;
+
+  let msg=
+`⚔️ GUERRE ALLIANCE
+
+🕒 Heure : ${time}
+🎯 Objectif : ${target}
+
+✅ Avant le départ :
+• Vérifiez troupes et escouades
+• Soyez disponibles avant l'heure
+• Attendez les ordres R5/R4
+• Ne partez pas seul sans consigne`;
+
+  if(note){
+    msg+=`\n\n📌 Consigne : ${note}`;
+  }
+
+  $("warResult").innerHTML=
+  `<h3>📢 Message prêt à copier</h3>
+  <textarea readonly>${msg}</textarea>`;
+
+  save();
+}
+
+/* ================= MESSAGES ================= */
+
+function generateMessage(){
+
+  const type=$("messageType").value;
+  const text=$("messageInput").value || "Information à compléter";
+
+  const icons={
+    "Annonce importante":"📢",
+    "Guerre":"⚔️",
+    "VS":"🏆",
+    "Rappel":"⏰",
+    "Félicitations":"🎉"
+  };
+
+  const msg=
+`${icons[type]} ${type.toUpperCase()}
+
+${text}
+
+Merci à tous de suivre les consignes R5/R4.`;
+
+  $("messageResult").innerHTML=
+  `<textarea readonly>${msg}</textarea>`;
+}
+
+/* ================= VS ================= */
 
 const vsPlans={
-1:"📦 Préparation : économise les ressources nécessaires et synchronise les dépenses avec les objectifs du jour.",
-2:"🏗️ Développement : prépare accélérateurs, constructions et améliorations utiles.",
-3:"🔬 Recherche : réserve accélérateurs et ressources technologiques.",
-4:"⭐ Héros : prépare fragments, EXP héros et améliorations prévues.",
-5:"⚔️ Armée : prépare entraînement, accélérateurs et progression militaire.",
-6:"🔥 Combat : organisation R5/R4, boucliers, téléportations, groupes et cibles."
+1:{
+ title:"📦 Jour 1",
+ text:"Prépare les ressources et ne dépense que ce qui rapporte des points aujourd'hui."
+},
+2:{
+ title:"🏗️ Jour 2",
+ text:"Concentre constructions et accélérateurs sur les actions comptabilisées."
+},
+3:{
+ title:"🔬 Jour 3",
+ text:"Prépare recherches, technologies et accélérateurs adaptés."
+},
+4:{
+ title:"⭐ Jour 4",
+ text:"Fragments, EXP héros et améliorations doivent être synchronisés avec le VS."
+},
+5:{
+ title:"🪖 Jour 5",
+ text:"Prépare entraînement, promotions et accélérateurs militaires."
+},
+6:{
+ title:"🔥 Jour 6",
+ text:"Combat : R5/R4 organisent groupes, horaires, boucliers et cibles."
+}
 };
 
-function vsPlan(){
- let d=document.getElementById("vsday").value;
- document.getElementById("vsresult").innerHTML=
- `<h2>🏆 Jour ${d}</h2><div class="item">${vsPlans[d]}</div>
- <div class="item"><strong>R5/R4 :</strong> annoncer les consignes avant les dépenses importantes.</div>`;
+function generateVS(){
+
+  const d=$("vsDay").value;
+  const plan=vsPlans[d];
+
+  $("vsResult").innerHTML=
+  `<h2>${plan.title}</h2>
+
+  <div class="item">${plan.text}</div>
+
+  <div class="item">
+  <strong>👑 R5 :</strong> fixer l'objectif de points et les priorités.
+  </div>
+
+  <div class="item">
+  <strong>🧠 R4 :</strong> rappeler les consignes avant les dépenses importantes.
+  </div>
+
+  <div class="item">
+  <strong>👥 Membres :</strong> éviter les dépenses hors journée si elles peuvent être conservées.
+  </div>`;
+
+  save();
 }
 
-function seasonPlan(){
- let season=document.getElementById("seasonNumber").value;
- let profession=document.getElementById("profession").value;
+function vsPreparation(){
 
- let job=profession==="Chef de guerre"
- ?"⚔️ Priorise les bonus militaires et les capacités utiles au combat."
- :"🛠️ Priorise développement, efficacité et bonus permettant d'accélérer la progression.";
+  const speed=num("speedups");
+  const frag=num("fragments");
+  const saved=$("resourcesSaved").value;
 
- document.getElementById("seasonResult").innerHTML=`
- <h2>🌍 ${season}</h2>
- <div class="item"><strong>${profession}</strong><br>${job}</div>
- <div class="item">📦 Ne dépense pas immédiatement toutes les ressources saisonnières.</div>
- <div class="item">👥 Les R5/R4 doivent fixer les objectifs d'alliance avant les événements majeurs.</div>
- <div class="item">🗺️ Adapter les priorités à l'avancement réel du serveur et de l'alliance.</div>`;
- saveData();
+  let advice=[];
+
+  if(speed<50){
+    advice.push("⏱️ Accélérateurs faibles : évite les dépenses inutiles.");
+  }else{
+    advice.push("⏱️ Bonne réserve d'accélérateurs.");
+  }
+
+  if(frag<100){
+        advice.push("⭐ Réserve de fragments limitée : utilise-les uniquement sur ton escouade principale.");
+  }else{
+    advice.push("⭐ Bonne réserve de fragments pour une journée héros.");
+  }
+
+  advice.push("📦 Niveau de ressources économisées : "+saved+".");
+
+  $("vsPrepResult").innerHTML=
+  advice.map(x=>`<div class="item">${x}</div>`).join("");
+
+  save();
 }
 
-function saveData(){
- const ids=["qg","power","drone","tech","gear","squad","alliance","members","objective","memberNotes","seasonNumber","profession"];
- let data={};
+/* ================= SAISON ================= */
 
- ids.forEach(id=>{
-  let el=document.getElementById(id);
-  if(el)data[id]=el.value;
- });
+function generateSeason(){
 
- for(let i=1;i<=5;i++){
-  ["hn","hl","hs","hw","hg"].forEach(x=>{
-   data[x+i]=document.getElementById(x+i).value;
+  const season=$("seasonNumber").value;
+  const job=$("profession").value;
+  const priority=$("seasonPriority").value;
+
+  let jobAdvice="";
+
+  if(job==="Chef de guerre"){
+    jobAdvice="⚔️ Priorise les bonus militaires, les capacités de combat et les améliorations utiles pendant les guerres.";
+  }else{
+    jobAdvice="🛠️ Priorise développement, efficacité, progression et bonus permettant d'accélérer ton compte.";
+  }
+
+  let priorityAdvice="";
+
+  if(priority==="Puissance"){
+    priorityAdvice="⚡ Concentre tes ressources saisonnières sur les améliorations permanentes qui renforcent ton escouade principale.";
+  }
+
+  if(priority==="Combat"){
+    priorityAdvice="⚔️ Prépare tes bonus militaires et conserve des ressources pour les périodes de combat importantes.";
+  }
+
+  if(priority==="Développement"){
+    priorityAdvice="🏗️ Optimise les bâtiments, recherches et bonus de progression avant de disperser tes ressources.";
+  }
+
+  if(priority==="Alliance"){
+    priorityAdvice="👥 Coordonne tes investissements avec les objectifs fixés par les R5/R4.";
+  }
+
+  if(priority==="Événement"){
+    priorityAdvice="📅 Économise les ressources demandées jusqu'au lancement de l'événement afin de maximiser les récompenses.";
+  }
+
+  $("seasonResult").innerHTML=
+  `<h2>🌍 ${season}</h2>
+
+  <span class="tag">${job}</span>
+  <span class="tag">🎯 ${priority}</span>
+
+  <div class="item">
+  <strong>1. Profession</strong><br>
+  ${jobAdvice}
+  </div>
+
+  <div class="item">
+  <strong>2. Priorité actuelle</strong><br>
+  ${priorityAdvice}
+  </div>
+
+  <div class="item">
+  <strong>3. 📦 Ressources</strong><br>
+  Conserve toujours une réserve avant les grandes étapes et événements saisonniers.
+  </div>
+
+  <div class="item">
+  <strong>4. 👑 R5/R4</strong><br>
+  Le R5 fixe les objectifs. Les R4 répartissent les responsabilités et transmettent les consignes.
+  </div>
+
+  <div class="item">
+  <strong>5. 📊 Mise à jour</strong><br>
+  Réévalue les priorités à chaque nouvelle phase de la saison.
+  </div>`;
+
+  save();
+}
+
+/* ================= PLANNING ================= */
+
+let events=[];
+
+function addEvent(){
+
+  const name=$("eventName").value.trim();
+
+  if(!name){
+    alert("Entre le nom de l'événement.");
+    return;
+  }
+
+  events.push({
+    name:name,
+    date:$("eventDate").value,
+    leader:$("eventLeader").value
   });
- }
 
- localStorage.setItem("warboostV7",JSON.stringify(data));
+  $("eventName").value="";
+  $("eventDate").value="";
+  $("eventLeader").value="";
+
+  renderEvents();
+  save();
 }
 
-function loadData(){
- let data=JSON.parse(localStorage.getItem("warboostV7")||"{}");
- Object.keys(data).forEach(id=>{
-  let el=document.getElementById(id);
-  if(el)el.value=data[id];
- });
+function deleteEvent(index){
+
+  events.splice(index,1);
+
+  renderEvents();
+  save();
 }
 
-loadData();
-vsPlan();
+function renderEvents(){
+
+  if(!events.length){
+
+    $("eventsList").innerHTML=
+    `<p class="small">Aucun événement enregistré.</p>`;
+
+    return;
+  }
+
+  $("eventsList").innerHTML=
+  events.map((e,i)=>`
+
+  <div class="member">
+
+    <div class="memberTop">
+
+      <strong>📅 ${escapeHtml(e.name)}</strong>
+
+      <button onclick="deleteEvent(${i})">✕</button>
+
+    </div>
+
+    <div class="small">
+
+      🕒 ${escapeHtml(e.date||"À définir")}<br>
+
+      👤 Responsable :
+      ${escapeHtml(e.leader||"À définir")}
+
+    </div>
+
+  </div>
+
+  `).join("");
+}
+
+/* ================= SAUVEGARDE ================= */
+
+function save(){
+
+  const ids=[
+
+    "qg",
+    "power",
+    "squadPower",
+    "squad",
+    "drone",
+    "droneLevel",
+    "tech",
+    "gear",
+
+    "alliance",
+    "server",
+    "memberCount",
+    "objective",
+    "situation",
+
+    "warTime",
+    "warTarget",
+    "warNote",
+
+    "messageType",
+    "messageInput",
+
+    "vsDay",
+    "vsTarget",
+    "speedups",
+    "fragments",
+    "resourcesSaved",
+
+    "seasonNumber",
+    "profession",
+    "seasonPriority"
+
+  ];
+
+  let data={
+    members:members,
+    events:events
+  };
+
+  ids.forEach(id=>{
+
+    if($(id)){
+      data[id]=$(id).value;
+    }
+
+  });
+
+  for(let i=1;i<=5;i++){
+
+    data["heroName"+i]=$("heroName"+i).value;
+    data["heroLevel"+i]=$("heroLevel"+i).value;
+    data["heroStars"+i]=$("heroStars"+i).value;
+    data["heroWeapon"+i]=$("heroWeapon"+i).value;
+    data["heroGear"+i]=$("heroGear"+i).value;
+
+  }
+
+  localStorage.setItem(
+    "warboostV8",
+    JSON.stringify(data)
+  );
+}
+
+/* ================= CHARGEMENT ================= */
+
+function load(){
+
+  try{
+
+    const data=
+    JSON.parse(
+      localStorage.getItem("warboostV8") || "{}"
+    );
+
+    members=data.members || [];
+    events=data.events || [];
+
+    Object.keys(data).forEach(key=>{
+
+      const element=$(key);
+
+      if(
+        element &&
+        typeof data[key] !== "object"
+      ){
+
+        element.value=data[key];
+
+      }
+
+    });
+
+  }catch(error){
+
+    console.log("Réinitialisation des données WarBoost");
+
+    members=[];
+    events=[];
+
+  }
+
+  renderMembers();
+  renderEvents();
+}
+
+/* ================= SECURITE TEXTE ================= */
+
+function escapeHtml(text){
+
+  return String(text)
+
+  .replaceAll("&","&amp;")
+  .replaceAll("<","&lt;")
+  .replaceAll(">","&gt;")
+  .replaceAll('"',"&quot;");
+
+}
+
+/* ================= DEMARRAGE ================= */
+
+load();
+
+generateVS();
+
 </script>
 
 </body>
