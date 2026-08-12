@@ -2,139 +2,84 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WarBoost V6 - Command Center</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WarBoost V7</title>
 
 <style>
 *{box-sizing:border-box}
-
 body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#070b12;
-  color:white;
+ margin:0;background:#070b12;color:#fff;
+ font-family:Arial,sans-serif
 }
-
 header{
-  padding:25px 20px;
-  text-align:center;
-  background:#0c1220;
-  border-bottom:1px solid #202a3a;
+ padding:25px 18px;text-align:center;
+ background:#0c1220;border-bottom:1px solid #263044
 }
+.logo{font-size:28px;font-weight:900}
+.logo span{color:#ff474d}
+.subtitle{color:#aab4c8;margin-top:8px}
 
-.logo{
-  font-weight:bold;
-  font-size:24px;
+nav{
+ display:grid;grid-template-columns:1fr 1fr;
+ gap:10px;padding:15px;position:sticky;top:0;
+ background:#070b12;z-index:10
 }
-
-.logo span{color:#ff4545}
-
-header p{
-  color:#b9c1ce;
-  margin-bottom:5px;
+nav button,.mainBtn{
+ border:0;border-radius:14px;padding:15px;
+ background:#ff474d;color:white;font-weight:bold;
+ font-size:15px
 }
+nav button{background:#151e2f}
+nav button.active{background:#ff474d}
 
-.container{
-  max-width:720px;
-  margin:auto;
-  padding:28px;
-}
+main{max-width:800px;margin:auto;padding:12px}
+.page{display:none}
+.page.active{display:block}
 
 .card{
-  background:#111a2b;
-  border:1px solid #26334a;
-  border-radius:26px;
-  padding:30px;
-  margin-bottom:28px;
+ background:#111b2e;border:1px solid #263653;
+ border-radius:22px;padding:22px;margin:15px 0
 }
+h1{font-size:26px}
+h2{margin-top:5px}
+label{display:block;color:#cbd3df;margin:14px 0 7px}
 
-h2{
-  margin-top:0;
-  font-size:30px;
+input,select,textarea{
+ width:100%;background:#08111e;color:white;
+ border:1px solid #34445e;border-radius:14px;
+ padding:15px;font-size:17px
 }
+textarea{min-height:100px}
 
-label{
-  display:block;
-  margin-top:18px;
-  margin-bottom:8px;
-  color:#d6dbe5;
-  font-size:20px;
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hero{
+ padding:15px;background:#091321;
+ border-radius:15px;margin:10px 0
 }
-
-input,select{
-  width:100%;
-  padding:18px;
-  font-size:19px;
-  color:white;
-  background:#08111e;
-  border:1px solid #34425a;
-  border-radius:15px;
-}
-
-button{
-  margin-top:25px;
-  padding:18px 25px;
-  border:0;
-  border-radius:15px;
-  background:#ff4747;
-  color:white;
-  font-size:19px;
-  font-weight:bold;
-  cursor:pointer;
-}
-
 .result{
-  margin-top:28px;
-  padding:25px;
-  background:#07101d;
-  border-radius:20px;
-  line-height:1.5;
-  font-size:18px;
+ background:#07111d;border-radius:18px;
+ padding:20px;margin-top:20px
 }
-
 .score{
-  text-align:center;
-  padding:20px;
-  margin-bottom:20px;
-  border:1px solid #34425a;
-  border-radius:18px;
+ text-align:center;font-size:48px;font-weight:bold;
+ margin:15px
 }
-
-.scoreNumber{
-  font-size:48px;
-  font-weight:bold;
+.good{color:#4be29a}
+.warn{color:#ffd45c}
+.bad{color:#ff6469}
+.item{
+ border-bottom:1px solid #273244;
+ padding:13px 0;line-height:1.4
 }
-
-.heroGrid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
+.tag{
+ display:inline-block;background:#263653;
+ border-radius:20px;padding:7px 11px;margin:4px
 }
-
-.priority{
-  padding:15px 0;
-  border-bottom:1px solid #283347;
-}
-
-.priority:last-child{
-  border-bottom:0;
-}
-
-.small{
-  color:#aeb8c8;
-  font-size:15px;
-}
-
-footer{
-  text-align:center;
-  color:#8e99aa;
-  padding:25px;
-}
+.small{color:#aab4c8;font-size:14px}
+footer{text-align:center;color:#7f8ba0;padding:30px}
 
 @media(max-width:600px){
-  .container{padding:16px}
-  .card{padding:24px}
-  .heroGrid{grid-template-columns:1fr}
+ .grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -142,296 +87,298 @@ footer{
 <body>
 
 <header>
-  <div class="logo">War<span>Boost</span> V6</div>
-  <h1>⚔️ COMMAND CENTER</h1>
-  <p>Analyse ton compte Last War et trouve tes meilleures priorités.</p>
+ <div class="logo">WAR<span>BOOST</span> V7</div>
+ <div class="subtitle">Assistant Last War • Joueurs • R4 • R5</div>
 </header>
 
-<div class="container">
+<nav>
+ <button onclick="showPage('player',this)" class="active">🎮 Mon compte</button>
+ <button onclick="showPage('command',this)">🧠 R5 / R4</button>
+ <button onclick="showPage('vs',this)">🏆 VS Alliance</button>
+ <button onclick="showPage('season',this)">🌍 Saison</button>
+</nav>
 
-<div class="card">
+<main>
 
-<h2>🎮 Analyse avancée</h2>
+<section id="player" class="page active">
+ <div class="card">
+  <h1>🎮 Analyse joueur</h1>
+  <p class="small">Renseigne ton compte pour obtenir tes priorités de progression.</p>
 
-<label>QG</label>
-<input id="qg" type="number" value="35">
+  <div class="grid">
+   <div><label>QG</label><input id="qg" type="number" value="35"></div>
+   <div><label>Puissance (millions)</label><input id="power" type="number" step=".1" value="175"></div>
+   <div><label>Drone (millions)</label><input id="drone" type="number" step=".1" value="6.8"></div>
+   <div><label>Technologie (%)</label><input id="tech" type="number" value="80"></div>
+   <div><label>Équipement (%)</label><input id="gear" type="number" value="70"></div>
+   <div>
+    <label>Escouade principale</label>
+    <select id="squad">
+     <option>Avion</option>
+     <option>Tank</option>
+     <option>Missile</option>
+    </select>
+   </div>
+  </div>
 
-<label>Puissance totale (millions)</label>
-<input id="power" type="number" step="0.1" value="175">
+  <h2>⭐ Mes 5 héros</h2>
 
-<label>Puissance escouade principale (millions)</label>
-<input id="squadPower" type="number" step="0.1" placeholder="Ex : 32.5">
+  <div id="heroes"></div>
 
-<label>Escouade principale</label>
-<select id="squad">
-  <option value="Avion">✈️ Avion</option>
-  <option value="Tank">🛡️ Tank</option>
-  <option value="Missile">🚀 Missile</option>
-</select>
+  <button class="mainBtn" onclick="analyse()">⚡ ANALYSER MON COMPTE</button>
+  <div id="analysis" class="result">Renseigne ton compte puis lance l'analyse.</div>
+ </div>
+</section>
 
-<label>Drone (millions)</label>
-<input id="drone" type="number" step="0.1" value="6.8">
+<section id="command" class="page">
+ <div class="card">
+  <h1>🧠 Command Center R5 / R4</h1>
+  <p>Centre de pilotage de l'alliance.</p>
 
-<label>Technologie (%)</label>
-<input id="tech" type="number" value="80">
+  <label>Nom de l'alliance</label>
+  <input id="alliance" placeholder="Ex : ALL4">
 
-<label>Équipement (%)</label>
-<input id="gear" type="number" value="70">
+  <label>Nombre de membres</label>
+  <input id="members" type="number" placeholder="Ex : 98">
 
-<h2 style="margin-top:35px">⭐ Héros principaux</h2>
+  <label>Objectif actuel</label>
+  <select id="objective">
+   <option>Guerre</option>
+   <option>VS Alliance</option>
+   <option>Développement</option>
+   <option>Événement saisonnier</option>
+  </select>
 
-<p class="small">
-Entre le niveau de tes 5 héros de l'escouade principale.
-</p>
+  <button class="mainBtn" onclick="r5Plan()">🧠 GÉNÉRER LE PLAN R5/R4</button>
+  <div id="r5result" class="result">Configure ton alliance pour générer les consignes.</div>
+ </div>
 
-<div class="heroGrid">
-  <input id="hero1" type="number" placeholder="Héros 1 - niveau">
-  <input id="hero2" type="number" placeholder="Héros 2 - niveau">
-  <input id="hero3" type="number" placeholder="Héros 3 - niveau">
-  <input id="hero4" type="number" placeholder="Héros 4 - niveau">
-  <input id="hero5" type="number" placeholder="Héros 5 - niveau">
-</div>
+ <div class="card">
+  <h2>👥 Gestion des membres</h2>
+  <p class="small">Ajoute des notes importantes pour ton équipe de direction.</p>
+  <textarea id="memberNotes" placeholder="R4 actifs, joueurs forts, joueurs absents, groupes de combat..."></textarea>
+  <button class="mainBtn" onclick="saveData()">💾 Sauvegarder</button>
+ </div>
 
-<button onclick="analyse()">⚡ ANALYSER MON COMPTE</button>
+ <div class="card">
+  <h2>⚔️ Organisation guerre</h2>
+  <div class="item"><strong>R5</strong><br>Direction générale, décisions et coordination.</div>
+  <div class="item"><strong>R4 Guerre</strong><br>Appels, cibles, groupes et horaires.</div>
+  <div class="item"><strong>R4 Membres</strong><br>Présences, activité et remplacement.</div>
+  <div class="item"><strong>R3/R2/R1</strong><br>Exécution des consignes et soutien.</div>
+ </div>
+</section>
 
-<div id="result" class="result">
-Renseigne ton compte puis lance l'analyse.
-</div>
+<section id="vs" class="page">
+ <div class="card">
+  <h1>🏆 VS Alliance</h1>
+  <p class="small">Planificateur hebdomadaire.</p>
 
-</div>
+  <label>Jour</label>
+  <select id="vsday" onchange="vsPlan()">
+   <option value="1">Jour 1</option>
+   <option value="2">Jour 2</option>
+   <option value="3">Jour 3</option>
+   <option value="4">Jour 4</option>
+   <option value="5">Jour 5</option>
+   <option value="6">Jour 6</option>
+  </select>
 
-<div class="card">
+  <div id="vsresult" class="result"></div>
+ </div>
+</section>
 
-<h2>🧠 Command Center R5</h2>
+<section id="season" class="page">
+ <div class="card">
+  <h1>🌍 Centre Saison</h1>
 
-<p>Module de gestion d'alliance WarBoost.</p>
+  <label>Saison actuelle</label>
+  <select id="seasonNumber">
+   <option>Saison 1</option>
+   <option>Saison 2</option>
+   <option>Saison 3</option>
+   <option>Saison 4</option>
+   <option selected>Saison 5</option>
+   <option>Saison suivante</option>
+  </select>
 
-<div class="priority">
-<strong>⚔️ Guerre</strong><br>
-Organisation des joueurs et priorités de combat.
-</div>
+  <label>Profession</label>
+  <select id="profession">
+   <option>Ingénieur</option>
+   <option>Chef de guerre</option>
+  </select>
 
-<div class="priority">
-<strong>🏆 VS Alliance</strong><br>
-Planification des journées et optimisation des points.
-</div>
+  <button class="mainBtn" onclick="seasonPlan()">🌍 ANALYSER LA SAISON</button>
+  <div id="seasonResult" class="result">Choisis ta saison et ta profession.</div>
+ </div>
+</section>
 
-<div class="priority">
-<strong>👥 Membres</strong><br>
-Suivi des R4, R3, R2 et R1.
-</div>
+</main>
 
-<div class="priority">
-<strong>📅 Planning</strong><br>
-Préparation des événements de l'alliance.
-</div>
-
-</div>
-
-</div>
-
-<footer>
-WarBoost V6 • Assistant indépendant Last War
-</footer>
+<footer>WarBoost V7 • Assistant indépendant pour Last War</footer>
 
 <script>
+const heroes=document.getElementById("heroes");
+
+for(let i=1;i<=5;i++){
+ heroes.innerHTML+=`
+ <div class="hero">
+  <strong>⭐ Héros ${i}</strong>
+  <div class="grid">
+   <input id="hn${i}" placeholder="Nom du héros">
+   <input id="hl${i}" type="number" placeholder="Niveau" value="150">
+   <input id="hs${i}" type="number" min="0" max="5" step=".1" placeholder="Étoiles">
+   <input id="hw${i}" type="number" placeholder="Arme exclusive">
+   <input id="hg${i}" type="number" placeholder="Équipement moyen">
+  </div>
+ </div>`;
+}
+
+function showPage(id,btn){
+ document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+ document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+ document.getElementById(id).classList.add("active");
+ btn.classList.add("active");
+}
+
+function val(id){
+ return Number(document.getElementById(id).value)||0;
+}
 
 function analyse(){
+ let qg=val("qg"),power=val("power"),drone=val("drone");
+ let tech=val("tech"),gear=val("gear");
+ let squad=document.getElementById("squad").value;
 
-const qg=Number(document.getElementById("qg").value);
-const power=Number(document.getElementById("power").value);
-const squadPower=Number(document.getElementById("squadPower").value);
-const drone=Number(document.getElementById("drone").value);
-const tech=Number(document.getElementById("tech").value);
-const gear=Number(document.getElementById("gear").value);
-const squad=document.getElementById("squad").value;
+ let score=0;
+ score+=Math.min(20,qg/35*20);
+ score+=Math.min(20,tech/100*20);
+ score+=Math.min(20,gear/100*20);
+ score+=Math.min(20,drone/10*20);
+ score+=Math.min(20,power/200*20);
+ score=Math.round(score);
 
-const heroes=[
-Number(document.getElementById("hero1").value),
-Number(document.getElementById("hero2").value),
-Number(document.getElementById("hero3").value),
-Number(document.getElementById("hero4").value),
-Number(document.getElementById("hero5").value)
-].filter(n=>n>0);
+ let priorities=[];
 
-let score=0;
+ if(gear<80) priorities.push("🛡️ ÉQUIPEMENT — priorité élevée : améliore d'abord l'équipement de ton escouade principale.");
+ if(drone<10) priorities.push("🚁 DRONE — continue composants, niveau et compétences.");
+ if(tech<85) priorities.push("🔬 TECHNOLOGIE — concentre les recherches sur les bonus de combat.");
+ if(power<200) priorities.push("⚡ PUISSANCE — privilégie les améliorations permanentes.");
+ priorities.push("✈️ "+squad.toUpperCase()+" — concentre tes ressources sur cette escouade.");
 
-/* SCORE WARBOOST */
+ for(let i=1;i<=5;i++){
+  let name=document.getElementById("hn"+i).value||("Héros "+i);
+  let level=val("hl"+i);
+  let stars=val("hs"+i);
+  let weapon=val("hw"+i);
+  let hgear=val("hg"+i);
 
-score += Math.min(20,(qg/35)*20);
-score += Math.min(20,(drone/10)*20);
-score += Math.min(20,(tech/100)*20);
-score += Math.min(20,(gear/100)*20);
-
-if(heroes.length){
-  const avgHero=
-  heroes.reduce((a,b)=>a+b,0)/heroes.length;
-
-  score += Math.min(20,(avgHero/150)*20);
-}else{
-  score += 10;
-}
-
-score=Math.round(score);
-
-let priorities=[];
-
-/* ANALYSE */
-
-if(gear < 80){
- priorities.push({
- score:100-gear,
- text:"🛡️ ÉQUIPEMENT — priorité élevée. Renforce d'abord les équipements de ton escouade principale."
- });
-}
-
-if(drone < 10){
- priorities.push({
- score:(10-drone)*8,
- text:"🚁 DRONE — augmente les composants, le niveau et les compétences du drone."
- });
-}
-
-if(tech < 85){
- priorities.push({
- score:90-tech,
- text:"🔬 TECHNOLOGIE — concentre les recherches sur les bonus de combat de ton escouade principale."
- });
-}
-
-if(heroes.length){
-
- const minHero=Math.min(...heroes);
- const maxHero=Math.max(...heroes);
-
- if(maxHero-minHero >= 10){
-   priorities.push({
-   score:65,
-   text:"⭐ HÉROS — certains héros sont en retard. Remonte d'abord ton héros niveau "+minHero+"."
-   });
+  if(level && level<150) priorities.push("⬆️ "+name+" — monte son niveau.");
+  if(stars && stars<5) priorities.push("⭐ "+name+" — fragments/étoiles à améliorer.");
+  if(weapon && weapon<20) priorities.push("🔥 "+name+" — arme exclusive à renforcer.");
+  if(hgear && hgear<40) priorities.push("🛡️ "+name+" — équipement individuel en retard.");
  }
 
+ let cls=score>=80?"good":score>=60?"warn":"bad";
+
+ document.getElementById("analysis").innerHTML=
+ `<div class="small">WARBOOST SCORE</div>
+  <div class="score ${cls}">${score}/100</div>
+  <h2>🎯 Priorités</h2>`+
+ priorities.slice(0,8).map((p,i)=>`<div class="item"><strong>${i+1}.</strong> ${p}</div>`).join("");
+
+ saveData();
 }
 
-if(squadPower > 0 && power > 0){
+function r5Plan(){
+ let alliance=document.getElementById("alliance").value||"ton alliance";
+ let members=val("members");
+ let objective=document.getElementById("objective").value;
 
- const ratio=(squadPower/power)*100;
+ document.getElementById("r5result").innerHTML=`
+ <h2>🎯 Plan ${alliance}</h2>
+ <span class="tag">👥 ${members||"?"} membres</span>
+ <span class="tag">🎯 ${objective}</span>
 
- if(ratio < 20){
-   priorities.push({
-   score:80,
-   text:"⚡ ESCouade 1 — ta puissance est trop dispersée. Concentre davantage tes ressources sur ton équipe principale."
-   });
+ <div class="item"><strong>1. R5 — Commandement</strong><br>
+ Fixer l'objectif, les horaires et valider les décisions importantes.</div>
+
+ <div class="item"><strong>2. R4 — Répartition</strong><br>
+ Attribuer des responsables Guerre, VS, Membres et Saison.</div>
+
+ <div class="item"><strong>3. ⚔️ Combat</strong><br>
+ Séparer les gros combattants, renforts et joueurs de soutien.</div>
+
+ <div class="item"><strong>4. 📢 Communication</strong><br>
+ Une consigne courte, un horaire précis et une cible clairement annoncée.</div>
+
+ <div class="item"><strong>5. 👥 Suivi</strong><br>
+ Contrôler activité, participation et progression des membres.</div>`;
+
+ saveData();
+}
+
+const vsPlans={
+1:"📦 Préparation : économise les ressources nécessaires et synchronise les dépenses avec les objectifs du jour.",
+2:"🏗️ Développement : prépare accélérateurs, constructions et améliorations utiles.",
+3:"🔬 Recherche : réserve accélérateurs et ressources technologiques.",
+4:"⭐ Héros : prépare fragments, EXP héros et améliorations prévues.",
+5:"⚔️ Armée : prépare entraînement, accélérateurs et progression militaire.",
+6:"🔥 Combat : organisation R5/R4, boucliers, téléportations, groupes et cibles."
+};
+
+function vsPlan(){
+ let d=document.getElementById("vsday").value;
+ document.getElementById("vsresult").innerHTML=
+ `<h2>🏆 Jour ${d}</h2><div class="item">${vsPlans[d]}</div>
+ <div class="item"><strong>R5/R4 :</strong> annoncer les consignes avant les dépenses importantes.</div>`;
+}
+
+function seasonPlan(){
+ let season=document.getElementById("seasonNumber").value;
+ let profession=document.getElementById("profession").value;
+
+ let job=profession==="Chef de guerre"
+ ?"⚔️ Priorise les bonus militaires et les capacités utiles au combat."
+ :"🛠️ Priorise développement, efficacité et bonus permettant d'accélérer la progression.";
+
+ document.getElementById("seasonResult").innerHTML=`
+ <h2>🌍 ${season}</h2>
+ <div class="item"><strong>${profession}</strong><br>${job}</div>
+ <div class="item">📦 Ne dépense pas immédiatement toutes les ressources saisonnières.</div>
+ <div class="item">👥 Les R5/R4 doivent fixer les objectifs d'alliance avant les événements majeurs.</div>
+ <div class="item">🗺️ Adapter les priorités à l'avancement réel du serveur et de l'alliance.</div>`;
+ saveData();
+}
+
+function saveData(){
+ const ids=["qg","power","drone","tech","gear","squad","alliance","members","objective","memberNotes","seasonNumber","profession"];
+ let data={};
+
+ ids.forEach(id=>{
+  let el=document.getElementById(id);
+  if(el)data[id]=el.value;
+ });
+
+ for(let i=1;i<=5;i++){
+  ["hn","hl","hs","hw","hg"].forEach(x=>{
+   data[x+i]=document.getElementById(x+i).value;
+  });
  }
 
+ localStorage.setItem("warboostV7",JSON.stringify(data));
 }
 
-if(squad==="Avion"){
- priorities.push({
- score:55,
- text:"✈️ AVION — garde héros, équipements, fragments et ressources prioritaires pour ton escouade Avion."
+function loadData(){
+ let data=JSON.parse(localStorage.getItem("warboostV7")||"{}");
+ Object.keys(data).forEach(id=>{
+  let el=document.getElementById(id);
+  if(el)el.value=data[id];
  });
 }
 
-if(squad==="Tank"){
- priorities.push({
- score:55,
- text:"🛡️ TANK — concentre les investissements importants sur ton équipe Tank."
- });
-}
-
-if(squad==="Missile"){
- priorities.push({
- score:55,
- text:"🚀 MISSILE — concentre les investissements importants sur ton équipe Missile."
- });
-}
-
-if(qg>=35){
- priorities.push({
- score:40,
- text:"🏰 QG "+qg+" — privilégie maintenant les améliorations permanentes de combat plutôt que la puissance secondaire."
- });
-}
-
-/* TRI */
-
-priorities.sort((a,b)=>b.score-a.score);
-
-const top3=priorities.slice(0,3);
-
-/* NIVEAU DU COMPTE */
-
-let niveau="À développer";
-
-if(score>=90) niveau="🔥 Excellent";
-else if(score>=80) niveau="💪 Très solide";
-else if(score>=70) niveau="⚔️ Solide";
-else if(score>=60) niveau="🔧 En progression";
-
-/* AFFICHAGE */
-
-let html=`
-
-<div class="score">
-
-<div>WARBOOST SCORE</div>
-
-<div class="scoreNumber">
-${score}/100
-</div>
-
-<strong>${niveau}</strong>
-
-</div>
-
-<h3>🎯 TES 3 PRIORITÉS</h3>
-
-`;
-
-if(top3.length===0){
-
- html+=`
- <p>
- 🔥 Ton compte est équilibré.
- Continue à renforcer ton escouade principale.
- </p>
- `;
-
-}else{
-
- top3.forEach((p,index)=>{
-
- html+=`
- <div class="priority">
- <strong>${index+1}.</strong>
- ${p.text}
- </div>
- `;
-
- });
-
-}
-
-html+=`
-
-<h3>📊 RÉSUMÉ</h3>
-
-<p>
-🏰 QG : <strong>${qg}</strong><br>
-⚡ Puissance : <strong>${power} M</strong><br>
-⚔️ Escouade : <strong>${squad}</strong><br>
-🚁 Drone : <strong>${drone} M</strong><br>
-🔬 Technologie : <strong>${tech}%</strong><br>
-🛡️ Équipement : <strong>${gear}%</strong>
-</p>
-
-`;
-
-document.getElementById("result").innerHTML=html;
-
-}
-
+loadData();
+vsPlan();
 </script>
 
 </body>
