@@ -3,93 +3,138 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WarBoost - Command Center</title>
+<title>WarBoost V6 - Command Center</title>
 
 <style>
 *{box-sizing:border-box}
+
 body{
   margin:0;
   font-family:Arial,sans-serif;
   background:#070b12;
   color:white;
 }
+
 header{
   padding:25px 20px;
   text-align:center;
   background:#0c1220;
   border-bottom:1px solid #202a3a;
 }
+
 .logo{
   font-weight:bold;
-  font-size:22px;
+  font-size:24px;
 }
+
 .logo span{color:#ff4545}
-h1{
-  font-size:36px;
-  margin:25px 0 10px;
+
+header p{
+  color:#b9c1ce;
+  margin-bottom:5px;
 }
-.red{color:#ff4545}
-.subtitle{color:#aab3c5}
+
 .container{
-  max-width:900px;
+  max-width:720px;
   margin:auto;
-  padding:25px 18px 60px;
+  padding:28px;
 }
+
 .card{
   background:#111a2b;
-  border:1px solid #1e2b40;
-  border-radius:18px;
-  padding:22px;
-  margin:20px 0;
+  border:1px solid #26334a;
+  border-radius:26px;
+  padding:30px;
+  margin-bottom:28px;
 }
-h2{margin-top:0}
+
+h2{
+  margin-top:0;
+  font-size:30px;
+}
+
 label{
   display:block;
-  margin-top:15px;
-  color:#dce2ec;
+  margin-top:18px;
+  margin-bottom:8px;
+  color:#d6dbe5;
+  font-size:20px;
 }
+
 input,select{
   width:100%;
-  padding:15px;
-  margin-top:6px;
-  border-radius:10px;
-  border:1px solid #334158;
-  background:#07101d;
+  padding:18px;
+  font-size:19px;
   color:white;
-  font-size:16px;
+  background:#08111e;
+  border:1px solid #34425a;
+  border-radius:15px;
 }
+
 button{
-  margin-top:20px;
-  padding:15px 22px;
+  margin-top:25px;
+  padding:18px 25px;
   border:0;
-  border-radius:10px;
-  background:#ff4545;
+  border-radius:15px;
+  background:#ff4747;
   color:white;
+  font-size:19px;
   font-weight:bold;
-  font-size:16px;
   cursor:pointer;
 }
+
 .result{
-  margin-top:20px;
+  margin-top:28px;
+  padding:25px;
   background:#07101d;
-  padding:20px;
-  border-radius:14px;
-}
-.priority{
-  padding:13px 0;
-  border-bottom:1px solid #263044;
-}
-.badge{
-  display:inline-block;
-  background:#ff4545;
-  padding:5px 10px;
   border-radius:20px;
-  font-size:12px;
+  line-height:1.5;
+  font-size:18px;
 }
+
+.score{
+  text-align:center;
+  padding:20px;
+  margin-bottom:20px;
+  border:1px solid #34425a;
+  border-radius:18px;
+}
+
+.scoreNumber{
+  font-size:48px;
+  font-weight:bold;
+}
+
+.heroGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.priority{
+  padding:15px 0;
+  border-bottom:1px solid #283347;
+}
+
+.priority:last-child{
+  border-bottom:0;
+}
+
+.small{
+  color:#aeb8c8;
+  font-size:15px;
+}
+
 footer{
   text-align:center;
-  color:#778196;
+  color:#8e99aa;
   padding:25px;
+}
+
+@media(max-width:600px){
+  .container{padding:16px}
+  .card{padding:24px}
+  .heroGrid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -97,47 +142,68 @@ footer{
 <body>
 
 <header>
-  <div class="logo">WAR<span>BOOST</span></div>
-  <h1>Ton compte.<br><span class="red">Ton alliance. Ton plan.</span></h1>
-  <p class="subtitle">Assistant indépendant pour joueurs, R5 et R4.</p>
+  <div class="logo">War<span>Boost</span> V6</div>
+  <h1>⚔️ COMMAND CENTER</h1>
+  <p>Analyse ton compte Last War et trouve tes meilleures priorités.</p>
 </header>
 
 <div class="container">
 
 <div class="card">
-<h2>🎮 Analyse joueur</h2>
+
+<h2>🎮 Analyse avancée</h2>
 
 <label>QG</label>
-<input id="qg" type="number" value="30">
+<input id="qg" type="number" value="35">
 
 <label>Puissance totale (millions)</label>
-<input id="power" type="number" value="175">
+<input id="power" type="number" step="0.1" value="175">
 
-<label>Drone (millions)</label>
-<input id="drone" type="number" value="6.8" step="0.1">
-
-<label>Technologie (%)</label>
-<input id="tech" type="number" value="70">
-
-<label>Équipement (%)</label>
-<input id="gear" type="number" value="65">
+<label>Puissance escouade principale (millions)</label>
+<input id="squadPower" type="number" step="0.1" placeholder="Ex : 32.5">
 
 <label>Escouade principale</label>
 <select id="squad">
-<option>Avion</option>
-<option>Tank</option>
-<option>Missile</option>
+  <option value="Avion">✈️ Avion</option>
+  <option value="Tank">🛡️ Tank</option>
+  <option value="Missile">🚀 Missile</option>
 </select>
 
-<button onclick="analyse()">⚡ Générer mon plan</button>
+<label>Drone (millions)</label>
+<input id="drone" type="number" step="0.1" value="6.8">
 
-<div class="result" id="result">
-Renseigne ton compte puis génère ton plan.
+<label>Technologie (%)</label>
+<input id="tech" type="number" value="80">
+
+<label>Équipement (%)</label>
+<input id="gear" type="number" value="70">
+
+<h2 style="margin-top:35px">⭐ Héros principaux</h2>
+
+<p class="small">
+Entre le niveau de tes 5 héros de l'escouade principale.
+</p>
+
+<div class="heroGrid">
+  <input id="hero1" type="number" placeholder="Héros 1 - niveau">
+  <input id="hero2" type="number" placeholder="Héros 2 - niveau">
+  <input id="hero3" type="number" placeholder="Héros 3 - niveau">
+  <input id="hero4" type="number" placeholder="Héros 4 - niveau">
+  <input id="hero5" type="number" placeholder="Héros 5 - niveau">
 </div>
+
+<button onclick="analyse()">⚡ ANALYSER MON COMPTE</button>
+
+<div id="result" class="result">
+Renseigne ton compte puis lance l'analyse.
+</div>
+
 </div>
 
 <div class="card">
+
 <h2>🧠 Command Center R5</h2>
+
 <p>Module de gestion d'alliance WarBoost.</p>
 
 <div class="priority">
@@ -159,92 +225,213 @@ Suivi des R4, R3, R2 et R1.
 <strong>📅 Planning</strong><br>
 Préparation des événements de l'alliance.
 </div>
+
 </div>
 
 </div>
 
 <footer>
-WarBoost v5 • Assistant indépendant
+WarBoost V6 • Assistant indépendant Last War
 </footer>
 
 <script>
-function analyse() {
 
-  const qg = Number(document.getElementById("qg").value);
-  const power = Number(document.getElementById("power").value);
-  const drone = Number(document.getElementById("drone").value);
-  const tech = Number(document.getElementById("tech").value);
-  const gear = Number(document.getElementById("gear").value);
-  const squad = document.getElementById("squad").value;
+function analyse(){
 
-  let priorites = [];
+const qg=Number(document.getElementById("qg").value);
+const power=Number(document.getElementById("power").value);
+const squadPower=Number(document.getElementById("squadPower").value);
+const drone=Number(document.getElementById("drone").value);
+const tech=Number(document.getElementById("tech").value);
+const gear=Number(document.getElementById("gear").value);
+const squad=document.getElementById("squad").value;
 
-  // ÉQUIPEMENT
-  if (gear < 80) {
-    priorites.push(
-      "🛡️ ÉQUIPEMENT — Priorité élevée : améliore les équipements de ton escouade principale."
-    );
-  }
+const heroes=[
+Number(document.getElementById("hero1").value),
+Number(document.getElementById("hero2").value),
+Number(document.getElementById("hero3").value),
+Number(document.getElementById("hero4").value),
+Number(document.getElementById("hero5").value)
+].filter(n=>n>0);
 
-  // DRONE
-  if (drone < 10) {
-    priorites.push(
-      "🚁 DRONE — Fais progresser ton drone : composants, niveau et compétences."
-    );
-  }
+let score=0;
 
-  // TECHNOLOGIE
-  if (tech < 85) {
-    priorites.push(
-      "🔬 TECHNOLOGIE — Concentre tes recherches sur les technologies de combat de ton escouade principale."
-    );
-  }
+/* SCORE WARBOOST */
 
-  // PUISSANCE
-  if (power < 200) {
-    priorites.push(
-      "⚡ PUISSANCE — Cherche les améliorations permanentes plutôt que de disperser tes ressources."
-    );
-  }
+score += Math.min(20,(qg/35)*20);
+score += Math.min(20,(drone/10)*20);
+score += Math.min(20,(tech/100)*20);
+score += Math.min(20,(gear/100)*20);
 
-  // ESCouade
-  if (squad === "Avion") {
-    priorites.push(
-      "✈️ AVION — Ton escouade principale est Avion : concentre héros, équipements et ressources sur cette équipe."
-    );
-  } else if (squad === "Tank") {
-    priorites.push(
-      "🛡️ TANK — Concentre tes ressources sur ton escouade Tank principale."
-    );
-  } else if (squad === "Missile") {
-    priorites.push(
-      "🚀 MISSILE — Concentre tes ressources sur ton escouade Missile principale."
-    );
-  }
+if(heroes.length){
+  const avgHero=
+  heroes.reduce((a,b)=>a+b,0)/heroes.length;
 
-  // QG
-  if (qg >= 35) {
-    priorites.push(
-      "🏰 QG " + qg + " — À ce niveau, privilégie les améliorations qui renforcent directement ta puissance de combat."
-    );
-  }
-
-  const resultat = document.getElementById("result");
-
-  if (priorites.length === 0) {
-    resultat.innerHTML =
-      "<strong>🔥 Compte équilibré.</strong><br><br>Continue à renforcer ton escouade principale.";
-    return;
-  }
-
-  resultat.innerHTML =
-    "<h3>🎯 TON PLAN DE PROGRESSION</h3>" +
-    priorites
-      .map(function(p, index) {
-        return "<p><strong>" + (index + 1) + ".</strong> " + p + "</p>";
-      })
-      .join("");
+  score += Math.min(20,(avgHero/150)*20);
+}else{
+  score += 10;
 }
+
+score=Math.round(score);
+
+let priorities=[];
+
+/* ANALYSE */
+
+if(gear < 80){
+ priorities.push({
+ score:100-gear,
+ text:"🛡️ ÉQUIPEMENT — priorité élevée. Renforce d'abord les équipements de ton escouade principale."
+ });
+}
+
+if(drone < 10){
+ priorities.push({
+ score:(10-drone)*8,
+ text:"🚁 DRONE — augmente les composants, le niveau et les compétences du drone."
+ });
+}
+
+if(tech < 85){
+ priorities.push({
+ score:90-tech,
+ text:"🔬 TECHNOLOGIE — concentre les recherches sur les bonus de combat de ton escouade principale."
+ });
+}
+
+if(heroes.length){
+
+ const minHero=Math.min(...heroes);
+ const maxHero=Math.max(...heroes);
+
+ if(maxHero-minHero >= 10){
+   priorities.push({
+   score:65,
+   text:"⭐ HÉROS — certains héros sont en retard. Remonte d'abord ton héros niveau "+minHero+"."
+   });
+ }
+
+}
+
+if(squadPower > 0 && power > 0){
+
+ const ratio=(squadPower/power)*100;
+
+ if(ratio < 20){
+   priorities.push({
+   score:80,
+   text:"⚡ ESCouade 1 — ta puissance est trop dispersée. Concentre davantage tes ressources sur ton équipe principale."
+   });
+ }
+
+}
+
+if(squad==="Avion"){
+ priorities.push({
+ score:55,
+ text:"✈️ AVION — garde héros, équipements, fragments et ressources prioritaires pour ton escouade Avion."
+ });
+}
+
+if(squad==="Tank"){
+ priorities.push({
+ score:55,
+ text:"🛡️ TANK — concentre les investissements importants sur ton équipe Tank."
+ });
+}
+
+if(squad==="Missile"){
+ priorities.push({
+ score:55,
+ text:"🚀 MISSILE — concentre les investissements importants sur ton équipe Missile."
+ });
+}
+
+if(qg>=35){
+ priorities.push({
+ score:40,
+ text:"🏰 QG "+qg+" — privilégie maintenant les améliorations permanentes de combat plutôt que la puissance secondaire."
+ });
+}
+
+/* TRI */
+
+priorities.sort((a,b)=>b.score-a.score);
+
+const top3=priorities.slice(0,3);
+
+/* NIVEAU DU COMPTE */
+
+let niveau="À développer";
+
+if(score>=90) niveau="🔥 Excellent";
+else if(score>=80) niveau="💪 Très solide";
+else if(score>=70) niveau="⚔️ Solide";
+else if(score>=60) niveau="🔧 En progression";
+
+/* AFFICHAGE */
+
+let html=`
+
+<div class="score">
+
+<div>WARBOOST SCORE</div>
+
+<div class="scoreNumber">
+${score}/100
+</div>
+
+<strong>${niveau}</strong>
+
+</div>
+
+<h3>🎯 TES 3 PRIORITÉS</h3>
+
+`;
+
+if(top3.length===0){
+
+ html+=`
+ <p>
+ 🔥 Ton compte est équilibré.
+ Continue à renforcer ton escouade principale.
+ </p>
+ `;
+
+}else{
+
+ top3.forEach((p,index)=>{
+
+ html+=`
+ <div class="priority">
+ <strong>${index+1}.</strong>
+ ${p.text}
+ </div>
+ `;
+
+ });
+
+}
+
+html+=`
+
+<h3>📊 RÉSUMÉ</h3>
+
+<p>
+🏰 QG : <strong>${qg}</strong><br>
+⚡ Puissance : <strong>${power} M</strong><br>
+⚔️ Escouade : <strong>${squad}</strong><br>
+🚁 Drone : <strong>${drone} M</strong><br>
+🔬 Technologie : <strong>${tech}%</strong><br>
+🛡️ Équipement : <strong>${gear}%</strong>
+</p>
+
+`;
+
+document.getElementById("result").innerHTML=html;
+
+}
+
 </script>
 
 </body>
