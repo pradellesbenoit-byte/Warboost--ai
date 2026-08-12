@@ -168,16 +168,84 @@ WarBoost v5 • Assistant indépendant
 </footer>
 
 <script>
-function analyse(){
+function analyse() {
 
-const qg=Number(document.getElementById("qg").value);
-const power=Number(document.getElementById("power").value);
-const drone=Number(document.getElementById("drone").value);
-const tech=Number(document.getElementById("tech").value);
-const gear=Number(document.getElementById("gear").value);
-const squad=document.getElementById("squad").value;
+  const qg = Number(document.getElementById("qg").value);
+  const power = Number(document.getElementById("power").value);
+  const drone = Number(document.getElementById("drone").value);
+  const tech = Number(document.getElementById("tech").value);
+  const gear = Number(document.getElementById("gear").value);
+  const squad = document.getElementById("squad").value;
 
-let priorities=[];
+  let priorites = [];
 
-if(gear < 80) priorities.push("1. 🛡️ Équipement — améliore en priorité l'équipement de ton escouade principale.");
-if(drone < 10) priorities.push("2. 🚁 Drone —
+  // ÉQUIPEMENT
+  if (gear < 80) {
+    priorites.push(
+      "🛡️ ÉQUIPEMENT — Priorité élevée : améliore les équipements de ton escouade principale."
+    );
+  }
+
+  // DRONE
+  if (drone < 10) {
+    priorites.push(
+      "🚁 DRONE — Fais progresser ton drone : composants, niveau et compétences."
+    );
+  }
+
+  // TECHNOLOGIE
+  if (tech < 85) {
+    priorites.push(
+      "🔬 TECHNOLOGIE — Concentre tes recherches sur les technologies de combat de ton escouade principale."
+    );
+  }
+
+  // PUISSANCE
+  if (power < 200) {
+    priorites.push(
+      "⚡ PUISSANCE — Cherche les améliorations permanentes plutôt que de disperser tes ressources."
+    );
+  }
+
+  // ESCouade
+  if (squad === "Avion") {
+    priorites.push(
+      "✈️ AVION — Ton escouade principale est Avion : concentre héros, équipements et ressources sur cette équipe."
+    );
+  } else if (squad === "Tank") {
+    priorites.push(
+      "🛡️ TANK — Concentre tes ressources sur ton escouade Tank principale."
+    );
+  } else if (squad === "Missile") {
+    priorites.push(
+      "🚀 MISSILE — Concentre tes ressources sur ton escouade Missile principale."
+    );
+  }
+
+  // QG
+  if (qg >= 35) {
+    priorites.push(
+      "🏰 QG " + qg + " — À ce niveau, privilégie les améliorations qui renforcent directement ta puissance de combat."
+    );
+  }
+
+  const resultat = document.getElementById("result");
+
+  if (priorites.length === 0) {
+    resultat.innerHTML =
+      "<strong>🔥 Compte équilibré.</strong><br><br>Continue à renforcer ton escouade principale.";
+    return;
+  }
+
+  resultat.innerHTML =
+    "<h3>🎯 TON PLAN DE PROGRESSION</h3>" +
+    priorites
+      .map(function(p, index) {
+        return "<p><strong>" + (index + 1) + ".</strong> " + p + "</p>";
+      })
+      .join("");
+}
+</script>
+
+</body>
+</html>
