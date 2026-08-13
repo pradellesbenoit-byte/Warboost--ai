@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V11</title>
+<title>WarBoost V12</title>
 <style>
 :root{
   --bg:#07111f;--panel:#101a2a;--panel2:#0a1422;--line:#2b3c57;
@@ -108,6 +108,538 @@ td input,td select{margin:0;padding:8px}
 .bottom button{border:0;background:none;color:#7f8da3;padding:7px 3px;border-radius:9px}
 .bottom button.active{background:#182439;color:#fff}
 .bottom span,.bottom small{display:block}.bottom span{font-size:20px}.bottom small{font-size:10px}
+@media(max-width:820px){
+  .tabs{display:none}.bottom{display:block}.grid3{grid-template-columns:1fr}.planGrid{grid-template-columns:1fr}
+  main{padding-bottom:115px}.hero{padding-top:32px}
+}
+@media(max-width:600px){.grid2,.quickGrid{grid-template-columns:1fr}.hero h1{letter-spacing:-2px}.card{padding:16px}}
+
+.accountBar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 16px}
+.accountChip{background:#0b1524;border:1px solid var(--line);border-radius:999px;padding:7px 10px;font-size:12px;color:#cbd5e1}
+.accountChip strong{color:#fff}
+.quota{display:flex;align-items:center;gap:8px}
+.quotaBar{width:110px;height:7px;background:#253249;border-radius:99px;overflow:hidden}
+.quotaBar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold))}
+.modalBack{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:100;padding:18px}
+.modalBack.open{display:flex}.modal{max-width:430px;width:100%;background:#101a2a;border:1px solid var(--line);border-radius:20px;padding:20px}
+.lockMsg{border:1px dashed #795723;background:#211a10;color:#ffe2a0;border-radius:12px;padding:12px;margin-top:10px}
+
+
+/* ===== V12 ===== */
+.dashboardGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.kpi{background:#0b1524;border:1px solid var(--line);border-radius:15px;padding:14px}
+.kpi small{display:block;color:var(--muted);margin-bottom:5px}.kpi b{font-size:22px}
+.roleBadge{display:inline-flex;align-items:center;border:1px solid #49607d;background:#132137;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}
+.todayList{display:grid;gap:9px}.todayItem{display:flex;gap:10px;align-items:flex-start;background:#091321;border:1px solid #253956;border-radius:13px;padding:12px}
+.todayItem i{font-style:normal;font-size:20px}.todayItem b{display:block}.todayItem span{color:var(--muted);font-size:13px}
+.historyItem{border:1px solid #253956;border-radius:13px;padding:12px;margin-top:9px;background:#091321}
+.historyHead{display:flex;justify-content:space-between;gap:8px;align-items:center}.historyHead small{color:var(--muted)}
+.miniBtn{border:1px solid var(--line);background:#17253b;color:#fff;border-radius:9px;padding:7px 9px;font-weight:800;font-size:12px}
+.rosterKpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.rosterKpis .kpi b{font-size:17px}
+.searchRow{display:grid;grid-template-columns:1fr 150px;gap:8px;margin:10px 0}
+.groupBox{background:#091321;border:1px solid #253956;border-radius:14px;padding:13px;margin-top:10px}
+.groupBox h4{margin:0 0 8px}.memberTag{display:inline-flex;margin:3px;border:1px solid #334a6a;border-radius:999px;padding:5px 8px;color:#d7e1ef;font-size:12px}
+.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#101a2a;border:1px solid var(--line);border-radius:999px;padding:9px 13px;z-index:120;display:none;box-shadow:0 8px 30px #0008}
+.toast.show{display:block}
+@media(max-width:820px){.dashboardGrid,.rosterKpis{grid-template-columns:repeat(2,1fr)}.bottom .inner{grid-template-columns:repeat(6,1fr)}}
+@media(max-width:520px){.searchRow{grid-template-columns:1fr}.dashboardGrid{grid-template-columns:1fr 1fr}}
+
+</style>
+</head>
+<body>
+<header>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V12</em></button>
+  <span class="proBadge">🚀 V12 • COMMAND CENTER</span>
+  <select id="language" class="lang">
+    <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
+    <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
+  </select>
+</header>
+
+<main>
+
+<div class="accountBar">
+  <span class="accountChip">👤 <strong id="accountName">Invité</strong></span>
+  <span class="accountChip">Rôle : <strong id="roleName">JOUEUR</strong></span>
+  <span class="accountChip">Formule : <strong id="planName">FREE</strong></span>
+  <span class="accountChip quota">IA : <strong id="quotaText">2/2</strong><span class="quotaBar"><i id="quotaFill" style="width:100%"></i></span></span>
+  <button class="btn secondary" style="margin:0;padding:8px 11px" onclick="openAccount()">Compte</button>
+</div>
+
+<section class="hero">
+  <div class="eyebrow">WARBOOST V12 • AI COMMAND CENTER</div>
+  <h1>Ton compte. Ton alliance. <span style="color:var(--red)">Ton copilote IA.</span></h1>
+  <p>Tableau de bord personnalisé, analyse joueur, copilote R5/R4, roster intelligent, VS et saison.</p>
+</section>
+
+<nav class="tabs" style="grid-template-columns:repeat(6,1fr)">
+  <button data-page="home" class="active">🏠 Accueil</button>
+  <button data-page="player">🎮 Joueur</button>
+  <button data-page="command">🧠 IA R5/R4</button>
+  <button data-page="vs">🏆 VS</button>
+  <button data-page="season">🌍 Saison</button>
+  <button data-page="pro">💎 PRO</button>
+</nav>
+
+
+<section id="page-home" class="page active">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div>
+        <div class="eyebrow">V12 • TABLEAU DE BORD</div>
+        <h2 style="margin:6px 0">🏠 Aujourd'hui avec WarBoost</h2>
+        <p class="muted" style="margin:0">Un résumé rapide adapté à ton rôle, ton compte et ton alliance.</p>
+      </div>
+      <span id="homeRoleBadge" class="roleBadge">🎮 JOUEUR</span>
+    </div>
+    <div class="dashboardGrid">
+      <div class="kpi"><small>Formule</small><b id="homePlan">FREE</b></div>
+      <div class="kpi"><small>IA restante</small><b id="homeQuota">2</b></div>
+      <div class="kpi"><small>Membres roster</small><b id="homeRoster">0</b></div>
+      <div class="kpi"><small>Puissance compte</small><b id="homePower">175M</b></div>
+    </div>
+    <h3>🎯 Priorités suggérées</h3>
+    <div id="todayPlan" class="todayList"></div>
+    <div class="actions">
+      <button class="btn" onclick="goRecommended()">Ouvrir ma priorité</button>
+      <button class="btn secondary" onclick="refreshDashboard()">Actualiser</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <h3 style="margin:0">🕘 Historique IA récent</h3>
+      <button class="miniBtn" onclick="clearAIHistory()">Effacer</button>
+    </div>
+    <div id="aiHistory"></div>
+  </div>
+</section>
+
+<section id="page-player" class="page">
+  <div class="card">
+    <h2>🎮 Analyse avancée du compte</h2>
+    <p class="muted">WarBoost calcule d'abord un diagnostic local puis, en mode PRO test, l'IA peut produire un plan plus détaillé.</p>
+    <div class="grid2">
+      <label>QG<input id="qg" type="number" value="35"></label>
+      <label>Puissance totale (M)<input id="power" type="number" step=".1" value="175"></label>
+      <label>Puissance escouade 1 (M)<input id="squadPower" type="number" step=".1" placeholder="Ex : 65"></label>
+      <label>Escouade principale<select id="squad"><option>Avion</option><option>Tank</option><option>Missile</option></select></label>
+      <label>Drone (M)<input id="drone" type="number" step=".1" value="6.8"></label>
+      <label>Niveau drone<input id="droneLevel" type="number" placeholder="Ex : 150"></label>
+      <label>Technologie (%)<input id="tech" type="number" value="80"></label>
+      <label>Équipement global (%)<input id="gear" type="number" value="70"></label>
+    </div>
+    <h3 style="margin-top:24px">⭐ 5 héros principaux</h3>
+    <div id="heroes"></div>
+    <div class="actions">
+      <button class="btn" onclick="localPlayerAnalysis()">⚡ Analyse rapide</button>
+      <button class="btn gold" onclick="aiPlayerAnalysis()">✨ Analyse IA PRO</button>
+    </div>
+    <div id="playerResult" class="result">Renseigne ton compte puis lance une analyse.</div>
+    <div id="playerStatus" class="status"></div>
+  </div>
+</section>
+
+<section id="page-command" class="page">
+  <div class="card locked">
+    <h2>🧠 Copilote IA R5 / R4</h2>
+    <p class="muted">Pose une question à WarBoost ou utilise une action rapide. L'IA reçoit aussi le roster enregistré pour contextualiser ses conseils.</p>
+    <div class="grid2">
+      <label>Alliance<input id="alliance" placeholder="Ex : ALL4"></label>
+      <label>Serveur<input id="server" placeholder="Ex : 884"></label>
+      <label>Nombre de membres<input id="memberCount" type="number" placeholder="Ex : 98"></label>
+      <label>Objectif<select id="objective"><option>Guerre</option><option>VS Alliance</option><option>Saison</option><option>Développement</option><option>Recrutement</option></select></label>
+    </div>
+    <label style="margin-top:12px">Question / situation
+      <textarea id="copilotQuestion" placeholder="Ex : Nous sommes 98, guerre demain à 20h. Comment répartir les R4 et les groupes ?"></textarea>
+    </label>
+    <div class="quickGrid">
+      <button class="quickBtn" onclick="runCopilot('r5_dashboard')"><b>🧭 Tableau de bord</b><span>Priorités, alertes, responsables.</span></button>
+      <button class="quickBtn" onclick="runCopilot('war_plan')"><b>⚔️ Plan de guerre</b><span>Phases, rôles, consignes et plan B.</span></button>
+      <button class="quickBtn" onclick="runCopilot('r4_management')"><b>👥 Répartir les R4</b><span>Responsabilités et routine de suivi.</span></button>
+      <button class="quickBtn" onclick="runCopilot('alliance_message')"><b>📢 Message alliance</b><span>Message prêt à copier-coller.</span></button>
+      <button class="quickBtn" onclick="runCopilot('weekly_report')"><b>📈 Rapport hebdo</b><span>Bilan et objectifs suivants.</span></button>
+      <button class="quickBtn" onclick="runCopilot('r5_question')"><b>✨ Demander à l'IA</b><span>Réponse libre à ta question.</span></button>
+    </div>
+    <div id="copilotResult" class="result">Le résultat du copilote apparaîtra ici.</div>
+    <div id="copilotStatus" class="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>⚡ Import rapide des membres</h2>
+    <p class="muted">Colle une liste au format <b>Nom | R4 | 180M</b>. Les doublons sont remplacés automatiquement.</p>
+    <textarea id="rosterPaste" placeholder="Benoit | R5 | 205M&#10;Ares | R4 | 188M&#10;Nova | R3 | 174M"></textarea>
+    <div class="actions">
+      <button class="btn secondary" onclick="importRoster()">Importer</button>
+      <button class="btn secondary" onclick="clearRoster()">Effacer le roster</button>
+    </div>
+    <div id="rosterStatus" class="status"></div>
+    <div class="tableWrap">
+      <table>
+        <thead><tr><th>Joueur</th><th>Rang</th><th>Puissance</th></tr></thead>
+        <tbody id="rosterRows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="page-vs" class="page">
+  <div class="card">
+    <h2>🏆 VS Alliance</h2>
+    <div class="grid2">
+      <label>Jour<select id="vsDay"><option value="1">Jour 1</option><option value="2">Jour 2</option><option value="3">Jour 3</option><option value="4">Jour 4</option><option value="5">Jour 5</option><option value="6">Jour 6</option></select></label>
+      <label>Objectif de points<input id="vsTarget" type="number" placeholder="Ex : 500000000"></label>
+    </div>
+    <label>Contexte / ressources<textarea id="vsContext" placeholder="Accélérateurs, fragments, objectif, situation de l'alliance..."></textarea></label>
+    <div class="actions">
+      <button class="btn" onclick="localVS()">Plan rapide</button>
+      <button class="btn gold" onclick="aiVS()">✨ Plan IA PRO</button>
+    </div>
+    <div id="vsResult" class="result"></div>
+    <div id="vsStatus" class="status"></div>
+  </div>
+</section>
+
+<section id="page-season" class="page">
+  <div class="card">
+    <h2>🌍 Centre Saison</h2>
+    <div class="grid2">
+      <label>Saison<select id="season"><option>Saison 1</option><option>Saison 2</option><option>Saison 3</option><option>Saison 4</option><option>Saison 5</option><option>Saison 6</option><option>Saison suivante</option></select></label>
+      <label>Profession<select id="profession"><option>Ingénieur</option><option>Chef de guerre</option></select></label>
+    </div>
+    <label>Situation / objectif<textarea id="seasonContext" placeholder="Ex : priorité puissance, événement en cours, résistance, objectifs alliance..."></textarea></label>
+    <div class="actions">
+      <button class="btn" onclick="localSeason()">Conseil rapide</button>
+      <button class="btn gold" onclick="aiSeason()">✨ Conseil IA PRO</button>
+    </div>
+    <div id="seasonResult" class="result"></div>
+    <div id="seasonStatus" class="status"></div>
+  </div>
+</section>
+
+<section id="page-pro" class="page">
+  <div class="card">
+    <h2>💎 WarBoost PRO</h2>
+    <p class="muted">V11 ajoute un mode compte et des quotas IA côté interface. Le paiement réel et l'autorisation PRO définitive devront rester contrôlés côté serveur.</p>
+    <div class="planGrid">
+      <div class="plan">
+        <h3>Free</h3><div class="price">0 €</div>
+        <div class="feature">✓ Analyse rapide du compte</div>
+        <div class="feature">✓ Roster local</div>
+        <div class="feature">✓ Conseils VS/Saison de base</div>
+      </div>
+      <div class="plan featured">
+        <span class="proBadge">RECOMMANDÉ</span>
+        <h3 style="margin-top:12px">PRO</h3><div class="price">4,99 € <small>/mois</small></div>
+        <div class="feature">✓ Analyse joueur par IA</div>
+        <div class="feature">✓ Copilote IA R5/R4</div>
+        <div class="feature">✓ Plans de guerre IA</div>
+        <div class="feature">✓ VS et Saison IA</div>
+        <div class="feature">✓ Messages et rapports</div>
+        <button class="btn gold" disabled>Passer PRO — bientôt</button>
+      </div>
+      <div class="plan">
+        <h3>Alliance</h3><div class="price">À définir</div>
+        <div class="feature">✓ Plusieurs R5/R4</div>
+        <div class="feature">✓ Roster cloud partagé</div>
+        <div class="feature">✓ Permissions et historique</div>
+      </div>
+    </div>
+    <div class="note">⚠️ V12 ne prélève encore aucun paiement. Le mode PRO de démonstration sert à tester l'expérience. Avant ouverture publique, les droits et quotas devront être vérifiés côté serveur.</div>
+  </div>
+</section>
+</main>
+
+
+<div id="toast" class="toast">Copié ✅</div>
+
+<div id="accountModal" class="modalBack" onclick="if(event.target===this)closeAccount()">
+  <div class="modal">
+    <h2>👤 Compte WarBoost V12</h2>
+    <p class="muted">Mode de démonstration local pour tester Free / PRO sans casser l'IA existante.</p>
+    <label>Pseudo<input id="demoName" placeholder="Ton pseudo"></label>
+    <label>Rôle
+      <select id="demoRole"><option value="player">Joueur</option><option value="r4">R4</option><option value="r5">R5</option></select>
+    </label>
+    <label>Formule
+      <select id="demoPlan"><option value="free">FREE — 2 requêtes IA</option><option value="pro">PRO — 50 requêtes IA</option><option value="alliance">ALLIANCE — 200 requêtes IA</option></select>
+    </label>
+    <div class="actions">
+      <button class="btn" onclick="saveAccount()">Enregistrer</button>
+      <button class="btn secondary" onclick="closeAccount()">Fermer</button>
+    </div>
+    <div class="note">Sécurité : ce sélecteur est uniquement un prototype V12. Il ne doit pas servir de contrôle d'abonnement en production.</div>
+  </div>
+</div>
+
+<div class="bottom"><div class="inner">
+  <button data-page="home" class="active"><span>🏠</span><small>Accueil</small></button>
+  <button data-page="player"><span>🎮</span><small>Joueur</small></button>
+  <button data-page="command"><span>🧠</span><small>R5/R4</small></button>
+  <button data-page="vs"><span>🏆</span><small>VS</small></button>
+  <button data-page="season"><span>🌍</span><small>Saison</small></button>
+  <button data-page="pro"><span>💎</span><small>PRO</small></button>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+
+const WB12_LIMITS={free:2,pro:50,alliance:200};
+let wb12Account=JSON.parse(localStorage.getItem("wb12_account")||localStorage.getItem("wb11_account")||'{"name":"Invité","role":"player","plan":"free","used":0,"usageDay":""}');
+if(!wb12Account.role) wb12Account.role="player";
+function todayKey(){return new Date().toISOString().slice(0,10)}
+function resetDemoQuotaIfNeeded(){if(wb12Account.usageDay!==todayKey()){wb12Account.used=0;wb12Account.usageDay=todayKey();saveWB12Account()}}
+function saveWB12Account(){localStorage.setItem("wb12_account",JSON.stringify(wb12Account))}
+function wb11Limit(){return WB12_LIMITS[wb12Account.plan]||2}
+function wb11Remaining(){resetDemoQuotaIfNeeded();return Math.max(0,wb11Limit()-Number(wb12Account.used||0))}
+function renderAccount(){
+  if(document.getElementById("accountName")) $("accountName").textContent=wb12Account.name||"Invité";
+  if(document.getElementById("roleName")) $("roleName").textContent=roleLabel(wb12Account.role);
+  if(document.getElementById("planName")) $("planName").textContent=(wb12Account.plan||"free").toUpperCase();
+  const rem=wb11Remaining(),lim=wb11Limit();
+  if(document.getElementById("quotaText")) $("quotaText").textContent=`${rem}/${lim}`;
+  if(document.getElementById("quotaFill")) $("quotaFill").style.width=`${Math.round(rem/lim*100)}%`;
+}
+function openAccount(){
+  $("demoName").value=wb12Account.name||"";
+  $("demoRole").value=wb12Account.role||"player";
+  $("demoPlan").value=wb12Account.plan||"free";
+  $("accountModal").classList.add("open");
+}
+function closeAccount(){$("accountModal").classList.remove("open")}
+function saveAccount(){
+  const newPlan=$("demoPlan").value;
+  if(newPlan!==wb12Account.plan) wb12Account.used=0;
+  wb12Account.name=$("demoName").value.trim()||"Invité";
+  wb12Account.role=$("demoRole").value||"player";
+  wb12Account.plan=newPlan;
+  saveWB12Account();
+  renderAccount();refreshDashboard();closeAccount();
+}
+function consumeAI(){
+  if(wb11Remaining()<=0) return false;
+  wb12Account.used=Number(wb12Account.used||0)+1;
+  wb12Account.usageDay=todayKey();saveWB12Account();
+  renderAccount();refreshDashboard();return true;
+}
+
+
+function roleLabel(r){return r==="r5"?"R5":r==="r4"?"R4":"JOUEUR"}
+function roleIcon(r){return r==="r5"?"👑":r==="r4"?"🛡️":"🎮"}
+function toast(msg="Copié ✅"){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1600)}
+async function copyText(text){try{await navigator.clipboard.writeText(text);toast()}catch(e){toast("Copie impossible")}}
+
+let aiHistory=JSON.parse(localStorage.getItem("wb12_ai_history")||"[]");
+function pushAIHistory(action,text){
+  aiHistory.unshift({action,text:String(text||"").slice(0,3500),at:new Date().toLocaleString()});
+  aiHistory=aiHistory.slice(0,10);localStorage.setItem("wb12_ai_history",JSON.stringify(aiHistory));renderAIHistory();
+}
+function clearAIHistory(){aiHistory=[];localStorage.removeItem("wb12_ai_history");renderAIHistory()}
+function actionLabel(a){return ({player_coach:"Analyse joueur",r5_dashboard:"Tableau de bord R5/R4",war_plan:"Plan de guerre",r4_management:"Gestion R4",alliance_message:"Message alliance",weekly_report:"Rapport hebdo",r5_question:"Question R5/R4",vs_plan:"Plan VS",season_plan:"Plan saison"})[a]||a}
+function renderAIHistory(){
+  const el=$("aiHistory");if(!el)return;
+  if(!aiHistory.length){el.innerHTML='<p class="muted">Aucune réponse IA enregistrée pour le moment.</p>';return}
+  el.innerHTML=aiHistory.map((x,i)=>`<div class="historyItem"><div class="historyHead"><div><b>${esc(actionLabel(x.action))}</b><br><small>${esc(x.at)}</small></div><button class="miniBtn" onclick="copyText(aiHistory[${i}].text)">Copier</button></div><div style="margin-top:8px;color:#cbd5e1;white-space:pre-wrap">${esc(x.text.slice(0,500))}${x.text.length>500?"…":""}</div></div>`).join("");
+}
+function rosterStats(){
+  const total=roster.reduce((s,x)=>s+(Number(x.power)||0),0);
+  return {members:roster.length,leaders:roster.filter(x=>x.rank==="R5"||x.rank==="R4").length,total,avg:roster.length?total/roster.length:0}
+}
+function refreshDashboard(){
+  if(!$("homePlan"))return;
+  const st=rosterStats(),role=wb12Account.role||"player";
+  $("homePlan").textContent=(wb12Account.plan||"free").toUpperCase();
+  $("homeQuota").textContent=wb11Remaining();
+  $("homeRoster").textContent=st.members;
+  $("homePower").textContent=(n("power")||0)+"M";
+  $("homeRoleBadge").textContent=`${roleIcon(role)} ${roleLabel(role)}`;
+  const items=role==="r5"?[
+    ["🧭","Piloter l'alliance","Vérifie les priorités, les alertes et les responsables R4."],
+    ["👥","Contrôler le roster",`${st.members} membre(s) enregistré(s) — structure tes groupes avant les événements.`],
+    ["✨","Utiliser le copilote IA",`${wb11Remaining()} requête(s) IA disponible(s) aujourd'hui en mode démo.`]
+  ]:role==="r4"?[
+    ["🛡️","Préparer ton secteur R4","Vérifie les consignes et les membres dont tu as la charge."],
+    ["📢","Préparer un message clair","Utilise le copilote pour produire une consigne prête à copier."],
+    ["🏆","Anticiper VS / Saison","Conserve les ressources qui ne servent pas à l'objectif du jour."]
+  ]:[
+    ["🎮","Mettre à jour ton compte","Renseigne tes héros, ton drone, ta technologie et ton équipement."],
+    ["⚡","Lancer l'analyse rapide","Identifie immédiatement les points faibles sans consommer de quota IA."],
+    ["✨","Demander un plan IA",`${wb11Remaining()} requête(s) IA disponible(s) aujourd'hui en mode démo.`]
+  ];
+  $("todayPlan").innerHTML=items.map(x=>`<div class="todayItem"><i>${x[0]}</i><div><b>${x[1]}</b><span>${x[2]}</span></div></div>`).join("");
+  renderAIHistory();
+}
+function goRecommended(){showPage((wb12Account.role==="r5"||wb12Account.role==="r4")?"command":"player")}
+
+let roster=JSON.parse(localStorage.getItem("wb10_roster")||"[]");
+
+for(let i=1;i<=5;i++){
+  $("heroes").innerHTML+=`
+  <div class="heroBox">
+    <div class="heroTitle"><b>⭐ Héros ${i}</b><span class="pill">Escouade 1</span></div>
+    <div class="grid2">
+      <label>Nom<input id="heroName${i}" placeholder="Ex : DVA"></label>
+      <label>Niveau<input id="heroLevel${i}" type="number" value="150"></label>
+      <label>Étoiles<input id="heroStars${i}" type="number" min="0" max="5" step=".1" placeholder="5"></label>
+      <label>Arme exclusive<input id="heroWeapon${i}" type="number" placeholder="Ex : 20"></label>
+      <label>Équipement moyen<input id="heroGear${i}" type="number" placeholder="Ex : 40"></label>
+    </div>
+  </div>`;
+}
+
+function showPage(id){
+  if(id==="home")refreshDashboard();
+  document.querySelectorAll(".page").forEach(x=>x.classList.toggle("active",x.id==="page-"+id));
+  document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x.dataset.page===id));
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+document.querySelectorAll("[data-page]").forEach(x=>x.onclick=()=>showPage(x.dataset.page));
+
+function n(id){return Number(String($(id)?.value||0).replace(",","."))||0}
+function h(id){return String($(id)?.value||"").trim()}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+
+function playerData(){
+  const heroes=[];
+  for(let i=1;i<=5;i++)heroes.push({
+    name:h("heroName"+i)||`Héros ${i}`,level:n("heroLevel"+i),stars:n("heroStars"+i),
+    exclusive_weapon:n("heroWeapon"+i),gear:n("heroGear"+i)
+  });
+  return {hq:n("qg"),power_m:n("power"),squad_power_m:n("squadPower"),squad:h("squad"),drone_m:n("drone"),drone_level:n("droneLevel"),technology_pct:n("tech"),gear_pct:n("gear"),heroes};
+}
+
+function localPlayerAnalysis(){
+  const d=playerData(), p=[];
+  let score=0;
+  score+=Math.min(15,d.hq/35*15);score+=Math.min(15,d.power_m/200*15);score+=Math.min(15,d.drone_m/10*15);
+  score+=Math.min(15,d.technology_pct/100*15);score+=Math.min(15,d.gear_pct/100*15);
+  let hs=0;
+  d.heroes.forEach(x=>{
+    hs+=Math.min(2,x.level/150*2)+Math.min(1.5,x.stars/5*1.5)+Math.min(1,x.exclusive_weapon/30)+Math.min(.5,x.gear/50*.5);
+    if(x.level&&x.level<150)p.push([100+(150-x.level),`⬆️ ${x.name} : monte son niveau.`]);
+    if(x.stars&&x.stars<5)p.push([98+(5-x.stars)*4,`⭐ ${x.name} : améliore ses étoiles.`]);
+    if(x.exclusive_weapon&&x.exclusive_weapon<20)p.push([96+(20-x.exclusive_weapon),`🔥 ${x.name} : arme exclusive à renforcer.`]);
+    if(x.gear&&x.gear<40)p.push([94+(40-x.gear),`🛡️ ${x.name} : équipement en retard.`]);
+  });
+  score+=Math.min(25,hs);
+  if(d.gear_pct<80)p.push([93,`🛡️ Équipement global : priorité importante.`]);
+  if(d.drone_m<10)p.push([92,`🚁 Drone : continue composants et progression.`]);
+  if(d.technology_pct<85)p.push([91,`🔬 Technologie : cible les bonus de combat.`]);
+  p.push([60,`🎯 ${d.squad} : concentre les ressources sur l'escouade principale.`]);
+  p.sort((a,b)=>b[0]-a[0]);score=Math.min(100,Math.round(score));
+  $("playerResult").innerHTML=`<div class="score">${score}<span>/100</span></div><div class="meter"><i style="width:${score}%"></i></div><h3>Top priorités</h3>${p.slice(0,6).map((x,i)=>`<div style="padding:9px 0;border-bottom:1px solid #ffffff10"><b>${i+1}.</b> ${esc(x[1])}</div>`).join("")}`;
+  $("playerStatus").textContent="Analyse rapide terminée ✅";$("playerStatus").className="status ok";saveProfile();
+}
+
+async function ai(action,context,resultId,statusId){
+  const result=$(resultId),status=$(statusId);
+  if(wb11Remaining()<=0){
+    result.innerHTML=`<div class="lockMsg">🔒 Quota IA atteint pour la formule ${(wb12Account.plan||"free").toUpperCase()}. Ouvre <b>Compte</b> pour tester une autre formule. En production, ce changement devra être validé par le serveur après paiement.</div>`;
+    status.textContent="Aucun crédit IA V12 disponible.";status.className="status err";return;
+  }
+  result.textContent="IA en cours…";status.textContent="";
+  try{
+    const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,context,language:$("language").value})});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data.error||`Erreur ${r.status}`);
+    result.textContent=data.text||"Aucun résultat.";
+    status.textContent="Réponse IA générée ✅";status.className="status ok";
+    pushAIHistory(action,data.text||"Aucun résultat.");consumeAI();
+  }catch(e){
+    result.textContent="Impossible de contacter le copilote IA.";
+    status.textContent=e.message;status.className="status err";
+  }
+}
+
+function aiPlayerAnalysis(){saveProfile();return ai("player_coach",playerData(),"playerResult","playerStatus")}
+
+function allianceContext(){
+  return {alliance:h("alliance"),server:h("server"),members:n("memberCount"),objective:h("objective"),question:h("copilotQuestion"),roster};
+}
+function runCopilot(action){saveAlliance();return ai(action,allianceContext(),"copilotResult","copilotStatus")}
+
+function parsePower(v){
+  const s=String(v||"").trim().toUpperCase().replace(",",".");
+  if(s.endsWith("B"))return Math.round(parseFloat(s)*1e9);
+  if(s.endsWith("M"))return Math.round(parseFloat(s)*1e6);
+  if(s.endsWith("K"))return Math.round(parseFloat(s)*1e3);
+  return Number(s.replace(/\s/g,""))||0;
+}
+function fmtPower(v){if(v>=1e9)return (v/1e9).toFixed(2).replace(".00","")+"B";if(v>=1e6)return (v/1e6).toFixed(1).replace(".0","")+"M";if(v>=1e3)return (v/1e3).toFixed(1).replace(".0","")+"K";return String(v)}
+function importRoster(){
+  const parsed=h("rosterPaste").split(/\n+/).map(x=>x.trim()).filter(Boolean).map((line,i)=>{
+    const p=line.split(/\s*[|;\t,]\s*/);return{name:p[0]||`Joueur ${i+1}`,rank:(p[1]||"R3").toUpperCase(),power:parsePower(p[2]||0)}
+  });
+  const map=new Map(roster.map(x=>[x.name.toLowerCase(),x]));parsed.forEach(x=>map.set(x.name.toLowerCase(),x));
+  roster=[...map.values()].sort((a,b)=>b.power-a.power);localStorage.setItem("wb10_roster",JSON.stringify(roster));renderRoster();
+  $("rosterStatus").textContent=`${parsed.length} joueur(s) importé(s), ${roster.length} au total.`;$("rosterStatus").className="status ok";
+}
+function clearRoster(){roster=[];localStorage.setItem("wb10_roster","[]");renderRoster()}
+function renderRoster(){
+  const q=String($("rosterSearch")?.value||"").toLowerCase(),f=String($("rosterFilter")?.value||"");
+  const list=roster.filter(x=>(!q||x.name.toLowerCase().includes(q))&&(!f||x.rank===f));
+  $("rosterRows").innerHTML=list.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.rank)}</td><td>${fmtPower(x.power)}</td></tr>`).join("");
+  const st=rosterStats();
+  if($("rkMembers"))$("rkMembers").textContent=st.members;
+  if($("rkLeaders"))$("rkLeaders").textContent=st.leaders;
+  if($("rkPower"))$("rkPower").textContent=fmtPower(st.total);
+  if($("rkAvg"))$("rkAvg").textContent=fmtPower(st.avg);
+  refreshDashboard();
+}
+
+
+let lastGroups=[];
+function buildGroups(count=4){
+  count=Math.max(2,Math.min(8,Number(count)||4));
+  const sorted=[...roster].sort((a,b)=>b.power-a.power);
+  if(!sorted.length){$("groupResult").innerHTML='<div class="note">Importe d’abord ton roster.</div>';return}
+  const groups=Array.from({length:count},(_,i)=>({name:`Groupe ${i+1}`,members:[],power:0}));
+  sorted.forEach(m=>{groups.sort((a,b)=>a.power-b.power);groups[0].members.push(m);groups[0].power+=m.power});
+  lastGroups=groups;
+  $("groupResult").innerHTML=groups.map(g=>`<div class="groupBox"><h4>${g.name} • ${fmtPower(g.power)}</h4>${g.members.map(m=>`<span class="memberTag">${esc(m.name)} · ${esc(m.rank)} · ${fmtPower(m.power)}</span>`).join("")}</div>`).join("");
+}
+function copyGroups(){
+  if(!lastGroups.length){toast("Forme d'abord les groupes");return}
+  const text=lastGroups.map(g=>`${g.name} — ${fmtPower(g.power)}\n`+g.members.map(m=>`• ${m.name} | ${m.rank} | ${fmtPower(m.power)}`).join("\n")).join("\n\n");
+  copyText(text);
+}
+
+const VS_LOCAL={
+1:"📦 Préparation : ne dépense que ce qui rapporte aujourd'hui et conserve le reste.",
+2:"🏗️ Développement : synchronise constructions et accélérateurs avec les objectifs.",
+3:"🔬 Recherche : réserve technologies et accélérateurs pour la bonne fenêtre.",
+4:"⭐ Héros : prépare fragments, EXP et améliorations de l'équipe principale.",
+5:"🪖 Armée : entraîne et promeus les unités au moment utile.",
+6:"🔥 Combat : R5/R4 organisent horaires, groupes, boucliers et cibles."
+};
+function localVS(){$("vsResult").textContent=VS_LOCAL[h("vsDay")]||"Plan non disponible.";saveSimple()}
+function aiVS(){saveSimple();return ai("vs_plan",{day:h("vsDay"),target:n("vsTarget"),context:h("vsContext"),roster},"vsResult","vsStatus")}
+
+function localSeason(){
+  const job=h("profession"),season=h("season");
+  $("seasonResult").textContent=`${season} — ${job}\n\n${job==="Chef de guerre"?"⚔️ Priorise bonus militaires, combat et coordination.":"🛠️ Priorise efficacité, progression et développement."}\n\nConserve une réserve de ressources et réévalue les priorités à chaque phase.`;
+  saveSimple();
+}
+function aiSeason(){saveSimple();return ai("season_plan",{season:h("season"),profession:h("profession"),context:h("seasonContext"),roster},"seasonResult","seasonStatus")}
+
+function saveProfile(){
+  const ids=["qg","power","squadPower","squad","drone","droneLevel","tech","gear"];
+  const d={};ids.forEach(id=>d[id]=$(id).value);
+  for(let i=1;i<=5;i++)["heroName","heroLevel","heroStars","heroWeapon","heroGear"].forEach(k=>d[k+i]=$(k+i).value);
+  localStorage.setItem("wb10_profile",JSON.stringify(d));
+}
+function saveAlliance(){localStorage.setItem("wb10_alliance",JSON.stringify({alliance:h("alliance"),server:h("server"),memberCount:$("memberCount").value,objective:h("objective"),copilotQuestion:h("copilotQuestion")}))}
+function saveSimple(){localStorage.setItem("wb10_simple",JSON.stringify({vsDay:h("vsDay"),vsTarget:$("vsTarget").value,vsContext:h("vsContext"),season:h("season"),profession:h("profession"),seasonContext:h("seasonContext")}))}
+function load(){
+  const sets=[["wb10_profile"],["wb10_alliance"],["wb10_simple"]];
+  sets.forEach(([key])=>{try{const d=JSON.parse(localStorage.getItem(key)||"{}");Object.entries(d).forEach(([k,v])=>{if($(k))$(k).value=v})}catch(e){}});
+  renderRoster();localVS();
+}
+resetDemoQuotaIfNeeded();load();renderAccount();refreshDashboard();renderAIHistory();
+</script>
+</body>
+</html>.bottom span,.bottom small{display:block}.bottom span{font-size:20px}.bottom small{font-size:10px}
 @media(max-width:820px){
   .tabs{display:none}.bottom{display:block}.grid3{grid-template-columns:1fr}.planGrid{grid-template-columns:1fr}
   main{padding-bottom:115px}.hero{padding-top:32px}
