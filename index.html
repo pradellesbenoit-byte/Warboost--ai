@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V10</title>
+<title>WarBoost V11</title>
 <style>
 :root{
   --bg:#07111f;--panel:#101a2a;--panel2:#0a1422;--line:#2b3c57;
@@ -113,12 +113,23 @@ td input,td select{margin:0;padding:8px}
   main{padding-bottom:115px}.hero{padding-top:32px}
 }
 @media(max-width:600px){.grid2,.quickGrid{grid-template-columns:1fr}.hero h1{letter-spacing:-2px}.card{padding:16px}}
+
+.accountBar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 16px}
+.accountChip{background:#0b1524;border:1px solid var(--line);border-radius:999px;padding:7px 10px;font-size:12px;color:#cbd5e1}
+.accountChip strong{color:#fff}
+.quota{display:flex;align-items:center;gap:8px}
+.quotaBar{width:110px;height:7px;background:#253249;border-radius:99px;overflow:hidden}
+.quotaBar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold))}
+.modalBack{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:100;padding:18px}
+.modalBack.open{display:flex}.modal{max-width:430px;width:100%;background:#101a2a;border:1px solid var(--line);border-radius:20px;padding:20px}
+.lockMsg{border:1px dashed #795723;background:#211a10;color:#ffe2a0;border-radius:12px;padding:12px;margin-top:10px}
+
 </style>
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V10</em></button>
-  <span class="proBadge">✨ IA PRO • TEST</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V11</em></button>
+  <span class="proBadge">🛡️ V11 • FREE / PRO</span>
   <select id="language" class="lang">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -126,8 +137,16 @@ td input,td select{margin:0;padding:8px}
 </header>
 
 <main>
+
+<div class="accountBar">
+  <span class="accountChip">👤 <strong id="accountName">Invité</strong></span>
+  <span class="accountChip">Formule : <strong id="planName">FREE</strong></span>
+  <span class="accountChip quota">IA : <strong id="quotaText">2/2</strong><span class="quotaBar"><i id="quotaFill" style="width:100%"></i></span></span>
+  <button class="btn secondary" style="margin:0;padding:8px 11px" onclick="openAccount()">Compte</button>
+</div>
+
 <section class="hero">
-  <div class="eyebrow">WARBOOST V10 • AI COMMAND CENTER</div>
+  <div class="eyebrow">WARBOOST V11 • AI COMMAND CENTER</div>
   <h1>Ton compte. Ton alliance. <span style="color:var(--red)">Ton copilote IA.</span></h1>
   <p>Analyse joueur, copilote R5/R4, VS, saison et préparation de l'offre WarBoost PRO.</p>
 </section>
@@ -245,7 +264,7 @@ td input,td select{margin:0;padding:8px}
 <section id="page-pro" class="page">
   <div class="card">
     <h2>💎 WarBoost PRO</h2>
-    <p class="muted">V10 prépare l'offre payante. Les paiements réels et le contrôle sécurisé des droits arriveront avec les comptes utilisateurs et le backend d'abonnement.</p>
+    <p class="muted">V11 ajoute un mode compte et des quotas IA côté interface. Le paiement réel et l'autorisation PRO définitive devront rester contrôlés côté serveur.</p>
     <div class="planGrid">
       <div class="plan">
         <h3>Free</h3><div class="price">0 €</div>
@@ -261,7 +280,7 @@ td input,td select{margin:0;padding:8px}
         <div class="feature">✓ Plans de guerre IA</div>
         <div class="feature">✓ VS et Saison IA</div>
         <div class="feature">✓ Messages et rapports</div>
-        <button class="btn gold" disabled>Bientôt : abonnement sécurisé</button>
+        <button class="btn gold" disabled>Passer PRO — bientôt</button>
       </div>
       <div class="plan">
         <h3>Alliance</h3><div class="price">À définir</div>
@@ -270,10 +289,27 @@ td input,td select{margin:0;padding:8px}
         <div class="feature">✓ Permissions et historique</div>
       </div>
     </div>
-    <div class="note">⚠️ Cette V10 ne prélève aucun paiement. Le verrouillage PRO réel devra être contrôlé côté serveur après connexion du compte et du paiement.</div>
+    <div class="note">⚠️ V11 ne prélève encore aucun paiement. Le mode PRO de démonstration sert à tester l'expérience. Avant ouverture publique, les droits et quotas devront être vérifiés côté serveur.</div>
   </div>
 </section>
 </main>
+
+
+<div id="accountModal" class="modalBack" onclick="if(event.target===this)closeAccount()">
+  <div class="modal">
+    <h2>👤 Compte WarBoost V11</h2>
+    <p class="muted">Mode de démonstration local pour tester Free / PRO sans casser l'IA existante.</p>
+    <label>Pseudo<input id="demoName" placeholder="Ton pseudo"></label>
+    <label>Formule
+      <select id="demoPlan"><option value="free">FREE — 2 requêtes IA</option><option value="pro">PRO — 50 requêtes IA</option><option value="alliance">ALLIANCE — 200 requêtes IA</option></select>
+    </label>
+    <div class="actions">
+      <button class="btn" onclick="saveAccount()">Enregistrer</button>
+      <button class="btn secondary" onclick="closeAccount()">Fermer</button>
+    </div>
+    <div class="note">Sécurité : ce sélecteur est uniquement un prototype V11. Il ne doit pas servir de contrôle d'abonnement en production.</div>
+  </div>
+</div>
 
 <div class="bottom"><div class="inner">
   <button data-page="player" class="active"><span>🎮</span><small>Joueur</small></button>
@@ -285,6 +321,39 @@ td input,td select{margin:0;padding:8px}
 
 <script>
 const $=id=>document.getElementById(id);
+
+const WB11_LIMITS={free:2,pro:50,alliance:200};
+let wb11Account=JSON.parse(localStorage.getItem("wb11_account")||'{"name":"Invité","plan":"free","used":0}');
+function wb11Limit(){return WB11_LIMITS[wb11Account.plan]||2}
+function wb11Remaining(){return Math.max(0,wb11Limit()-Number(wb11Account.used||0))}
+function renderAccount(){
+  if(document.getElementById("accountName")) $("accountName").textContent=wb11Account.name||"Invité";
+  if(document.getElementById("planName")) $("planName").textContent=(wb11Account.plan||"free").toUpperCase();
+  const rem=wb11Remaining(),lim=wb11Limit();
+  if(document.getElementById("quotaText")) $("quotaText").textContent=`${rem}/${lim}`;
+  if(document.getElementById("quotaFill")) $("quotaFill").style.width=`${Math.round(rem/lim*100)}%`;
+}
+function openAccount(){
+  $("demoName").value=wb11Account.name||"";
+  $("demoPlan").value=wb11Account.plan||"free";
+  $("accountModal").classList.add("open");
+}
+function closeAccount(){$("accountModal").classList.remove("open")}
+function saveAccount(){
+  const newPlan=$("demoPlan").value;
+  if(newPlan!==wb11Account.plan) wb11Account.used=0;
+  wb11Account.name=$("demoName").value.trim()||"Invité";
+  wb11Account.plan=newPlan;
+  localStorage.setItem("wb11_account",JSON.stringify(wb11Account));
+  renderAccount();closeAccount();
+}
+function consumeAI(){
+  if(wb11Remaining()<=0) return false;
+  wb11Account.used=Number(wb11Account.used||0)+1;
+  localStorage.setItem("wb11_account",JSON.stringify(wb11Account));
+  renderAccount();return true;
+}
+
 let roster=JSON.parse(localStorage.getItem("wb10_roster")||"[]");
 
 for(let i=1;i<=5;i++){
@@ -346,13 +415,17 @@ function localPlayerAnalysis(){
 
 async function ai(action,context,resultId,statusId){
   const result=$(resultId),status=$(statusId);
+  if(wb11Remaining()<=0){
+    result.innerHTML=`<div class="lockMsg">🔒 Quota IA atteint pour la formule ${(wb11Account.plan||"free").toUpperCase()}. Ouvre <b>Compte</b> pour tester une autre formule. En production, ce changement devra être validé par le serveur après paiement.</div>`;
+    status.textContent="Aucun crédit IA V11 disponible.";status.className="status err";return;
+  }
   result.textContent="IA en cours…";status.textContent="";
   try{
     const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,context,language:$("language").value})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(data.error||`Erreur ${r.status}`);
     result.textContent=data.text||"Aucun résultat.";
-    status.textContent="Réponse IA générée ✅";status.className="status ok";
+    status.textContent="Réponse IA générée ✅";status.className="status ok";consumeAI();
   }catch(e){
     result.textContent="Impossible de contacter le copilote IA.";
     status.textContent=e.message;status.className="status err";
@@ -416,7 +489,7 @@ function load(){
   sets.forEach(([key])=>{try{const d=JSON.parse(localStorage.getItem(key)||"{}");Object.entries(d).forEach(([k,v])=>{if($(k))$(k).value=v})}catch(e){}});
   renderRoster();localVS();
 }
-load();
+load();renderAccount();
 </script>
 </body>
 </html>
