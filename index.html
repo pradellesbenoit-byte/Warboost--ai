@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V12.1</title>
+<title>WarBoost V13</title>
 <style>
 :root{
   --bg:#07111f;--panel:#101a2a;--panel2:#0a1422;--line:#2b3c57;
@@ -145,12 +145,16 @@ td input,td select{margin:0;padding:8px}
 @media(max-width:820px){.dashboardGrid,.rosterKpis{grid-template-columns:repeat(2,1fr)}.bottom .inner{grid-template-columns:repeat(6,1fr)}}
 @media(max-width:520px){.searchRow{grid-template-columns:1fr}.dashboardGrid{grid-template-columns:1fr 1fr}}
 
+
+/* ===== V13 ===== */
+.v13Strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.v13Metric{background:linear-gradient(180deg,#111f34,#0a1422);border:1px solid #314866;border-radius:15px;padding:13px}.v13Metric small{display:block;color:var(--muted);font-size:12px}.v13Metric strong{display:block;font-size:22px;margin-top:4px}.smartAlert{border-left:3px solid var(--gold);background:#151b24;border-radius:10px;padding:11px 12px;margin-top:10px;color:#dbe5f2}.smartAlert.good{border-left-color:var(--green)}
+@media(max-width:620px){.v13Strip{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V12.1</em></button>
-  <span class="proBadge">🛠️ V12.1 • COMMAND CENTER</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V13</em></button>
+  <span class="proBadge">🛠️ V13 • SMART COMMAND CENTER</span>
   <select id="language" class="lang">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -168,7 +172,7 @@ td input,td select{margin:0;padding:8px}
 </div>
 
 <section class="hero">
-  <div class="eyebrow">WARBOOST V12 • AI COMMAND CENTER</div>
+  <div class="eyebrow">WARBOOST V13 • SMART COMMAND CENTER</div>
   <h1>Ton compte. Ton alliance. <span style="color:var(--red)">Ton copilote IA.</span></h1>
   <p>Tableau de bord personnalisé, analyse joueur, copilote R5/R4, roster intelligent, VS et saison.</p>
 </section>
@@ -187,7 +191,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
       <div>
-        <div class="eyebrow">V12.1 • TABLEAU DE BORD</div>
+        <div class="eyebrow">V13 • TABLEAU DE BORD</div>
         <h2 style="margin:6px 0">🏠 Aujourd'hui avec WarBoost</h2>
         <p class="muted" style="margin:0">Un résumé rapide adapté à ton rôle, ton compte et ton alliance.</p>
       </div>
@@ -199,6 +203,13 @@ td input,td select{margin:0;padding:8px}
       <div class="kpi"><small>Membres roster</small><b id="homeRoster">0</b></div>
       <div class="kpi"><small>Puissance compte</small><b id="homePower">175M</b></div>
     </div>
+    <h3>🧠 Diagnostic intelligent V13</h3>
+    <div class="v13Strip">
+      <div class="v13Metric"><small>Profil complété</small><strong id="v13Profile">0%</strong></div>
+      <div class="v13Metric"><small>Force escouade 1</small><strong id="v13Squad">—</strong></div>
+      <div class="v13Metric"><small>État alliance</small><strong id="v13Alliance">À configurer</strong></div>
+    </div>
+    <div id="v13Alert" class="smartAlert">Renseigne ton profil pour activer le diagnostic V13.</div>
     <h3>🎯 Priorités suggérées</h3>
     <div id="todayPlan" class="todayList"></div>
     <div class="actions">
@@ -229,6 +240,8 @@ td input,td select{margin:0;padding:8px}
       <label>Niveau drone<input id="droneLevel" type="number" placeholder="Ex : 150"></label>
       <label>Technologie (%)<input id="tech" type="number" value="80"></label>
       <label>Équipement global (%)<input id="gear" type="number" value="70"></label>
+      <label>Objectif joueur<select id="playerGoal"><option>Puissance rapide</option><option>PvP</option><option>VS</option><option>Saison</option><option>Économie ressources</option></select></label>
+      <label>Budget de jeu<select id="spendProfile"><option>F2P</option><option>Petit budget</option><option>Régulier</option><option>Compétitif</option></select></label>
     </div>
     <h3 style="margin-top:24px">⭐ 5 héros principaux</h3>
     <div id="heroes"></div>
@@ -446,6 +459,24 @@ function rosterStats(){
   const total=roster.reduce((s,x)=>s+(Number(x.power)||0),0);
   return {members:roster.length,leaders:roster.filter(x=>x.rank==="R5"||x.rank==="R4").length,total,avg:roster.length?total/roster.length:0}
 }
+function v13Insights(){
+  const d=playerData(),st=rosterStats();
+  const vals=[d.hq,d.power_m,d.squad_power_m,d.drone_m,d.drone_level,d.technology_pct,d.gear_pct];
+  let filled=vals.filter(v=>Number(v)>0).length;
+  d.heroes.forEach(x=>{if(x.name&&!/^Héros /.test(x.name))filled++;});
+  const pct=Math.round(filled/12*100);
+  if($("v13Profile"))$("v13Profile").textContent=pct+"%";
+  if($("v13Squad"))$("v13Squad").textContent=d.squad_power_m?d.squad_power_m+"M":"À renseigner";
+  if($("v13Alliance"))$("v13Alliance").textContent=st.members?st.members+" membres":"À configurer";
+  if($("v13Alert")){
+    let msg="Complète les héros et la puissance d’escouade pour obtenir des priorités plus précises.";
+    let good=false;
+    if(d.squad_power_m&&d.power_m&&d.squad_power_m/d.power_m<0.25)msg="⚠️ Ton escouade 1 semble dispersée par rapport à la puissance totale : concentre les ressources sur ton équipe principale.";
+    else if(pct>=80){msg="✅ Profil suffisamment complet : WarBoost peut produire une analyse personnalisée solide.";good=true}
+    $("v13Alert").textContent=msg;$("v13Alert").classList.toggle("good",good);
+  }
+}
+
 function refreshDashboard(){
   if(!$("homePlan"))return;
   const st=rosterStats(),role=wb12Account.role||"player";
@@ -468,7 +499,7 @@ function refreshDashboard(){
     ["✨","Demander un plan IA",`${wb11Remaining()} requête(s) IA disponible(s) aujourd'hui en mode démo.`]
   ];
   $("todayPlan").innerHTML=items.map(x=>`<div class="todayItem"><i>${x[0]}</i><div><b>${x[1]}</b><span>${x[2]}</span></div></div>`).join("");
-  renderAIHistory();
+  renderAIHistory();v13Insights();
 }
 function goRecommended(){showPage((wb12Account.role==="r5"||wb12Account.role==="r4")?"command":"player")}
 
@@ -506,7 +537,7 @@ function playerData(){
     name:h("heroName"+i)||`Héros ${i}`,level:n("heroLevel"+i),stars:n("heroStars"+i),
     exclusive_weapon:n("heroWeapon"+i),gear:n("heroGear"+i)
   });
-  return {hq:n("qg"),power_m:n("power"),squad_power_m:n("squadPower"),squad:h("squad"),drone_m:n("drone"),drone_level:n("droneLevel"),technology_pct:n("tech"),gear_pct:n("gear"),heroes};
+  return {hq:n("qg"),power_m:n("power"),squad_power_m:n("squadPower"),squad:h("squad"),drone_m:n("drone"),drone_level:n("droneLevel"),technology_pct:n("tech"),gear_pct:n("gear"),goal:h("playerGoal"),spend_profile:h("spendProfile"),heroes};
 }
 
 function localPlayerAnalysis(){
