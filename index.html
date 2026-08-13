@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V13</title>
+<title>WarBoost V14</title>
 <style>
 :root{
   --bg:#07111f;--panel:#101a2a;--panel2:#0a1422;--line:#2b3c57;
@@ -146,15 +146,32 @@ td input,td select{margin:0;padding:8px}
 @media(max-width:520px){.searchRow{grid-template-columns:1fr}.dashboardGrid{grid-template-columns:1fr 1fr}}
 
 
-/* ===== V13 ===== */
+/* ===== V14 ===== */
 .v13Strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.v13Metric{background:linear-gradient(180deg,#111f34,#0a1422);border:1px solid #314866;border-radius:15px;padding:13px}.v13Metric small{display:block;color:var(--muted);font-size:12px}.v13Metric strong{display:block;font-size:22px;margin-top:4px}.smartAlert{border-left:3px solid var(--gold);background:#151b24;border-radius:10px;padding:11px 12px;margin-top:10px;color:#dbe5f2}.smartAlert.good{border-left-color:var(--green)}
 @media(max-width:620px){.v13Strip{grid-template-columns:1fr}}
+
+/* ===== V14 ===== */
+.v14Panel{background:linear-gradient(180deg,#101d30,#091321);border:1px solid #324968;border-radius:18px;padding:16px;margin-top:14px}
+.v14Grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.v14Tile{background:#08121f;border:1px solid #263b58;border-radius:14px;padding:13px}
+.v14Tile small{display:block;color:var(--muted);font-size:12px}.v14Tile b{display:block;font-size:19px;margin-top:5px}
+.progressRow{display:flex;align-items:center;gap:10px;margin-top:10px}.progressRow .meter{flex:1;margin:0}
+.missionItem{display:flex;align-items:flex-start;gap:10px;border:1px solid #263b58;background:#091321;border-radius:13px;padding:11px;margin-top:8px}
+.missionItem input{width:auto;margin-top:3px;accent-color:#3fd48d}.missionItem.done{opacity:.55;text-decoration:line-through}
+.heroRank{display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;border-bottom:1px solid #ffffff0e;padding:10px 0}
+.heroRank:last-child{border-bottom:0}.heroRank .rank{font-size:22px;font-weight:950}.heroRank small{color:var(--muted)}
+.backupBox{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.snapshot{border:1px solid #263b58;background:#091321;border-radius:13px;padding:11px;margin-top:8px}
+.snapshotHead{display:flex;justify-content:space-between;gap:10px;align-items:center}.delta.up{color:#63e6a5}.delta.down{color:#ff8f8f}.delta.flat{color:#9dadc2}
+.alertList{display:grid;gap:8px}.alertRow{border-left:3px solid var(--gold);background:#101827;padding:10px 12px;border-radius:9px}.alertRow.good{border-left-color:var(--green)}
+@media(max-width:760px){.v14Grid{grid-template-columns:repeat(2,1fr)}.backupBox{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V13</em></button>
-  <span class="proBadge">🛠️ V13 • SMART COMMAND CENTER</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V14</em></button>
+  <span class="proBadge">⚡ V14 • MISSION CONTROL</span>
   <select id="language" class="lang">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -172,9 +189,9 @@ td input,td select{margin:0;padding:8px}
 </div>
 
 <section class="hero">
-  <div class="eyebrow">WARBOOST V13 • SMART COMMAND CENTER</div>
+  <div class="eyebrow">WARBOOST V14 • SMART COMMAND CENTER</div>
   <h1>Ton compte. Ton alliance. <span style="color:var(--red)">Ton copilote IA.</span></h1>
-  <p>Tableau de bord personnalisé, analyse joueur, copilote R5/R4, roster intelligent, VS et saison.</p>
+  <p>Mission Control personnalisé, progression joueur, héros, copilote R5/R4, roster, VS et saison.</p>
 </section>
 
 <nav class="tabs" style="grid-template-columns:repeat(6,1fr)">
@@ -191,7 +208,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
       <div>
-        <div class="eyebrow">V13 • TABLEAU DE BORD</div>
+        <div class="eyebrow">V14 • MISSION CONTROL</div>
         <h2 style="margin:6px 0">🏠 Aujourd'hui avec WarBoost</h2>
         <p class="muted" style="margin:0">Un résumé rapide adapté à ton rôle, ton compte et ton alliance.</p>
       </div>
@@ -203,13 +220,41 @@ td input,td select{margin:0;padding:8px}
       <div class="kpi"><small>Membres roster</small><b id="homeRoster">0</b></div>
       <div class="kpi"><small>Puissance compte</small><b id="homePower">175M</b></div>
     </div>
-    <h3>🧠 Diagnostic intelligent V13</h3>
+    <h3>🧠 Diagnostic intelligent V14</h3>
     <div class="v13Strip">
       <div class="v13Metric"><small>Profil complété</small><strong id="v13Profile">0%</strong></div>
       <div class="v13Metric"><small>Force escouade 1</small><strong id="v13Squad">—</strong></div>
       <div class="v13Metric"><small>État alliance</small><strong id="v13Alliance">À configurer</strong></div>
     </div>
-    <div id="v13Alert" class="smartAlert">Renseigne ton profil pour activer le diagnostic V13.</div>
+    <div id="v13Alert" class="smartAlert">Renseigne ton profil pour activer le diagnostic V14.</div>
+    <div class="v14Panel">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+        <div>
+          <div class="eyebrow">V14 • MISSION DU JOUR</div>
+          <h3 style="margin:5px 0">⚡ Plan d'action personnel</h3>
+          <p class="muted" style="margin:0">WarBoost transforme tes données en tâches courtes à cocher.</p>
+        </div>
+        <button class="miniBtn" onclick="resetMissions()">Réinitialiser</button>
+      </div>
+      <div id="missionList"></div>
+    </div>
+
+    <div class="v14Panel">
+      <div class="eyebrow">V14 • PROGRESSION</div>
+      <h3 style="margin:5px 0">📊 Évolution du compte</h3>
+      <div class="v14Grid">
+        <div class="v14Tile"><small>Dernier relevé</small><b id="snapDate">—</b></div>
+        <div class="v14Tile"><small>Puissance</small><b id="snapPower">—</b></div>
+        <div class="v14Tile"><small>Escouade 1</small><b id="snapSquad">—</b></div>
+        <div class="v14Tile"><small>Drone</small><b id="snapDrone">—</b></div>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" onclick="saveSnapshot()">📌 Enregistrer un relevé</button>
+        <button class="btn secondary" onclick="showSnapshots()">Voir l'historique</button>
+      </div>
+      <div id="snapshotHistory"></div>
+    </div>
+
     <h3>🎯 Priorités suggérées</h3>
     <div id="todayPlan" class="todayList"></div>
     <div class="actions">
@@ -245,6 +290,13 @@ td input,td select{margin:0;padding:8px}
     </div>
     <h3 style="margin-top:24px">⭐ 5 héros principaux</h3>
     <div id="heroes"></div>
+
+    <div class="v14Panel">
+      <div class="eyebrow">V14 • HÉROS</div>
+      <h3 style="margin:5px 0">⭐ Préparation de l'escouade</h3>
+      <p class="muted">Classement local basé uniquement sur les niveaux, étoiles, arme exclusive et équipement que tu renseignes.</p>
+      <div id="heroReadiness"></div>
+    </div>
     <div class="actions">
       <button class="btn" onclick="localPlayerAnalysis()">⚡ Analyse rapide</button>
       <button class="btn gold" onclick="aiPlayerAnalysis()">✨ Analyse IA PRO</button>
@@ -267,6 +319,18 @@ td input,td select{margin:0;padding:8px}
     <label style="margin-top:12px">Question / situation
       <textarea id="copilotQuestion" placeholder="Ex : Nous sommes 98, guerre demain à 20h. Comment répartir les R4 et les groupes ?"></textarea>
     </label>
+
+    <div class="v14Panel">
+      <div class="eyebrow">V14 • ALLIANCE HEALTH</div>
+      <h3 style="margin:5px 0">🛡️ Santé opérationnelle</h3>
+      <div class="v14Grid">
+        <div class="v14Tile"><small>Membres roster</small><b id="ahMembers">0</b></div>
+        <div class="v14Tile"><small>R4 / R5</small><b id="ahLeaders">0</b></div>
+        <div class="v14Tile"><small>Puissance moyenne</small><b id="ahAvg">0</b></div>
+        <div class="v14Tile"><small>Couverture leadership</small><b id="ahCoverage">0%</b></div>
+      </div>
+      <div id="allianceAlerts" class="alertList"></div>
+    </div>
     <div class="quickGrid">
       <button class="quickBtn" onclick="runCopilot('r5_dashboard')"><b>🧭 Tableau de bord</b><span>Priorités, alertes, responsables.</span></button>
       <button class="quickBtn" onclick="runCopilot('war_plan')"><b>⚔️ Plan de guerre</b><span>Phases, rôles, consignes et plan B.</span></button>
@@ -364,6 +428,17 @@ td input,td select{margin:0;padding:8px}
 </section>
 </main>
 
+
+
+  <div class="card">
+    <h2>💾 Centre de données V14</h2>
+    <p class="muted">Sauvegarde locale de ton profil, ton roster, tes réglages et ton historique. Le fichier reste sur ton appareil jusqu'à ce que tu choisisses de l'importer ailleurs.</p>
+    <div class="backupBox">
+      <button class="btn secondary" onclick="exportWarBoost()">⬇️ Exporter mes données</button>
+      <label class="btn secondary" style="display:flex;align-items:center;justify-content:center;margin:0">⬆️ Importer une sauvegarde<input id="backupImport" type="file" accept=".json,application/json" style="display:none" onchange="importWarBoost(this)"></label>
+    </div>
+    <div id="backupStatus" class="status"></div>
+  </div>
 
 <div id="toast" class="toast">Copié ✅</div>
 
@@ -531,6 +606,123 @@ function n(id){return Number(String($(id)?.value||0).replace(",","."))||0}
 function h(id){return String($(id)?.value||"").trim()}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 
+
+const WB14_KEYS=[
+  "wb12_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster",
+  "wb12_ai_history","wb14_snapshots","wb14_missions"
+];
+
+let wb14Snapshots=JSON.parse(localStorage.getItem("wb14_snapshots")||"[]");
+let wb14Missions=JSON.parse(localStorage.getItem("wb14_missions")||"{}");
+
+function heroScore(x){
+  let s=0;
+  s+=Math.min(35,(Number(x.level)||0)/150*35);
+  s+=Math.min(30,(Number(x.stars)||0)/5*30);
+  s+=Math.min(20,(Number(x.exclusive_weapon)||0)/30*20);
+  s+=Math.min(15,(Number(x.gear)||0)/50*15);
+  return Math.max(0,Math.min(100,Math.round(s)));
+}
+function renderHeroReadiness(){
+  const el=$("heroReadiness"); if(!el)return;
+  const list=playerData().heroes.map(x=>({...x,score:heroScore(x)})).sort((a,b)=>b.score-a.score);
+  if(!list.some(x=>x.level||x.stars||x.exclusive_weapon||x.gear)){el.innerHTML='<p class="muted">Renseigne les 5 héros pour voir leur préparation.</p>';return}
+  el.innerHTML=list.map((x,i)=>`<div class="heroRank"><div class="rank">${i+1}</div><div><b>${esc(x.name)}</b><br><small>Niv. ${x.level||0} · ${x.stars||0}★ · Arme ${x.exclusive_weapon||0} · Équip. ${x.gear||0}</small></div><b>${x.score}%</b></div>`).join("");
+}
+function missionSource(){
+  const d=playerData(), st=rosterStats(), role=wb12Account.role||"player";
+  const out=[];
+  if(role==="player"){
+    if(!d.squad_power_m)out.push(["Renseigner la puissance de l'escouade 1","Permet de mesurer la progression réelle de ton équipe principale."]);
+    if(d.technology_pct<85)out.push(["Concentrer la technologie","Évite de disperser les ressources hors de ton objectif principal."]);
+    if(d.gear_pct<80)out.push(["Renforcer l'équipement","Priorité locale détectée à partir de ton pourcentage renseigné."]);
+    if(d.heroes.some(x=>x.level&&x.level<150))out.push(["Monter les héros principaux","Au moins un héros renseigné est sous le niveau 150."]);
+    out.push(["Enregistrer un relevé aujourd'hui","Crée un point de comparaison pour suivre ta progression."]);
+  }else{
+    if(!st.members)out.push(["Importer le roster","Ajoute les membres pour activer les indicateurs d'alliance."]);
+    if(st.members && st.leaders<Math.max(1,Math.ceil(st.members/20)))out.push(["Renforcer la couverture R4/R5","Le ratio de leaders enregistré est faible pour la taille du roster."]);
+    out.push(["Vérifier les priorités du jour","Utilise le copilote R5/R4 avant l'événement principal."]);
+    out.push(["Former les groupes","Génère des groupes équilibrés avant une action collective."]);
+  }
+  return out.slice(0,5);
+}
+function renderMissions(){
+  const el=$("missionList");if(!el)return;
+  const today=todayKey(), source=missionSource();
+  if(!wb14Missions[today] || wb14Missions[today].sourceKey!==JSON.stringify(source)){
+    wb14Missions[today]={sourceKey:JSON.stringify(source),done:{}};
+    localStorage.setItem("wb14_missions",JSON.stringify(wb14Missions));
+  }
+  el.innerHTML=source.map((x,i)=>{
+    const done=!!wb14Missions[today].done[i];
+    return `<label class="missionItem ${done?"done":""}"><input type="checkbox" ${done?"checked":""} onchange="toggleMission(${i},this.checked)"><div><b>${esc(x[0])}</b><br><span class="muted">${esc(x[1])}</span></div></label>`;
+  }).join("");
+}
+function toggleMission(i,checked){
+  const t=todayKey(); if(!wb14Missions[t])renderMissions();
+  wb14Missions[t].done[i]=checked;localStorage.setItem("wb14_missions",JSON.stringify(wb14Missions));renderMissions();
+}
+function resetMissions(){delete wb14Missions[todayKey()];localStorage.setItem("wb14_missions",JSON.stringify(wb14Missions));renderMissions()}
+
+function saveSnapshot(){
+  const d=playerData();
+  wb14Snapshots.unshift({at:new Date().toISOString(),power:d.power_m,squad:d.squad_power_m,drone:d.drone_m,tech:d.technology_pct,gear:d.gear_pct});
+  wb14Snapshots=wb14Snapshots.slice(0,30);localStorage.setItem("wb14_snapshots",JSON.stringify(wb14Snapshots));showSnapshots();refreshSnapshotSummary();toast("Relevé enregistré ✅");
+}
+function deltaText(now,prev,suffix=""){
+  if(prev===undefined||prev===null)return '<span class="delta flat">premier relevé</span>';
+  const d=Number(now||0)-Number(prev||0), cls=d>0?"up":d<0?"down":"flat", sign=d>0?"+":"";
+  return `<span class="delta ${cls}">${sign}${d.toFixed(1).replace(".0","")}${suffix}</span>`;
+}
+function refreshSnapshotSummary(){
+  if(!$("snapDate"))return;
+  const s=wb14Snapshots[0];
+  if(!s){$("snapDate").textContent="—";$("snapPower").textContent="—";$("snapSquad").textContent="—";$("snapDrone").textContent="—";return}
+  $("snapDate").textContent=new Date(s.at).toLocaleDateString();
+  $("snapPower").textContent=(s.power||0)+"M";$("snapSquad").textContent=(s.squad||0)+"M";$("snapDrone").textContent=(s.drone||0)+"M";
+}
+function showSnapshots(){
+  const el=$("snapshotHistory");if(!el)return;
+  if(!wb14Snapshots.length){el.innerHTML='<p class="muted">Aucun relevé enregistré.</p>';return}
+  el.innerHTML=wb14Snapshots.slice(0,10).map((s,i)=>{
+    const p=wb14Snapshots[i+1];
+    return `<div class="snapshot"><div class="snapshotHead"><b>${new Date(s.at).toLocaleString()}</b><small>${i===0?"Dernier":"#" + (i+1)}</small></div><div style="margin-top:6px">Puissance ${s.power||0}M ${deltaText(s.power,p?.power,"M")} · Escouade ${s.squad||0}M ${deltaText(s.squad,p?.squad,"M")} · Drone ${s.drone||0}M ${deltaText(s.drone,p?.drone,"M")}</div></div>`;
+  }).join("");
+}
+function renderAllianceHealth(){
+  if(!$("ahMembers"))return;
+  const st=rosterStats(), coverage=st.members?Math.min(100,Math.round(st.leaders/st.members*100)):0;
+  $("ahMembers").textContent=st.members;$("ahLeaders").textContent=st.leaders;$("ahAvg").textContent=fmtPower(st.avg);$("ahCoverage").textContent=coverage+"%";
+  const alerts=[];
+  if(!st.members)alerts.push(["","Importe le roster pour activer les alertes opérationnelles."]);
+  else{
+    if(st.leaders<Math.max(1,Math.ceil(st.members/20)))alerts.push(["","Couverture R4/R5 faible par rapport au nombre de membres enregistré."]);
+    else alerts.push(["good","Couverture leadership cohérente avec le roster enregistré."]);
+    if(st.avg>0)alerts.push(["good",`Puissance moyenne enregistrée : ${fmtPower(st.avg)}.`]);
+  }
+  $("allianceAlerts").innerHTML=alerts.map(a=>`<div class="alertRow ${a[0]}">${esc(a[1])}</div>`).join("");
+}
+function exportWarBoost(){
+  const data={version:"14",exported_at:new Date().toISOString(),storage:{}};
+  WB14_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)data.storage[k]=v});
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="WarBoost_V14_backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  if($("backupStatus")){$("backupStatus").textContent="Sauvegarde exportée ✅";$("backupStatus").className="status ok"}
+}
+function importWarBoost(input){
+  const file=input.files?.[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const data=JSON.parse(r.result); if(!data?.storage)throw new Error("Format invalide");
+      Object.entries(data.storage).forEach(([k,v])=>{if(WB14_KEYS.includes(k))localStorage.setItem(k,String(v))});
+      if($("backupStatus")){$("backupStatus").textContent="Sauvegarde importée. Recharge WarBoost pour appliquer toutes les données ✅";$("backupStatus").className="status ok"}
+    }catch(e){if($("backupStatus")){$("backupStatus").textContent="Import impossible : "+e.message;$("backupStatus").className="status err"}}
+    input.value="";
+  };
+  r.readAsText(file);
+}
+
 function playerData(){
   const heroes=[];
   for(let i=1;i<=5;i++)heroes.push({
@@ -560,14 +752,14 @@ function localPlayerAnalysis(){
   p.push([60,`🎯 ${d.squad} : concentre les ressources sur l'escouade principale.`]);
   p.sort((a,b)=>b[0]-a[0]);score=Math.min(100,Math.round(score));
   $("playerResult").innerHTML=`<div class="score">${score}<span>/100</span></div><div class="meter"><i style="width:${score}%"></i></div><h3>Top priorités</h3>${p.slice(0,6).map((x,i)=>`<div style="padding:9px 0;border-bottom:1px solid #ffffff10"><b>${i+1}.</b> ${esc(x[1])}</div>`).join("")}`;
-  $("playerStatus").textContent="Analyse rapide terminée ✅";$("playerStatus").className="status ok";saveProfile();
+  $("playerStatus").textContent="Analyse rapide terminée ✅";$("playerStatus").className="status ok";saveProfile();renderHeroReadiness();renderMissions();
 }
 
 async function ai(action,context,resultId,statusId){
   const result=$(resultId),status=$(statusId);
   if(wb11Remaining()<=0){
     result.innerHTML=`<div class="lockMsg">🔒 Quota IA atteint pour la formule ${(wb12Account.plan||"free").toUpperCase()}. Ouvre <b>Compte</b> pour tester une autre formule. En production, ce changement devra être validé par le serveur après paiement.</div>`;
-    status.textContent="Aucun crédit IA V12 disponible.";status.className="status err";return;
+    status.textContent="Aucun crédit IA V14 disponible.";status.className="status err";return;
   }
   result.textContent="IA en cours…";status.textContent="";
   try{
@@ -616,7 +808,7 @@ function renderRoster(){
   if($("rkLeaders"))$("rkLeaders").textContent=st.leaders;
   if($("rkPower"))$("rkPower").textContent=fmtPower(st.total);
   if($("rkAvg"))$("rkAvg").textContent=fmtPower(st.avg);
-  refreshDashboard();
+  refreshDashboard();renderAllianceHealth();
 }
 
 
@@ -655,7 +847,7 @@ function localSeason(){
 function aiSeason(){saveSimple();return ai("season_plan",{season:h("season"),profession:h("profession"),context:h("seasonContext"),roster},"seasonResult","seasonStatus")}
 
 function saveProfile(){
-  const ids=["qg","power","squadPower","squad","drone","droneLevel","tech","gear"];
+  const ids=["qg","power","squadPower","squad","drone","droneLevel","tech","gear","playerGoal","spendProfile"];
   const d={};ids.forEach(id=>d[id]=$(id).value);
   for(let i=1;i<=5;i++)["heroName","heroLevel","heroStars","heroWeapon","heroGear"].forEach(k=>d[k+i]=$(k+i).value);
   localStorage.setItem("wb10_profile",JSON.stringify(d));
@@ -667,7 +859,9 @@ function load(){
   sets.forEach(([key])=>{try{const d=JSON.parse(localStorage.getItem(key)||"{}");Object.entries(d).forEach(([k,v])=>{if($(k))$(k).value=v})}catch(e){}});
   renderRoster();localVS();
 }
-resetDemoQuotaIfNeeded();load();renderAccount();refreshDashboard();renderAIHistory();
+resetDemoQuotaIfNeeded();load();renderAccount();refreshDashboard();renderAIHistory();renderHeroReadiness();refreshSnapshotSummary();renderAllianceHealth();
+["qg","power","squadPower","squad","drone","droneLevel","tech","gear","playerGoal","spendProfile"].forEach(id=>$(id)?.addEventListener("change",()=>{saveProfile();refreshDashboard();renderHeroReadiness()}));
+for(let i=1;i<=5;i++)["heroName","heroLevel","heroStars","heroWeapon","heroGear"].forEach(k=>$(k+i)?.addEventListener("change",()=>{saveProfile();renderHeroReadiness();renderMissions()}));
 </script>
 </body>
 </html>
