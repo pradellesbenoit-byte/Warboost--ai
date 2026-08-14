@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V17.2.1</title>
+<title>WarBoost V18</title>
 <style>
 :root{
   --bg:#07111f;--panel:#101a2a;--panel2:#0a1422;--line:#2b3c57;
@@ -208,7 +208,7 @@ td input,td select{margin:0;padding:8px}
 .aiMarkdown blockquote p{margin:0}
 
 
-/* ===== V17.2.1 • CLOUD SYNC ===== */
+/* ===== V18 • CLOUD + BILLING ===== */
 .v16Panel{
   background:linear-gradient(180deg,#12223a,#091321);
   border:1px solid #3c5f86;
@@ -250,7 +250,7 @@ td input,td select{margin:0;padding:8px}
 }
 
 
-/* ===== V17.2.1 • CLOUD SYNC ===== */
+/* ===== V18 • CLOUD + BILLING ===== */
 .groupCaptainRow{
   display:grid;grid-template-columns:140px 1fr;gap:9px;align-items:center;
   margin:9px 0 11px;padding:9px;background:#0c1727;border:1px solid #263b58;border-radius:11px
@@ -279,7 +279,7 @@ td input,td select{margin:0;padding:8px}
 }
 
 
-/* ===== V17.2.1 • CLOUD SYNC ===== */
+/* ===== V18 • CLOUD + BILLING ===== */
 .cloudCard{
   background:linear-gradient(180deg,#10253a,#091522);
   border:1px solid #376487;border-radius:18px;padding:16px;margin-top:14px
@@ -301,12 +301,49 @@ td input,td select{margin:0;padding:8px}
 .authHidden{display:none!important}
 @media(max-width:760px){.cloudGrid,.cloudActionGrid{grid-template-columns:1fr}}
 
+
+/* ===== V18 • PRO BILLING ===== */
+.billingPanel{
+  margin-top:14px;padding:16px;border-radius:18px;
+  border:1px solid #6a5422;
+  background:linear-gradient(180deg,#211a0c,#0c1522);
+}
+.billingPanel.pro{
+  border-color:#b78b2e;
+  box-shadow:0 0 0 1px #f4c85a22 inset,0 18px 45px #0004;
+}
+.billingRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.billingPill{
+  display:inline-flex;align-items:center;gap:6px;
+  border:1px solid #40516a;background:#0a1524;border-radius:999px;
+  padding:6px 10px;font-size:12px;font-weight:900
+}
+.billingPill.pro{border-color:#8b6825;color:#ffe49a;background:#281f0c}
+.billingPill.ok{border-color:#267653;color:#c9f7df;background:#0b2119}
+.billingPill.warn{border-color:#85621d;color:#ffe3a2;background:#271e0b}
+.billingStats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.billingStat{border:1px solid #2d4763;background:#08131f;border-radius:14px;padding:12px}
+.billingStat small{display:block;color:var(--muted);margin-bottom:5px}
+.billingStat b{font-size:19px}
+.billingActions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.billingSecure{font-size:12px;color:var(--muted);margin-top:10px}
+.billingSecure strong{color:#dbeafe}
+.proLiveBadge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#3a2b0c;border:1px solid #9f7624;color:#ffe7a4;
+  border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950
+}
+@media(max-width:760px){
+  .billingStats{grid-template-columns:1fr}
+  .billingActions{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V17.2.1</em></button>
-  <span class="proBadge">🛠️ V17.2.1 • I18N FIX</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V18</em></button>
+  <span class="proBadge">💳 V18 • PRO BILLING</span>
   <select id="language" class="lang" onchange="setLanguage(this.value)" aria-label="Language">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -325,9 +362,9 @@ td input,td select{margin:0;padding:8px}
 </div>
 
 <section class="hero">
-  <div class="eyebrow">WARBOOST V17.2.1 • I18N FIX</div>
+  <div class="eyebrow">WARBOOST V18 • PRO BILLING</div>
   <h1>Ton compte. Ton alliance. <span style="color:var(--red)">Ton copilote IA.</span></h1>
-  <p>Compte cloud, sauvegarde multi-appareils, War Room, progression joueur, héros, copilote R5/R4, roster, groupes, VS et saison.</p>
+  <p>Compte cloud, abonnement PRO sécurisé, sauvegarde multi-appareils, War Room, progression joueur, héros, copilote R5/R4, roster, groupes, VS et saison.</p>
 </section>
 
 <nav class="tabs" style="grid-template-columns:repeat(6,1fr)">
@@ -344,7 +381,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
       <div>
-        <div class="eyebrow">V17.2.1 • CLOUD SYNC</div>
+        <div class="eyebrow">V18 • CLOUD + BILLING</div>
         <h2 style="margin:6px 0">🏠 Aujourd'hui avec WarBoost</h2>
         <p class="muted" style="margin:0">Un résumé rapide adapté à ton rôle, ton compte et ton alliance.</p>
       </div>
@@ -367,7 +404,7 @@ td input,td select{margin:0;padding:8px}
     <div class="v14Panel">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
         <div>
-          <div class="eyebrow">V17.2.1 • MISSION DU JOUR</div>
+          <div class="eyebrow">V18 • MISSION DU JOUR</div>
           <h3 style="margin:5px 0">⚡ Plan d'action personnel</h3>
           <p class="muted" style="margin:0">WarBoost transforme tes données en tâches courtes à cocher.</p>
         </div>
@@ -377,7 +414,7 @@ td input,td select{margin:0;padding:8px}
     </div>
 
     <div class="v14Panel">
-      <div class="eyebrow">V17.2.1 • PROGRESSION</div>
+      <div class="eyebrow">V18 • PROGRESSION</div>
       <h3 style="margin:5px 0">📊 Évolution du compte</h3>
       <div class="v14Grid">
         <div class="v14Tile"><small>Dernier relevé</small><b id="snapDate">—</b></div>
@@ -394,7 +431,7 @@ td input,td select{margin:0;padding:8px}
 
 
     <div class="v15Panel">
-      <div class="eyebrow">V17.2.1 • OBJECTIFS 30 JOURS</div>
+      <div class="eyebrow">V18 • OBJECTIFS 30 JOURS</div>
       <h3 style="margin:5px 0">📈 Trajectoire de progression</h3>
       <p class="muted" style="margin:0">Compare tes valeurs actuelles aux objectifs que tu définis dans l'onglet Joueur.</p>
       <div class="goalGrid">
@@ -404,13 +441,13 @@ td input,td select{margin:0;padding:8px}
       </div>
       <div style="margin-top:12px" class="scoreWrap">
         <div class="scoreRing" id="readinessRing"><span id="readinessScore">0%</span></div>
-        <div><b>Score de préparation V17.2.1</b><div class="muted" id="readinessText">Complète ton profil pour calculer le score.</div></div>
+        <div><b>Score de préparation V18</b><div class="muted" id="readinessText">Complète ton profil pour calculer le score.</div></div>
       </div>
     </div>
 
 
     <div class="v16Panel">
-      <div class="eyebrow">V17.2.1 • CLOUD SYNC</div>
+      <div class="eyebrow">V18 • CLOUD + BILLING</div>
       <h3 style="margin:5px 0">🛰️ Vue opérationnelle</h3>
       <p class="muted" style="margin:0">Résumé local de la prochaine opération, des groupes et des tâches R5/R4.</p>
       <div class="homeWarGrid">
@@ -464,7 +501,7 @@ td input,td select{margin:0;padding:8px}
     <div id="heroes"></div>
 
     <div class="v14Panel">
-      <div class="eyebrow">V17.2.1 • HÉROS</div>
+      <div class="eyebrow">V18 • HÉROS</div>
       <h3 style="margin:5px 0">⭐ Préparation de l'escouade</h3>
       <p class="muted">Classement local basé uniquement sur les niveaux, étoiles, arme exclusive et équipement que tu renseignes.</p>
       <div id="heroReadiness"></div>
@@ -494,7 +531,7 @@ td input,td select{margin:0;padding:8px}
     </label>
 
     <div class="v14Panel">
-      <div class="eyebrow">V17.2.1 • ALLIANCE HEALTH</div>
+      <div class="eyebrow">V18 • ALLIANCE HEALTH</div>
       <h3 style="margin:5px 0">🛡️ Santé opérationnelle</h3>
       <div class="v14Grid">
         <div class="v14Tile"><small>Membres roster</small><b id="ahMembers">0</b></div>
@@ -507,7 +544,7 @@ td input,td select{margin:0;padding:8px}
 
 
     <div class="v16Panel">
-      <div class="eyebrow">V17.2.1 • CLOUD SYNC</div>
+      <div class="eyebrow">V18 • CLOUD + BILLING</div>
       <h3 style="margin:5px 0">🛰️ Centre d'opérations</h3>
       <p class="muted" style="margin:0">Prépare une opération, équilibre puissance + leadership, choisis les chefs de groupe et génère un briefing sans quota IA.</p>
 
@@ -557,7 +594,7 @@ td input,td select{margin:0;padding:8px}
     </div>
 
     <div class="v15Panel">
-      <div class="eyebrow">V17.2.1 • COMMAND BOARD</div>
+      <div class="eyebrow">V18 • COMMAND BOARD</div>
       <h3 style="margin:5px 0">📋 Tâches R5/R4</h3>
       <p class="muted" style="margin:0">Assigne localement une tâche à un responsable du roster. Les données restent sur cet appareil.</p>
       <div class="taskComposer">
@@ -654,43 +691,62 @@ td input,td select{margin:0;padding:8px}
 
 <section id="page-pro" class="page">
   <div class="card">
+    <div class="eyebrow">V18 • PRO BILLING</div>
     <h2>💎 WarBoost PRO</h2>
-    <p class="muted">V17 ajoute l’authentification et la sauvegarde cloud réelles. Les paiements PRO restent désactivés jusqu’à la prochaine étape.</p>
-    <div class="planGrid">
+    <p class="muted">V18 active l'abonnement PRO côté serveur : paiement Stripe Checkout, droits PRO vérifiés par WarBoost, quotas IA sécurisés et portail de gestion d'abonnement.</p>
+
+    <div id="billingPanel" class="billingPanel">
+      <div class="billingRow">
+        <span id="billingConfigPill" class="billingPill warn">⚙️ Paiement à configurer</span>
+        <span id="billingPlanPill" class="billingPill">🆓 FREE</span>
+      </div>
+      <div class="billingStats">
+        <div class="billingStat"><small>Formule actuelle</small><b id="billingPlanLabel">FREE</b></div>
+        <div class="billingStat"><small>Statut</small><b id="billingStatusLabel">—</b></div>
+        <div class="billingStat"><small>Renouvellement</small><b id="billingRenewalLabel">—</b></div>
+      </div>
+      <div class="billingActions">
+        <button id="upgradeProBtn" class="btn gold" onclick="startProCheckout()">💳 Passer PRO</button>
+        <button id="manageBillingBtn" class="btn secondary" onclick="openBillingPortal()" style="display:none">⚙️ Gérer l'abonnement</button>
+      </div>
+      <div id="billingStatus" class="status"></div>
+      <div class="billingSecure">🔒 <strong>Paiement sécurisé par Stripe.</strong> WarBoost ne reçoit ni ne stocke les numéros de carte.</div>
+    </div>
+
+    <div class="planGrid" style="margin-top:16px">
       <div class="plan">
         <h3>Free</h3><div class="price">0 €</div>
+        <div class="feature">✓ 2 requêtes IA / jour</div>
         <div class="feature">✓ Analyse rapide du compte</div>
-        <div class="feature">✓ Roster local</div>
-        <div class="feature">✓ Conseils VS/Saison de base</div>
+        <div class="feature">✓ Roster et War Room</div>
+        <div class="feature">✓ Sauvegarde cloud</div>
       </div>
       <div class="plan featured">
         <span class="proBadge">RECOMMANDÉ</span>
-        <h3 style="margin-top:12px">PRO</h3><div class="price">4,99 € <small>/mois</small></div>
+        <h3 style="margin-top:12px">PRO <span class="proLiveBadge">LIVE V18</span></h3>
+        <div class="price" id="proPriceLabel">4,99 € <small>/mois</small></div>
+        <div class="feature">✓ 50 requêtes IA / jour</div>
         <div class="feature">✓ Analyse joueur par IA</div>
         <div class="feature">✓ Copilote IA R5/R4</div>
         <div class="feature">✓ Plans de guerre IA</div>
         <div class="feature">✓ VS et Saison IA</div>
         <div class="feature">✓ Messages et rapports</div>
         <div class="feature">✓ War Room + groupes équilibrés</div>
-        <div class="feature">✓ Chefs de groupe + couverture R4/R5</div>
-        <button class="btn gold" disabled>Passer PRO — paiement bientôt</button>
+        <div class="feature">✓ Droits PRO contrôlés côté serveur</div>
       </div>
       <div class="plan">
-        <h3>Alliance</h3><div class="price">À définir</div>
+        <h3>Alliance</h3><div class="price">Bientôt</div>
         <div class="feature">✓ Plusieurs R5/R4</div>
-        <div class="feature">✓ Roster cloud partagé</div>
-        <div class="feature">✓ Comptes et sauvegarde multi-appareils</div>
-        <div class="feature">✓ Permissions et historique</div>
+        <div class="feature">✓ Roster partagé</div>
+        <div class="feature">✓ Permissions avancées</div>
+        <div class="feature">✓ Historique alliance</div>
       </div>
     </div>
-    <div class="note">⚠️ V17 ne prélève encore aucun paiement. Les comptes cloud sont réels, mais l’activation PRO restera gérée côté serveur avec Stripe dans une prochaine version.</div>
+    <div class="note">V18 : le statut PRO n'est plus décidé par le navigateur. Il est calculé côté serveur à partir de l'abonnement Stripe enregistré dans Supabase.</div>
   </div>
 
-
-
-
   <div class="cloudCard">
-    <div class="eyebrow">V17.2.1 • CLOUD SYNC</div>
+    <div class="eyebrow">V18 • CLOUD + BILLING</div>
     <h2 style="margin:6px 0">☁️ Sauvegarde multi-appareils</h2>
     <p class="muted">Connecte un compte WarBoost pour retrouver ton profil, tes héros, ton roster, tes tâches et ton War Room sur un autre téléphone.</p>
     <div class="cloudStatusRow">
@@ -704,27 +760,25 @@ td input,td select{margin:0;padding:8px}
     </div>
     <label class="syncToggle"><input id="cloudAutoSync" type="checkbox" onchange="toggleCloudAutoSync(this.checked)"> Synchronisation automatique</label>
     <div id="cloudStatus" class="status"></div>
-    <div class="note">Le cloud V17 utilise un compte sécurisé. La version locale reste utilisable sans connexion.</div>
+    <div class="note">Le cloud reste disponible en FREE et PRO.</div>
   </div>
 
   <div class="card">
-    <h2>💾 Centre de données V17</h2>
-    <p class="muted">Sauvegarde locale de secours de ton profil, tes objectifs, ton roster, tes tâches R5/R4, tes réglages et ton historique. V17 ajoute aussi la sauvegarde cloud quand un compte est connecté.</p>
+    <h2>💾 Centre de données V18</h2>
+    <p class="muted">Sauvegarde locale de secours + sauvegarde cloud de ton profil, tes objectifs, ton roster, tes tâches R5/R4, tes réglages et ton historique.</p>
     <div class="backupBox">
       <button class="btn secondary" onclick="exportWarBoost()">⬇️ Exporter mes données</button>
       <label class="btn secondary" style="display:flex;align-items:center;justify-content:center;margin:0">⬆️ Importer une sauvegarde<input id="backupImport" type="file" accept=".json,application/json" style="display:none" onchange="importWarBoost(this)"></label>
     </div>
     <div id="backupStatus" class="status"></div>
   </div>
-
-
 </section>
 </main>
 <div id="toast" class="toast">Copié ✅</div>
 
 <div id="accountModal" class="modalBack" onclick="if(event.target===this)closeAccount()">
   <div class="modal">
-    <div class="eyebrow">V17.2.1 • CLOUD ACCOUNT</div>
+    <div class="eyebrow">V18 • ACCOUNT + BILLING</div>
     <h2>☁️ Compte WarBoost</h2>
     <div class="cloudStatusRow">
       <span id="modalCloudConfig" class="cloudPill warn">⚙️ Cloud à configurer</span>
@@ -754,6 +808,16 @@ td input,td select{margin:0;padding:8px}
         <b id="cloudUserName">—</b>
         <small id="cloudUserEmail">—</small>
       </div>
+      <div class="billingPanel" id="accountBillingPanel">
+        <div class="billingRow">
+          <span id="accountBillingPlan" class="billingPill">🆓 FREE</span>
+          <span id="accountBillingStatus" class="billingPill">—</span>
+        </div>
+        <div class="billingActions">
+          <button id="accountUpgradeBtn" class="btn gold" onclick="startProCheckout()">💳 Passer PRO</button>
+          <button id="accountManageBtn" class="btn secondary" onclick="openBillingPortal()" style="display:none">⚙️ Gérer l'abonnement</button>
+        </div>
+      </div>
       <div class="cloudActionGrid">
         <button class="btn" onclick="cloudSaveNow()">☁️ Sauvegarder</button>
         <button class="btn secondary" onclick="cloudLoadNow()">📥 Restaurer</button>
@@ -769,7 +833,7 @@ td input,td select{margin:0;padding:8px}
       <div id="cloudAuthStatusIn" class="status"></div>
     </div>
 
-    <div class="note">V17 : comptes et sauvegarde cloud réels. La formule PRO reste désactivée tant que le paiement sécurisé n’est pas activé.</div>
+    <div class="note">V18 : comptes cloud + abonnement PRO sécurisé. Les droits PRO et quotas IA sont vérifiés côté serveur.</div>
   </div>
 </div>
 
@@ -810,7 +874,6 @@ function scheduleCloudSync(key){
 const WB12_LIMITS={free:2,pro:50,alliance:200};
 let wb12Account=JSON.parse(localStorage.getItem("wb12_account")||localStorage.getItem("wb11_account")||'{"name":"Invité","role":"player","plan":"free","used":0,"usageDay":""}');
 if(!wb12Account.role) wb12Account.role="player";
-wb12Account.plan="free";
 function todayKey(){return new Date().toISOString().slice(0,10)}
 function resetDemoQuotaIfNeeded(){if(wb12Account.usageDay!==todayKey()){wb12Account.used=0;wb12Account.usageDay=todayKey();saveWB12Account()}}
 function saveWB12Account(){wbSetItem("wb12_account",JSON.stringify(wb12Account))}
@@ -819,10 +882,10 @@ function wb11Remaining(){resetDemoQuotaIfNeeded();return Math.max(0,wb11Limit()-
 function renderAccount(){
   if($("accountName")) $("accountName").textContent=wb12Account.name||"Invité";
   if($("roleName")) $("roleName").textContent=roleLabel(wb12Account.role);
-  if($("planName")) $("planName").textContent="FREE";
-  const rem=wb11Remaining(),lim=wb11Limit();
+  if($("planName")) $("planName").textContent=(wb12Account.plan||"free").toUpperCase();
+  const rem=wb18Billing?.remaining ?? wb11Remaining(),lim=wb18Billing?.limit ?? wb11Limit();
   if($("quotaText")) $("quotaText").textContent=`${rem}/${lim}`;
-  if($("quotaFill")) $("quotaFill").style.width=`${Math.round(rem/lim*100)}%`;
+  if($("quotaFill")) $("quotaFill").style.width=`${Math.round(rem/Math.max(1,lim)*100)}%`;
   renderCloudUI();
   if(typeof wb171RefreshFixedUI==="function")wb171RefreshFixedUI(wb171Language);
 }
@@ -834,16 +897,10 @@ function openAccount(){
 }
 function closeAccount(){$("accountModal")?.classList.remove("open")}
 function saveAccount(){
-  wb12Account.plan="free";
   saveWB12Account();renderAccount();refreshDashboard();
 }
 
-function consumeAI(){
-  if(wb11Remaining()<=0) return false;
-  wb12Account.used=Number(wb12Account.used||0)+1;
-  wb12Account.usageDay=todayKey();saveWB12Account();
-  renderAccount();refreshDashboard();return true;
-}
+function consumeAI(){return wb18Billing.remaining>0}
 
 
 function roleLabel(r){return r==="r5"?"R5":r==="r4"?"R4":wb171T("JOUEUR")}
@@ -1508,7 +1565,7 @@ function importWarBoost(input){
 
 
 
-const WB171_TRANSLATIONS={"Invité": {"en": "Guest", "es": "Invitado", "de": "Gast", "ja": "ゲスト", "zh": "访客"}, "Rôle :": {"en": "Role:", "es": "Rol:", "de": "Rolle:", "ja": "役割：", "zh": "角色："}, "JOUEUR": {"en": "PLAYER", "es": "JUGADOR", "de": "SPIELER", "ja": "プレイヤー", "zh": "玩家"}, "Formule :": {"en": "Plan:", "es": "Plan:", "de": "Tarif:", "ja": "プラン：", "zh": "方案："}, "Compte cloud": {"en": "Cloud account", "es": "Cuenta cloud", "de": "Cloud-Konto", "ja": "クラウドアカウント", "zh": "云账户"}, "Ton compte. Ton alliance.": {"en": "Your account. Your alliance.", "es": "Tu cuenta. Tu alianza.", "de": "Dein Konto. Deine Allianz.", "ja": "あなたのアカウント。あなたの同盟。", "zh": "你的账号。你的联盟。"}, "Ton copilote IA.": {"en": "Your AI copilot.", "es": "Tu copiloto IA.", "de": "Dein KI-Copilot.", "ja": "あなたのAIコパイロット。", "zh": "你的AI副驾驶。"}, "Compte cloud, sauvegarde multi-appareils, War Room, progression joueur, héros, copilote R5/R4, roster, groupes, VS et saison.": {"en": "Cloud account, multi-device backup, War Room, player progression, heroes, R5/R4 copilot, roster, groups, VS and season.", "es": "Cuenta cloud, copia multidispositivo, War Room, progreso, héroes, copiloto R5/R4, roster, grupos, VS y temporada.", "de": "Cloud-Konto, Geräte-Sync, War Room, Fortschritt, Helden, R5/R4-Copilot, Roster, Gruppen, VS und Saison.", "ja": "クラウドアカウント、複数端末バックアップ、War Room、進行、英雄、R5/R4支援、名簿、グループ、VS、シーズン。", "zh": "云账户、多设备备份、War Room、玩家进度、英雄、R5/R4 助手、名单、分组、VS 和赛季。"}, "🏠 Accueil": {"en": "🏠 Home", "es": "🏠 Inicio", "de": "🏠 Start", "ja": "🏠 ホーム", "zh": "🏠 首页"}, "🎮 Joueur": {"en": "🎮 Player", "es": "🎮 Jugador", "de": "🎮 Spieler", "ja": "🎮 プレイヤー", "zh": "🎮 玩家"}, "🧠 IA R5/R4": {"en": "🧠 R5/R4 AI", "es": "🧠 IA R5/R4", "de": "🧠 R5/R4 KI", "ja": "🧠 R5/R4 AI", "zh": "🧠 R5/R4 AI"}, "🌍 Saison": {"en": "🌍 Season", "es": "🌍 Temporada", "de": "🌍 Saison", "ja": "🌍 シーズン", "zh": "🌍 赛季"}, "🏠 Aujourd'hui avec WarBoost": {"en": "🏠 Today with WarBoost", "es": "🏠 Hoy con WarBoost", "de": "🏠 Heute mit WarBoost", "ja": "🏠 今日のWarBoost", "zh": "🏠 今日 WarBoost"}, "Un résumé rapide adapté à ton rôle, ton compte et ton alliance.": {"en": "A quick summary tailored to your role, account and alliance.", "es": "Un resumen rápido adaptado a tu rol, cuenta y alianza.", "de": "Eine schnelle Übersicht passend zu Rolle, Konto und Allianz.", "ja": "役割、アカウント、同盟に合わせたクイックサマリー。", "zh": "根据你的角色、账号和联盟生成的快速摘要。"}, "Formule": {"en": "Plan", "es": "Plan", "de": "Tarif", "ja": "プラン", "zh": "方案"}, "IA restante": {"en": "AI remaining", "es": "IA restante", "de": "KI übrig", "ja": "AI残り", "zh": "剩余AI"}, "Membres roster": {"en": "Roster members", "es": "Miembros roster", "de": "Roster-Mitglieder", "ja": "名簿メンバー", "zh": "名单成员"}, "Puissance compte": {"en": "Account power", "es": "Poder de cuenta", "de": "Kontostärke", "ja": "アカウント戦力", "zh": "账号战力"}, "Cloud": {"en": "Cloud", "es": "Cloud", "de": "Cloud", "ja": "クラウド", "zh": "云端"}, "🧠 Diagnostic intelligent V17": {"en": "🧠 Smart diagnosis V17", "es": "🧠 Diagnóstico inteligente V17", "de": "🧠 Intelligente Diagnose V17", "ja": "🧠 スマート診断 V17", "zh": "🧠 智能诊断 V17"}, "Profil complété": {"en": "Profile completed", "es": "Perfil completado", "de": "Profil vollständig", "ja": "プロフィール完成度", "zh": "资料完成度"}, "Force escouade 1": {"en": "Squad 1 power", "es": "Fuerza escuadrón 1", "de": "Trupp 1 Stärke", "ja": "第1部隊戦力", "zh": "1队战力"}, "État alliance": {"en": "Alliance status", "es": "Estado alianza", "de": "Allianzstatus", "ja": "同盟状態", "zh": "联盟状态"}, "À configurer": {"en": "To configure", "es": "Por configurar", "de": "Einrichten", "ja": "要設定", "zh": "待配置"}, "⚡ Plan d'action personnel": {"en": "⚡ Personal action plan", "es": "⚡ Plan de acción personal", "de": "⚡ Persönlicher Aktionsplan", "ja": "⚡ 個人アクションプラン", "zh": "⚡ 个人行动计划"}, "Réinitialiser": {"en": "Reset", "es": "Restablecer", "de": "Zurücksetzen", "ja": "リセット", "zh": "重置"}, "📊 Évolution du compte": {"en": "📊 Account progression", "es": "📊 Evolución de la cuenta", "de": "📊 Kontofortschritt", "ja": "📊 アカウント進行", "zh": "📊 账号进度"}, "Dernier relevé": {"en": "Last snapshot", "es": "Último registro", "de": "Letzter Stand", "ja": "最新記録", "zh": "最新记录"}, "Puissance": {"en": "Power", "es": "Poder", "de": "Stärke", "ja": "戦力", "zh": "战力"}, "Escouade 1": {"en": "Squad 1", "es": "Escuadrón 1", "de": "Trupp 1", "ja": "第1部隊", "zh": "1队"}, "📌 Enregistrer un relevé": {"en": "📌 Save snapshot", "es": "📌 Guardar registro", "de": "📌 Stand speichern", "ja": "📌 記録を保存", "zh": "📌 保存记录"}, "Voir l'historique": {"en": "View history", "es": "Ver historial", "de": "Verlauf ansehen", "ja": "履歴を見る", "zh": "查看历史"}, "📈 Trajectoire de progression": {"en": "📈 Progress trajectory", "es": "📈 Trayectoria de progreso", "de": "📈 Fortschrittsverlauf", "ja": "📈 進行軌道", "zh": "📈 成长轨迹"}, "Objectif à définir": {"en": "Goal to define", "es": "Objetivo por definir", "de": "Ziel festlegen", "ja": "目標未設定", "zh": "目标待设"}, "🛰️ Vue opérationnelle": {"en": "🛰️ Operations overview", "es": "🛰️ Vista operativa", "de": "🛰️ Einsatzübersicht", "ja": "🛰️ 作戦概要", "zh": "🛰️ 作战概览"}, "Prochaine opération": {"en": "Next operation", "es": "Próxima operación", "de": "Nächster Einsatz", "ja": "次の作戦", "zh": "下一次行动"}, "À définir": {"en": "To define", "es": "Por definir", "de": "Festzulegen", "ja": "未設定", "zh": "待定义"}, "Groupes préparés": {"en": "Prepared groups", "es": "Grupos preparados", "de": "Vorbereitete Gruppen", "ja": "準備済みグループ", "zh": "已准备分组"}, "Tâches ouvertes": {"en": "Open tasks", "es": "Tareas abiertas", "de": "Offene Aufgaben", "ja": "未完了タスク", "zh": "未完成任务"}, "Ouvrir le War Room": {"en": "Open War Room", "es": "Abrir War Room", "de": "War Room öffnen", "ja": "War Roomを開く", "zh": "打开 War Room"}, "🎯 Priorités suggérées": {"en": "🎯 Suggested priorities", "es": "🎯 Prioridades sugeridas", "de": "🎯 Empfohlene Prioritäten", "ja": "🎯 推奨優先事項", "zh": "🎯 建议优先级"}, "Ouvrir ma priorité": {"en": "Open my priority", "es": "Abrir mi prioridad", "de": "Meine Priorität öffnen", "ja": "優先事項を開く", "zh": "打开我的优先事项"}, "Actualiser": {"en": "Refresh", "es": "Actualizar", "de": "Aktualisieren", "ja": "更新", "zh": "刷新"}, "🕘 Historique IA récent": {"en": "🕘 Recent AI history", "es": "🕘 Historial IA reciente", "de": "🕘 Letzter KI-Verlauf", "ja": "🕘 最近のAI履歴", "zh": "🕘 最近AI历史"}, "Effacer": {"en": "Clear", "es": "Borrar", "de": "Löschen", "ja": "消去", "zh": "清除"}, "🎮 Analyse avancée du compte": {"en": "🎮 Advanced account analysis", "es": "🎮 Análisis avanzado de cuenta", "de": "🎮 Erweiterte Kontoanalyse", "ja": "🎮 高度なアカウント分析", "zh": "🎮 高级账号分析"}, "QG": {"en": "HQ", "es": "CG", "de": "HQ", "ja": "本部", "zh": "总部"}, "Puissance totale (M)": {"en": "Total power (M)", "es": "Poder total (M)", "de": "Gesamtstärke (M)", "ja": "総戦力 (M)", "zh": "总战力 (M)"}, "Puissance escouade 1 (M)": {"en": "Squad 1 power (M)", "es": "Poder escuadrón 1 (M)", "de": "Trupp 1 Stärke (M)", "ja": "第1部隊戦力 (M)", "zh": "1队战力 (M)"}, "Escouade principale": {"en": "Main squad", "es": "Escuadrón principal", "de": "Haupttrupp", "ja": "主力部隊", "zh": "主力队伍"}, "Avion": {"en": "Aircraft", "es": "Avión", "de": "Flugzeug", "ja": "航空機", "zh": "飞机"}, "Missile": {"en": "Missile", "es": "Misil", "de": "Rakete", "ja": "ミサイル", "zh": "导弹"}, "Niveau drone": {"en": "Drone level", "es": "Nivel dron", "de": "Drohnenlevel", "ja": "ドローンレベル", "zh": "无人机等级"}, "Technologie (%)": {"en": "Technology (%)", "es": "Tecnología (%)", "de": "Technologie (%)", "ja": "技術 (%)", "zh": "科技 (%)"}, "Équipement global (%)": {"en": "Overall gear (%)", "es": "Equipo global (%)", "de": "Gesamtausrüstung (%)", "ja": "総装備 (%)", "zh": "总体装备 (%)"}, "Objectif joueur": {"en": "Player goal", "es": "Objetivo jugador", "de": "Spielerziel", "ja": "プレイヤー目標", "zh": "玩家目标"}, "Puissance rapide": {"en": "Fast power", "es": "Poder rápido", "de": "Schnelle Stärke", "ja": "戦力を早く上げる", "zh": "快速提升战力"}, "Économie ressources": {"en": "Resource saving", "es": "Ahorro de recursos", "de": "Ressourcen sparen", "ja": "資源節約", "zh": "节省资源"}, "Budget de jeu": {"en": "Game budget", "es": "Presupuesto de juego", "de": "Spielbudget", "ja": "ゲーム予算", "zh": "游戏预算"}, "Petit budget": {"en": "Low budget", "es": "Presupuesto bajo", "de": "Kleines Budget", "ja": "少額課金", "zh": "小额预算"}, "Régulier": {"en": "Regular", "es": "Regular", "de": "Regelmäßig", "ja": "定期課金", "zh": "常规"}, "Compétitif": {"en": "Competitive", "es": "Competitivo", "de": "Wettbewerbsorientiert", "ja": "競争重視", "zh": "竞技型"}, "⭐ 5 héros principaux": {"en": "⭐ 5 main heroes", "es": "⭐ 5 héroes principales", "de": "⭐ 5 Haupthelden", "ja": "⭐ 主力英雄5人", "zh": "⭐ 5名主力英雄"}, "⭐ Préparation de l'escouade": {"en": "⭐ Squad readiness", "es": "⭐ Preparación del escuadrón", "de": "⭐ Truppbereitschaft", "ja": "⭐ 部隊準備度", "zh": "⭐ 队伍准备度"}, "⚡ Analyse rapide": {"en": "⚡ Quick analysis", "es": "⚡ Análisis rápido", "de": "⚡ Schnellanalyse", "ja": "⚡ クイック分析", "zh": "⚡ 快速分析"}, "✨ Analyse IA PRO": {"en": "✨ PRO AI analysis", "es": "✨ Análisis IA PRO", "de": "✨ PRO KI-Analyse", "ja": "✨ PRO AI分析", "zh": "✨ PRO AI分析"}, "🧠 Copilote IA R5 / R4": {"en": "🧠 R5 / R4 AI copilot", "es": "🧠 Copiloto IA R5 / R4", "de": "🧠 R5 / R4 KI-Copilot", "ja": "🧠 R5 / R4 AI支援", "zh": "🧠 R5 / R4 AI助手"}, "Alliance": {"en": "Alliance", "es": "Alianza", "de": "Allianz", "ja": "同盟", "zh": "联盟"}, "Serveur": {"en": "Server", "es": "Servidor", "de": "Server", "ja": "サーバー", "zh": "服务器"}, "Nombre de membres": {"en": "Member count", "es": "Número de miembros", "de": "Mitgliederzahl", "ja": "メンバー数", "zh": "成员数"}, "Objectif": {"en": "Objective", "es": "Objetivo", "de": "Ziel", "ja": "目標", "zh": "目标"}, "Guerre": {"en": "War", "es": "Guerra", "de": "Krieg", "ja": "戦争", "zh": "战争"}, "Développement": {"en": "Development", "es": "Desarrollo", "de": "Entwicklung", "ja": "育成", "zh": "发展"}, "Recrutement": {"en": "Recruitment", "es": "Reclutamiento", "de": "Rekrutierung", "ja": "募集", "zh": "招募"}, "Question / situation": {"en": "Question / situation", "es": "Pregunta / situación", "de": "Frage / Situation", "ja": "質問 / 状況", "zh": "问题 / 情况"}, "🛡️ Santé opérationnelle": {"en": "🛡️ Operational health", "es": "🛡️ Salud operativa", "de": "🛡️ Einsatzstatus", "ja": "🛡️ 作戦状態", "zh": "🛡️ 作战状态"}, "Puissance moyenne": {"en": "Average power", "es": "Poder medio", "de": "Durchschnittsstärke", "ja": "平均戦力", "zh": "平均战力"}, "Couverture leadership": {"en": "Leadership coverage", "es": "Cobertura de liderazgo", "de": "Führungsabdeckung", "ja": "リーダー配置率", "zh": "领导覆盖率"}, "🛰️ Centre d'opérations": {"en": "🛰️ Operations center", "es": "🛰️ Centro de operaciones", "de": "🛰️ Einsatzzentrale", "ja": "🛰️ 作戦センター", "zh": "🛰️ 作战中心"}, "Puissance roster": {"en": "Roster power", "es": "Poder roster", "de": "Roster-Stärke", "ja": "名簿戦力", "zh": "名单战力"}, "Top 10 du roster": {"en": "Roster Top 10", "es": "Top 10 del roster", "de": "Roster Top 10", "ja": "名簿トップ10", "zh": "名单前10"}, "Couverture R4/R5": {"en": "R4/R5 coverage", "es": "Cobertura R4/R5", "de": "R4/R5-Abdeckung", "ja": "R4/R5配置率", "zh": "R4/R5覆盖率"}, "Opération": {"en": "Operation", "es": "Operación", "de": "Einsatz", "ja": "作戦", "zh": "行动"}, "Date / heure": {"en": "Date / time", "es": "Fecha / hora", "de": "Datum / Uhrzeit", "ja": "日付 / 時刻", "zh": "日期 / 时间"}, "Défense": {"en": "Defense", "es": "Defensa", "de": "Verteidigung", "ja": "防衛", "zh": "防御"}, "Autre": {"en": "Other", "es": "Otro", "de": "Andere", "ja": "その他", "zh": "其他"}, "Groupes": {"en": "Groups", "es": "Grupos", "de": "Gruppen", "ja": "グループ", "zh": "分组"}, "Notes / consignes": {"en": "Notes / instructions", "es": "Notas / instrucciones", "de": "Notizen / Anweisungen", "ja": "メモ / 指示", "zh": "备注 / 指令"}, "💾 Enregistrer": {"en": "💾 Save", "es": "💾 Guardar", "de": "💾 Speichern", "ja": "💾 保存", "zh": "💾 保存"}, "⚖️ Équilibrer puissance + leaders": {"en": "⚖️ Balance power + leaders", "es": "⚖️ Equilibrar poder + líderes", "de": "⚖️ Stärke + Leader ausgleichen", "ja": "⚖️ 戦力 + リーダーを均等化", "zh": "⚖️ 平衡战力 + 领导"}, "📋 Copier le briefing": {"en": "📋 Copy briefing", "es": "📋 Copiar briefing", "de": "📋 Briefing kopieren", "ja": "📋 ブリーフィングをコピー", "zh": "📋 复制简报"}, "Écart entre groupes": {"en": "Gap between groups", "es": "Diferencia entre grupos", "de": "Abstand zwischen Gruppen", "ja": "グループ間差", "zh": "组间差距"}, "📋 Tâches R5/R4": {"en": "📋 R5/R4 tasks", "es": "📋 Tareas R5/R4", "de": "📋 R5/R4 Aufgaben", "ja": "📋 R5/R4タスク", "zh": "📋 R5/R4任务"}, "Non assigné": {"en": "Unassigned", "es": "Sin asignar", "de": "Nicht zugewiesen", "ja": "未割当", "zh": "未分配"}, "Ajouter": {"en": "Add", "es": "Añadir", "de": "Hinzufügen", "ja": "追加", "zh": "添加"}, "🧭 Tableau de bord": {"en": "🧭 Dashboard", "es": "🧭 Panel de control", "de": "🧭 Dashboard", "ja": "🧭 ダッシュボード", "zh": "🧭 仪表盘"}, "⚔️ Plan de guerre": {"en": "⚔️ War plan", "es": "⚔️ Plan de guerra", "de": "⚔️ Kriegsplan", "ja": "⚔️ 戦争計画", "zh": "⚔️ 战争计划"}, "👥 Répartir les R4": {"en": "👥 Assign R4s", "es": "👥 Repartir R4", "de": "👥 R4 verteilen", "ja": "👥 R4を配置", "zh": "👥 分配R4"}, "📢 Message alliance": {"en": "📢 Alliance message", "es": "📢 Mensaje de alianza", "de": "📢 Allianznachricht", "ja": "📢 同盟メッセージ", "zh": "📢 联盟消息"}, "📈 Rapport hebdo": {"en": "📈 Weekly report", "es": "📈 Informe semanal", "de": "📈 Wochenbericht", "ja": "📈 週間レポート", "zh": "📈 周报"}, "✨ Demander à l'IA": {"en": "✨ Ask AI", "es": "✨ Preguntar a la IA", "de": "✨ KI fragen", "ja": "✨ AIに質問", "zh": "✨ 询问AI"}, "⚡ Import rapide des membres": {"en": "⚡ Quick member import", "es": "⚡ Importación rápida de miembros", "de": "⚡ Mitglieder schnell importieren", "ja": "⚡ メンバー簡単インポート", "zh": "⚡ 快速导入成员"}, "Importer": {"en": "Import", "es": "Importar", "de": "Importieren", "ja": "インポート", "zh": "导入"}, "Effacer le roster": {"en": "Clear roster", "es": "Borrar roster", "de": "Roster löschen", "ja": "名簿を消去", "zh": "清空名单"}, "Copier le roster": {"en": "Copy roster", "es": "Copiar roster", "de": "Roster kopieren", "ja": "名簿をコピー", "zh": "复制名单"}, "Exporter CSV": {"en": "Export CSV", "es": "Exportar CSV", "de": "CSV exportieren", "ja": "CSV出力", "zh": "导出CSV"}, "Membres": {"en": "Members", "es": "Miembros", "de": "Mitglieder", "ja": "メンバー", "zh": "成员"}, "Puissance totale": {"en": "Total power", "es": "Poder total", "de": "Gesamtstärke", "ja": "総戦力", "zh": "总战力"}, "Tous les rangs": {"en": "All ranks", "es": "Todos los rangos", "de": "Alle Ränge", "ja": "全ランク", "zh": "所有等级"}, "Joueur": {"en": "Player", "es": "Jugador", "de": "Spieler", "ja": "プレイヤー", "zh": "玩家"}, "Rang": {"en": "Rank", "es": "Rango", "de": "Rang", "ja": "ランク", "zh": "等级"}, "🏆 VS Alliance": {"en": "🏆 Alliance VS", "es": "🏆 VS Alianza", "de": "🏆 Allianz VS", "ja": "🏆 同盟VS", "zh": "🏆 联盟VS"}, "Jour": {"en": "Day", "es": "Día", "de": "Tag", "ja": "日", "zh": "天"}, "Objectif de points": {"en": "Points goal", "es": "Objetivo de puntos", "de": "Punkteziel", "ja": "ポイント目標", "zh": "积分目标"}, "Contexte / ressources": {"en": "Context / resources", "es": "Contexto / recursos", "de": "Kontext / Ressourcen", "ja": "状況 / 資源", "zh": "情况 / 资源"}, "Plan rapide": {"en": "Quick plan", "es": "Plan rápido", "de": "Schnellplan", "ja": "クイックプラン", "zh": "快速计划"}, "🌍 Centre Saison": {"en": "🌍 Season center", "es": "🌍 Centro de temporada", "de": "🌍 Saison-Zentrale", "ja": "🌍 シーズンセンター", "zh": "🌍 赛季中心"}, "Saison suivante": {"en": "Next season", "es": "Próxima temporada", "de": "Nächste Saison", "ja": "次シーズン", "zh": "下一赛季"}, "Profession": {"en": "Profession", "es": "Profesión", "de": "Beruf", "ja": "職業", "zh": "职业"}, "Ingénieur": {"en": "Engineer", "es": "Ingeniero", "de": "Ingenieur", "ja": "エンジニア", "zh": "工程师"}, "Chef de guerre": {"en": "Warlord", "es": "Señor de la guerra", "de": "Kriegsherr", "ja": "ウォーロード", "zh": "战争领主"}, "Situation / objectif": {"en": "Situation / objective", "es": "Situación / objetivo", "de": "Situation / Ziel", "ja": "状況 / 目標", "zh": "情况 / 目标"}, "Conseil rapide": {"en": "Quick advice", "es": "Consejo rápido", "de": "Schneller Rat", "ja": "クイックアドバイス", "zh": "快速建议"}, "💎 WarBoost PRO": {"en": "💎 WarBoost PRO", "es": "💎 WarBoost PRO", "de": "💎 WarBoost PRO", "ja": "💎 WarBoost PRO", "zh": "💎 WarBoost PRO"}, "RECOMMANDÉ": {"en": "RECOMMENDED", "es": "RECOMENDADO", "de": "EMPFOHLEN", "ja": "おすすめ", "zh": "推荐"}, "Passer PRO — paiement bientôt": {"en": "Go PRO — payment soon", "es": "Pasar a PRO — pago pronto", "de": "PRO werden — Zahlung bald", "ja": "PROへ — 決済近日", "zh": "升级PRO — 支付即将上线"}, "☁️ Sauvegarde multi-appareils": {"en": "☁️ Multi-device backup", "es": "☁️ Copia multidispositivo", "de": "☁️ Geräteübergreifende Sicherung", "ja": "☁️ 複数端末バックアップ", "zh": "☁️ 多设备备份"}, "⚙️ Cloud à configurer": {"en": "⚙️ Cloud to configure", "es": "⚙️ Cloud por configurar", "de": "⚙️ Cloud einrichten", "ja": "⚙️ クラウド要設定", "zh": "⚙️ 云端待配置"}, "👤 Non connecté": {"en": "👤 Not signed in", "es": "👤 No conectado", "de": "👤 Nicht angemeldet", "ja": "👤 未ログイン", "zh": "👤 未登录"}, "💾 Jamais synchronisé": {"en": "💾 Never synced", "es": "💾 Nunca sincronizado", "de": "💾 Nie synchronisiert", "ja": "💾 未同期", "zh": "💾 从未同步"}, "☁️ Sauvegarder maintenant": {"en": "☁️ Save now", "es": "☁️ Guardar ahora", "de": "☁️ Jetzt sichern", "ja": "☁️ 今すぐ保存", "zh": "☁️ 立即保存"}, "📥 Restaurer depuis le cloud": {"en": "📥 Restore from cloud", "es": "📥 Restaurar desde cloud", "de": "📥 Aus Cloud wiederherstellen", "ja": "📥 クラウドから復元", "zh": "📥 从云端恢复"}, "Synchronisation automatique": {"en": "Automatic sync", "es": "Sincronización automática", "de": "Automatische Synchronisierung", "ja": "自動同期", "zh": "自动同步"}, "💾 Centre de données V17": {"en": "💾 Data center V17", "es": "💾 Centro de datos V17", "de": "💾 Datenzentrum V17", "ja": "💾 データセンター V17", "zh": "💾 数据中心 V17"}, "⬇️ Exporter mes données": {"en": "⬇️ Export my data", "es": "⬇️ Exportar mis datos", "de": "⬇️ Meine Daten exportieren", "ja": "⬇️ データをエクスポート", "zh": "⬇️ 导出我的数据"}, "⬆️ Importer une sauvegarde": {"en": "⬆️ Import a backup", "es": "⬆️ Importar copia", "de": "⬆️ Backup importieren", "ja": "⬆️ バックアップをインポート", "zh": "⬆️ 导入备份"}, "☁️ Compte WarBoost": {"en": "☁️ WarBoost Account", "es": "☁️ Cuenta WarBoost", "de": "☁️ WarBoost-Konto", "ja": "☁️ WarBoostアカウント", "zh": "☁️ WarBoost账号"}, "Crée un compte pour sauvegarder tes données WarBoost et les retrouver sur plusieurs appareils.": {"en": "Create an account to save your WarBoost data and access it on multiple devices.", "es": "Crea una cuenta para guardar tus datos de WarBoost y recuperarlos en varios dispositivos.", "de": "Erstelle ein Konto, um deine WarBoost-Daten zu sichern und auf mehreren Geräten zu nutzen.", "ja": "アカウントを作成してWarBoostデータを保存し、複数端末で利用できます。", "zh": "创建账号以保存 WarBoost 数据，并可在多台设备上使用。"}, "Pseudo": {"en": "Nickname", "es": "Apodo", "de": "Spielname", "ja": "ニックネーム", "zh": "昵称"}, "Rôle": {"en": "Role", "es": "Rol", "de": "Rolle", "ja": "役割", "zh": "角色"}, "E-mail": {"en": "Email", "es": "E-mail", "de": "E-Mail", "ja": "メール", "zh": "邮箱"}, "Mot de passe": {"en": "Password", "es": "Contraseña", "de": "Passwort", "ja": "パスワード", "zh": "密码"}, "Se connecter": {"en": "Sign in", "es": "Conectarse", "de": "Anmelden", "ja": "ログイン", "zh": "登录"}, "Créer mon compte": {"en": "Create my account", "es": "Crear mi cuenta", "de": "Konto erstellen", "ja": "アカウント作成", "zh": "创建账号"}, "Mot de passe oublié": {"en": "Forgot password", "es": "Contraseña olvidada", "de": "Passwort vergessen", "ja": "パスワードを忘れた", "zh": "忘记密码"}, "☁️ Sauvegarder": {"en": "☁️ Save", "es": "☁️ Guardar", "de": "☁️ Speichern", "ja": "☁️ 保存", "zh": "☁️ 保存"}, "📥 Restaurer": {"en": "📥 Restore", "es": "📥 Restaurar", "de": "📥 Wiederherstellen", "ja": "📥 復元", "zh": "📥 恢复"}, "Nouveau mot de passe": {"en": "New password", "es": "Nueva contraseña", "de": "Neues Passwort", "ja": "新しいパスワード", "zh": "新密码"}, "Mettre à jour le mot de passe": {"en": "Update password", "es": "Actualizar contraseña", "de": "Passwort aktualisieren", "ja": "パスワード更新", "zh": "更新密码"}, "Se déconnecter": {"en": "Sign out", "es": "Desconectarse", "de": "Abmelden", "ja": "ログアウト", "zh": "退出登录"}, "Fermer": {"en": "Close", "es": "Cerrar", "de": "Schließen", "ja": "閉じる", "zh": "关闭"}, "Jour 1": {"en": "Day 1", "es": "Día 1", "de": "Tag 1", "ja": "1日目", "zh": "第1天"}, "Jour 2": {"en": "Day 2", "es": "Día 2", "de": "Tag 2", "ja": "2日目", "zh": "第2天"}, "Jour 3": {"en": "Day 3", "es": "Día 3", "de": "Tag 3", "ja": "3日目", "zh": "第3天"}, "Jour 4": {"en": "Day 4", "es": "Día 4", "de": "Tag 4", "ja": "4日目", "zh": "第4天"}, "Jour 5": {"en": "Day 5", "es": "Día 5", "de": "Tag 5", "ja": "5日目", "zh": "第5天"}, "Jour 6": {"en": "Day 6", "es": "Día 6", "de": "Tag 6", "ja": "6日目", "zh": "第6天"}, "Saison 1": {"en": "Season 1", "es": "Temporada 1", "de": "Saison 1", "ja": "シーズン 1", "zh": "赛季 1"}, "Saison 2": {"en": "Season 2", "es": "Temporada 2", "de": "Saison 2", "ja": "シーズン 2", "zh": "赛季 2"}, "Saison 3": {"en": "Season 3", "es": "Temporada 3", "de": "Saison 3", "ja": "シーズン 3", "zh": "赛季 3"}, "Saison 4": {"en": "Season 4", "es": "Temporada 4", "de": "Saison 4", "ja": "シーズン 4", "zh": "赛季 4"}, "Saison 5": {"en": "Season 5", "es": "Temporada 5", "de": "Saison 5", "ja": "シーズン 5", "zh": "赛季 5"}, "Saison 6": {"en": "Season 6", "es": "Temporada 6", "de": "Saison 6", "ja": "シーズン 6", "zh": "赛季 6"}, "Accueil": {"en": "Home", "es": "Inicio", "de": "Start", "ja": "ホーム", "zh": "首页"}, "Saison": {"en": "Season", "es": "Temporada", "de": "Saison", "ja": "シーズン", "zh": "赛季"}, "🎮 JOUEUR": {"en": "🎮 PLAYER", "es": "🎮 JUGADOR", "de": "🎮 SPIELER", "ja": "🎮 プレイヤー", "zh": "🎮 玩家"}, "LOCAL": {"en": "LOCAL", "es": "LOCAL", "de": "LOKAL", "ja": "ローカル", "zh": "本地"}, "SYNC": {"en": "SYNC", "es": "SYNC", "de": "SYNC", "ja": "同期", "zh": "同步"}, "Cloud prêt": {"en": "Cloud ready", "es": "Cloud listo", "de": "Cloud bereit", "ja": "クラウド準備完了", "zh": "云端就绪"}, "☁️ Cloud prêt": {"en": "☁️ Cloud ready", "es": "☁️ Cloud listo", "de": "☁️ Cloud bereit", "ja": "☁️ クラウド準備完了", "zh": "☁️ 云端就绪"}, "Non connecté": {"en": "Not signed in", "es": "No conectado", "de": "Nicht angemeldet", "ja": "未ログイン", "zh": "未登录"}, "Connecté": {"en": "Signed in", "es": "Conectado", "de": "Angemeldet", "ja": "ログイン済み", "zh": "已登录"}, "Copié ✅": {"en": "Copied ✅", "es": "Copiado ✅", "de": "Kopiert ✅", "ja": "コピーしました ✅", "zh": "已复制 ✅"}, "Copie impossible": {"en": "Copy failed", "es": "No se pudo copiar", "de": "Kopieren fehlgeschlagen", "ja": "コピーできません", "zh": "复制失败"}, "Aucune réponse IA enregistrée pour le moment.": {"en": "No AI response saved yet.", "es": "Aún no hay respuestas IA guardadas.", "de": "Noch keine KI-Antwort gespeichert.", "ja": "保存されたAI回答はまだありません。", "zh": "尚未保存AI回复。"}, "Copier": {"en": "Copy", "es": "Copiar", "de": "Kopieren", "ja": "コピー", "zh": "复制"}, "Analyse joueur": {"en": "Player analysis", "es": "Análisis jugador", "de": "Spieleranalyse", "ja": "プレイヤー分析", "zh": "玩家分析"}, "Tableau de bord R5/R4": {"en": "R5/R4 dashboard", "es": "Panel R5/R4", "de": "R5/R4 Dashboard", "ja": "R5/R4 ダッシュボード", "zh": "R5/R4 仪表盘"}, "Plan de guerre": {"en": "War plan", "es": "Plan de guerra", "de": "Kriegsplan", "ja": "戦争計画", "zh": "战争计划"}, "Gestion R4": {"en": "R4 management", "es": "Gestión R4", "de": "R4-Verwaltung", "ja": "R4管理", "zh": "R4管理"}, "Message alliance": {"en": "Alliance message", "es": "Mensaje alianza", "de": "Allianznachricht", "ja": "同盟メッセージ", "zh": "联盟消息"}, "Rapport hebdo": {"en": "Weekly report", "es": "Informe semanal", "de": "Wochenbericht", "ja": "週間レポート", "zh": "周报"}, "Question R5/R4": {"en": "R5/R4 question", "es": "Pregunta R5/R4", "de": "R5/R4 Frage", "ja": "R5/R4質問", "zh": "R5/R4问题"}, "Plan VS": {"en": "VS plan", "es": "Plan VS", "de": "VS-Plan", "ja": "VS計画", "zh": "VS计划"}, "Plan saison": {"en": "Season plan", "es": "Plan temporada", "de": "Saisonplan", "ja": "シーズン計画", "zh": "赛季计划"}, "Piloter l'alliance": {"en": "Lead the alliance", "es": "Dirigir la alianza", "de": "Allianz führen", "ja": "同盟を指揮", "zh": "管理联盟"}, "Contrôler le roster": {"en": "Review the roster", "es": "Revisar el roster", "de": "Roster prüfen", "ja": "名簿を確認", "zh": "检查名单"}, "Utiliser le copilote IA": {"en": "Use the AI copilot", "es": "Usar el copiloto IA", "de": "KI-Copilot nutzen", "ja": "AIコパイロットを使う", "zh": "使用AI助手"}, "Préparer ton secteur R4": {"en": "Prepare your R4 sector", "es": "Preparar tu sector R4", "de": "R4-Bereich vorbereiten", "ja": "R4担当エリアを準備", "zh": "准备R4区域"}, "Préparer un message clair": {"en": "Prepare a clear message", "es": "Preparar un mensaje claro", "de": "Klare Nachricht vorbereiten", "ja": "明確なメッセージを準備", "zh": "准备清晰消息"}, "Anticiper VS / Saison": {"en": "Plan ahead for VS / Season", "es": "Anticipar VS / Temporada", "de": "VS / Saison vorausplanen", "ja": "VS / シーズンを先読み", "zh": "提前规划VS / 赛季"}, "Mettre à jour ton compte": {"en": "Update your account", "es": "Actualizar tu cuenta", "de": "Konto aktualisieren", "ja": "アカウントを更新", "zh": "更新账号"}, "Lancer l'analyse rapide": {"en": "Run quick analysis", "es": "Lanzar análisis rápido", "de": "Schnellanalyse starten", "ja": "クイック分析を実行", "zh": "运行快速分析"}, "Demander un plan IA": {"en": "Ask for an AI plan", "es": "Pedir un plan IA", "de": "KI-Plan anfordern", "ja": "AI計画を依頼", "zh": "请求AI计划"}, "Aucun héros renseigné.": {"en": "No hero entered.", "es": "Ningún héroe indicado.", "de": "Kein Held eingetragen.", "ja": "英雄が登録されていません。", "zh": "未填写英雄。"}, "Non renseigné": {"en": "Not set", "es": "No indicado", "de": "Nicht angegeben", "ja": "未設定", "zh": "未填写"}, "Aucune tâche ouverte": {"en": "No open task", "es": "Ninguna tarea abierta", "de": "Keine offene Aufgabe", "ja": "未完了タスクなし", "zh": "无未完成任务"}, "Aucune note": {"en": "No notes", "es": "Sin notas", "de": "Keine Notizen", "ja": "メモなし", "zh": "无备注"}, "Aucun groupe généré": {"en": "No group generated", "es": "Ningún grupo generado", "de": "Keine Gruppe erstellt", "ja": "グループ未生成", "zh": "未生成分组"}, "Générer les groupes": {"en": "Generate groups", "es": "Generar grupos", "de": "Gruppen erstellen", "ja": "グループ生成", "zh": "生成分组"}, "Chef": {"en": "Leader", "es": "Jefe", "de": "Leiter", "ja": "リーダー", "zh": "组长"}, "joueur(s)": {"en": "player(s)", "es": "jugador(es)", "de": "Spieler", "ja": "プレイヤー", "zh": "玩家"}, "membre(s)": {"en": "member(s)", "es": "miembro(s)", "de": "Mitglied(er)", "ja": "メンバー", "zh": "成员"}};
+const WB171_TRANSLATIONS={"Invité": {"en": "Guest", "es": "Invitado", "de": "Gast", "ja": "ゲスト", "zh": "访客"}, "Rôle :": {"en": "Role:", "es": "Rol:", "de": "Rolle:", "ja": "役割：", "zh": "角色："}, "JOUEUR": {"en": "PLAYER", "es": "JUGADOR", "de": "SPIELER", "ja": "プレイヤー", "zh": "玩家"}, "Formule :": {"en": "Plan:", "es": "Plan:", "de": "Tarif:", "ja": "プラン：", "zh": "方案："}, "Compte cloud": {"en": "Cloud account", "es": "Cuenta cloud", "de": "Cloud-Konto", "ja": "クラウドアカウント", "zh": "云账户"}, "Ton compte. Ton alliance.": {"en": "Your account. Your alliance.", "es": "Tu cuenta. Tu alianza.", "de": "Dein Konto. Deine Allianz.", "ja": "あなたのアカウント。あなたの同盟。", "zh": "你的账号。你的联盟。"}, "Ton copilote IA.": {"en": "Your AI copilot.", "es": "Tu copiloto IA.", "de": "Dein KI-Copilot.", "ja": "あなたのAIコパイロット。", "zh": "你的AI副驾驶。"}, "Compte cloud, abonnement PRO sécurisé, sauvegarde multi-appareils, War Room, progression joueur, héros, copilote R5/R4, roster, groupes, VS et saison.": {"en": "Cloud account, multi-device backup, War Room, player progression, heroes, R5/R4 copilot, roster, groups, VS and season.", "es": "Cuenta cloud, copia multidispositivo, War Room, progreso, héroes, copiloto R5/R4, roster, grupos, VS y temporada.", "de": "Cloud-Konto, Geräte-Sync, War Room, Fortschritt, Helden, R5/R4-Copilot, Roster, Gruppen, VS und Saison.", "ja": "クラウドアカウント、複数端末バックアップ、War Room、進行、英雄、R5/R4支援、名簿、グループ、VS、シーズン。", "zh": "云账户、多设备备份、War Room、玩家进度、英雄、R5/R4 助手、名单、分组、VS 和赛季。"}, "🏠 Accueil": {"en": "🏠 Home", "es": "🏠 Inicio", "de": "🏠 Start", "ja": "🏠 ホーム", "zh": "🏠 首页"}, "🎮 Joueur": {"en": "🎮 Player", "es": "🎮 Jugador", "de": "🎮 Spieler", "ja": "🎮 プレイヤー", "zh": "🎮 玩家"}, "🧠 IA R5/R4": {"en": "🧠 R5/R4 AI", "es": "🧠 IA R5/R4", "de": "🧠 R5/R4 KI", "ja": "🧠 R5/R4 AI", "zh": "🧠 R5/R4 AI"}, "🌍 Saison": {"en": "🌍 Season", "es": "🌍 Temporada", "de": "🌍 Saison", "ja": "🌍 シーズン", "zh": "🌍 赛季"}, "🏠 Aujourd'hui avec WarBoost": {"en": "🏠 Today with WarBoost", "es": "🏠 Hoy con WarBoost", "de": "🏠 Heute mit WarBoost", "ja": "🏠 今日のWarBoost", "zh": "🏠 今日 WarBoost"}, "Un résumé rapide adapté à ton rôle, ton compte et ton alliance.": {"en": "A quick summary tailored to your role, account and alliance.", "es": "Un resumen rápido adaptado a tu rol, cuenta y alianza.", "de": "Eine schnelle Übersicht passend zu Rolle, Konto und Allianz.", "ja": "役割、アカウント、同盟に合わせたクイックサマリー。", "zh": "根据你的角色、账号和联盟生成的快速摘要。"}, "Formule": {"en": "Plan", "es": "Plan", "de": "Tarif", "ja": "プラン", "zh": "方案"}, "IA restante": {"en": "AI remaining", "es": "IA restante", "de": "KI übrig", "ja": "AI残り", "zh": "剩余AI"}, "Membres roster": {"en": "Roster members", "es": "Miembros roster", "de": "Roster-Mitglieder", "ja": "名簿メンバー", "zh": "名单成员"}, "Puissance compte": {"en": "Account power", "es": "Poder de cuenta", "de": "Kontostärke", "ja": "アカウント戦力", "zh": "账号战力"}, "Cloud": {"en": "Cloud", "es": "Cloud", "de": "Cloud", "ja": "クラウド", "zh": "云端"}, "🧠 Diagnostic intelligent V17": {"en": "🧠 Smart diagnosis V17", "es": "🧠 Diagnóstico inteligente V17", "de": "🧠 Intelligente Diagnose V17", "ja": "🧠 スマート診断 V17", "zh": "🧠 智能诊断 V17"}, "Profil complété": {"en": "Profile completed", "es": "Perfil completado", "de": "Profil vollständig", "ja": "プロフィール完成度", "zh": "资料完成度"}, "Force escouade 1": {"en": "Squad 1 power", "es": "Fuerza escuadrón 1", "de": "Trupp 1 Stärke", "ja": "第1部隊戦力", "zh": "1队战力"}, "État alliance": {"en": "Alliance status", "es": "Estado alianza", "de": "Allianzstatus", "ja": "同盟状態", "zh": "联盟状态"}, "À configurer": {"en": "To configure", "es": "Por configurar", "de": "Einrichten", "ja": "要設定", "zh": "待配置"}, "⚡ Plan d'action personnel": {"en": "⚡ Personal action plan", "es": "⚡ Plan de acción personal", "de": "⚡ Persönlicher Aktionsplan", "ja": "⚡ 個人アクションプラン", "zh": "⚡ 个人行动计划"}, "Réinitialiser": {"en": "Reset", "es": "Restablecer", "de": "Zurücksetzen", "ja": "リセット", "zh": "重置"}, "📊 Évolution du compte": {"en": "📊 Account progression", "es": "📊 Evolución de la cuenta", "de": "📊 Kontofortschritt", "ja": "📊 アカウント進行", "zh": "📊 账号进度"}, "Dernier relevé": {"en": "Last snapshot", "es": "Último registro", "de": "Letzter Stand", "ja": "最新記録", "zh": "最新记录"}, "Puissance": {"en": "Power", "es": "Poder", "de": "Stärke", "ja": "戦力", "zh": "战力"}, "Escouade 1": {"en": "Squad 1", "es": "Escuadrón 1", "de": "Trupp 1", "ja": "第1部隊", "zh": "1队"}, "📌 Enregistrer un relevé": {"en": "📌 Save snapshot", "es": "📌 Guardar registro", "de": "📌 Stand speichern", "ja": "📌 記録を保存", "zh": "📌 保存记录"}, "Voir l'historique": {"en": "View history", "es": "Ver historial", "de": "Verlauf ansehen", "ja": "履歴を見る", "zh": "查看历史"}, "📈 Trajectoire de progression": {"en": "📈 Progress trajectory", "es": "📈 Trayectoria de progreso", "de": "📈 Fortschrittsverlauf", "ja": "📈 進行軌道", "zh": "📈 成长轨迹"}, "Objectif à définir": {"en": "Goal to define", "es": "Objetivo por definir", "de": "Ziel festlegen", "ja": "目標未設定", "zh": "目标待设"}, "🛰️ Vue opérationnelle": {"en": "🛰️ Operations overview", "es": "🛰️ Vista operativa", "de": "🛰️ Einsatzübersicht", "ja": "🛰️ 作戦概要", "zh": "🛰️ 作战概览"}, "Prochaine opération": {"en": "Next operation", "es": "Próxima operación", "de": "Nächster Einsatz", "ja": "次の作戦", "zh": "下一次行动"}, "À définir": {"en": "To define", "es": "Por definir", "de": "Festzulegen", "ja": "未設定", "zh": "待定义"}, "Groupes préparés": {"en": "Prepared groups", "es": "Grupos preparados", "de": "Vorbereitete Gruppen", "ja": "準備済みグループ", "zh": "已准备分组"}, "Tâches ouvertes": {"en": "Open tasks", "es": "Tareas abiertas", "de": "Offene Aufgaben", "ja": "未完了タスク", "zh": "未完成任务"}, "Ouvrir le War Room": {"en": "Open War Room", "es": "Abrir War Room", "de": "War Room öffnen", "ja": "War Roomを開く", "zh": "打开 War Room"}, "🎯 Priorités suggérées": {"en": "🎯 Suggested priorities", "es": "🎯 Prioridades sugeridas", "de": "🎯 Empfohlene Prioritäten", "ja": "🎯 推奨優先事項", "zh": "🎯 建议优先级"}, "Ouvrir ma priorité": {"en": "Open my priority", "es": "Abrir mi prioridad", "de": "Meine Priorität öffnen", "ja": "優先事項を開く", "zh": "打开我的优先事项"}, "Actualiser": {"en": "Refresh", "es": "Actualizar", "de": "Aktualisieren", "ja": "更新", "zh": "刷新"}, "🕘 Historique IA récent": {"en": "🕘 Recent AI history", "es": "🕘 Historial IA reciente", "de": "🕘 Letzter KI-Verlauf", "ja": "🕘 最近のAI履歴", "zh": "🕘 最近AI历史"}, "Effacer": {"en": "Clear", "es": "Borrar", "de": "Löschen", "ja": "消去", "zh": "清除"}, "🎮 Analyse avancée du compte": {"en": "🎮 Advanced account analysis", "es": "🎮 Análisis avanzado de cuenta", "de": "🎮 Erweiterte Kontoanalyse", "ja": "🎮 高度なアカウント分析", "zh": "🎮 高级账号分析"}, "QG": {"en": "HQ", "es": "CG", "de": "HQ", "ja": "本部", "zh": "总部"}, "Puissance totale (M)": {"en": "Total power (M)", "es": "Poder total (M)", "de": "Gesamtstärke (M)", "ja": "総戦力 (M)", "zh": "总战力 (M)"}, "Puissance escouade 1 (M)": {"en": "Squad 1 power (M)", "es": "Poder escuadrón 1 (M)", "de": "Trupp 1 Stärke (M)", "ja": "第1部隊戦力 (M)", "zh": "1队战力 (M)"}, "Escouade principale": {"en": "Main squad", "es": "Escuadrón principal", "de": "Haupttrupp", "ja": "主力部隊", "zh": "主力队伍"}, "Avion": {"en": "Aircraft", "es": "Avión", "de": "Flugzeug", "ja": "航空機", "zh": "飞机"}, "Missile": {"en": "Missile", "es": "Misil", "de": "Rakete", "ja": "ミサイル", "zh": "导弹"}, "Niveau drone": {"en": "Drone level", "es": "Nivel dron", "de": "Drohnenlevel", "ja": "ドローンレベル", "zh": "无人机等级"}, "Technologie (%)": {"en": "Technology (%)", "es": "Tecnología (%)", "de": "Technologie (%)", "ja": "技術 (%)", "zh": "科技 (%)"}, "Équipement global (%)": {"en": "Overall gear (%)", "es": "Equipo global (%)", "de": "Gesamtausrüstung (%)", "ja": "総装備 (%)", "zh": "总体装备 (%)"}, "Objectif joueur": {"en": "Player goal", "es": "Objetivo jugador", "de": "Spielerziel", "ja": "プレイヤー目標", "zh": "玩家目标"}, "Puissance rapide": {"en": "Fast power", "es": "Poder rápido", "de": "Schnelle Stärke", "ja": "戦力を早く上げる", "zh": "快速提升战力"}, "Économie ressources": {"en": "Resource saving", "es": "Ahorro de recursos", "de": "Ressourcen sparen", "ja": "資源節約", "zh": "节省资源"}, "Budget de jeu": {"en": "Game budget", "es": "Presupuesto de juego", "de": "Spielbudget", "ja": "ゲーム予算", "zh": "游戏预算"}, "Petit budget": {"en": "Low budget", "es": "Presupuesto bajo", "de": "Kleines Budget", "ja": "少額課金", "zh": "小额预算"}, "Régulier": {"en": "Regular", "es": "Regular", "de": "Regelmäßig", "ja": "定期課金", "zh": "常规"}, "Compétitif": {"en": "Competitive", "es": "Competitivo", "de": "Wettbewerbsorientiert", "ja": "競争重視", "zh": "竞技型"}, "⭐ 5 héros principaux": {"en": "⭐ 5 main heroes", "es": "⭐ 5 héroes principales", "de": "⭐ 5 Haupthelden", "ja": "⭐ 主力英雄5人", "zh": "⭐ 5名主力英雄"}, "⭐ Préparation de l'escouade": {"en": "⭐ Squad readiness", "es": "⭐ Preparación del escuadrón", "de": "⭐ Truppbereitschaft", "ja": "⭐ 部隊準備度", "zh": "⭐ 队伍准备度"}, "⚡ Analyse rapide": {"en": "⚡ Quick analysis", "es": "⚡ Análisis rápido", "de": "⚡ Schnellanalyse", "ja": "⚡ クイック分析", "zh": "⚡ 快速分析"}, "✨ Analyse IA PRO": {"en": "✨ PRO AI analysis", "es": "✨ Análisis IA PRO", "de": "✨ PRO KI-Analyse", "ja": "✨ PRO AI分析", "zh": "✨ PRO AI分析"}, "🧠 Copilote IA R5 / R4": {"en": "🧠 R5 / R4 AI copilot", "es": "🧠 Copiloto IA R5 / R4", "de": "🧠 R5 / R4 KI-Copilot", "ja": "🧠 R5 / R4 AI支援", "zh": "🧠 R5 / R4 AI助手"}, "Alliance": {"en": "Alliance", "es": "Alianza", "de": "Allianz", "ja": "同盟", "zh": "联盟"}, "Serveur": {"en": "Server", "es": "Servidor", "de": "Server", "ja": "サーバー", "zh": "服务器"}, "Nombre de membres": {"en": "Member count", "es": "Número de miembros", "de": "Mitgliederzahl", "ja": "メンバー数", "zh": "成员数"}, "Objectif": {"en": "Objective", "es": "Objetivo", "de": "Ziel", "ja": "目標", "zh": "目标"}, "Guerre": {"en": "War", "es": "Guerra", "de": "Krieg", "ja": "戦争", "zh": "战争"}, "Développement": {"en": "Development", "es": "Desarrollo", "de": "Entwicklung", "ja": "育成", "zh": "发展"}, "Recrutement": {"en": "Recruitment", "es": "Reclutamiento", "de": "Rekrutierung", "ja": "募集", "zh": "招募"}, "Question / situation": {"en": "Question / situation", "es": "Pregunta / situación", "de": "Frage / Situation", "ja": "質問 / 状況", "zh": "问题 / 情况"}, "🛡️ Santé opérationnelle": {"en": "🛡️ Operational health", "es": "🛡️ Salud operativa", "de": "🛡️ Einsatzstatus", "ja": "🛡️ 作戦状態", "zh": "🛡️ 作战状态"}, "Puissance moyenne": {"en": "Average power", "es": "Poder medio", "de": "Durchschnittsstärke", "ja": "平均戦力", "zh": "平均战力"}, "Couverture leadership": {"en": "Leadership coverage", "es": "Cobertura de liderazgo", "de": "Führungsabdeckung", "ja": "リーダー配置率", "zh": "领导覆盖率"}, "🛰️ Centre d'opérations": {"en": "🛰️ Operations center", "es": "🛰️ Centro de operaciones", "de": "🛰️ Einsatzzentrale", "ja": "🛰️ 作戦センター", "zh": "🛰️ 作战中心"}, "Puissance roster": {"en": "Roster power", "es": "Poder roster", "de": "Roster-Stärke", "ja": "名簿戦力", "zh": "名单战力"}, "Top 10 du roster": {"en": "Roster Top 10", "es": "Top 10 del roster", "de": "Roster Top 10", "ja": "名簿トップ10", "zh": "名单前10"}, "Couverture R4/R5": {"en": "R4/R5 coverage", "es": "Cobertura R4/R5", "de": "R4/R5-Abdeckung", "ja": "R4/R5配置率", "zh": "R4/R5覆盖率"}, "Opération": {"en": "Operation", "es": "Operación", "de": "Einsatz", "ja": "作戦", "zh": "行动"}, "Date / heure": {"en": "Date / time", "es": "Fecha / hora", "de": "Datum / Uhrzeit", "ja": "日付 / 時刻", "zh": "日期 / 时间"}, "Défense": {"en": "Defense", "es": "Defensa", "de": "Verteidigung", "ja": "防衛", "zh": "防御"}, "Autre": {"en": "Other", "es": "Otro", "de": "Andere", "ja": "その他", "zh": "其他"}, "Groupes": {"en": "Groups", "es": "Grupos", "de": "Gruppen", "ja": "グループ", "zh": "分组"}, "Notes / consignes": {"en": "Notes / instructions", "es": "Notas / instrucciones", "de": "Notizen / Anweisungen", "ja": "メモ / 指示", "zh": "备注 / 指令"}, "💾 Enregistrer": {"en": "💾 Save", "es": "💾 Guardar", "de": "💾 Speichern", "ja": "💾 保存", "zh": "💾 保存"}, "⚖️ Équilibrer puissance + leaders": {"en": "⚖️ Balance power + leaders", "es": "⚖️ Equilibrar poder + líderes", "de": "⚖️ Stärke + Leader ausgleichen", "ja": "⚖️ 戦力 + リーダーを均等化", "zh": "⚖️ 平衡战力 + 领导"}, "📋 Copier le briefing": {"en": "📋 Copy briefing", "es": "📋 Copiar briefing", "de": "📋 Briefing kopieren", "ja": "📋 ブリーフィングをコピー", "zh": "📋 复制简报"}, "Écart entre groupes": {"en": "Gap between groups", "es": "Diferencia entre grupos", "de": "Abstand zwischen Gruppen", "ja": "グループ間差", "zh": "组间差距"}, "📋 Tâches R5/R4": {"en": "📋 R5/R4 tasks", "es": "📋 Tareas R5/R4", "de": "📋 R5/R4 Aufgaben", "ja": "📋 R5/R4タスク", "zh": "📋 R5/R4任务"}, "Non assigné": {"en": "Unassigned", "es": "Sin asignar", "de": "Nicht zugewiesen", "ja": "未割当", "zh": "未分配"}, "Ajouter": {"en": "Add", "es": "Añadir", "de": "Hinzufügen", "ja": "追加", "zh": "添加"}, "🧭 Tableau de bord": {"en": "🧭 Dashboard", "es": "🧭 Panel de control", "de": "🧭 Dashboard", "ja": "🧭 ダッシュボード", "zh": "🧭 仪表盘"}, "⚔️ Plan de guerre": {"en": "⚔️ War plan", "es": "⚔️ Plan de guerra", "de": "⚔️ Kriegsplan", "ja": "⚔️ 戦争計画", "zh": "⚔️ 战争计划"}, "👥 Répartir les R4": {"en": "👥 Assign R4s", "es": "👥 Repartir R4", "de": "👥 R4 verteilen", "ja": "👥 R4を配置", "zh": "👥 分配R4"}, "📢 Message alliance": {"en": "📢 Alliance message", "es": "📢 Mensaje de alianza", "de": "📢 Allianznachricht", "ja": "📢 同盟メッセージ", "zh": "📢 联盟消息"}, "📈 Rapport hebdo": {"en": "📈 Weekly report", "es": "📈 Informe semanal", "de": "📈 Wochenbericht", "ja": "📈 週間レポート", "zh": "📈 周报"}, "✨ Demander à l'IA": {"en": "✨ Ask AI", "es": "✨ Preguntar a la IA", "de": "✨ KI fragen", "ja": "✨ AIに質問", "zh": "✨ 询问AI"}, "⚡ Import rapide des membres": {"en": "⚡ Quick member import", "es": "⚡ Importación rápida de miembros", "de": "⚡ Mitglieder schnell importieren", "ja": "⚡ メンバー簡単インポート", "zh": "⚡ 快速导入成员"}, "Importer": {"en": "Import", "es": "Importar", "de": "Importieren", "ja": "インポート", "zh": "导入"}, "Effacer le roster": {"en": "Clear roster", "es": "Borrar roster", "de": "Roster löschen", "ja": "名簿を消去", "zh": "清空名单"}, "Copier le roster": {"en": "Copy roster", "es": "Copiar roster", "de": "Roster kopieren", "ja": "名簿をコピー", "zh": "复制名单"}, "Exporter CSV": {"en": "Export CSV", "es": "Exportar CSV", "de": "CSV exportieren", "ja": "CSV出力", "zh": "导出CSV"}, "Membres": {"en": "Members", "es": "Miembros", "de": "Mitglieder", "ja": "メンバー", "zh": "成员"}, "Puissance totale": {"en": "Total power", "es": "Poder total", "de": "Gesamtstärke", "ja": "総戦力", "zh": "总战力"}, "Tous les rangs": {"en": "All ranks", "es": "Todos los rangos", "de": "Alle Ränge", "ja": "全ランク", "zh": "所有等级"}, "Joueur": {"en": "Player", "es": "Jugador", "de": "Spieler", "ja": "プレイヤー", "zh": "玩家"}, "Rang": {"en": "Rank", "es": "Rango", "de": "Rang", "ja": "ランク", "zh": "等级"}, "🏆 VS Alliance": {"en": "🏆 Alliance VS", "es": "🏆 VS Alianza", "de": "🏆 Allianz VS", "ja": "🏆 同盟VS", "zh": "🏆 联盟VS"}, "Jour": {"en": "Day", "es": "Día", "de": "Tag", "ja": "日", "zh": "天"}, "Objectif de points": {"en": "Points goal", "es": "Objetivo de puntos", "de": "Punkteziel", "ja": "ポイント目標", "zh": "积分目标"}, "Contexte / ressources": {"en": "Context / resources", "es": "Contexto / recursos", "de": "Kontext / Ressourcen", "ja": "状況 / 資源", "zh": "情况 / 资源"}, "Plan rapide": {"en": "Quick plan", "es": "Plan rápido", "de": "Schnellplan", "ja": "クイックプラン", "zh": "快速计划"}, "🌍 Centre Saison": {"en": "🌍 Season center", "es": "🌍 Centro de temporada", "de": "🌍 Saison-Zentrale", "ja": "🌍 シーズンセンター", "zh": "🌍 赛季中心"}, "Saison suivante": {"en": "Next season", "es": "Próxima temporada", "de": "Nächste Saison", "ja": "次シーズン", "zh": "下一赛季"}, "Profession": {"en": "Profession", "es": "Profesión", "de": "Beruf", "ja": "職業", "zh": "职业"}, "Ingénieur": {"en": "Engineer", "es": "Ingeniero", "de": "Ingenieur", "ja": "エンジニア", "zh": "工程师"}, "Chef de guerre": {"en": "Warlord", "es": "Señor de la guerra", "de": "Kriegsherr", "ja": "ウォーロード", "zh": "战争领主"}, "Situation / objectif": {"en": "Situation / objective", "es": "Situación / objetivo", "de": "Situation / Ziel", "ja": "状況 / 目標", "zh": "情况 / 目标"}, "Conseil rapide": {"en": "Quick advice", "es": "Consejo rápido", "de": "Schneller Rat", "ja": "クイックアドバイス", "zh": "快速建议"}, "💎 WarBoost PRO": {"en": "💎 WarBoost PRO", "es": "💎 WarBoost PRO", "de": "💎 WarBoost PRO", "ja": "💎 WarBoost PRO", "zh": "💎 WarBoost PRO"}, "RECOMMANDÉ": {"en": "RECOMMENDED", "es": "RECOMENDADO", "de": "EMPFOHLEN", "ja": "おすすめ", "zh": "推荐"}, "Passer PRO — paiement bientôt": {"en": "Go PRO — payment soon", "es": "Pasar a PRO — pago pronto", "de": "PRO werden — Zahlung bald", "ja": "PROへ — 決済近日", "zh": "升级PRO — 支付即将上线"}, "☁️ Sauvegarde multi-appareils": {"en": "☁️ Multi-device backup", "es": "☁️ Copia multidispositivo", "de": "☁️ Geräteübergreifende Sicherung", "ja": "☁️ 複数端末バックアップ", "zh": "☁️ 多设备备份"}, "⚙️ Cloud à configurer": {"en": "⚙️ Cloud to configure", "es": "⚙️ Cloud por configurar", "de": "⚙️ Cloud einrichten", "ja": "⚙️ クラウド要設定", "zh": "⚙️ 云端待配置"}, "👤 Non connecté": {"en": "👤 Not signed in", "es": "👤 No conectado", "de": "👤 Nicht angemeldet", "ja": "👤 未ログイン", "zh": "👤 未登录"}, "💾 Jamais synchronisé": {"en": "💾 Never synced", "es": "💾 Nunca sincronizado", "de": "💾 Nie synchronisiert", "ja": "💾 未同期", "zh": "💾 从未同步"}, "☁️ Sauvegarder maintenant": {"en": "☁️ Save now", "es": "☁️ Guardar ahora", "de": "☁️ Jetzt sichern", "ja": "☁️ 今すぐ保存", "zh": "☁️ 立即保存"}, "📥 Restaurer depuis le cloud": {"en": "📥 Restore from cloud", "es": "📥 Restaurar desde cloud", "de": "📥 Aus Cloud wiederherstellen", "ja": "📥 クラウドから復元", "zh": "📥 从云端恢复"}, "Synchronisation automatique": {"en": "Automatic sync", "es": "Sincronización automática", "de": "Automatische Synchronisierung", "ja": "自動同期", "zh": "自动同步"}, "💾 Centre de données V17": {"en": "💾 Data center V17", "es": "💾 Centro de datos V17", "de": "💾 Datenzentrum V17", "ja": "💾 データセンター V17", "zh": "💾 数据中心 V17"}, "⬇️ Exporter mes données": {"en": "⬇️ Export my data", "es": "⬇️ Exportar mis datos", "de": "⬇️ Meine Daten exportieren", "ja": "⬇️ データをエクスポート", "zh": "⬇️ 导出我的数据"}, "⬆️ Importer une sauvegarde": {"en": "⬆️ Import a backup", "es": "⬆️ Importar copia", "de": "⬆️ Backup importieren", "ja": "⬆️ バックアップをインポート", "zh": "⬆️ 导入备份"}, "☁️ Compte WarBoost": {"en": "☁️ WarBoost Account", "es": "☁️ Cuenta WarBoost", "de": "☁️ WarBoost-Konto", "ja": "☁️ WarBoostアカウント", "zh": "☁️ WarBoost账号"}, "Crée un compte pour sauvegarder tes données WarBoost et les retrouver sur plusieurs appareils.": {"en": "Create an account to save your WarBoost data and access it on multiple devices.", "es": "Crea una cuenta para guardar tus datos de WarBoost y recuperarlos en varios dispositivos.", "de": "Erstelle ein Konto, um deine WarBoost-Daten zu sichern und auf mehreren Geräten zu nutzen.", "ja": "アカウントを作成してWarBoostデータを保存し、複数端末で利用できます。", "zh": "创建账号以保存 WarBoost 数据，并可在多台设备上使用。"}, "Pseudo": {"en": "Nickname", "es": "Apodo", "de": "Spielname", "ja": "ニックネーム", "zh": "昵称"}, "Rôle": {"en": "Role", "es": "Rol", "de": "Rolle", "ja": "役割", "zh": "角色"}, "E-mail": {"en": "Email", "es": "E-mail", "de": "E-Mail", "ja": "メール", "zh": "邮箱"}, "Mot de passe": {"en": "Password", "es": "Contraseña", "de": "Passwort", "ja": "パスワード", "zh": "密码"}, "Se connecter": {"en": "Sign in", "es": "Conectarse", "de": "Anmelden", "ja": "ログイン", "zh": "登录"}, "Créer mon compte": {"en": "Create my account", "es": "Crear mi cuenta", "de": "Konto erstellen", "ja": "アカウント作成", "zh": "创建账号"}, "Mot de passe oublié": {"en": "Forgot password", "es": "Contraseña olvidada", "de": "Passwort vergessen", "ja": "パスワードを忘れた", "zh": "忘记密码"}, "☁️ Sauvegarder": {"en": "☁️ Save", "es": "☁️ Guardar", "de": "☁️ Speichern", "ja": "☁️ 保存", "zh": "☁️ 保存"}, "📥 Restaurer": {"en": "📥 Restore", "es": "📥 Restaurar", "de": "📥 Wiederherstellen", "ja": "📥 復元", "zh": "📥 恢复"}, "Nouveau mot de passe": {"en": "New password", "es": "Nueva contraseña", "de": "Neues Passwort", "ja": "新しいパスワード", "zh": "新密码"}, "Mettre à jour le mot de passe": {"en": "Update password", "es": "Actualizar contraseña", "de": "Passwort aktualisieren", "ja": "パスワード更新", "zh": "更新密码"}, "Se déconnecter": {"en": "Sign out", "es": "Desconectarse", "de": "Abmelden", "ja": "ログアウト", "zh": "退出登录"}, "Fermer": {"en": "Close", "es": "Cerrar", "de": "Schließen", "ja": "閉じる", "zh": "关闭"}, "Jour 1": {"en": "Day 1", "es": "Día 1", "de": "Tag 1", "ja": "1日目", "zh": "第1天"}, "Jour 2": {"en": "Day 2", "es": "Día 2", "de": "Tag 2", "ja": "2日目", "zh": "第2天"}, "Jour 3": {"en": "Day 3", "es": "Día 3", "de": "Tag 3", "ja": "3日目", "zh": "第3天"}, "Jour 4": {"en": "Day 4", "es": "Día 4", "de": "Tag 4", "ja": "4日目", "zh": "第4天"}, "Jour 5": {"en": "Day 5", "es": "Día 5", "de": "Tag 5", "ja": "5日目", "zh": "第5天"}, "Jour 6": {"en": "Day 6", "es": "Día 6", "de": "Tag 6", "ja": "6日目", "zh": "第6天"}, "Saison 1": {"en": "Season 1", "es": "Temporada 1", "de": "Saison 1", "ja": "シーズン 1", "zh": "赛季 1"}, "Saison 2": {"en": "Season 2", "es": "Temporada 2", "de": "Saison 2", "ja": "シーズン 2", "zh": "赛季 2"}, "Saison 3": {"en": "Season 3", "es": "Temporada 3", "de": "Saison 3", "ja": "シーズン 3", "zh": "赛季 3"}, "Saison 4": {"en": "Season 4", "es": "Temporada 4", "de": "Saison 4", "ja": "シーズン 4", "zh": "赛季 4"}, "Saison 5": {"en": "Season 5", "es": "Temporada 5", "de": "Saison 5", "ja": "シーズン 5", "zh": "赛季 5"}, "Saison 6": {"en": "Season 6", "es": "Temporada 6", "de": "Saison 6", "ja": "シーズン 6", "zh": "赛季 6"}, "Accueil": {"en": "Home", "es": "Inicio", "de": "Start", "ja": "ホーム", "zh": "首页"}, "Saison": {"en": "Season", "es": "Temporada", "de": "Saison", "ja": "シーズン", "zh": "赛季"}, "🎮 JOUEUR": {"en": "🎮 PLAYER", "es": "🎮 JUGADOR", "de": "🎮 SPIELER", "ja": "🎮 プレイヤー", "zh": "🎮 玩家"}, "LOCAL": {"en": "LOCAL", "es": "LOCAL", "de": "LOKAL", "ja": "ローカル", "zh": "本地"}, "SYNC": {"en": "SYNC", "es": "SYNC", "de": "SYNC", "ja": "同期", "zh": "同步"}, "Cloud prêt": {"en": "Cloud ready", "es": "Cloud listo", "de": "Cloud bereit", "ja": "クラウド準備完了", "zh": "云端就绪"}, "☁️ Cloud prêt": {"en": "☁️ Cloud ready", "es": "☁️ Cloud listo", "de": "☁️ Cloud bereit", "ja": "☁️ クラウド準備完了", "zh": "☁️ 云端就绪"}, "Non connecté": {"en": "Not signed in", "es": "No conectado", "de": "Nicht angemeldet", "ja": "未ログイン", "zh": "未登录"}, "Connecté": {"en": "Signed in", "es": "Conectado", "de": "Angemeldet", "ja": "ログイン済み", "zh": "已登录"}, "Copié ✅": {"en": "Copied ✅", "es": "Copiado ✅", "de": "Kopiert ✅", "ja": "コピーしました ✅", "zh": "已复制 ✅"}, "Copie impossible": {"en": "Copy failed", "es": "No se pudo copiar", "de": "Kopieren fehlgeschlagen", "ja": "コピーできません", "zh": "复制失败"}, "Aucune réponse IA enregistrée pour le moment.": {"en": "No AI response saved yet.", "es": "Aún no hay respuestas IA guardadas.", "de": "Noch keine KI-Antwort gespeichert.", "ja": "保存されたAI回答はまだありません。", "zh": "尚未保存AI回复。"}, "Copier": {"en": "Copy", "es": "Copiar", "de": "Kopieren", "ja": "コピー", "zh": "复制"}, "Analyse joueur": {"en": "Player analysis", "es": "Análisis jugador", "de": "Spieleranalyse", "ja": "プレイヤー分析", "zh": "玩家分析"}, "Tableau de bord R5/R4": {"en": "R5/R4 dashboard", "es": "Panel R5/R4", "de": "R5/R4 Dashboard", "ja": "R5/R4 ダッシュボード", "zh": "R5/R4 仪表盘"}, "Plan de guerre": {"en": "War plan", "es": "Plan de guerra", "de": "Kriegsplan", "ja": "戦争計画", "zh": "战争计划"}, "Gestion R4": {"en": "R4 management", "es": "Gestión R4", "de": "R4-Verwaltung", "ja": "R4管理", "zh": "R4管理"}, "Message alliance": {"en": "Alliance message", "es": "Mensaje alianza", "de": "Allianznachricht", "ja": "同盟メッセージ", "zh": "联盟消息"}, "Rapport hebdo": {"en": "Weekly report", "es": "Informe semanal", "de": "Wochenbericht", "ja": "週間レポート", "zh": "周报"}, "Question R5/R4": {"en": "R5/R4 question", "es": "Pregunta R5/R4", "de": "R5/R4 Frage", "ja": "R5/R4質問", "zh": "R5/R4问题"}, "Plan VS": {"en": "VS plan", "es": "Plan VS", "de": "VS-Plan", "ja": "VS計画", "zh": "VS计划"}, "Plan saison": {"en": "Season plan", "es": "Plan temporada", "de": "Saisonplan", "ja": "シーズン計画", "zh": "赛季计划"}, "Piloter l'alliance": {"en": "Lead the alliance", "es": "Dirigir la alianza", "de": "Allianz führen", "ja": "同盟を指揮", "zh": "管理联盟"}, "Contrôler le roster": {"en": "Review the roster", "es": "Revisar el roster", "de": "Roster prüfen", "ja": "名簿を確認", "zh": "检查名单"}, "Utiliser le copilote IA": {"en": "Use the AI copilot", "es": "Usar el copiloto IA", "de": "KI-Copilot nutzen", "ja": "AIコパイロットを使う", "zh": "使用AI助手"}, "Préparer ton secteur R4": {"en": "Prepare your R4 sector", "es": "Preparar tu sector R4", "de": "R4-Bereich vorbereiten", "ja": "R4担当エリアを準備", "zh": "准备R4区域"}, "Préparer un message clair": {"en": "Prepare a clear message", "es": "Preparar un mensaje claro", "de": "Klare Nachricht vorbereiten", "ja": "明確なメッセージを準備", "zh": "准备清晰消息"}, "Anticiper VS / Saison": {"en": "Plan ahead for VS / Season", "es": "Anticipar VS / Temporada", "de": "VS / Saison vorausplanen", "ja": "VS / シーズンを先読み", "zh": "提前规划VS / 赛季"}, "Mettre à jour ton compte": {"en": "Update your account", "es": "Actualizar tu cuenta", "de": "Konto aktualisieren", "ja": "アカウントを更新", "zh": "更新账号"}, "Lancer l'analyse rapide": {"en": "Run quick analysis", "es": "Lanzar análisis rápido", "de": "Schnellanalyse starten", "ja": "クイック分析を実行", "zh": "运行快速分析"}, "Demander un plan IA": {"en": "Ask for an AI plan", "es": "Pedir un plan IA", "de": "KI-Plan anfordern", "ja": "AI計画を依頼", "zh": "请求AI计划"}, "Aucun héros renseigné.": {"en": "No hero entered.", "es": "Ningún héroe indicado.", "de": "Kein Held eingetragen.", "ja": "英雄が登録されていません。", "zh": "未填写英雄。"}, "Non renseigné": {"en": "Not set", "es": "No indicado", "de": "Nicht angegeben", "ja": "未設定", "zh": "未填写"}, "Aucune tâche ouverte": {"en": "No open task", "es": "Ninguna tarea abierta", "de": "Keine offene Aufgabe", "ja": "未完了タスクなし", "zh": "无未完成任务"}, "Aucune note": {"en": "No notes", "es": "Sin notas", "de": "Keine Notizen", "ja": "メモなし", "zh": "无备注"}, "Aucun groupe généré": {"en": "No group generated", "es": "Ningún grupo generado", "de": "Keine Gruppe erstellt", "ja": "グループ未生成", "zh": "未生成分组"}, "Générer les groupes": {"en": "Generate groups", "es": "Generar grupos", "de": "Gruppen erstellen", "ja": "グループ生成", "zh": "生成分组"}, "Chef": {"en": "Leader", "es": "Jefe", "de": "Leiter", "ja": "リーダー", "zh": "组长"}, "joueur(s)": {"en": "player(s)", "es": "jugador(es)", "de": "Spieler", "ja": "プレイヤー", "zh": "玩家"}, "membre(s)": {"en": "member(s)", "es": "miembro(s)", "de": "Mitglied(er)", "ja": "メンバー", "zh": "成员"}, "💳 Passer PRO": {"en": "💳 Go PRO", "es": "💳 Pasar a PRO", "de": "💳 PRO werden", "ja": "💳 PROへ", "zh": "💳 升级PRO"}, "⚙️ Gérer l'abonnement": {"en": "⚙️ Manage subscription", "es": "⚙️ Gestionar suscripción", "de": "⚙️ Abo verwalten", "ja": "⚙️ サブスク管理", "zh": "⚙️ 管理订阅"}, "Formule actuelle": {"en": "Current plan", "es": "Plan actual", "de": "Aktueller Tarif", "ja": "現在のプラン", "zh": "当前方案"}, "Statut": {"en": "Status", "es": "Estado", "de": "Status", "ja": "ステータス", "zh": "状态"}, "Renouvellement": {"en": "Renewal", "es": "Renovación", "de": "Verlängerung", "ja": "更新日", "zh": "续订"}, "⚙️ Paiement à configurer": {"en": "⚙️ Billing to configure", "es": "⚙️ Pago por configurar", "de": "⚙️ Zahlung einrichten", "ja": "⚙️ 決済要設定", "zh": "⚙️ 支付待配置"}, "✅ Paiement prêt": {"en": "✅ Billing ready", "es": "✅ Pago listo", "de": "✅ Zahlung bereit", "ja": "✅ 決済準備完了", "zh": "✅ 支付就绪"}, "Paiement sécurisé par Stripe.": {"en": "Secure payment by Stripe.", "es": "Pago seguro con Stripe.", "de": "Sichere Zahlung mit Stripe.", "ja": "Stripeによる安全な決済。", "zh": "Stripe 安全支付。"}, "Bientôt": {"en": "Soon", "es": "Pronto", "de": "Bald", "ja": "近日", "zh": "即将推出"}, "Abonnement actif": {"en": "Active subscription", "es": "Suscripción activa", "de": "Aktives Abo", "ja": "有効なサブスクリプション", "zh": "订阅有效"}, "Aucun abonnement": {"en": "No subscription", "es": "Sin suscripción", "de": "Kein Abo", "ja": "サブスクリプションなし", "zh": "无订阅"}, "Annulation programmée": {"en": "Cancellation scheduled", "es": "Cancelación programada", "de": "Kündigung geplant", "ja": "解約予定", "zh": "已计划取消"}};
 const WB171_PLACEHOLDERS={"Ton pseudo": {"en": "Your nickname", "es": "Tu apodo", "de": "Dein Spielname", "ja": "ニックネーム", "zh": "你的昵称"}, "ton@email.fr": {"en": "you@email.com", "es": "tu@email.com", "de": "du@email.de", "ja": "you@email.com", "zh": "you@email.com"}, "6 caractères minimum": {"en": "6 characters minimum", "es": "6 caracteres mínimo", "de": "Mindestens 6 Zeichen", "ja": "6文字以上", "zh": "至少6个字符"}, "Nouveau mot de passe": {"en": "New password", "es": "Nueva contraseña", "de": "Neues Passwort", "ja": "新しいパスワード", "zh": "新密码"}, "Ex : préparer les groupes pour 20h": {"en": "E.g. prepare groups for 8 PM", "es": "Ej.: preparar grupos para las 20h", "de": "Z. B. Gruppen für 20 Uhr vorbereiten", "ja": "例：20時のグループを準備", "zh": "例如：准备20点的分组"}, "Rechercher un joueur…": {"en": "Search player…", "es": "Buscar jugador…", "de": "Spieler suchen…", "ja": "プレイヤー検索…", "zh": "搜索玩家…"}};
 const WB171_SUPPORTED=["fr","en","es","de","ja","zh"];
 function wb171T(key,lang=wb171Language){
@@ -1630,11 +1687,10 @@ function renderCloudUI(){
   if(logged){
     wb12Account.name=display;
     wb12Account.role=meta.game_role||wb12Account.role||"player";
-    wb12Account.plan="free";
     directSetItem("wb12_account",JSON.stringify(wb12Account));
     if($("accountName")) $("accountName").textContent=wb12Account.name;
     if($("roleName")) $("roleName").textContent=roleLabel(wb12Account.role);
-    if($("planName")) $("planName").textContent="FREE";
+    if($("planName")) $("planName").textContent=(wb12Account.plan||"free").toUpperCase();
   }
 }
 async function initCloud(){
@@ -1654,6 +1710,7 @@ async function initCloud(){
       if(event==="PASSWORD_RECOVERY"){wb17RecoveryMode=true;openAccount()}
       if(event==="SIGNED_OUT")wb17RecoveryMode=false;
       renderCloudUI();
+      if(typeof refreshBilling==="function")refreshBilling();
     });
     renderCloudUI();
   }catch(e){
@@ -1684,7 +1741,7 @@ async function cloudRegister(){
   });
   if(error){cloudSetStatus(error.message,"err");return}
   wb12Account.name=c.name;wb12Account.role=c.role;wb12Account.plan="free";saveWB12Account();
-  wb17Session=data?.session||null;renderAccount();
+  wb17Session=data?.session||null;renderAccount();if(wb17Session)refreshBilling();
   cloudSetStatus(wb17Session?"Compte créé et connecté ✅":"Compte créé. Vérifie ton e-mail pour confirmer l’inscription ✅","ok");
 }
 async function cloudLogin(){
@@ -1694,13 +1751,13 @@ async function cloudLogin(){
   cloudSetStatus("Connexion…","");
   const {data,error}=await wb17Supabase.auth.signInWithPassword({email:c.email,password:c.password});
   if(error){cloudSetStatus(error.message,"err");return}
-  wb17Session=data?.session||null;renderAccount();cloudSetStatus("Connecté à WarBoost Cloud ✅","ok");
+  wb17Session=data?.session||null;renderAccount();refreshBilling();cloudSetStatus("Connecté à WarBoost Cloud ✅","ok");
 }
 async function cloudLogout(){
   if(!requireCloud())return;
   const {error}=await wb17Supabase.auth.signOut();
   if(error){cloudSetStatus(error.message,"err");return}
-  wb17Session=null;renderCloudUI();cloudSetStatus("Déconnecté du cloud. Les données locales restent sur cet appareil.","ok");
+  wb17Session=null;applyBillingState({plan:"free",status:"inactive",customer:false,used:0,limit:WB18_FREE_LIMIT,remaining:WB18_FREE_LIMIT,current_period_end:null});renderCloudUI();cloudSetStatus("Déconnecté du cloud. Les données locales restent sur cet appareil.","ok");
 }
 async function cloudResetPassword(){
   if(!requireCloud())return;
@@ -1762,6 +1819,153 @@ function toggleCloudAutoSync(on){
   cloudSetStatus(on?"Synchronisation automatique activée ✅":"Synchronisation automatique désactivée.","ok");
 }
 
+
+const WB18_FREE_LIMIT=2;
+const WB18_PRO_LIMIT=50;
+let wb18BillingConfigured=false;
+let wb18PriceLabel="4,99 € / mois";
+let wb18Billing={
+  plan:"free",status:"inactive",customer:false,cancel_at_period_end:false,
+  current_period_end:null,used:0,limit:WB18_FREE_LIMIT,remaining:WB18_FREE_LIMIT
+};
+
+function billingAuthHeaders(extra={}){
+  const token=wb17Session?.access_token;
+  return {...extra,...(token?{Authorization:`Bearer ${token}`}:{})};
+}
+function formatBillingDate(v){
+  if(!v)return "—";
+  const d=new Date(v);
+  if(Number.isNaN(d.getTime()))return "—";
+  return d.toLocaleDateString();
+}
+function billingStatusText(){
+  const s=String(wb18Billing.status||"inactive");
+  if(wb18Billing.plan==="pro" && (s==="active"||s==="trialing")){
+    return wb18Billing.cancel_at_period_end?wb171T("Annulation programmée"):wb171T("Abonnement actif");
+  }
+  if(s==="past_due")return "PAST DUE";
+  if(s==="unpaid")return "UNPAID";
+  if(s==="canceled")return "CANCELED";
+  return wb171T("Aucun abonnement");
+}
+function applyBillingState(data={}){
+  wb18Billing={...wb18Billing,...data};
+  wb18Billing.plan=wb18Billing.plan==="pro"?"pro":"free";
+  wb18Billing.limit=Number(wb18Billing.limit||(wb18Billing.plan==="pro"?WB18_PRO_LIMIT:WB18_FREE_LIMIT));
+  wb18Billing.used=Number(wb18Billing.used||0);
+  wb18Billing.remaining=Math.max(0,Number(wb18Billing.remaining ?? (wb18Billing.limit-wb18Billing.used)));
+
+  wb12Account.plan=wb18Billing.plan;
+  wb12Account.used=wb18Billing.used;
+  wb12Account.usageDay=todayKey();
+  directSetItem("wb12_account",JSON.stringify(wb12Account));
+  renderBillingUI();
+}
+function renderBillingUI(){
+  const isPro=wb18Billing.plan==="pro";
+  const plan=isPro?"PRO":"FREE";
+  const status=billingStatusText();
+  const renewal=formatBillingDate(wb18Billing.current_period_end);
+  if($("planName"))$("planName").textContent=plan;
+  if($("quotaText"))$("quotaText").textContent=`${wb18Billing.remaining}/${wb18Billing.limit}`;
+  if($("quotaFill"))$("quotaFill").style.width=`${Math.round((wb18Billing.remaining/Math.max(1,wb18Billing.limit))*100)}%`;
+
+  if($("billingConfigPill")){
+    $("billingConfigPill").textContent=wb18BillingConfigured?wb171T("✅ Paiement prêt"):wb171T("⚙️ Paiement à configurer");
+    $("billingConfigPill").className="billingPill "+(wb18BillingConfigured?"ok":"warn");
+  }
+  if($("billingPlanPill")){
+    $("billingPlanPill").textContent=(isPro?"💎 ":"🆓 ")+plan;
+    $("billingPlanPill").className="billingPill "+(isPro?"pro":"");
+  }
+  if($("billingPlanLabel"))$("billingPlanLabel").textContent=plan;
+  if($("billingStatusLabel"))$("billingStatusLabel").textContent=status;
+  if($("billingRenewalLabel"))$("billingRenewalLabel").textContent=renewal;
+  if($("billingPanel"))$("billingPanel").classList.toggle("pro",isPro);
+  if($("proPriceLabel"))$("proPriceLabel").textContent=wb18PriceLabel;
+
+  const canUpgrade=wb18BillingConfigured && !!wb17Session && !isPro;
+  ["upgradeProBtn","accountUpgradeBtn"].forEach(id=>{const e=$(id);if(e){e.disabled=!canUpgrade;e.style.display=isPro?"none":""}});
+  ["manageBillingBtn","accountManageBtn"].forEach(id=>{const e=$(id);if(e)e.style.display=(wb17Session&&wb18Billing.customer)?"":"none"});
+
+  if($("accountBillingPlan")){
+    $("accountBillingPlan").textContent=(isPro?"💎 ":"🆓 ")+plan;
+    $("accountBillingPlan").className="billingPill "+(isPro?"pro":"");
+  }
+  if($("accountBillingStatus")){
+    $("accountBillingStatus").textContent=status;
+    $("accountBillingStatus").className="billingPill "+(isPro?"ok":"");
+  }
+  if(typeof wb171RefreshFixedUI==="function")wb171RefreshFixedUI(wb171Language);
+}
+async function initBilling(){
+  try{
+    const r=await fetch("/api/billing-config",{cache:"no-store"});
+    const cfg=await r.json().catch(()=>({}));
+    wb18BillingConfigured=!!cfg.configured;
+    wb18PriceLabel=cfg.priceLabel||wb18PriceLabel;
+  }catch{
+    wb18BillingConfigured=false;
+  }
+  renderBillingUI();
+
+  const qs=new URLSearchParams(location.search);
+  if(qs.get("billing")==="success"){
+    if($("billingStatus")){$("billingStatus").textContent="Paiement validé. Vérification de l'abonnement…";$("billingStatus").className="status ok"}
+    history.replaceState({},document.title,location.pathname);
+    setTimeout(()=>refreshBilling(),1200);
+  }else if(qs.get("billing")==="cancel"){
+    if($("billingStatus")){$("billingStatus").textContent="Paiement annulé."; $("billingStatus").className="status"}
+    history.replaceState({},document.title,location.pathname);
+  }
+  if(wb17Session)await refreshBilling();
+}
+async function refreshBilling(){
+  if(!wb17Session){
+    applyBillingState({plan:"free",status:"inactive",customer:false,used:0,limit:WB18_FREE_LIMIT,remaining:WB18_FREE_LIMIT,current_period_end:null});
+    return;
+  }
+  try{
+    const r=await fetch("/api/billing-status",{headers:billingAuthHeaders(),cache:"no-store"});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data.error||`Erreur ${r.status}`);
+    wb18BillingConfigured=data.billingConfigured ?? wb18BillingConfigured;
+    if(data.priceLabel)wb18PriceLabel=data.priceLabel;
+    applyBillingState(data);
+  }catch(e){
+    console.warn("Billing status",e);
+    renderBillingUI();
+  }
+}
+async function startProCheckout(){
+  if(!wb17Session){openAccount();cloudSetStatus("Connecte-toi d'abord pour passer PRO.","err");return}
+  if(!wb18BillingConfigured){if($("billingStatus")){$("billingStatus").textContent="Stripe n'est pas encore configuré sur Vercel."; $("billingStatus").className="status err"}return}
+  if($("billingStatus")){$("billingStatus").textContent="Ouverture du paiement sécurisé…";$("billingStatus").className="status"}
+  try{
+    const r=await fetch("/api/create-checkout-session",{method:"POST",headers:billingAuthHeaders({"Content-Type":"application/json"}),body:"{}"});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data.error||`Erreur ${r.status}`);
+    if(!data.url)throw new Error("URL de paiement absente.");
+    location.href=data.url;
+  }catch(e){
+    if($("billingStatus")){$("billingStatus").textContent=e.message;$("billingStatus").className="status err"}
+  }
+}
+async function openBillingPortal(){
+  if(!wb17Session){openAccount();return}
+  try{
+    const r=await fetch("/api/create-portal-session",{method:"POST",headers:billingAuthHeaders({"Content-Type":"application/json"}),body:"{}"});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data.error||`Erreur ${r.status}`);
+    if(!data.url)throw new Error("Portail de facturation indisponible.");
+    location.href=data.url;
+  }catch(e){
+    if($("billingStatus")){$("billingStatus").textContent=e.message;$("billingStatus").className="status err"}
+    cloudSetStatus(e.message,"err");
+  }
+}
+
 function playerData(){
   const heroes=[];
   for(let i=1;i<=5;i++)heroes.push({
@@ -1796,18 +2000,27 @@ function localPlayerAnalysis(){
 
 async function ai(action,context,resultId,statusId){
   const result=$(resultId),status=$(statusId);
-  if(wb11Remaining()<=0){
-    result.innerHTML=`<div class="lockMsg">🔒 Quota IA atteint pour la formule ${(wb12Account.plan||"free").toUpperCase()}. Le quota FREE du jour est atteint. La formule PRO sera activée uniquement après mise en place du paiement sécurisé.</div>`;
-    status.textContent="Aucun crédit IA V16.1 disponible.";status.className="status err";return;
+  if(!wb17Session){
+    result.innerHTML=`<div class="lockMsg">🔐 Connecte un compte WarBoost pour utiliser le copilote IA.</div>`;
+    status.textContent="Compte cloud requis.";status.className="status err";return;
+  }
+  if(wb18Billing.remaining<=0){
+    result.innerHTML=`<div class="lockMsg">🔒 Quota IA atteint pour la formule ${(wb18Billing.plan||"free").toUpperCase()}.</div>`;
+    status.textContent="Quota IA du jour atteint.";status.className="status err";return;
   }
   result.textContent="IA en cours…";status.textContent="";
   try{
-    const r=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,context,language:$("language").value})});
+    const r=await fetch("/api/ai",{
+      method:"POST",
+      headers:billingAuthHeaders({"Content-Type":"application/json"}),
+      body:JSON.stringify({action,context,language:$("language").value})
+    });
     const data=await r.json().catch(()=>({}));
+    if(data.usage)applyBillingState({...data.usage,status:wb18Billing.status,customer:wb18Billing.customer,current_period_end:wb18Billing.current_period_end,cancel_at_period_end:wb18Billing.cancel_at_period_end});
     if(!r.ok)throw new Error(data.error||`Erreur ${r.status}`);
     result.innerHTML=markdownToHtml(data.text||"Aucun résultat.");
     status.textContent="Réponse IA générée ✅";status.className="status ok";
-    pushAIHistory(action,data.text||"Aucun résultat.");consumeAI();
+    pushAIHistory(action,data.text||"Aucun résultat.");
   }catch(e){
     result.textContent="Impossible de contacter le copilote IA.";
     status.textContent=e.message;status.className="status err";
@@ -1908,8 +2121,8 @@ function load(){
   renderRoster();localVS();
 }
 resetDemoQuotaIfNeeded();load();loadOperationFields();renderAccount();refreshDashboard();renderAIHistory();renderHeroReadiness();refreshSnapshotSummary();renderAllianceHealth();renderGoalProgress();fillTaskOwners();renderCommandTasks();renderWarRoom();
-initCloud();
 initLanguage();
+initCloud().then(()=>initBilling());
 ["qg","power","squadPower","squad","drone","droneLevel","tech","gear","playerGoal","spendProfile","goalPower","goalSquad","goalDrone"].forEach(id=>$(id)?.addEventListener("change",()=>{saveProfile();refreshDashboard();renderHeroReadiness();renderGoalProgress()}));
 for(let i=1;i<=5;i++)["heroName","heroLevel","heroStars","heroWeapon","heroGear"].forEach(k=>$(k+i)?.addEventListener("change",()=>{saveProfile();renderHeroReadiness();renderMissions()}));
 
