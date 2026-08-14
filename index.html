@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V15.2</title>
+<title>WarBoost V16</title>
 <style>
 :root{
   --bg:#07111f;--panel:#101a2a;--panel2:#0a1422;--line:#2b3c57;
@@ -207,12 +207,54 @@ td input,td select{margin:0;padding:8px}
 }
 .aiMarkdown blockquote p{margin:0}
 
+
+/* ===== V16 • WAR ROOM ===== */
+.v16Panel{
+  background:linear-gradient(180deg,#12223a,#091321);
+  border:1px solid #3c5f86;
+  border-radius:18px;
+  padding:16px;
+  margin-top:14px;
+  box-shadow:0 14px 34px #0003;
+}
+.v16Kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}
+.v16Kpi{background:#08111f;border:1px solid #2a405f;border-radius:14px;padding:12px}
+.v16Kpi small{display:block;color:var(--muted);margin-bottom:5px}
+.v16Kpi b{font-size:20px}
+.opGrid{display:grid;grid-template-columns:1.3fr 1fr 1fr 140px;gap:9px;margin-top:12px}
+.warAlert{border-left:4px solid var(--gold);background:#101c2d;border-radius:10px;padding:10px 12px;margin-top:10px;color:#dbe6f4}
+.warAlert.good{border-left-color:var(--green)}
+.warGroup{
+  background:#08111f;border:1px solid #2a405f;border-radius:14px;
+  padding:0;margin-top:9px;overflow:hidden
+}
+.warGroup summary{
+  list-style:none;cursor:pointer;padding:12px 13px;display:flex;
+  align-items:center;justify-content:space-between;gap:10px;font-weight:850
+}
+.warGroup summary::-webkit-details-marker{display:none}
+.warGroupBody{border-top:1px solid #20334f;padding:10px 11px 12px}
+.warGroupMeta{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px}
+.warChip{display:inline-flex;border:1px solid #355071;border-radius:999px;padding:4px 8px;color:#cbd7e6;font-size:12px}
+.rosterTools{display:grid;grid-template-columns:1fr 180px;gap:8px;margin:10px 0}
+.homeWarGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:10px}
+.homeWarTile{background:#08111f;border:1px solid #2b405e;border-radius:13px;padding:11px}
+.homeWarTile small{display:block;color:var(--muted);margin-bottom:4px}
+.homeWarTile b{font-size:17px}
+.briefPreview{white-space:pre-wrap;background:#07101c;border:1px solid #29415f;border-radius:13px;padding:12px;margin-top:10px;color:#dce6f3}
+@media(max-width:820px){
+  .v16Kpis{grid-template-columns:repeat(2,1fr)}
+  .opGrid{grid-template-columns:1fr}
+  .rosterTools{grid-template-columns:1fr}
+  .homeWarGrid{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V15.2</em></button>
-  <span class="proBadge">🛠️ V15.2 • STABLE ENGINE</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V16</em></button>
+  <span class="proBadge">🛰️ V16 • WAR ROOM</span>
   <select id="language" class="lang">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -230,9 +272,9 @@ td input,td select{margin:0;padding:8px}
 </div>
 
 <section class="hero">
-  <div class="eyebrow">WARBOOST V15.2 • STABLE ENGINE</div>
+  <div class="eyebrow">WARBOOST V16 • WAR ROOM</div>
   <h1>Ton compte. Ton alliance. <span style="color:var(--red)">Ton copilote IA.</span></h1>
-  <p>Mission Control personnalisé, progression joueur, héros, copilote R5/R4, roster, VS et saison.</p>
+  <p>War Room personnalisé, progression joueur, héros, copilote R5/R4, roster, groupes, VS et saison.</p>
 </section>
 
 <nav class="tabs" style="grid-template-columns:repeat(6,1fr)">
@@ -249,7 +291,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card">
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
       <div>
-        <div class="eyebrow">V15.2 • STABLE ENGINE</div>
+        <div class="eyebrow">V16 • WAR ROOM</div>
         <h2 style="margin:6px 0">🏠 Aujourd'hui avec WarBoost</h2>
         <p class="muted" style="margin:0">Un résumé rapide adapté à ton rôle, ton compte et ton alliance.</p>
       </div>
@@ -261,17 +303,17 @@ td input,td select{margin:0;padding:8px}
       <div class="kpi"><small>Membres roster</small><b id="homeRoster">0</b></div>
       <div class="kpi"><small>Puissance compte</small><b id="homePower">175M</b></div>
     </div>
-    <h3>🧠 Diagnostic intelligent V15.2</h3>
+    <h3>🧠 Diagnostic intelligent V16</h3>
     <div class="v13Strip">
       <div class="v13Metric"><small>Profil complété</small><strong id="v13Profile">0%</strong></div>
       <div class="v13Metric"><small>Force escouade 1</small><strong id="v13Squad">—</strong></div>
       <div class="v13Metric"><small>État alliance</small><strong id="v13Alliance">À configurer</strong></div>
     </div>
-    <div id="v13Alert" class="smartAlert">Renseigne ton profil pour activer le diagnostic V15.2.</div>
+    <div id="v13Alert" class="smartAlert">Renseigne ton profil pour activer le diagnostic V16.</div>
     <div class="v14Panel">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
         <div>
-          <div class="eyebrow">V15.2 • MISSION DU JOUR</div>
+          <div class="eyebrow">V16 • MISSION DU JOUR</div>
           <h3 style="margin:5px 0">⚡ Plan d'action personnel</h3>
           <p class="muted" style="margin:0">WarBoost transforme tes données en tâches courtes à cocher.</p>
         </div>
@@ -281,7 +323,7 @@ td input,td select{margin:0;padding:8px}
     </div>
 
     <div class="v14Panel">
-      <div class="eyebrow">V15.2 • PROGRESSION</div>
+      <div class="eyebrow">V16 • PROGRESSION</div>
       <h3 style="margin:5px 0">📊 Évolution du compte</h3>
       <div class="v14Grid">
         <div class="v14Tile"><small>Dernier relevé</small><b id="snapDate">—</b></div>
@@ -298,7 +340,7 @@ td input,td select{margin:0;padding:8px}
 
 
     <div class="v15Panel">
-      <div class="eyebrow">V15.2 • OBJECTIFS 30 JOURS</div>
+      <div class="eyebrow">V16 • OBJECTIFS 30 JOURS</div>
       <h3 style="margin:5px 0">📈 Trajectoire de progression</h3>
       <p class="muted" style="margin:0">Compare tes valeurs actuelles aux objectifs que tu définis dans l'onglet Joueur.</p>
       <div class="goalGrid">
@@ -308,7 +350,23 @@ td input,td select{margin:0;padding:8px}
       </div>
       <div style="margin-top:12px" class="scoreWrap">
         <div class="scoreRing" id="readinessRing"><span id="readinessScore">0%</span></div>
-        <div><b>Score de préparation V15.2</b><div class="muted" id="readinessText">Complète ton profil pour calculer le score.</div></div>
+        <div><b>Score de préparation V16</b><div class="muted" id="readinessText">Complète ton profil pour calculer le score.</div></div>
+      </div>
+    </div>
+
+
+    <div class="v16Panel">
+      <div class="eyebrow">V16 • WAR ROOM</div>
+      <h3 style="margin:5px 0">🛰️ Vue opérationnelle</h3>
+      <p class="muted" style="margin:0">Résumé local de la prochaine opération, des groupes et des tâches R5/R4.</p>
+      <div class="homeWarGrid">
+        <div class="homeWarTile"><small>Prochaine opération</small><b id="homeOpName">À définir</b></div>
+        <div class="homeWarTile"><small>Groupes préparés</small><b id="homeOpGroups">0</b></div>
+        <div class="homeWarTile"><small>Tâches ouvertes</small><b id="homeOpenTasks">0</b></div>
+      </div>
+      <div id="homeWarAlert" class="warAlert">Configure le War Room dans l'onglet R5/R4.</div>
+      <div class="actions">
+        <button class="btn secondary" onclick="showPage('command')">Ouvrir le War Room</button>
       </div>
     </div>
 
@@ -352,11 +410,11 @@ td input,td select{margin:0;padding:8px}
     <div id="heroes"></div>
 
     <div class="v14Panel">
-      <div class="eyebrow">V15.2 • HÉROS</div>
+      <div class="eyebrow">V16 • HÉROS</div>
       <h3 style="margin:5px 0">⭐ Préparation de l'escouade</h3>
       <p class="muted">Classement local basé uniquement sur les niveaux, étoiles, arme exclusive et équipement que tu renseignes.</p>
       <div id="heroReadiness"></div>
-      <div id="heroFocus" class="focusBox">Renseigne tes héros pour activer le focus V15.2.</div>
+      <div id="heroFocus" class="focusBox">Renseigne tes héros pour activer le focus V16.</div>
     </div>
     <div class="actions">
       <button class="btn" onclick="localPlayerAnalysis()">⚡ Analyse rapide</button>
@@ -382,7 +440,7 @@ td input,td select{margin:0;padding:8px}
     </label>
 
     <div class="v14Panel">
-      <div class="eyebrow">V15.2 • ALLIANCE HEALTH</div>
+      <div class="eyebrow">V16 • ALLIANCE HEALTH</div>
       <h3 style="margin:5px 0">🛡️ Santé opérationnelle</h3>
       <div class="v14Grid">
         <div class="v14Tile"><small>Membres roster</small><b id="ahMembers">0</b></div>
@@ -393,8 +451,56 @@ td input,td select{margin:0;padding:8px}
       <div id="allianceAlerts" class="alertList"></div>
     </div>
 
+
+    <div class="v16Panel">
+      <div class="eyebrow">V16 • WAR ROOM</div>
+      <h3 style="margin:5px 0">🛰️ Centre d'opérations</h3>
+      <p class="muted" style="margin:0">Prépare une opération, équilibre le roster en groupes et génère un briefing sans consommer de quota IA.</p>
+
+      <div class="v16Kpis">
+        <div class="v16Kpi"><small>Puissance roster</small><b id="wrTotalPower">0</b></div>
+        <div class="v16Kpi"><small>Top 10 du roster</small><b id="wrTop10">0%</b></div>
+        <div class="v16Kpi"><small>Couverture R4/R5</small><b id="wrLeaderRatio">0%</b></div>
+        <div class="v16Kpi"><small>Tâches ouvertes</small><b id="wrOpenTasks">0</b></div>
+      </div>
+
+      <div id="warRoomAlert" class="warAlert">Importe le roster pour activer le War Room.</div>
+
+      <div class="opGrid">
+        <label>Opération<input id="opName" placeholder="Ex : Guerre serveur"></label>
+        <label>Date / heure<input id="opAt" type="datetime-local"></label>
+        <label>Objectif
+          <select id="opObjective">
+            <option>Guerre</option>
+            <option>Défense</option>
+            <option>VS Alliance</option>
+            <option>Saison</option>
+            <option>Rally</option>
+            <option>Autre</option>
+          </select>
+        </label>
+        <label>Groupes
+          <select id="opGroupCount">
+            <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+            <option value="5" selected>5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+          </select>
+        </label>
+      </div>
+      <label style="margin-top:10px">Notes / consignes
+        <textarea id="opNotes" placeholder="Ex : départ 20h, garder un groupe en réserve, priorité aux membres présents..."></textarea>
+      </label>
+      <div class="actions">
+        <button class="btn secondary" onclick="saveOperation()">💾 Enregistrer</button>
+        <button class="btn" onclick="buildWarRoomGroups()">⚖️ Générer les groupes</button>
+        <button class="btn gold" onclick="copyOperationBrief()">📋 Copier le briefing</button>
+      </div>
+      <div id="operationStatus" class="status"></div>
+      <div id="groupResult"></div>
+      <div id="briefPreview" class="briefPreview">Le briefing opérationnel apparaîtra ici.</div>
+    </div>
+
     <div class="v15Panel">
-      <div class="eyebrow">V15.2 • COMMAND BOARD</div>
+      <div class="eyebrow">V16 • COMMAND BOARD</div>
       <h3 style="margin:5px 0">📋 Tâches R5/R4</h3>
       <p class="muted" style="margin:0">Assigne localement une tâche à un responsable du roster. Les données restent sur cet appareil.</p>
       <div class="taskComposer">
@@ -429,6 +535,21 @@ td input,td select{margin:0;padding:8px}
     <div class="rosterActions">
       <button class="miniBtn" onclick="copyRoster()">Copier le roster</button>
       <button class="miniBtn" onclick="exportRosterCSV()">Exporter CSV</button>
+    </div>
+
+    <div class="rosterKpis">
+      <div class="kpi"><small>Membres</small><b id="rkMembers">0</b></div>
+      <div class="kpi"><small>R4 / R5</small><b id="rkLeaders">0</b></div>
+      <div class="kpi"><small>Puissance totale</small><b id="rkPower">0</b></div>
+      <div class="kpi"><small>Puissance moyenne</small><b id="rkAvg">0</b></div>
+    </div>
+
+    <div class="rosterTools">
+      <input id="rosterSearch" placeholder="🔎 Rechercher un joueur" oninput="renderRoster()">
+      <select id="rosterFilter" onchange="renderRoster()">
+        <option value="">Tous les rangs</option>
+        <option>R5</option><option>R4</option><option>R3</option><option>R2</option><option>R1</option>
+      </select>
     </div>
     <div id="rosterStatus" class="status"></div>
     <div class="tableWrap">
@@ -477,7 +598,7 @@ td input,td select{margin:0;padding:8px}
 <section id="page-pro" class="page">
   <div class="card">
     <h2>💎 WarBoost PRO</h2>
-    <p class="muted">V15.2 conserve le mode compte et les quotas IA de démonstration. L'authentification, le paiement et les droits PRO réels devront être contrôlés côté serveur avant ouverture publique.</p>
+    <p class="muted">V16 conserve le mode compte et les quotas IA de démonstration. L'authentification, le paiement et les droits PRO réels devront être contrôlés côté serveur avant ouverture publique.</p>
     <div class="planGrid">
       <div class="plan">
         <h3>Free</h3><div class="price">0 €</div>
@@ -493,6 +614,7 @@ td input,td select{margin:0;padding:8px}
         <div class="feature">✓ Plans de guerre IA</div>
         <div class="feature">✓ VS et Saison IA</div>
         <div class="feature">✓ Messages et rapports</div>
+        <div class="feature">✓ War Room + groupes équilibrés</div>
         <button class="btn gold" disabled>Passer PRO — bientôt</button>
       </div>
       <div class="plan">
@@ -502,13 +624,13 @@ td input,td select{margin:0;padding:8px}
         <div class="feature">✓ Permissions et historique</div>
       </div>
     </div>
-    <div class="note">⚠️ V15.2 ne prélève encore aucun paiement. Le mode PRO de démonstration sert à tester l'expérience. Avant ouverture publique, les droits et quotas devront être vérifiés côté serveur.</div>
+    <div class="note">⚠️ V16 ne prélève encore aucun paiement. Le mode PRO de démonstration sert à tester l'expérience. Avant ouverture publique, les droits et quotas devront être vérifiés côté serveur.</div>
   </div>
 
 
 
   <div class="card">
-    <h2>💾 Centre de données V15.2</h2>
+    <h2>💾 Centre de données V16</h2>
     <p class="muted">Sauvegarde locale de ton profil, tes objectifs, ton roster, tes tâches R5/R4, tes réglages et ton historique. Le fichier reste sur ton appareil jusqu'à ce que tu choisisses de l'importer ailleurs.</p>
     <div class="backupBox">
       <button class="btn secondary" onclick="exportWarBoost()">⬇️ Exporter mes données</button>
@@ -524,7 +646,7 @@ td input,td select{margin:0;padding:8px}
 
 <div id="accountModal" class="modalBack" onclick="if(event.target===this)closeAccount()">
   <div class="modal">
-    <h2>👤 Compte WarBoost V15.2</h2>
+    <h2>👤 Compte WarBoost V16</h2>
     <p class="muted">Mode de démonstration local pour tester Free / PRO sans casser l'IA existante.</p>
     <label>Pseudo<input id="demoName" placeholder="Ton pseudo"></label>
     <label>Rôle
@@ -537,7 +659,7 @@ td input,td select{margin:0;padding:8px}
       <button class="btn" onclick="saveAccount()">Enregistrer</button>
       <button class="btn secondary" onclick="closeAccount()">Fermer</button>
     </div>
-    <div class="note">Sécurité : ce sélecteur est uniquement un prototype V12. Il ne doit pas servir de contrôle d'abonnement en production.</div>
+    <div class="note">Sécurité : ce sélecteur est uniquement un prototype local. Il ne doit pas servir de contrôle d'abonnement en production.</div>
   </div>
 </div>
 
@@ -654,7 +776,7 @@ function refreshDashboard(){
     ["✨","Demander un plan IA",`${wb11Remaining()} requête(s) IA disponible(s) aujourd'hui en mode démo.`]
   ];
   $("todayPlan").innerHTML=items.map(x=>`<div class="todayItem"><i>${x[0]}</i><div><b>${x[1]}</b><span>${x[2]}</span></div></div>`).join("");
-  renderAIHistory();v13Insights();
+  renderAIHistory();v13Insights();renderWarRoom();
 }
 function goRecommended(){showPage((wb12Account.role==="r5"||wb12Account.role==="r4")?"command":"player")}
 
@@ -735,6 +857,10 @@ function heroIsConfigured(x){
 const WB15_EXTRA_KEYS=["wb15_tasks"];
 let wb15Tasks=JSON.parse(localStorage.getItem("wb15_tasks")||"[]");
 
+let wb16Operation=JSON.parse(localStorage.getItem("wb16_operation")||'{"name":"","at":"","objective":"Guerre","groupCount":5,"notes":""}');
+let wb16Groups=JSON.parse(localStorage.getItem("wb16_groups")||"[]");
+
+
 function clampPct(x){return Math.max(0,Math.min(100,Math.round(Number(x)||0)))}
 function goalPct(current,target){return target>0?clampPct(current/target*100):0}
 function renderGoalProgress(){
@@ -783,10 +909,184 @@ function renderHeroFocus(){
     .filter(heroIsConfigured)
     .map(x=>({...x,score:heroScore(x)}))
     .sort((a,b)=>a.score-b.score);
-  if(!list.length){el.textContent="Renseigne tes héros pour activer le focus V15.2.";return}
+  if(!list.length){el.textContent="Renseigne tes héros pour activer le focus V16.";return}
   const focus=list[0],best=list[list.length-1];
   el.innerHTML=`<strong>🎯 Focus conseillé : ${esc(focus.name)}</strong><br><span class="muted">Score local ${focus.score}%. C'est le héros renseigné le moins avancé selon niveau, étoiles, arme exclusive et équipement.</span>${best&&best.name!==focus.name?`<br><span class="muted">Référence actuelle : ${esc(best.name)} à ${best.score}%.</span>`:""}`;
 }
+
+function operationFromForm(){
+  return {
+    name:h("opName"),
+    at:h("opAt"),
+    objective:h("opObjective")||"Guerre",
+    groupCount:Math.max(2,Math.min(8,n("opGroupCount")||5)),
+    notes:h("opNotes")
+  };
+}
+function saveOperation(silent=false){
+  wb16Operation=operationFromForm();
+  localStorage.setItem("wb16_operation",JSON.stringify(wb16Operation));
+  renderWarRoom();
+  if(!silent){
+    $("operationStatus").textContent="Opération enregistrée localement ✅";
+    $("operationStatus").className="status ok";
+  }
+}
+function loadOperationFields(){
+  if(!$("opName"))return;
+  $("opName").value=wb16Operation.name||"";
+  $("opAt").value=wb16Operation.at||"";
+  $("opObjective").value=wb16Operation.objective||"Guerre";
+  $("opGroupCount").value=String(wb16Operation.groupCount||5);
+  $("opNotes").value=wb16Operation.notes||"";
+}
+function v16WarStats(){
+  const st=rosterStats();
+  const sorted=[...roster].sort((a,b)=>b.power-a.power);
+  const top10=sorted.slice(0,10).reduce((s,x)=>s+(Number(x.power)||0),0);
+  const top10Share=st.total?Math.round(top10/st.total*100):0;
+  const leaderRatio=st.members?Math.round(st.leaders/st.members*100):0;
+  const openTasks=wb15Tasks.filter(x=>!x.done).length;
+  return {...st,top10Share,leaderRatio,openTasks};
+}
+function addToWarGroup(g,m){
+  g.members.push(m);
+  g.power+=Number(m.power)||0;
+  if(m.rank==="R5"||m.rank==="R4")g.leaders++;
+}
+function buildWarRoomGroups(){
+  const count=Math.max(2,Math.min(8,n("opGroupCount")||Number(wb16Operation.groupCount)||5));
+  if(!roster.length){
+    $("groupResult").innerHTML='<div class="note">Importe d’abord le roster.</div>';
+    $("operationStatus").textContent="Roster vide.";
+    $("operationStatus").className="status err";
+    return;
+  }
+  saveOperation(true);
+  const groups=Array.from({length:count},(_,i)=>({name:`Groupe ${i+1}`,members:[],power:0,leaders:0}));
+  const sorted=[...roster].sort((a,b)=>b.power-a.power);
+  const leaders=sorted.filter(x=>x.rank==="R5"||x.rank==="R4");
+  const others=sorted.filter(x=>x.rank!=="R5"&&x.rank!=="R4");
+
+  leaders.forEach((m,i)=>{
+    let idx;
+    if(i<count) idx=i;
+    else idx=groups.reduce((best,g,j)=>{
+      const b=groups[best];
+      if(g.leaders<b.leaders)return j;
+      if(g.leaders===b.leaders && g.power<b.power)return j;
+      return best;
+    },0);
+    addToWarGroup(groups[idx],m);
+  });
+
+  others.forEach(m=>{
+    const idx=groups.reduce((best,g,j)=>g.power<groups[best].power?j:best,0);
+    addToWarGroup(groups[idx],m);
+  });
+
+  groups.forEach(g=>g.members.sort((a,b)=>b.power-a.power));
+  wb16Groups=groups;
+  localStorage.setItem("wb16_groups",JSON.stringify(wb16Groups));
+  renderWarRoomGroups();
+  renderWarRoom();
+  $("operationStatus").textContent=`${count} groupe(s) généré(s) et équilibré(s) par puissance ✅`;
+  $("operationStatus").className="status ok";
+}
+function renderWarRoomGroups(){
+  const el=$("groupResult");if(!el)return;
+  if(!wb16Groups.length){
+    el.innerHTML='<p class="muted">Aucun groupe préparé.</p>';
+    return;
+  }
+  el.innerHTML=wb16Groups.map((g,i)=>`<details class="warGroup">
+    <summary><span>⚔️ ${esc(g.name||`Groupe ${i+1}`)} · ${g.members?.length||0} joueur(s)</span><b>${fmtPower(g.power||0)}</b></summary>
+    <div class="warGroupBody">
+      <div class="warGroupMeta">
+        <span class="warChip">👑 ${g.leaders||0} R4/R5</span>
+        <span class="warChip">⚡ ${fmtPower(g.power||0)}</span>
+        <span class="warChip">👥 ${g.members?.length||0}</span>
+      </div>
+      ${(g.members||[]).map(m=>`<span class="memberTag">${esc(m.name)} · ${esc(m.rank)} · ${fmtPower(m.power)}</span>`).join("")}
+    </div>
+  </details>`).join("");
+}
+function operationBriefText(){
+  const st=v16WarStats();
+  const op=operationFromForm();
+  const when=op.at?new Date(op.at).toLocaleString():"À définir";
+  const groupLines=wb16Groups.length
+    ? wb16Groups.map(g=>`- ${g.name}: ${g.members.length} joueur(s) | ${fmtPower(g.power)} | ${g.leaders||0} R4/R5`).join("\n")
+    : "- Groupes non générés";
+  const open=wb15Tasks.filter(x=>!x.done).slice(0,8);
+  const taskLines=open.length?open.map(t=>`- ${t.text}${t.owner?` — ${t.owner}`:""}`).join("\n"):"- Aucune tâche ouverte";
+  return `WARBOOST V16 — BRIEF OPÉRATION
+Alliance : ${h("alliance")||"À définir"} | Serveur : ${h("server")||"À définir"}
+Opération : ${op.name||"À définir"}
+Date / heure : ${when}
+Objectif : ${op.objective}
+Roster : ${st.members} membre(s) | ${fmtPower(st.total)} | ${st.leaders} R4/R5
+
+GROUPES
+${groupLines}
+
+TÂCHES OUVERTES
+${taskLines}
+
+NOTES
+${op.notes||"Aucune note"}`;
+}
+function renderBriefPreview(){
+  if(!$("briefPreview"))return;
+  $("briefPreview").textContent=operationBriefText();
+}
+function copyOperationBrief(){
+  saveOperation(true);
+  if(roster.length && !wb16Groups.length)buildWarRoomGroups();
+  const text=operationBriefText();
+  renderBriefPreview();
+  copyText(text);
+}
+function renderWarRoom(){
+  if(!$("wrTotalPower"))return;
+  const st=v16WarStats();
+  $("wrTotalPower").textContent=fmtPower(st.total);
+  $("wrTop10").textContent=st.top10Share+"%";
+  $("wrLeaderRatio").textContent=st.leaderRatio+"%";
+  $("wrOpenTasks").textContent=st.openTasks;
+  if($("homeOpName"))$("homeOpName").textContent=wb16Operation.name||"À définir";
+  if($("homeOpGroups"))$("homeOpGroups").textContent=wb16Groups.length;
+  if($("homeOpenTasks"))$("homeOpenTasks").textContent=st.openTasks;
+
+  let msg="Importe le roster pour activer le War Room.",good=false;
+  if(st.members){
+    const need=Math.max(1,Math.ceil(st.members/20));
+    if(st.leaders<need)msg=`⚠️ ${st.leaders} leader(s) R4/R5 pour ${st.members} membres : couverture à renforcer.`;
+    else if(!wb16Operation.name)msg="Roster prêt. Définis la prochaine opération et génère les groupes.";
+    else if(!wb16Groups.length)msg="Opération enregistrée. Génère les groupes pour préparer le briefing.";
+    else {msg=`✅ War Room prêt : ${wb16Groups.length} groupes préparés pour ${wb16Operation.name}.`;good=true}
+  }
+  $("warRoomAlert").textContent=msg;$("warRoomAlert").classList.toggle("good",good);
+  if($("homeWarAlert")){
+    $("homeWarAlert").textContent=msg;
+    $("homeWarAlert").classList.toggle("good",good);
+  }
+  renderWarRoomGroups();
+  renderBriefPreview();
+}
+function v16OperationContext(){
+  return {
+    operation:wb16Operation,
+    groups:wb16Groups.map(g=>({
+      name:g.name,
+      members:(g.members||[]).length,
+      power:g.power||0,
+      leaders:g.leaders||0
+    })),
+    open_tasks:wb15Tasks.filter(x=>!x.done).map(x=>({text:x.text,owner:x.owner,due:x.due})).slice(0,20)
+  };
+}
+
 function saveV15Tasks(){localStorage.setItem("wb15_tasks",JSON.stringify(wb15Tasks))}
 function fillTaskOwners(){
   const el=$("taskOwner");if(!el)return;
@@ -800,13 +1100,13 @@ function addCommandTask(){
   if(!text){toast("Ajoute une tâche");return}
   wb15Tasks.unshift({id:Date.now(),text,owner,due,done:false,created:new Date().toISOString()});
   wb15Tasks=wb15Tasks.slice(0,100);saveV15Tasks();
-  $("taskText").value="";$("taskDue").value="";renderCommandTasks();
+  $("taskText").value="";$("taskDue").value="";renderCommandTasks();renderWarRoom();
 }
 function toggleCommandTask(id,done){
-  const t=wb15Tasks.find(x=>x.id===id);if(t)t.done=done;saveV15Tasks();renderCommandTasks();
+  const t=wb15Tasks.find(x=>x.id===id);if(t)t.done=done;saveV15Tasks();renderCommandTasks();renderWarRoom();
 }
 function deleteCommandTask(id){
-  wb15Tasks=wb15Tasks.filter(x=>x.id!==id);saveV15Tasks();renderCommandTasks();
+  wb15Tasks=wb15Tasks.filter(x=>x.id!==id);saveV15Tasks();renderCommandTasks();renderWarRoom();
 }
 function renderCommandTasks(){
   const el=$("commandTasks");if(!el)return;
@@ -827,12 +1127,12 @@ function exportRosterCSV(){
   const q=v=>`"${String(v??"").replaceAll('"','""')}"`;
   const lines=[["Joueur","Rang","Puissance"].map(q).join(",")].concat(roster.map(x=>[x.name,x.rank,x.power].map(q).join(",")));
   const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8"});
-  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="WarBoost_V15_2_roster.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="WarBoost_V16_roster.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 const WB14_KEYS=[
   "wb12_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster",
-  "wb12_ai_history","wb14_snapshots","wb14_missions","wb15_tasks"
+  "wb12_ai_history","wb14_snapshots","wb14_missions","wb15_tasks","wb16_operation","wb16_groups"
 ];
 
 let wb14Snapshots=JSON.parse(localStorage.getItem("wb14_snapshots")||"[]");
@@ -934,10 +1234,10 @@ function renderAllianceHealth(){
   $("allianceAlerts").innerHTML=alerts.map(a=>`<div class="alertRow ${a[0]}">${esc(a[1])}</div>`).join("");
 }
 function exportWarBoost(){
-  const data={version:"15.2",exported_at:new Date().toISOString(),storage:{}};
+  const data={version:"16",exported_at:new Date().toISOString(),storage:{}};
   WB14_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)data.storage[k]=v});
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="WarBoost_V15_2_backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="WarBoost_V16_backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   if($("backupStatus")){$("backupStatus").textContent="Sauvegarde exportée ✅";$("backupStatus").className="status ok"}
 }
 function importWarBoost(input){
@@ -990,7 +1290,7 @@ async function ai(action,context,resultId,statusId){
   const result=$(resultId),status=$(statusId);
   if(wb11Remaining()<=0){
     result.innerHTML=`<div class="lockMsg">🔒 Quota IA atteint pour la formule ${(wb12Account.plan||"free").toUpperCase()}. Ouvre <b>Compte</b> pour tester une autre formule. En production, ce changement devra être validé par le serveur après paiement.</div>`;
-    status.textContent="Aucun crédit IA V15.2 disponible.";status.className="status err";return;
+    status.textContent="Aucun crédit IA V16 disponible.";status.className="status err";return;
   }
   result.textContent="IA en cours…";status.textContent="";
   try{
@@ -1013,9 +1313,13 @@ function aiPlayerAnalysis(){
 }
 
 function allianceContext(){
-  return {alliance:h("alliance"),server:h("server"),members:n("memberCount"),objective:h("objective"),question:h("copilotQuestion"),roster};
+  return {
+    alliance:h("alliance"),server:h("server"),members:n("memberCount"),
+    objective:h("objective"),question:h("copilotQuestion"),roster,
+    war_room:v16OperationContext()
+  };
 }
-function runCopilot(action){saveAlliance();return ai(action,allianceContext(),"copilotResult","copilotStatus")}
+function runCopilot(action){saveAlliance();saveOperation(true);return ai(action,allianceContext(),"copilotResult","copilotStatus")}
 
 function parsePower(v){
   const s=String(v||"").trim().toUpperCase().replace(",",".");
@@ -1043,7 +1347,8 @@ function renderRoster(){
   if($("rkLeaders"))$("rkLeaders").textContent=st.leaders;
   if($("rkPower"))$("rkPower").textContent=fmtPower(st.total);
   if($("rkAvg"))$("rkAvg").textContent=fmtPower(st.avg);
-  refreshDashboard();renderAllianceHealth();
+  fillTaskOwners();
+  refreshDashboard();renderAllianceHealth();renderWarRoom();
 }
 
 
@@ -1094,9 +1399,12 @@ function load(){
   sets.forEach(([key])=>{try{const d=JSON.parse(localStorage.getItem(key)||"{}");Object.entries(d).forEach(([k,v])=>{if($(k))$(k).value=v})}catch(e){}});
   renderRoster();localVS();
 }
-resetDemoQuotaIfNeeded();load();renderAccount();refreshDashboard();renderAIHistory();renderHeroReadiness();refreshSnapshotSummary();renderAllianceHealth();renderGoalProgress();fillTaskOwners();renderCommandTasks();
+resetDemoQuotaIfNeeded();load();loadOperationFields();renderAccount();refreshDashboard();renderAIHistory();renderHeroReadiness();refreshSnapshotSummary();renderAllianceHealth();renderGoalProgress();fillTaskOwners();renderCommandTasks();renderWarRoom();
 ["qg","power","squadPower","squad","drone","droneLevel","tech","gear","playerGoal","spendProfile","goalPower","goalSquad","goalDrone"].forEach(id=>$(id)?.addEventListener("change",()=>{saveProfile();refreshDashboard();renderHeroReadiness();renderGoalProgress()}));
 for(let i=1;i<=5;i++)["heroName","heroLevel","heroStars","heroWeapon","heroGear"].forEach(k=>$(k+i)?.addEventListener("change",()=>{saveProfile();renderHeroReadiness();renderMissions()}));
+
+["opName","opAt","opObjective","opGroupCount","opNotes"].forEach(id=>$(id)?.addEventListener("change",()=>saveOperation(true)));
+
 </script>
 </body>
 </html>
