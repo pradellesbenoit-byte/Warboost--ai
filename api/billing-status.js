@@ -40,12 +40,65 @@ async function getSubscription(userId){
 function isPro(sub){return !!sub && ["active","trialing"].includes(String(sub.status||""))}
 function today(){return new Date().toISOString().slice(0,10)}
 
+async function stripeGet(path){
+  const key=String(process.env.STRIPE_SECRET_KEY||"").trim();
+  if(!key)return null;
+  const r=await fetch(`https://api.stripe.com/v1/${path}`,{
+    headers:{Authorization:`Bearer ${key}`}
+  });
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data?.error?.message||`Stripe ${r.status}`);
+  return data;
+}
+function stripePeriodEnd(sub){
+  const item=sub?.items?.data?.[0]||{};
+  return sub?.current_period_end||item?.current_period_end||null;
+}
+async function reconcileSubscription(userId,stored){
+  if(!stored?.stripe_subscription_id || !process.env.STRIPE_SECRET_KEY)return stored;
+  try{
+    const live=await stripeGet(`subscriptions/${encodeURIComponent(stored.stripe_subscription_id)}`);
+    if(!live)return stored;
+    const item=live.items?.data?.[0]||{};
+    const end=stripePeriodEnd(live);
+    const row={
+      user_id:userId,
+      stripe_customer_id:String(live.customer||stored.stripe_customer_id||"")||null,
+      stripe_subscription_id:String(live.id||stored.stripe_subscription_id||"")||null,
+      stripe_price_id:item.price?.id||stored.stripe_price_id||null,
+      plan:["active","trialing"].includes(String(live.status||""))?"pro":"free",
+      status:String(live.status||"inactive"),
+      cancel_at_period_end:!!live.cancel_at_period_end,
+      current_period_end:end?new Date(Number(end)*1000).toISOString():null,
+      updated_at:new Date().toISOString()
+    };
+    const changed =
+      String(stored.status||"")!==row.status ||
+      !!stored.cancel_at_period_end!==row.cancel_at_period_end ||
+      String(stored.current_period_end||"")!==String(row.current_period_end||"") ||
+      String(stored.plan||"")!==row.plan;
+    if(changed){
+      const wr=await adminRest("warboost_subscriptions?on_conflict=user_id",{
+        method:"POST",
+        headers:{Prefer:"resolution=merge-duplicates,return=minimal"},
+        body:JSON.stringify(row)
+      });
+      if(!wr.ok)console.warn("billing reconcile write",wr.status);
+    }
+    return {...stored,...row};
+  }catch(e){
+    console.warn("billing reconcile Stripe",e?.message||e);
+    return stored;
+  }
+}
+
 export default async function handler(req,res){
   if(req.method!=="GET")return json(res,405,{error:"Méthode non autorisée."});
   try{
     const user=await authUser(req);
     if(!user)return json(res,401,{error:"Connexion WarBoost requise."});
-    const sub=await getSubscription(user.id);
+    let sub=await getSubscription(user.id);
+    sub=await reconcileSubscription(user.id,sub);
     const plan=isPro(sub)?"pro":"free";
     const limit=plan==="pro"?50:2;
     const day=today();
