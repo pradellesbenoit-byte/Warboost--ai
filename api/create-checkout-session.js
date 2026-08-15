@@ -1,9 +1,24 @@
 
+
+function checkedEnv(name,value,{prefixes=[]}={}){
+  const v=String(value||"").trim();
+  if(!v)throw new Error(`${name} manquante.`);
+  const bad=[...v].find(ch=>ch.codePointAt(0)>127);
+  if(bad){
+    throw new Error(`${name} invalide : contient un caractère masqué/non ASCII. Recopie la valeur complète depuis le tableau de bord, sans points ••• ni espaces.`);
+  }
+  if(/\s/.test(v))throw new Error(`${name} invalide : contient un espace ou un retour à la ligne.`);
+  if(prefixes.length && !prefixes.some(x=>v.startsWith(x))){
+    throw new Error(`${name} invalide : préfixe inattendu.`);
+  }
+  return v;
+}
+
 function env(){
   return {
     url:process.env.SUPABASE_URL,
-    pub:process.env.SUPABASE_PUBLISHABLE_KEY||process.env.SUPABASE_ANON_KEY,
-    secret:process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY
+    pub:checkedEnv("SUPABASE_PUBLISHABLE_KEY",process.env.SUPABASE_PUBLISHABLE_KEY||process.env.SUPABASE_ANON_KEY,{prefixes:["sb_publishable_","eyJ"]}),
+    secret:checkedEnv("SUPABASE_SECRET_KEY",process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY,{prefixes:["sb_secret_","eyJ"]})
   };
 }
 function json(res,status,data){
@@ -41,8 +56,7 @@ function isPro(sub){return !!sub && ["active","trialing"].includes(String(sub.st
 function today(){return new Date().toISOString().slice(0,10)}
 
 async function stripePost(path,params){
-  const key=process.env.STRIPE_SECRET_KEY;
-  if(!key)throw new Error("STRIPE_SECRET_KEY manquante.");
+  const key=checkedEnv("STRIPE_SECRET_KEY",process.env.STRIPE_SECRET_KEY,{prefixes:["sk_test_","sk_live_"]});
   const r=await fetch(`https://api.stripe.com/v1/${path}`,{
     method:"POST",
     headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/x-www-form-urlencoded"},
@@ -57,8 +71,7 @@ export default async function handler(req,res){
   try{
     const user=await authUser(req);
     if(!user)return json(res,401,{error:"Connexion WarBoost requise."});
-    const price=process.env.STRIPE_PRICE_PRO_MONTHLY;
-    if(!price)return json(res,503,{error:"Prix PRO Stripe non configuré."});
+    const price=checkedEnv("STRIPE_PRICE_PRO_MONTHLY",process.env.STRIPE_PRICE_PRO_MONTHLY,{prefixes:["price_"]});
     const sub=await getSubscription(user.id);
     if(isPro(sub))return json(res,409,{error:"Ton abonnement PRO est déjà actif."});
     const appUrl=(process.env.APP_URL||"https://warboost.fr").replace(/\/+$/,"");
