@@ -54,13 +54,23 @@ function stripePeriodEnd(sub){
   const item=sub?.items?.data?.[0]||{};
   return sub?.current_period_end||item?.current_period_end||null;
 }
+function stripeCancelAt(sub){
+  const v=Number(sub?.cancel_at||0);
+  return Number.isFinite(v)&&v>0?v:null;
+}
+function stripeCancellationScheduled(sub){
+  return !!sub?.cancel_at_period_end || !!stripeCancelAt(sub);
+}
 async function reconcileSubscription(userId,stored){
   if(!stored?.stripe_subscription_id || !process.env.STRIPE_SECRET_KEY)return stored;
   try{
     const live=await stripeGet(`subscriptions/${encodeURIComponent(stored.stripe_subscription_id)}`);
     if(!live)return stored;
     const item=live.items?.data?.[0]||{};
-    const end=stripePeriodEnd(live);
+    const periodEnd=stripePeriodEnd(live);
+    const cancelAt=stripeCancelAt(live);
+    const cancellationScheduled=stripeCancellationScheduled(live);
+    const accessEnd=cancellationScheduled&&cancelAt?cancelAt:periodEnd;
     const row={
       user_id:userId,
       stripe_customer_id:String(live.customer||stored.stripe_customer_id||"")||null,
@@ -68,8 +78,10 @@ async function reconcileSubscription(userId,stored){
       stripe_price_id:item.price?.id||stored.stripe_price_id||null,
       plan:["active","trialing"].includes(String(live.status||""))?"pro":"free",
       status:String(live.status||"inactive"),
-      cancel_at_period_end:!!live.cancel_at_period_end,
-      current_period_end:end?new Date(Number(end)*1000).toISOString():null,
+      // Stripe peut représenter une résiliation planifiée via cancel_at_period_end
+      // ou via cancel_at selon la configuration / version d'API du portail.
+      cancel_at_period_end:cancellationScheduled,
+      current_period_end:accessEnd?new Date(Number(accessEnd)*1000).toISOString():null,
       updated_at:new Date().toISOString()
     };
     const changed =

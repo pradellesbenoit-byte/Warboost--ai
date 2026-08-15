@@ -42,7 +42,10 @@ async function findUserByCustomer(customer){
 async function upsertSubscription(userId,sub){
   if(!userId||!sub)return;
   const item=sub.items?.data?.[0]||{};
-  const end=sub.current_period_end||item.current_period_end||null;
+  const periodEnd=sub.current_period_end||item.current_period_end||null;
+  const cancelAt=Number(sub.cancel_at||0)>0?Number(sub.cancel_at):null;
+  const cancellationScheduled=!!sub.cancel_at_period_end||!!cancelAt;
+  const accessEnd=cancellationScheduled&&cancelAt?cancelAt:periodEnd;
   const row={
     user_id:userId,
     stripe_customer_id:String(sub.customer||"")||null,
@@ -50,8 +53,9 @@ async function upsertSubscription(userId,sub){
     stripe_price_id:item.price?.id||null,
     plan:["active","trialing"].includes(String(sub.status||""))?"pro":"free",
     status:String(sub.status||"inactive"),
-    cancel_at_period_end:!!sub.cancel_at_period_end,
-    current_period_end:end?new Date(Number(end)*1000).toISOString():null,
+    // Accepte les deux représentations Stripe d'une résiliation planifiée.
+    cancel_at_period_end:cancellationScheduled,
+    current_period_end:accessEnd?new Date(Number(accessEnd)*1000).toISOString():null,
     updated_at:new Date().toISOString()
   };
   const r=await adminRest("warboost_subscriptions?on_conflict=user_id",{
