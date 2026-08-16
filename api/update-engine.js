@@ -78,8 +78,68 @@ async function scanWithOpenAI(live){
   const model=process.env.OPENAI_UPDATE_MODEL||"gpt-5-mini";const now=new Date().toISOString();const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),50000);
   const prompt=`Nous maintenons WarBoost, un assistant pour Last War: Survival Game. Date UTC actuelle: ${now}.\n\nRecherche sur le web les changements RÉCENTS et réellement utiles aux joueurs qui pourraient nécessiter une mise à jour WarBoost : saisons, Alliance Duel/VS, héros, événements, professions, mécaniques R5/R4, progression ou règles importantes.\n\nRègles strictes:\n- privilégie les sources officielles Last War (lastwar.com et comptes officiels) puis des sources communautaires spécialisées seulement si elles apportent une information utile;\n- ne propose rien qui ne soit pas suffisamment vérifiable;\n- ne transforme pas des conseils génériques en « nouveauté »;\n- évite les doublons avec le contenu WarBoost déjà publié ci-dessous;\n- maximum 4 propositions, zéro est acceptable;\n- chaque proposition doit citer au moins une URL source;\n- rédige les contenus en français, courts et utilisables sur mobile.\n\nContenu Live déjà publié:\n${JSON.stringify(live||[]).slice(0,8000)}\n\nRéponds UNIQUEMENT en JSON valide sous cette forme:\n{"proposals":[{"category":"season|vs|hero|event|r5r4|general","title":"...","summary":"...","body":"...","priority":20,"confidence":90,"source_label":"...","source_url":"https://...","evidence":[{"title":"...","url":"https://..."}]}]}`;
   try{
-    const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",signal:controller.signal,headers:{Authorization:`Bearer ${openai}`,"Content-Type":"application/json"},body:JSON.stringify({model,tools:[{type:"web_search",search_context_size:"low"}],max_output_tokens:1800,input:prompt})});
-    const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data?.error?.message||`OpenAI ${r.status}`);const parsed=jsonFromText(outputText(data));if(!parsed||!Array.isArray(parsed.proposals))throw new Error("Réponse Auto Update non exploitable.");return {model,proposals:parsed.proposals};
+    const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",signal:controller.signal,headers:{Authorization:`Bearer ${openai}`,"Content-Type":"application/json"},body:JSON.stringify({
+      model,
+      tools:[{type:"web_search",search_context_size:"low"}],
+      max_output_tokens:2600,
+      text:{
+        format:{
+          type:"json_schema",
+          name:"warboost_update_proposals",
+          strict:true,
+          schema:{
+            type:"object",
+            additionalProperties:false,
+            properties:{
+              proposals:{
+                type:"array",
+                maxItems:4,
+                items:{
+                  type:"object",
+                  additionalProperties:false,
+                  properties:{
+                    category:{type:"string",enum:["season","vs","hero","event","r5r4","general"]},
+                    title:{type:"string"},
+                    summary:{type:"string"},
+                    body:{type:"string"},
+                    priority:{type:"integer",minimum:1,maximum:999},
+                    confidence:{type:"integer",minimum:0,maximum:100},
+                    source_label:{type:"string"},
+                    source_url:{type:"string"},
+                    evidence:{
+                      type:"array",
+                      maxItems:5,
+                      items:{
+                        type:"object",
+                        additionalProperties:false,
+                        properties:{
+                          title:{type:"string"},
+                          url:{type:"string"}
+                        },
+                        required:["title","url"]
+                      }
+                    }
+                  },
+                  required:["category","title","summary","body","priority","confidence","source_label","source_url","evidence"]
+                }
+              }
+            },
+            required:["proposals"]
+          }
+        }
+      },
+      input:prompt
+    })});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data?.error?.message||`OpenAI ${r.status}`);
+    if(data?.status==="incomplete")throw new Error("Le scan a été interrompu avant la fin de la réponse. Relance le scan.");
+    const raw=outputText(data);
+    const parsed=jsonFromText(raw);
+    if(!parsed||!Array.isArray(parsed.proposals)){
+      console.error("WarBoost Auto Update invalid output",{status:data?.status,incomplete_details:data?.incomplete_details,raw:raw?.slice(0,1200)});
+      throw new Error("Réponse Auto Update invalide. Le format structuré n’a pas pu être lu.");
+    }
+    return {model,proposals:parsed.proposals};
   }finally{clearTimeout(timeout)}
 }
 export default async function handler(req,res){
