@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V20.1 — Application</title>
+<title>WarBoost V20.2 — Full Translation</title>
 
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/warboost-icon-192.png">
@@ -472,7 +472,7 @@ td input,td select{margin:0;padding:8px}
 @media(max-width:760px){.wb195Stats{grid-template-columns:1fr 1fr}.wb195Stats .wb195Stat:last-child{grid-column:1/-1}.wb195Actions button{width:100%}.wb195ProposalActions button{flex:1 1 auto}}
 
 
-/* ===== WARBOOST V20.1 • APPLICATION ===== */
+/* ===== WARBOOST V20.2 • FULL TRANSLATION ===== */
 .wb20AppCard{
   border:1px solid #355976;
   background:radial-gradient(circle at 90% -20%,#26305a 0,transparent 34%),linear-gradient(180deg,#0b1a2a,#091521);
@@ -509,8 +509,8 @@ td input,td select{margin:0;padding:8px}
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V20.1</em></button>
-  <span class="proBadge">📱 V20.1 • APP</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V20.2</em></button>
+  <span class="proBadge">🌐 V20.2 • FULL APP</span>
   <select id="language" class="lang" onchange="setLanguage(this.value)" aria-label="Language">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -557,7 +557,7 @@ td input,td select{margin:0;padding:8px}
   <div id="wb20AppCard" class="card wb20AppCard">
     <div class="wb20AppHead">
       <div>
-        <div class="eyebrow">V20.1 • APPLICATION</div>
+        <div class="eyebrow">V20.2 • APPLICATION</div>
         <div class="wb20AppTitle">
           <div class="wb20AppIcon">📱</div>
           <div>
@@ -585,7 +585,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card wb193LivePanel">
     <div class="wb193LiveHead">
       <div>
-        <div class="eyebrow">V20.1 • APP + LIVE</div>
+        <div class="eyebrow">V20.2 • APP + LIVE</div>
         <div class="wb193LiveTitle"><span class="wb193Pulse"></span><h2 style="margin:6px 0">🔄 Centre de mises à jour</h2></div>
         <p class="muted" style="margin:0">Saison, VS, héros, événements et briefs R5/R4 synchronisés depuis WarBoost.</p>
       </div>
@@ -1170,7 +1170,7 @@ td input,td select{margin:0;padding:8px}
 
 <div id="wb194AdminModal" class="modalBack wb194AdminModal" onclick="if(event.target===this)wb194CloseAdmin()">
   <div class="modal">
-    <div class="eyebrow">V20 • LIVE ADMIN + AUTO UPDATE</div>
+    <div class="eyebrow">V20.2 • LIVE ADMIN + AUTO UPDATE</div>
     <div class="wb194AdminHero">
       <div class="wb194AdminHeroTop">
         <div>
@@ -1438,13 +1438,15 @@ async function wb194LoadAdminItems(){
 }
 function wb194RenderAdminItems(){
   const list=$("wb194AdminList");if(!list)return;const items=wb194AdminState.items||[];
-  if(!items.length){list.innerHTML='<div class="wb193LiveEmpty">Aucun contenu publié.</div>';return}
-  list.innerHTML=items.map(x=>`<article class="wb194AdminItem ${x.is_active?'':'inactive'}">
-    <div class="wb194AdminItemTop"><div><span class="wb193LiveBadge">${esc(wb193Badge(x.category))}</span><h4>${esc(x.title||'Sans titre')}</h4></div><span>${esc(x.payload?.icon||wb193Icon(x))}</span></div>
+  if(!items.length){list.innerHTML=`<div class="wb193LiveEmpty">${esc(wb202T("Aucun contenu publié."))}</div>`;return}
+  list.innerHTML=items.map(raw=>{
+    const x=wb193Translated(raw);
+    return `<article class="wb194AdminItem ${raw.is_active?'':'inactive'}">
+    <div class="wb194AdminItemTop"><div><span class="wb193LiveBadge">${esc(wb193Badge(raw.category))}</span><h4>${esc(x.title||'—')}</h4></div><span>${esc(raw.payload?.icon||wb193Icon(raw))}</span></div>
     ${x.summary?`<p>${esc(x.summary)}</p>`:''}
-    <div class="wb194AdminItemMeta"><span class="wb194AdminMini">${x.is_active?'ACTIF':'INACTIF'}</span><span class="wb194AdminMini">Priorité ${Number(x.priority||50)}</span><span class="wb194AdminMini">v${Number(x.version||1)}</span><span class="wb194AdminMini">${wb193Date(x.updated_at)}</span></div>
-    <div class="wb194AdminItemActions"><button onclick="wb194EditContent('${x.id}')">✏️ Modifier</button><button onclick="wb194ToggleContent('${x.id}',${x.is_active?'false':'true'})">${x.is_active?'⏸️ Désactiver':'▶️ Réactiver'}</button><button class="danger" onclick="wb194DeleteContent('${x.id}')">🗑️ Supprimer</button></div>
-  </article>`).join('');
+    <div class="wb194AdminItemMeta"><span class="wb194AdminMini">${esc(wb202T(raw.is_active?'ACTIF':'INACTIF'))}</span><span class="wb194AdminMini">${esc(wb202T("Priorité"))} ${Number(raw.priority||50)}</span><span class="wb194AdminMini">v${Number(raw.version||1)}</span><span class="wb194AdminMini">${wb193Date(raw.updated_at)}</span></div>
+    <div class="wb194AdminItemActions"><button onclick="wb194EditContent('${raw.id}')">${esc(wb202T("✏️ Modifier"))}</button><button onclick="wb194ToggleContent('${raw.id}',${raw.is_active?'false':'true'})">${esc(wb202T(raw.is_active?'⏸️ Désactiver':'▶️ Réactiver'))}</button><button class="danger" onclick="wb194DeleteContent('${raw.id}')">${esc(wb202T("🗑️ Supprimer"))}</button></div>
+  </article>`}).join('');
 }
 function wb194Find(id){return (wb194AdminState.items||[]).find(x=>x.id===id)}
 function wb194EditContent(id){
@@ -1471,13 +1473,35 @@ function wb193Date(v){
   if(!v)return "—";
   try{return new Date(v).toLocaleString(document.documentElement.lang||"fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}catch{return String(v)}
 }
+const WB202_LIVE_FALLBACK={"Test Live WarBoost":{"en":"WarBoost Live test","es":"Prueba Live de WarBoost","de":"WarBoost Live-Test","ja":"WarBoost Liveテスト","zh":"WarBoost Live 测试"},"La publication Live Admin fonctionne.":{"en":"Live Admin publishing works.","es":"La publicación desde Live Admin funciona.","de":"Die Veröffentlichung über Live Admin funktioniert.","ja":"Live Adminからの公開は正常に動作しています。","zh":"Live Admin 发布功能正常。"},"Premier test de publication depuis WarBoost V19.4.":{"en":"First publishing test from WarBoost V19.4.","es":"Primera prueba de publicación desde WarBoost V19.4.","de":"Erster Veröffentlichungstest aus WarBoost V19.4.","ja":"WarBoost V19.4からの最初の公開テスト。","zh":"首次从 WarBoost V19.4 进行发布测试。"},"Live Content activé":{"en":"Live Content enabled","es":"Live Content activado","de":"Live Content aktiviert","ja":"Live Content有効","zh":"Live Content 已启用"},"WarBoost peut maintenant recevoir des mises à jour de contenu sans remplacer index.html.":{"en":"WarBoost can now receive content updates without replacing index.html.","es":"WarBoost ahora puede recibir actualizaciones de contenido sin reemplazar index.html.","de":"WarBoost kann jetzt Inhaltsupdates erhalten, ohne index.html zu ersetzen.","ja":"WarBoostはindex.htmlを置き換えずにコンテンツ更新を受信できるようになりました。","zh":"WarBoost 现在无需替换 index.html 即可接收内容更新。"},"Les blocs Saison, VS, héros, événements et R5/R4 peuvent être actualisés depuis Supabase. L’application conserve le dernier contenu en cache si le réseau est indisponible.":{"en":"Season, VS, heroes, events and R5/R4 blocks can be updated from Supabase. The app keeps the latest content cached if the network is unavailable.","es":"Los bloques de Temporada, VS, héroes, eventos y R5/R4 pueden actualizarse desde Supabase. La aplicación conserva en caché el último contenido si la red no está disponible.","de":"Saison-, VS-, Helden-, Event- und R5/R4-Blöcke können über Supabase aktualisiert werden. Bei fehlender Verbindung behält die App den letzten Inhalt im Cache.","ja":"シーズン、VS、英雄、イベント、R5/R4の各ブロックはSupabaseから更新できます。ネットワークが利用できない場合、アプリは最新コンテンツをキャッシュに保持します。","zh":"赛季、VS、英雄、活动和 R5/R4 模块可从 Supabase 更新。网络不可用时，应用会保留最新缓存内容。"},"VS Alliance en mode Live":{"en":"Alliance VS in Live mode","es":"VS de Alianza en modo Live","de":"Allianz-VS im Live-Modus","ja":"同盟VS Liveモード","zh":"联盟 VS Live 模式"},"Les consignes VS peuvent désormais être mises à jour côté serveur.":{"en":"VS instructions can now be updated server-side.","es":"Las instrucciones VS ahora pueden actualizarse en el servidor.","de":"VS-Anweisungen können jetzt serverseitig aktualisiert werden.","ja":"VSの指示をサーバー側で更新できるようになりました。","zh":"VS 指令现在可在服务器端更新。"},"WarBoost affichera ici les changements de priorités, rappels et informations VS publiés pour les utilisateurs.":{"en":"WarBoost will display priority changes, reminders and VS information published for users here.","es":"WarBoost mostrará aquí los cambios de prioridad, recordatorios e información VS publicados para los usuarios.","de":"WarBoost zeigt hier veröffentlichte Prioritätsänderungen, Erinnerungen und VS-Informationen für Nutzer an.","ja":"WarBoostはユーザー向けに公開された優先度変更、リマインダー、VS情報をここに表示します。","zh":"WarBoost 会在此显示面向用户发布的优先级变更、提醒和 VS 信息。"},"Centre Saison en mode Live":{"en":"Season Center in Live mode","es":"Centro de Temporada en modo Live","de":"Saison-Zentrale im Live-Modus","ja":"シーズンセンター Liveモード","zh":"赛季中心 Live 模式"},"Les informations de saison peuvent évoluer sans nouvelle version.":{"en":"Season information can change without a new app version.","es":"La información de temporada puede cambiar sin una nueva versión.","de":"Saisoninformationen können sich ohne neue App-Version ändern.","ja":"新しいアプリバージョンなしでシーズン情報を更新できます。","zh":"无需发布新版本即可更新赛季信息。"}};
+function wb202T(fr,lang=(typeof wb171Language!=="undefined"&&wb171Language)||"fr"){
+  if(!fr||lang==="fr")return fr||"";
+  return WB171_TRANSLATIONS?.[fr]?.[lang]||fr;
+}
+function wb202LiveT(value,lang=(typeof wb171Language!=="undefined"&&wb171Language)||"fr"){
+  if(!value||lang==="fr")return value||"";
+  return WB202_LIVE_FALLBACK?.[value]?.[lang]||WB171_TRANSLATIONS?.[value]?.[lang]||value;
+}
 function wb193Translated(item){
   const lang=(typeof wb171Language!=="undefined"&&wb171Language)||"fr";
   const tr=item?.payload?.translations?.[lang]||{};
-  return {...item,title:tr.title||item.title,summary:tr.summary||item.summary,body:tr.body||item.body};
+  return {...item,
+    title:tr.title||wb202LiveT(item.title,lang),
+    summary:tr.summary||wb202LiveT(item.summary,lang),
+    body:tr.body||wb202LiveT(item.body,lang)
+  };
 }
 function wb193Badge(cat){
-  return ({general:"LIVE",season:"SAISON",vs:"VS",hero:"HÉROS",event:"ÉVÉNEMENT",r5r4:"R5/R4"})[cat]||String(cat||"LIVE").toUpperCase();
+  const lang=(typeof wb171Language!=="undefined"&&wb171Language)||"fr";
+  const labels={
+    fr:{general:"LIVE",season:"SAISON",vs:"VS",hero:"HÉROS",event:"ÉVÉNEMENT",r5r4:"R5/R4"},
+    en:{general:"LIVE",season:"SEASON",vs:"VS",hero:"HERO",event:"EVENT",r5r4:"R5/R4"},
+    es:{general:"LIVE",season:"TEMPORADA",vs:"VS",hero:"HÉROE",event:"EVENTO",r5r4:"R5/R4"},
+    de:{general:"LIVE",season:"SAISON",vs:"VS",hero:"HELD",event:"EVENT",r5r4:"R5/R4"},
+    ja:{general:"LIVE",season:"シーズン",vs:"VS",hero:"英雄",event:"イベント",r5r4:"R5/R4"},
+    zh:{general:"LIVE",season:"赛季",vs:"VS",hero:"英雄",event:"活动",r5r4:"R5/R4"}
+  };
+  return labels[lang]?.[cat]||labels.fr[cat]||String(cat||"LIVE").toUpperCase();
 }
 function wb193Icon(item){
   return item?.payload?.icon||({general:"🔄",season:"🌍",vs:"🏆",hero:"🦸",event:"📅",r5r4:"🧠"})[item?.category]||"🔔";
@@ -1486,13 +1510,13 @@ function wb193RenderFeed(id,categories,limit=6){
   const el=$(id);if(!el)return;
   const cats=new Set(categories||[]);
   const list=(wb193Live.items||[]).filter(x=>cats.has(x.category)).slice(0,limit).map(wb193Translated);
-  if(!list.length){el.innerHTML='<div class="wb193LiveEmpty">Aucune information Live publiée dans cette rubrique pour le moment.</div>';return}
+  if(!list.length){el.innerHTML=`<div class="wb193LiveEmpty">${esc(wb202T("Aucune information Live publiée dans cette rubrique pour le moment."))}</div>`;return}
   el.innerHTML=list.map((x,i)=>`<article class="wb193LiveCard ${Number(x.priority||50)<=15?"hot":""}">
-    <div class="wb193LiveCardTop"><span>${esc(wb193Icon(x))}</span><span class="wb193LiveBadge">${esc(x.payload?.badge||wb193Badge(x.category))}</span></div>
-    <h4>${esc(x.title||"Mise à jour")}</h4>
+    <div class="wb193LiveCardTop"><span>${esc(wb193Icon(x))}</span><span class="wb193LiveBadge">${esc(x.payload?.badge&&x.payload.badge!=="SAISON"&&x.payload.badge!=="HÉROS"&&x.payload.badge!=="ÉVÉNEMENT"?x.payload.badge:wb193Badge(x.category))}</span></div>
+    <h4>${esc(x.title||wb202T("Mise à jour"))}</h4>
     ${x.summary?`<p>${esc(x.summary)}</p>`:""}
     ${x.body?`<div class="wb193LiveBody">${esc(x.body)}</div>`:""}
-    <div class="wb193LiveMeta"><span>${x.source_label?`Source : ${esc(x.source_label)}`:"WarBoost Live"}</span><span>${wb193Date(x.updated_at||x.published_at)}</span></div>
+    <div class="wb193LiveMeta"><span>${x.source_label?`${esc(wb202T("Source :"))} ${esc(x.source_label)}`:"WarBoost Live"}</span><span>${wb193Date(x.updated_at||x.published_at)}</span></div>
   </article>`).join("");
 }
 function wb193RenderAll(){
@@ -1506,7 +1530,7 @@ function wb193RenderAll(){
     st.textContent=cached?"📦 CACHE":"● LIVE";
     st.className="wb193LiveStatus "+(cached?"offline":"");
   }
-  if(up)up.textContent=`Dernière synchronisation : ${wb193Date(wb193Live.updated_at)}`;
+  if(up)up.textContent=`${wb202T("Dernière synchronisation :")} ${wb193Date(wb193Live.updated_at)}`;
 }
 function wb193LiveForAI(categories){
   const cats=new Set(categories||[]);
@@ -1529,7 +1553,7 @@ function wb193ReadCache(){
 async function refreshLiveContent(force=false){
   const cache=wb193ReadCache();
   if(!force&&cache&&Date.now()-Number(cache.saved_at||0)<WB193_LIVE_CACHE_MS)return wb193Live;
-  const st=$("wb193HomeStatus");if(st){st.textContent="Synchronisation…";st.className="wb193LiveStatus"}
+  const st=$("wb193HomeStatus");if(st){st.textContent=wb202T("Synchronisation…");st.className="wb193LiveStatus"}
   try{
     const r=await fetch(`/api/live-admin?mode=public${force?`&t=${Date.now()}`:""}`,{headers:{Accept:"application/json"},cache:force?"no-store":"default"});
     const data=await r.json().catch(()=>({}));
@@ -1541,7 +1565,7 @@ async function refreshLiveContent(force=false){
   }catch(e){
     if(cache){wb193Live={...cache.data,source:"cache"};wb193RenderAll();return wb193Live}
     wb193Live={items:[],updated_at:null,source:"offline"};wb193RenderAll();
-    if(st){st.textContent="Hors connexion";st.className="wb193LiveStatus offline"}
+    if(st){st.textContent=wb202T("Hors connexion");st.className="wb193LiveStatus offline"}
     return wb193Live;
   }
 }
@@ -2472,8 +2496,8 @@ Object.assign(WB171_TRANSLATIONS,{
 });
 
 Object.assign(WB171_TRANSLATIONS,{
-  "WARBOOST V20.1 • APPLICATION":{
-    "en":"WARBOOST V20.1 • APPLICATION",
+  "WARBOOST V20.2 • FULL TRANSLATION":{
+    "en":"WARBOOST V20.2 • FULL TRANSLATION",
     "es":"WARBOOST V20.1 • APLICACIÓN",
     "de":"WARBOOST V20.1 • APP",
     "ja":"WARBOOST V20.1 • アプリ",
@@ -2552,8 +2576,10 @@ Object.assign(WB171_TRANSLATIONS,{
   "Mettre à jour maintenant":{"en":"Update now","es":"Actualizar ahora","de":"Jetzt aktualisieren","ja":"今すぐ更新","zh":"立即更新"}
 });
 
+Object.assign(WB171_TRANSLATIONS,{"WARBOOST V20.2 • FULL TRANSLATION":{"en":"WARBOOST V20.2 • FULL TRANSLATION","es":"WARBOOST V20.2 • TRADUCCIÓN COMPLETA","de":"WARBOOST V20.2 • VOLLSTÄNDIGE ÜBERSETZUNG","ja":"WARBOOST V20.2 • 完全翻訳","zh":"WARBOOST V20.2 • 完整翻译"},"V20.2 • APPLICATION":{"en":"V20.2 • APP","es":"V20.2 • APLICACIÓN","de":"V20.2 • APP","ja":"V20.2 • アプリ","zh":"V20.2 • 应用"},"V20.2 • APP + LIVE":{"en":"V20.2 • APP + LIVE","es":"V20.2 • APP + LIVE","de":"V20.2 • APP + LIVE","ja":"V20.2 • アプリ + LIVE","zh":"V20.2 • 应用 + LIVE"},"🔄 Centre de mises à jour":{"en":"🔄 Update Center","es":"🔄 Centro de actualizaciones","de":"🔄 Update-Zentrale","ja":"🔄 アップデートセンター","zh":"🔄 更新中心"},"Saison, VS, héros, événements et briefs R5/R4 synchronisés depuis WarBoost.":{"en":"Season, VS, heroes, events and R5/R4 briefs synchronized from WarBoost.","es":"Temporada, VS, héroes, eventos y briefs R5/R4 sincronizados desde WarBoost.","de":"Saison, VS, Helden, Events und R5/R4-Briefings werden über WarBoost synchronisiert.","ja":"シーズン、VS、英雄、イベント、R5/R4ブリーフをWarBoostから同期します。","zh":"赛季、VS、英雄、活动和 R5/R4 简报由 WarBoost 同步。"},"Connexion…":{"en":"Connecting…","es":"Conectando…","de":"Verbindung…","ja":"接続中…","zh":"正在连接…"},"↻ Actualiser":{"en":"↻ Refresh","es":"↻ Actualizar","de":"↻ Aktualisieren","ja":"↻ 更新","zh":"↻ 刷新"},"🛠️ Admin Live":{"en":"🛠️ Live Admin","es":"🛠️ Admin Live","de":"🛠️ Live-Admin","ja":"🛠️ Live管理","zh":"🛠️ Live 管理"},"Chargement du contenu Live…":{"en":"Loading Live Content…","es":"Cargando contenido Live…","de":"Live Content wird geladen…","ja":"Live Contentを読み込み中…","zh":"正在加载 Live Content…"},"Chargement…":{"en":"Loading…","es":"Cargando…","de":"Laden…","ja":"読み込み中…","zh":"加载中…"},"Dernière synchronisation : —":{"en":"Last sync: —","es":"Última sincronización: —","de":"Letzte Synchronisierung: —","ja":"最終同期：—","zh":"上次同步：—"},"Les données Live restent disponibles en cache hors connexion.":{"en":"Live data remains available from cache when offline.","es":"Los datos Live permanecen disponibles en caché sin conexión.","de":"Live-Daten bleiben offline aus dem Cache verfügbar.","ja":"オフライン時もキャッシュされたLiveデータを利用できます。","zh":"离线时仍可使用缓存中的 Live 数据。"},"LIVE R5/R4":{"en":"LIVE R5/R4","es":"LIVE R5/R4","de":"LIVE R5/R4","ja":"LIVE R5/R4","zh":"LIVE R5/R4"},"🧠 Brief alliance dynamique":{"en":"🧠 Dynamic alliance brief","es":"🧠 Brief dinámico de alianza","de":"🧠 Dynamisches Allianz-Briefing","ja":"🧠 同盟ダイナミックブリーフ","zh":"🧠 联盟动态简报"},"Alertes et recommandations publiées sans mise à jour de l’application.":{"en":"Alerts and recommendations published without updating the app.","es":"Alertas y recomendaciones publicadas sin actualizar la aplicación.","de":"Warnungen und Empfehlungen ohne App-Update veröffentlicht.","ja":"アプリ更新なしでアラートや推奨事項を配信します。","zh":"无需更新应用即可发布提醒和建议。"},"LIVE VS":{"en":"LIVE VS","es":"LIVE VS","de":"LIVE VS","ja":"LIVE VS","zh":"LIVE VS"},"🏆 Infos VS actualisées":{"en":"🏆 Updated VS info","es":"🏆 Información VS actualizada","de":"🏆 Aktuelle VS-Infos","ja":"🏆 最新VS情報","zh":"🏆 最新 VS 信息"},"Les changements publiés ici sont aussi transmis au copilote IA VS.":{"en":"Changes published here are also sent to the VS AI copilot.","es":"Los cambios publicados aquí también se envían al copiloto IA de VS.","de":"Hier veröffentlichte Änderungen werden auch an den VS-KI-Copiloten übermittelt.","ja":"ここで公開された変更はVS AIコパイロットにも反映されます。","zh":"此处发布的变更也会传递给 VS AI 副驾驶。"},"✨ Plan IA PRO":{"en":"✨ PRO AI plan","es":"✨ Plan IA PRO","de":"✨ PRO-KI-Plan","ja":"✨ PRO AIプラン","zh":"✨ PRO AI 计划"},"LIVE SAISON":{"en":"LIVE SEASON","es":"LIVE TEMPORADA","de":"LIVE SAISON","ja":"LIVE シーズン","zh":"LIVE 赛季"},"🌍 Saison, héros & événements":{"en":"🌍 Season, heroes & events","es":"🌍 Temporada, héroes y eventos","de":"🌍 Saison, Helden & Events","ja":"🌍 シーズン、英雄、イベント","zh":"🌍 赛季、英雄与活动"},"Le contenu Live est intégré aux conseils Saison du copilote IA.":{"en":"Live Content is integrated into the AI copilot's Season advice.","es":"El contenido Live se integra en los consejos de Temporada del copiloto IA.","de":"Live Content wird in die Saison-Empfehlungen des KI-Copiloten integriert.","ja":"Live ContentはAIコパイロットのシーズン助言に反映されます。","zh":"Live Content 会整合到 AI 副驾驶的赛季建议中。"},"✨ Conseil IA PRO":{"en":"✨ PRO AI advice","es":"✨ Consejo IA PRO","de":"✨ PRO-KI-Empfehlung","ja":"✨ PRO AIアドバイス","zh":"✨ PRO AI 建议"},"Aucune information Live publiée dans cette rubrique pour le moment.":{"en":"No Live information has been published in this section yet.","es":"Aún no hay información Live publicada en esta sección.","de":"In diesem Bereich wurden noch keine Live-Informationen veröffentlicht.","ja":"このセクションにはまだLive情報が公開されていません。","zh":"此栏目暂时没有已发布的 Live 信息。"},"Mise à jour":{"en":"Update","es":"Actualización","de":"Update","ja":"アップデート","zh":"更新"},"Source :":{"en":"Source:","es":"Fuente:","de":"Quelle:","ja":"ソース：","zh":"来源："},"Dernière synchronisation :":{"en":"Last sync:","es":"Última sincronización:","de":"Letzte Synchronisierung:","ja":"最終同期：","zh":"上次同步："},"Synchronisation…":{"en":"Synchronizing…","es":"Sincronizando…","de":"Synchronisierung…","ja":"同期中…","zh":"正在同步…"},"Hors connexion":{"en":"Offline","es":"Sin conexión","de":"Offline","ja":"オフライン","zh":"离线"},"SAISON":{"en":"SEASON","es":"TEMPORADA","de":"SAISON","ja":"シーズン","zh":"赛季"},"HÉROS":{"en":"HERO","es":"HÉROE","de":"HELD","ja":"英雄","zh":"英雄"},"ÉVÉNEMENT":{"en":"EVENT","es":"EVENTO","de":"EVENT","ja":"イベント","zh":"活动"},"🛠️ Administration Live WarBoost":{"en":"🛠️ WarBoost Live Administration","es":"🛠️ Administración Live de WarBoost","de":"🛠️ WarBoost Live-Administration","ja":"🛠️ WarBoost Live管理","zh":"🛠️ WarBoost Live 管理"},"Valide, modifie ou publie les mises à jour proposées automatiquement par WarBoost.":{"en":"Review, edit or publish updates automatically proposed by WarBoost.","es":"Valida, modifica o publica las actualizaciones propuestas automáticamente por WarBoost.","de":"Prüfe, bearbeite oder veröffentliche die von WarBoost automatisch vorgeschlagenen Updates.","ja":"WarBoostが自動提案した更新を確認、編集、公開します。","zh":"审核、修改或发布 WarBoost 自动提出的更新。"},"🤖 Veille Last War → brouillons":{"en":"🤖 Last War monitoring → drafts","es":"🤖 Vigilancia Last War → borradores","de":"🤖 Last-War-Monitoring → Entwürfe","ja":"🤖 Last War監視 → 下書き","zh":"🤖 Last War 监控 → 草稿"},"WarBoost recherche les changements récents et prépare uniquement des propositions. Rien n’est publié sans validation Admin.":{"en":"WarBoost searches for recent changes and only prepares proposals. Nothing is published without Admin approval.","es":"WarBoost busca cambios recientes y solo prepara propuestas. Nada se publica sin validación del Admin.","de":"WarBoost sucht nach aktuellen Änderungen und erstellt nur Vorschläge. Ohne Admin-Freigabe wird nichts veröffentlicht.","ja":"WarBoostは最近の変更を検索して提案だけを作成します。Adminの承認なしには公開されません。","zh":"WarBoost 会搜索近期变更并只生成提案。未经管理员确认不会发布。"},"🛡️ VALIDATION HUMAINE":{"en":"🛡️ HUMAN APPROVAL","es":"🛡️ VALIDACIÓN HUMANA","de":"🛡️ MENSCHLICHE FREIGABE","ja":"🛡️ 人による承認","zh":"🛡️ 人工确认"},"À valider":{"en":"Pending approval","es":"Por validar","de":"Zu prüfen","ja":"承認待ち","zh":"待确认"},"Dernier scan":{"en":"Last scan","es":"Último escaneo","de":"Letzter Scan","ja":"最終スキャン","zh":"上次扫描"},"Auto-scan":{"en":"Auto-scan","es":"Auto-escaneo","de":"Auto-Scan","ja":"自動スキャン","zh":"自动扫描"},"🔎 Scanner les nouveautés Last War":{"en":"🔎 Scan Last War updates","es":"🔎 Escanear novedades de Last War","de":"🔎 Last-War-Neuigkeiten scannen","ja":"🔎 Last Warの新情報をスキャン","zh":"🔎 扫描 Last War 新内容"},"↻ Recharger les propositions":{"en":"↻ Reload proposals","es":"↻ Recargar propuestas","de":"↻ Vorschläge neu laden","ja":"↻ 提案を再読み込み","zh":"↻ 重新加载提案"},"À l’ouverture de ton compte Admin, WarBoost peut lancer au maximum un scan automatique toutes les 12 h. Le moteur privilégie les informations récentes et demande des sources avant de créer un brouillon.":{"en":"When your Admin account opens, WarBoost can run at most one automatic scan every 12 hours. The engine prioritizes recent information and requires sources before creating a draft.","es":"Al abrir tu cuenta Admin, WarBoost puede ejecutar como máximo un escaneo automático cada 12 h. El motor prioriza la información reciente y exige fuentes antes de crear un borrador.","de":"Beim Öffnen deines Admin-Kontos kann WarBoost höchstens alle 12 Stunden einen automatischen Scan ausführen. Die Engine priorisiert aktuelle Informationen und verlangt Quellen, bevor ein Entwurf erstellt wird.","ja":"Adminアカウントを開くと、WarBoostは最大12時間に1回の自動スキャンを実行できます。エンジンは新しい情報を優先し、下書き作成前にソースを要求します。","zh":"打开管理员账户时，WarBoost 最多每 12 小时自动扫描一次。引擎优先近期信息，并在创建草稿前要求提供来源。"},"✍️ ÉDITEUR LIVE MANUEL":{"en":"✍️ MANUAL LIVE EDITOR","es":"✍️ EDITOR LIVE MANUAL","de":"✍️ MANUELLER LIVE-EDITOR","ja":"✍️ 手動LIVEエディター","zh":"✍️ 手动 LIVE 编辑器"},"Rubrique":{"en":"Section","es":"Sección","de":"Bereich","ja":"カテゴリ","zh":"栏目"},"🔄 Général":{"en":"🔄 General","es":"🔄 General","de":"🔄 Allgemein","ja":"🔄 一般","zh":"🔄 常规"},"🌍 Saison":{"en":"🌍 Season","es":"🌍 Temporada","de":"🌍 Saison","ja":"🌍 シーズン","zh":"🌍 赛季"},"🦸 Héros":{"en":"🦸 Hero","es":"🦸 Héroe","de":"🦸 Held","ja":"🦸 英雄","zh":"🦸 英雄"},"📅 Événement":{"en":"📅 Event","es":"📅 Evento","de":"📅 Event","ja":"📅 イベント","zh":"📅 活动"},"Priorité":{"en":"Priority","es":"Prioridad","de":"Priorität","ja":"優先度","zh":"优先级"},"Titre":{"en":"Title","es":"Título","de":"Titel","ja":"タイトル","zh":"标题"},"Résumé":{"en":"Summary","es":"Resumen","de":"Zusammenfassung","ja":"概要","zh":"摘要"},"Contenu":{"en":"Content","es":"Contenido","de":"Inhalt","ja":"内容","zh":"内容"},"Icône":{"en":"Icon","es":"Icono","de":"Icon","ja":"アイコン","zh":"图标"},"Badge":{"en":"Badge","es":"Insignia","de":"Badge","ja":"バッジ","zh":"徽章"},"Source":{"en":"Source","es":"Fuente","de":"Quelle","ja":"ソース","zh":"来源"},"URL source (optionnel)":{"en":"Source URL (optional)","es":"URL de la fuente (opcional)","de":"Quell-URL (optional)","ja":"ソースURL（任意）","zh":"来源 URL（可选）"},"Début (optionnel)":{"en":"Start (optional)","es":"Inicio (opcional)","de":"Start (optional)","ja":"開始（任意）","zh":"开始（可选）"},"Fin (optionnel)":{"en":"End (optional)","es":"Fin (opcional)","de":"Ende (optional)","ja":"終了（任意）","zh":"结束（可选）"},"Clé interne":{"en":"Internal key","es":"Clave interna","de":"Interner Schlüssel","ja":"内部キー","zh":"内部键"},"Publier / garder actif dans WarBoost Live":{"en":"Publish / keep active in WarBoost Live","es":"Publicar / mantener activo en WarBoost Live","de":"In WarBoost Live veröffentlichen / aktiv halten","ja":"WarBoost Liveで公開 / 有効のままにする","zh":"在 WarBoost Live 发布 / 保持启用"},"🚀 Publier / Enregistrer":{"en":"🚀 Publish / Save","es":"🚀 Publicar / Guardar","de":"🚀 Veröffentlichen / Speichern","ja":"🚀 公開 / 保存","zh":"🚀 发布 / 保存"},"➕ Nouveau contenu":{"en":"➕ New content","es":"➕ Nuevo contenido","de":"➕ Neuer Inhalt","ja":"➕ 新規コンテンツ","zh":"➕ 新内容"},"↻ Actualiser le Live":{"en":"↻ Refresh Live","es":"↻ Actualizar Live","de":"↻ Live aktualisieren","ja":"↻ Liveを更新","zh":"↻ 刷新 Live"},"Fermer":{"en":"Close","es":"Cerrar","de":"Schließen","ja":"閉じる","zh":"关闭"},"📚 Contenus publiés":{"en":"📚 Published content","es":"📚 Contenidos publicados","de":"📚 Veröffentlichte Inhalte","ja":"📚 公開済みコンテンツ","zh":"📚 已发布内容"},"Touchez Modifier pour reprendre un contenu existant.":{"en":"Tap Edit to reopen existing content.","es":"Pulsa Modificar para retomar un contenido existente.","de":"Tippe auf Bearbeiten, um vorhandenen Inhalt erneut zu öffnen.","ja":"編集をタップして既存コンテンツを再編集します。","zh":"点击“编辑”以继续编辑现有内容。"},"↻ Recharger":{"en":"↻ Reload","es":"↻ Recargar","de":"↻ Neu laden","ja":"↻ 再読み込み","zh":"↻ 重新加载"},"ACTIF":{"en":"ACTIVE","es":"ACTIVO","de":"AKTIV","ja":"有効","zh":"启用"},"INACTIF":{"en":"INACTIVE","es":"INACTIVO","de":"INAKTIV","ja":"無効","zh":"停用"},"✏️ Modifier":{"en":"✏️ Edit","es":"✏️ Modificar","de":"✏️ Bearbeiten","ja":"✏️ 編集","zh":"✏️ 编辑"},"⏸️ Désactiver":{"en":"⏸️ Disable","es":"⏸️ Desactivar","de":"⏸️ Deaktivieren","ja":"⏸️ 無効化","zh":"⏸️ 停用"},"▶️ Réactiver":{"en":"▶️ Reactivate","es":"▶️ Reactivar","de":"▶️ Reaktivieren","ja":"▶️ 再有効化","zh":"▶️ 重新启用"},"🗑️ Supprimer":{"en":"🗑️ Delete","es":"🗑️ Eliminar","de":"🗑️ Löschen","ja":"🗑️ 削除","zh":"🗑️ 删除"},"Aucun contenu publié.":{"en":"No published content.","es":"No hay contenido publicado.","de":"Keine veröffentlichten Inhalte.","ja":"公開済みコンテンツはありません。","zh":"暂无已发布内容。"},"Aucune proposition pour le moment. Lance un scan pour rechercher les nouveautés Last War.":{"en":"No proposals yet. Run a scan to look for Last War updates.","es":"Aún no hay propuestas. Ejecuta un escaneo para buscar novedades de Last War.","de":"Noch keine Vorschläge. Starte einen Scan nach Last-War-Neuigkeiten.","ja":"提案はまだありません。スキャンしてLast Warの新情報を探してください。","zh":"暂无提案。运行扫描以查找 Last War 新内容。"},"À VALIDER":{"en":"PENDING","es":"POR VALIDAR","de":"ZU PRÜFEN","ja":"承認待ち","zh":"待确认"},"PUBLIÉ":{"en":"PUBLISHED","es":"PUBLICADO","de":"VERÖFFENTLICHT","ja":"公開済み","zh":"已发布"},"IGNORÉ":{"en":"IGNORED","es":"IGNORADO","de":"IGNORIERT","ja":"無視","zh":"已忽略"},"✏️ Réviser":{"en":"✏️ Review","es":"✏️ Revisar","de":"✏️ Prüfen","ja":"✏️ レビュー","zh":"✏️ 审核"},"✅ Publier":{"en":"✅ Publish","es":"✅ Publicar","de":"✅ Veröffentlichen","ja":"✅ 公開","zh":"✅ 发布"},"✕ Ignorer":{"en":"✕ Ignore","es":"✕ Ignorar","de":"✕ Ignorieren","ja":"✕ 無視","zh":"✕ 忽略"},"confiance":{"en":"confidence","es":"confianza","de":"Vertrauen","ja":"信頼度","zh":"置信度"}});
 const WB171_PLACEHOLDERS={"Ton pseudo": {"en": "Your nickname", "es": "Tu apodo", "de": "Dein Spielname", "ja": "ニックネーム", "zh": "你的昵称"}, "ton@email.fr": {"en": "you@email.com", "es": "tu@email.com", "de": "du@email.de", "ja": "you@email.com", "zh": "you@email.com"}, "6 caractères minimum": {"en": "6 characters minimum", "es": "6 caracteres mínimo", "de": "Mindestens 6 Zeichen", "ja": "6文字以上", "zh": "至少6个字符"}, "Nouveau mot de passe": {"en": "New password", "es": "Nueva contraseña", "de": "Neues Passwort", "ja": "新しいパスワード", "zh": "新密码"}, "Ex : préparer les groupes pour 20h": {"en": "E.g. prepare groups for 8 PM", "es": "Ej.: preparar grupos para las 20h", "de": "Z. B. Gruppen für 20 Uhr vorbereiten", "ja": "例：20時のグループを準備", "zh": "例如：准备20点的分组"}, "Rechercher un joueur…": {"en": "Search player…", "es": "Buscar jugador…", "de": "Spieler suchen…", "ja": "プレイヤー検索…", "zh": "搜索玩家…"}};
 const WB171_SUPPORTED=["fr","en","es","de","ja","zh"];
+Object.assign(WB171_PLACEHOLDERS,{"Ex : Nouvelle phase de saison":{"en":"Ex: New season phase","es":"Ej.: Nueva fase de temporada","de":"Bsp.: Neue Saisonphase","ja":"例：新しいシーズンフェーズ","zh":"例：新的赛季阶段"},"Résumé visible dans la carte Live":{"en":"Summary shown in the Live card","es":"Resumen visible en la tarjeta Live","de":"Zusammenfassung in der Live-Karte","ja":"Liveカードに表示する概要","zh":"Live 卡片中显示的摘要"},"Conseils, changements, priorités, rappels…":{"en":"Tips, changes, priorities, reminders…","es":"Consejos, cambios, prioridades, recordatorios…","de":"Tipps, Änderungen, Prioritäten, Erinnerungen…","ja":"アドバイス、変更、優先事項、リマインダー…","zh":"建议、变更、优先级、提醒…"},"Créée automatiquement si vide":{"en":"Created automatically if empty","es":"Se crea automáticamente si está vacío","de":"Wird bei leerem Feld automatisch erstellt","ja":"空欄なら自動作成","zh":"留空则自动创建"}});
 function wb171T(key,lang=wb171Language){
   if(lang==="fr")return key;
   return WB171_TRANSLATIONS[key]?.[lang]||key;
@@ -2620,6 +2646,8 @@ function applyLanguage(lang){
 function setLanguage(lang){
   applyLanguage(lang);
   if(typeof wb193RenderAll==="function")wb193RenderAll();
+  if(typeof wb194RenderAdminItems==="function"&&wb194AdminState?.items)wb194RenderAdminItems();
+  if(typeof wb195RenderProposals==="function"&&wb195State?.items)wb195RenderProposals();
   if(typeof wb20RefreshAppUI==="function")wb20RefreshAppUI();
   scheduleCloudSync("wb17_language");
 }
