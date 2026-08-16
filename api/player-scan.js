@@ -217,7 +217,7 @@ SORTIE
 
   const content=[{
     type:"input_text",
-    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.7.
+    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.8.
 
 ORDRE D’ANALYSE OBLIGATOIRE : héros → équipements → puissance de formation → Drone → Suzerain. N’évalue les priorités et la Boutique qu’après avoir terminé cette extraction.
 
@@ -353,26 +353,47 @@ Retourne uniquement la structure JSON demandée.`
   const timeout=setTimeout(()=>controller.abort(),45000);
 
   try{
-    const r=await fetch("https://api.openai.com/v1/responses",{
+    const requestBody={
+      model,
+      // GPT-5 ne supporte pas reasoning.effort="none".
+      // "minimal" garde le scan rapide tout en restant compatible avec GPT-5.
+      reasoning:{effort:"minimal"},
+      max_output_tokens:5000,
+      input:[{role:"user",content}],
+      text:{verbosity:"low",format:{type:"json_schema",name:"warboost_smart_player_scan",strict:true,schema}}
+    };
+
+    const callOpenAI=body=>fetch("https://api.openai.com/v1/responses",{
       method:"POST",
       headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},
       signal:controller.signal,
-      body:JSON.stringify({
-        model,
-        reasoning:{effort:"none"},
-        max_output_tokens:5000,
-        input:[{role:"user",content}],
-        text:{verbosity:"low",format:{type:"json_schema",name:"warboost_smart_player_scan",strict:true,schema}}
-      })
+      body:JSON.stringify(body)
     });
 
-    const raw=await r.text();let data={};
+    let r=await callOpenAI(requestBody);
+    let raw=await r.text();let data={};
     try{data=raw?JSON.parse(raw):{}}catch{data={error:{message:raw.slice(0,500)}}}
+
+    // Compatibilité de secours si OPENAI_MODEL pointe vers un modèle ne gérant pas reasoning.
+    // On relance une seule fois sans le paramètre, sans consommer un second crédit WarBoost.
+    const apiError=String(data?.error?.message||"");
+    if(!r.ok && r.status===400 && /reasoning|effort|unsupported value/i.test(apiError)){
+      const fallbackBody={...requestBody};
+      delete fallbackBody.reasoning;
+      r=await callOpenAI(fallbackBody);
+      raw=await r.text();data={};
+      try{data=raw?JSON.parse(raw):{}}catch{data={error:{message:raw.slice(0,500)}}}
+    }
 
     if(!r.ok){
       await refundCredit(user.id);
       const refunded={...usage,used:Math.max(0,usage.used-1),remaining:Math.min(usage.limit,usage.remaining+1)};
-      return json(res,r.status===429?429:502,{error:data?.error?.message||"Erreur du moteur Smart Scan.",usage:refunded});
+      const technical=String(data?.error?.message||"");
+      console.error("smart scan api",technical||`HTTP ${r.status}`);
+      const safeError=r.status===429
+        ? "Le moteur IA est momentanément saturé. Réessaie dans quelques instants."
+        : "WarBoost n’a pas pu terminer l’analyse IA. La requête a été remboursée : relance le scan.";
+      return json(res,r.status===429?429:502,{error:safeError,usage:refunded});
     }
     if(data?.status==="incomplete"){
       const reason=String(data?.incomplete_details?.reason||"");
