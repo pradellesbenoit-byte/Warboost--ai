@@ -348,77 +348,6 @@ td input,td select{margin:0;padding:8px}
 
 
 
-/* ===== V19.2 • ALLIANCE 100 R5/R4 ===== */
-let wb191AllianceDraft=[];
-const WB192_MAX_ALLIANCE_SHOTS=20;
-const WB192_BATCH_MAX=4;
-function wb191AllianceStatus(text,type=""){
-  const el=$("wb191AllianceStatus");if(!el)return;el.textContent=text||"";el.className="status "+(type||"");
-}
-function wb192ExpectedCount(){return Math.max(1,Math.min(100,Number($("wb192ExpectedMembers")?.value||100)||100))}
-function wb192SetProgress(done,total,label=""){
-  const wrap=$("wb192Progress"),bar=$("wb192ProgressBar"),txt=$("wb192ProgressText");if(!wrap||!bar||!txt)return;
-  wrap.style.display=total?"block":"none";const pct=total?Math.max(0,Math.min(100,Math.round(done/total*100))):0;bar.style.width=pct+"%";txt.textContent=label||`${done}/${total}`;
-}
-function wb191AllianceFilesChanged(){
-  const all=[...($("wb191AllianceScreens")?.files||[])],files=all.slice(0,WB192_MAX_ALLIANCE_SHOTS);
-  if($("wb191AllianceFileList")){
-    const suffix=all.length>WB192_MAX_ALLIANCE_SHOTS?` • ${all.length-WB192_MAX_ALLIANCE_SHOTS} ignorée(s)`:"";
-    $("wb191AllianceFileList").textContent=files.length?`${files.length} capture(s) sélectionnée(s)${suffix}. WarBoost les analysera automatiquement par lots.`:"Aucune capture sélectionnée.";
-  }
-}
-function wb192MergePlayers(base=[],incoming=[]){
-  const seen=new Map();
-  const add=p=>{if(!p?.name)return;const name=String(p.name).trim();if(!name)return;const k=name.toLocaleLowerCase();const old=seen.get(k)||{};
-    const clean={...old,...p,name};
-    if(old.rank&&!p.rank)clean.rank=old.rank;if(old.power_m!=null&&p.power_m==null)clean.power_m=old.power_m;if(old.hq_level!=null&&p.hq_level==null)clean.hq_level=old.hq_level;
-    seen.set(k,clean);
-  };
-  base.forEach(add);incoming.forEach(add);return [...seen.values()];
-}
-function wb192SyncDraftToPaste(){
-  const players=wb191AllianceDraft;if($("rosterPaste"))$("rosterPaste").value=players.map(p=>`${p.name} | ${/^R[1-5]$/i.test(String(p.rank||""))?String(p.rank).toUpperCase():"R3"} | ${p.power_m?Number(p.power_m).toFixed(Number(p.power_m)>=100?0:1).replace(".0","")+"M":"0"}${p.hq_level?` | QG${p.hq_level}`:""}`).join("\n");
-  if($("memberCount"))$("memberCount").value=players.length||$("memberCount").value;saveAlliance();
-}
-function wb191RenderAllianceDraft(players=[]){
-  wb191AllianceDraft=(players||[]).filter(p=>p&&p.name);const el=$("wb191RosterPreview");if(!el)return;
-  if(!wb191AllianceDraft.length){el.style.display="none";el.innerHTML="";return}
-  const expected=wb192ExpectedCount(),count=wb191AllianceDraft.length,complete=count>=expected;
-  el.style.display="block";
-  el.innerHTML=`<div class="wb192PreviewHead"><div><b>${count}/${expected} joueur(s) détecté(s)</b><small class="muted">${complete?"Roster prêt à importer ✅":"Tu peux ajouter les captures manquantes sans perdre les joueurs déjà détectés."}</small></div><button class="btn gold" onclick="wb192ImportDetectedAlliance()">✅ Importer ${count} joueur(s)</button></div>`+wb191AllianceDraft.map(p=>`<div class="wb191RosterRow"><b>${esc(p.name)}</b><span>${esc((p.rank||"R3").toUpperCase())}</span><span>${p.power_m?esc(p.power_m)+"M":"—"}</span><span>${p.hq_level?"QG "+esc(p.hq_level):"—"}</span></div>`).join("");
-}
-function wb192ClearAllianceDraft(){wb191AllianceDraft=[];wb191RenderAllianceDraft([]);if($("rosterPaste"))$("rosterPaste").value="";wb192SetProgress(0,0);wb191AllianceStatus("Liste détectée effacée.","")}
-function wb192ImportDetectedAlliance(){
-  if(!wb191AllianceDraft.length){wb191AllianceStatus("Aucun joueur détecté à importer.","err");return}
-  wb192SyncDraftToPaste();importRoster();wb191AllianceStatus(`✅ ${wb191AllianceDraft.length} joueur(s) ajoutés au roster WarBoost.`,"ok");
-}
-async function wb191ScanAlliance(){
-  if(!wb17Session){wb191AllianceStatus("Connecte ton compte WarBoost pour importer ton alliance.","err");openAccount();return}
-  if(wb18Billing.plan!=="pro"){wb191AllianceStatus("L’import automatique d’alliance est réservé à WarBoost PRO.","err");showPage("pro");return}
-  const files=[...($("wb191AllianceScreens")?.files||[])].slice(0,WB192_MAX_ALLIANCE_SHOTS);if(!files.length){wb191AllianceStatus("Sélectionne les captures de la liste des membres.","err");return}
-  wb191AllianceStatus(`Préparation de ${files.length} capture(s)…`,"");wb192SetProgress(0,files.length,"Compression des captures…");
-  try{
-    const compressed=[];for(let i=0;i<files.length;i++){compressed.push(await wb19CompressFile(files[i]));wb192SetProgress(i+1,files.length,`Compression ${i+1}/${files.length}`)}
-    const batches=[];let current=[];
-    for(const img of compressed){
-      const test=[...current,img],size=JSON.stringify({images:test}).length;
-      if(current.length&&(current.length>=WB192_BATCH_MAX||size>3600000)){batches.push(current);current=[img]}else current=test;
-    }
-    if(current.length)batches.push(current);
-    let merged=[...wb191AllianceDraft],lastAlliance={};wb192SetProgress(0,batches.length,`0/${batches.length} lot analysé`);
-    for(let i=0;i<batches.length;i++){
-      wb191AllianceStatus(`Analyse automatique du roster • lot ${i+1}/${batches.length}…`,"");
-      const r=await fetch("/api/alliance-scan",{method:"POST",headers:billingAuthHeaders({"Content-Type":"application/json"}),body:JSON.stringify({images:batches[i],language:wb171Language||"fr"})});
-      const data=await r.json().catch(()=>({}));if(data.usage)applyBillingState(data.usage);if(!r.ok)throw new Error(`Lot ${i+1}/${batches.length} : ${data.error||`Erreur ${r.status}`}`);
-      merged=wb192MergePlayers(merged,data.players||[]);lastAlliance={...lastAlliance,...(data.alliance||{})};
-      wb191RenderAllianceDraft(merged);wb192SyncDraftToPaste();wb192SetProgress(i+1,batches.length,`${i+1}/${batches.length} lot(s) • ${merged.length} joueur(s)`);
-    }
-    if(lastAlliance?.name&&$("alliance"))$("alliance").value=lastAlliance.name;if(lastAlliance?.server&&$("server"))$("server").value=lastAlliance.server;
-    wb192SyncDraftToPaste();const expected=wb192ExpectedCount(),count=merged.length;
-    wb191AllianceStatus(count>=expected?`✅ ${count} joueur(s) détecté(s). Le roster est prêt à être importé.`:`${count}/${expected} joueur(s) détecté(s). Ajoute les captures manquantes puis relance : WarBoost conservera déjà les ${count} joueurs.`,count>=expected?"ok":"");
-  }catch(e){wb191AllianceStatus(e.message||"Import de l’alliance impossible.","err")}
-}
-
 /* ===== V19.1 • PLAYER IMPORT ===== */
 .wb19ImportCard{border-color:#35577c;background:linear-gradient(180deg,#0d1a2a,#091321)}
 .wb19ModeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:14px 0}
@@ -458,8 +387,8 @@ async function wb191ScanAlliance(){
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V19.2</em></button>
-  <span class="proBadge">👥 V19.2 • ALLIANCE 100</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V19.2.1</em></button>
+  <span class="proBadge">👥 V19.2.1 • ALLIANCE 100</span>
   <select id="language" class="lang" onchange="setLanguage(this.value)" aria-label="Language">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -478,7 +407,7 @@ async function wb191ScanAlliance(){
 </div>
 
 <section class="hero">
-  <div class="eyebrow">WARBOOST V19.2 • ALLIANCE 100</div>
+  <div class="eyebrow">WARBOOST V19.2.1 • ALLIANCE 100</div>
   <h1>Ton compte. Ton alliance. <span style="color:var(--red)">Ton copilote IA.</span></h1>
   <p>Import alliance R5/R4, roster complet, compte cloud, abonnement PRO sécurisé, sauvegarde multi-appareils, War Room, progression, héros, VS et saison.</p>
 </section>
@@ -678,7 +607,7 @@ async function wb191ScanAlliance(){
   <div class="card wb191AllianceCard locked">
     <div class="wb191AllianceHead">
       <div>
-        <div class="eyebrow">V19.2 • R5/R4 ALLIANCE 100</div>
+        <div class="eyebrow">V19.2.1 • R5/R4 ALLIANCE 100</div>
         <h2 style="margin:6px 0">👥 Importer toute mon alliance</h2>
         <p class="muted" style="margin:0">Le R5 ou un R4 peut importer jusqu’à 100 membres très simplement : il sélectionne toutes ses captures du roster en une fois, WarBoost analyse automatiquement chaque lot, enlève les doublons et prépare le roster complet.</p>
       </div>
@@ -1047,6 +976,78 @@ async function wb191ScanAlliance(){
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $=id=>document.getElementById(id);
+
+/* ===== V19.2 • ALLIANCE 100 R5/R4 ===== */
+let wb191AllianceDraft=[];
+const WB192_MAX_ALLIANCE_SHOTS=20;
+const WB192_BATCH_MAX=4;
+function wb191AllianceStatus(text,type=""){
+  const el=$("wb191AllianceStatus");if(!el)return;el.textContent=text||"";el.className="status "+(type||"");
+}
+function wb192ExpectedCount(){return Math.max(1,Math.min(100,Number($("wb192ExpectedMembers")?.value||100)||100))}
+function wb192SetProgress(done,total,label=""){
+  const wrap=$("wb192Progress"),bar=$("wb192ProgressBar"),txt=$("wb192ProgressText");if(!wrap||!bar||!txt)return;
+  wrap.style.display=total?"block":"none";const pct=total?Math.max(0,Math.min(100,Math.round(done/total*100))):0;bar.style.width=pct+"%";txt.textContent=label||`${done}/${total}`;
+}
+function wb191AllianceFilesChanged(){
+  const all=[...($("wb191AllianceScreens")?.files||[])],files=all.slice(0,WB192_MAX_ALLIANCE_SHOTS);
+  if($("wb191AllianceFileList")){
+    const suffix=all.length>WB192_MAX_ALLIANCE_SHOTS?` • ${all.length-WB192_MAX_ALLIANCE_SHOTS} ignorée(s)`:"";
+    $("wb191AllianceFileList").textContent=files.length?`${files.length} capture(s) sélectionnée(s)${suffix}. WarBoost les analysera automatiquement par lots.`:"Aucune capture sélectionnée.";
+  }
+}
+function wb192MergePlayers(base=[],incoming=[]){
+  const seen=new Map();
+  const add=p=>{if(!p?.name)return;const name=String(p.name).trim();if(!name)return;const k=name.toLocaleLowerCase();const old=seen.get(k)||{};
+    const clean={...old,...p,name};
+    if(old.rank&&!p.rank)clean.rank=old.rank;if(old.power_m!=null&&p.power_m==null)clean.power_m=old.power_m;if(old.hq_level!=null&&p.hq_level==null)clean.hq_level=old.hq_level;
+    seen.set(k,clean);
+  };
+  base.forEach(add);incoming.forEach(add);return [...seen.values()];
+}
+function wb192SyncDraftToPaste(){
+  const players=wb191AllianceDraft;if($("rosterPaste"))$("rosterPaste").value=players.map(p=>`${p.name} | ${/^R[1-5]$/i.test(String(p.rank||""))?String(p.rank).toUpperCase():"R3"} | ${p.power_m?Number(p.power_m).toFixed(Number(p.power_m)>=100?0:1).replace(".0","")+"M":"0"}${p.hq_level?` | QG${p.hq_level}`:""}`).join("\n");
+  if($("memberCount"))$("memberCount").value=players.length||$("memberCount").value;saveAlliance();
+}
+function wb191RenderAllianceDraft(players=[]){
+  wb191AllianceDraft=(players||[]).filter(p=>p&&p.name);const el=$("wb191RosterPreview");if(!el)return;
+  if(!wb191AllianceDraft.length){el.style.display="none";el.innerHTML="";return}
+  const expected=wb192ExpectedCount(),count=wb191AllianceDraft.length,complete=count>=expected;
+  el.style.display="block";
+  el.innerHTML=`<div class="wb192PreviewHead"><div><b>${count}/${expected} joueur(s) détecté(s)</b><small class="muted">${complete?"Roster prêt à importer ✅":"Tu peux ajouter les captures manquantes sans perdre les joueurs déjà détectés."}</small></div><button class="btn gold" onclick="wb192ImportDetectedAlliance()">✅ Importer ${count} joueur(s)</button></div>`+wb191AllianceDraft.map(p=>`<div class="wb191RosterRow"><b>${esc(p.name)}</b><span>${esc((p.rank||"R3").toUpperCase())}</span><span>${p.power_m?esc(p.power_m)+"M":"—"}</span><span>${p.hq_level?"QG "+esc(p.hq_level):"—"}</span></div>`).join("");
+}
+function wb192ClearAllianceDraft(){wb191AllianceDraft=[];wb191RenderAllianceDraft([]);if($("rosterPaste"))$("rosterPaste").value="";wb192SetProgress(0,0);wb191AllianceStatus("Liste détectée effacée.","")}
+function wb192ImportDetectedAlliance(){
+  if(!wb191AllianceDraft.length){wb191AllianceStatus("Aucun joueur détecté à importer.","err");return}
+  wb192SyncDraftToPaste();importRoster();wb191AllianceStatus(`✅ ${wb191AllianceDraft.length} joueur(s) ajoutés au roster WarBoost.`,"ok");
+}
+async function wb191ScanAlliance(){
+  if(!wb17Session){wb191AllianceStatus("Connecte ton compte WarBoost pour importer ton alliance.","err");openAccount();return}
+  if(wb18Billing.plan!=="pro"){wb191AllianceStatus("L’import automatique d’alliance est réservé à WarBoost PRO.","err");showPage("pro");return}
+  const files=[...($("wb191AllianceScreens")?.files||[])].slice(0,WB192_MAX_ALLIANCE_SHOTS);if(!files.length){wb191AllianceStatus("Sélectionne les captures de la liste des membres.","err");return}
+  wb191AllianceStatus(`Préparation de ${files.length} capture(s)…`,"");wb192SetProgress(0,files.length,"Compression des captures…");
+  try{
+    const compressed=[];for(let i=0;i<files.length;i++){compressed.push(await wb19CompressFile(files[i]));wb192SetProgress(i+1,files.length,`Compression ${i+1}/${files.length}`)}
+    const batches=[];let current=[];
+    for(const img of compressed){
+      const test=[...current,img],size=JSON.stringify({images:test}).length;
+      if(current.length&&(current.length>=WB192_BATCH_MAX||size>3600000)){batches.push(current);current=[img]}else current=test;
+    }
+    if(current.length)batches.push(current);
+    let merged=[...wb191AllianceDraft],lastAlliance={};wb192SetProgress(0,batches.length,`0/${batches.length} lot analysé`);
+    for(let i=0;i<batches.length;i++){
+      wb191AllianceStatus(`Analyse automatique du roster • lot ${i+1}/${batches.length}…`,"");
+      const r=await fetch("/api/alliance-scan",{method:"POST",headers:billingAuthHeaders({"Content-Type":"application/json"}),body:JSON.stringify({images:batches[i],language:wb171Language||"fr"})});
+      const data=await r.json().catch(()=>({}));if(data.usage)applyBillingState(data.usage);if(!r.ok)throw new Error(`Lot ${i+1}/${batches.length} : ${data.error||`Erreur ${r.status}`}`);
+      merged=wb192MergePlayers(merged,data.players||[]);lastAlliance={...lastAlliance,...(data.alliance||{})};
+      wb191RenderAllianceDraft(merged);wb192SyncDraftToPaste();wb192SetProgress(i+1,batches.length,`${i+1}/${batches.length} lot(s) • ${merged.length} joueur(s)`);
+    }
+    if(lastAlliance?.name&&$("alliance"))$("alliance").value=lastAlliance.name;if(lastAlliance?.server&&$("server"))$("server").value=lastAlliance.server;
+    wb192SyncDraftToPaste();const expected=wb192ExpectedCount(),count=merged.length;
+    wb191AllianceStatus(count>=expected?`✅ ${count} joueur(s) détecté(s). Le roster est prêt à être importé.`:`${count}/${expected} joueur(s) détecté(s). Ajoute les captures manquantes puis relance : WarBoost conservera déjà les ${count} joueurs.`,count>=expected?"ok":"");
+  }catch(e){wb191AllianceStatus(e.message||"Import de l’alliance impossible.","err")}
+}
+
 
 const WB17_CLOUD_VERSION="17";
 let wb17Supabase=null;
