@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V20.3.3 — Smart Priorities</title>
+<title>WarBoost V20.3.4 — Smart Shop Advisor</title>
 
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/warboost-icon-192.png">
@@ -557,12 +557,56 @@ td input,td select{margin:0;padding:8px}
 .wb203AdvancedLabel{margin-top:16px;color:#8fa2b7;font-size:11px;text-align:center}
 @media(max-width:760px){.wb203Flow{grid-template-columns:1fr}.wb203Detected{grid-template-columns:1fr 1fr}}
 
+
+/* ===== WARBOOST V20.3.4 • SMART SHOP ADVISOR ===== */
+.wb2034ShopCard{
+  position:relative;overflow:hidden;border:1px solid #6b5728;
+  background:radial-gradient(circle at 95% -10%,#4a2d0d 0,transparent 30%),linear-gradient(180deg,#101a29,#091522)
+}
+.wb2034ShopCard:before{
+  content:"";position:absolute;left:0;top:0;width:100%;height:3px;
+  background:linear-gradient(90deg,#f3c75c,#ff824f,#5edfff)
+}
+.wb2034Head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.wb2034Controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}
+.wb2034Quick{border:1px solid #2d4a64;border-radius:14px;background:#081522;padding:12px;margin-top:12px}
+.wb2034Quick button{width:100%}.wb2034Quick small{display:block;color:#8fa3b7;line-height:1.45;margin-top:7px}
+.wb2034Capture{border:1px dashed #6d5a30;border-radius:15px;background:#100f0b;padding:13px;margin-top:12px}
+.wb2034Capture input[type=file]{width:100%;margin:8px 0}
+.wb2034Capture .btn{width:100%;margin-top:10px}
+.wb2034Result{margin-top:13px}
+.wb2034Tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.wb2034Tab{border:1px solid #34536f;background:#0c1b2b;color:#cfe2f2;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:950}
+.wb2034Tab.free{border-color:#32664f;color:#90e8be;background:#0b2019}
+.wb2034Tab.paid{border-color:#806125;color:#ffe096;background:#241b09}
+.wb2034Section{border:1px solid #2b4560;border-radius:15px;background:#081522;padding:12px;margin-top:9px}
+.wb2034Section h3{margin:0 0 8px}
+.wb2034Buy{
+  display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:flex-start;
+  border:1px solid #29435e;border-radius:12px;background:#0c1928;padding:10px;margin-top:8px
+}
+.wb2034Rank{width:29px;height:29px;border-radius:9px;display:grid;place-items:center;background:#3b2a0e;border:1px solid #76571d;color:#ffdf88;font-weight:950}
+.wb2034Buy h4{margin:0 0 3px;font-size:13px}.wb2034Buy p{margin:0;color:#9eb0c3;font-size:11px;line-height:1.45}
+.wb2034ShopName{font-size:9px;color:#7f95aa;margin-top:5px}
+.wb2034Verdict{border:1px solid #395a76;border-radius:999px;padding:5px 7px;font-size:9px;font-weight:950;white-space:nowrap}
+.wb2034Verdict.buy_now{border-color:#2f7458;background:#0b241c;color:#96edc3}
+.wb2034Verdict.good{border-color:#59743b;background:#18240d;color:#c8ea95}
+.wb2034Verdict.situational{border-color:#7a5d23;background:#261c08;color:#ffe092}
+.wb2034Verdict.skip{border-color:#783c3c;background:#2a1010;color:#ff9d9d}
+.wb2034Evidence{margin-top:5px;color:#7890a7;font-size:10px;line-height:1.4}
+.wb2034Empty{border:1px dashed #344e69;border-radius:12px;padding:11px;color:#91a5b9;font-size:11px;line-height:1.5}
+.wb2034Warning{border-left:3px solid #d5a63a;background:#211a0c;border-radius:10px;padding:9px;color:#e7d5a7;font-size:10px;line-height:1.45;margin-top:9px}
+@media(max-width:760px){
+  .wb2034Controls{grid-template-columns:1fr}
+  .wb2034Buy{grid-template-columns:auto 1fr}.wb2034Verdict{grid-column:2}
+}
+
 </style>
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V20.3.3</em></button>
-  <span class="proBadge">🧠 V20.3.3 • SMART PRIORITIES</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V20.3.4</em></button>
+  <span class="proBadge">🛒 V20.3.4 • SMART SHOP</span>
   <select id="language" class="lang" onchange="setLanguage(this.value)" aria-label="Language">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -789,6 +833,58 @@ td input,td select{margin:0;padding:8px}
     <div id="wb203Status" class="wb203Status"></div>
     <div id="wb203Result" class="wb203Result"></div>
   </div>
+
+
+  <div class="card wb2034ShopCard" id="wb2034ShopCard">
+    <div class="wb2034Head">
+      <div>
+        <div class="eyebrow">V20.3.4 • SMART SHOP ADVISOR</div>
+        <h2 style="margin:6px 0">🛒 Qu’est-ce que je dois acheter ?</h2>
+        <p class="muted" style="margin:0">WarBoost relie les faiblesses détectées de ton compte aux boutiques Last War : Diamants, VIP, Alliance, Honneur, Campagne, Saison et offres payantes.</p>
+      </div>
+      <span class="wb203Badge">✨ PRO • BOUTIQUE IA</span>
+    </div>
+
+    <div class="wb2034Controls">
+      <label>Budget argent réel
+        <select id="wb2034Budget">
+          <option value="0">0 € • F2P</option>
+          <option value="small">Petit budget • jusqu’à 10 €/mois</option>
+          <option value="medium">10–30 €/mois</option>
+          <option value="regular">30–100 €/mois</option>
+          <option value="competitive">100 €+/mois</option>
+        </select>
+      </label>
+      <label>Priorité
+        <select id="wb2034Focus">
+          <option value="auto">Auto • selon mon Smart Scan</option>
+          <option value="gear">Équipement</option>
+          <option value="heroes">Héros</option>
+          <option value="drone">Drone</option>
+          <option value="speed">Construction / recherche</option>
+          <option value="season">Saison / VS</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="wb2034Quick">
+      <button class="btn" onclick="wb2034ShowBaseline()">⚡ Mon plan d’achat conseillé</button>
+      <small>Sans capture : WarBoost donne un plan prudent avec les monnaies du jeu et tient compte de ta priorité actuelle.</small>
+    </div>
+
+    <div class="wb2034Capture">
+      <b>📸 Scanner les boutiques / packs actuels</b>
+      <p class="muted">Tu peux envoyer jusqu’à 4 captures : Boutique VIP, Alliance, Honneur, Diamants, Saison ou offres payantes. WarBoost classe uniquement ce qui est réellement visible.</p>
+      <input id="wb2034Screens" type="file" accept="image/png,image/jpeg,image/webp" multiple onchange="wb2034FilesChanged()">
+      <div id="wb2034FileInfo" class="wb19FileList">Aucune capture boutique sélectionnée.</div>
+      <button id="wb2034ScanBtn" class="btn gold" onclick="wb2034Scan()">🔎 Analyser mes boutiques et mes packs</button>
+      <div class="wb19Privacy">1 scan = 1 requête IA PRO. Pour les offres payantes, WarBoost respecte ton budget et ne recommande pas un pack uniquement parce qu’un pourcentage de remise est affiché.</div>
+    </div>
+
+    <div id="wb2034Status" class="wb203Status"></div>
+    <div id="wb2034Result"></div>
+  </div>
+
 
   <div class="wb203AdvancedLabel">↓ Outils avancés et saisie manuelle si tu veux compléter les informations non visibles ↓</div>
 
@@ -2012,6 +2108,7 @@ function wb203RenderResult(data){
     <div class="wb203Actions">
       <button class="btn" onclick="wb203ApplyNow()">✅ ${esc(wb203T("Mettre à jour ton compte"))}</button>
       <button class="btn secondary" onclick="wb203OpenDetailedCard()">📋 ${esc(wb203T("Voir la fiche"))}</button>
+      <button class="btn gold" onclick="wb2034Open()">🛒 ${esc(wb203T("Que dois-je acheter ?"))}</button>
     </div>
   </div>`;
 }
@@ -2066,6 +2163,143 @@ async function wb203Scan(){
     if(btn)btn.disabled=false;
   }
 }
+
+
+/* ===== WARBOOST V20.3.4 • SMART SHOP ADVISOR ===== */
+let wb2034LastResult=null;
+function wb2034Status(msg="",cls=""){const e=$("wb2034Status");if(!e)return;e.textContent=msg;e.className="wb203Status "+cls}
+function wb2034Open(){const e=$("wb2034ShopCard");if(e)e.scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>wb2034ShowBaseline(),300)}
+function wb2034FilesChanged(){
+  const files=[...($("wb2034Screens")?.files||[])].slice(0,4),e=$("wb2034FileInfo");
+  if(e)e.textContent=files.length?files.map((f,i)=>`${i+1}. ${f.name} (${Math.round(f.size/1024)} ko)`).join(" • "):wb203T("Aucune capture boutique sélectionnée.");
+}
+function wb2034Focus(){
+  const chosen=$("wb2034Focus")?.value||"auto";if(chosen!=="auto")return chosen;
+  const p=wb203LastResult?.analysis?.priorities?.[0]||{};
+  const s=`${p.target||""} ${p.action||""} ${p.reason||""}`.toLowerCase();
+  if(/drone/.test(s))return "drone";
+  if(/équipement|equip|gear|plan|blueprint/.test(s))return "gear";
+  if(/héros|hero|étoile|star|fragment|shard/.test(s))return "heroes";
+  if(/construction|recherche|research|speed|accél/.test(s))return "speed";
+  if(/saison|season|vs/.test(s))return "season";
+  return "gear";
+}
+function wb2034VerdictLabel(v){
+  return wb203T(v==="buy_now"?"ACHETER":v==="good"?"BON":v==="skip"?"PASSER":"SELON BESOIN");
+}
+function wb2034BaselineRows(){
+  const focus=wb2034Focus(),rows=[];
+  const push=(shop,item,verdict,reason)=>rows.push({rank:rows.length+1,spend_type:"in_game",shop_type:shop,item_name:item,verdict,reason,evidence:"Règle de base WarBoost + priorité du joueur",player_fit:focus,confidence:.76});
+  if(focus==="gear"){
+    push("Honneur",wb203T("Plans d’équipement légendaires"),"buy_now","Priorité forte si ton Smart Scan montre que l’équipement est ton principal axe d’amélioration.");
+    push("VIP",wb203T("Fragments universels UR"),"good","Utile pour continuer la progression de tes héros sans détourner les points d’Honneur de l’équipement.");
+    push("Alliance",wb203T("Accélérateurs construction / recherche"),"situational","Bon usage des contributions lorsque tes besoins d’équipement prioritaire sont couverts.");
+    push("Campagne",wb203T("Fragments d’arme exclusive"),"situational","À prendre si ton héros prioritaire a réellement besoin de son arme exclusive.");
+  }else if(focus==="drone"){
+    push("Alliance",wb203T("Pièces de drone"),"buy_now","Ton objectif actuel est le Drone : privilégie les monnaies d’alliance avant d’envisager de l’argent réel.");
+    push("Campagne",wb203T("Pièces de drone"),"good","Deuxième source utile si les pièces sont disponibles cette semaine.");
+    push("Honneur",wb203T("Plans d’équipement légendaires"),"good","Ne néglige pas les plans d’équipement rares même avec un focus Drone.");
+    push("VIP",wb203T("Endurance 50"),"situational","Utile si l’endurance te permet de compléter davantage d’activités et récompenses.");
+  }else if(focus==="heroes"){
+    push("VIP",wb203T("Fragments universels UR"),"buy_now","Priorité directe pour un héros visiblement en retard en étoiles.");
+    push("Alliance",wb203T("Fragments universels UR"),"good","Complète la progression héros avec la monnaie d’alliance si disponible.");
+    push("Campagne",wb203T("Fragments d’arme exclusive"),"good","Intéressant si ton héros prioritaire utilise déjà son arme exclusive.");
+    push("Honneur",wb203T("Plans d’équipement légendaires"),"good","Les plans restent une ressource rare à ne pas sacrifier inutilement.");
+  }else if(focus==="speed"){
+    push("Alliance",wb203T("Accélérateurs construction / recherche"),"buy_now","Aligné directement avec ton objectif construction/recherche.");
+    push("VIP",wb203T("Endurance 50"),"good","Peut soutenir les activités qui rapportent ressources et progression.");
+    push("VIP",wb203T("Fragments universels UR"),"situational","À prendre si tu gardes assez de diamants pour tes priorités de développement.");
+    push("Honneur",wb203T("Plans d’équipement légendaires"),"good","Même en développement, les plans restent difficiles à remplacer.");
+  }else{
+    push("Saison",wb203T("Scanner la boutique Saison actuelle"),"buy_now","Le contenu de Saison change : scanne l’écran actuel avant de dépenser tes médailles.");
+    push("Honneur",wb203T("Plans d’équipement légendaires"),"good","Valeur durable pour l’équipement.");
+    push("Alliance",wb203T("Téléporteurs / boucliers"),"situational","Conserve une réserve opérationnelle pour les combats/VS avant de vider la boutique.");
+    push("VIP",wb203T("Endurance 50"),"situational","Utile selon l’événement et ton stock actuel.");
+  }
+  // Diamond Store baseline: conservative.
+  rows.push({rank:rows.length+1,spend_type:"in_game",shop_type:"Diamants",item_name:wb203T("Téléporteurs / boucliers"),verdict:"situational",
+    reason:"Évite les dépenses de routine dans la boutique Diamants si le même type d’objet existe moins cher ailleurs. Utilise-la surtout en besoin immédiat.",
+    evidence:"Conseil de prudence sur l’usage des diamants",player_fit:focus,confidence:.72});
+  return rows;
+}
+function wb2034ShowBaseline(){
+  const budget=$("wb2034Budget")?.value||"0";
+  const rows=wb2034BaselineRows();
+  const paid=budget==="0"?[
+    {rank:1,spend_type:"paid",shop_type:"Payant",item_name:"0 € • F2P",verdict:"skip",reason:"Ton budget est réglé sur 0 €. WarBoost ne te poussera pas vers un achat payant.",evidence:"Budget utilisateur",confidence:1}
+  ]:[
+    {rank:1,spend_type:"paid",shop_type:"Packs",item_name:wb203T("Capture de pack nécessaire"),verdict:"situational",
+     reason:"Les packs et leurs contenus changent. Envoie une capture des offres actuelles pour que WarBoost compare exactement le prix, le contenu et ton besoin.",evidence:"Aucune offre payante visible pour le moment",confidence:1}
+  ];
+  wb2034Render({shop:{summary:"Plan de base personnalisé à partir de ta priorité actuelle.",recommendations:[...rows,...paid],warnings:["Pour un achat payant précis, privilégie toujours le scan d’une offre visible plutôt qu’un conseil générique."]},local:true});
+  wb2034Status("Plan d’achat de base généré ✅","ok");
+}
+function wb2034Render(data){
+  wb2034LastResult=data||null;
+  const root=$("wb2034Result");if(!root)return;
+  const shop=data?.shop||{};
+  const recs=Array.isArray(shop.recommendations)?shop.recommendations:[];
+  const free=recs.filter(x=>x.spend_type!=="paid");
+  const paid=recs.filter(x=>x.spend_type==="paid");
+  const card=x=>`<div class="wb2034Buy">
+    <span class="wb2034Rank">${esc(x.rank||"•")}</span>
+    <div><h4>${esc(x.item_name||"—")}</h4><p>${esc(x.reason||"")}</p>
+      <div class="wb2034ShopName">${esc(x.shop_type||"")} ${x.price_text?`• ${esc(x.price_text)}`:""}</div>
+      ${x.evidence?`<div class="wb2034Evidence">${esc(x.evidence)}</div>`:""}
+    </div>
+    <span class="wb2034Verdict ${esc(x.verdict||"situational")}">${esc(wb2034VerdictLabel(x.verdict))}</span>
+  </div>`;
+  root.innerHTML=`<div class="wb2034Result">
+    <div class="wb2034Tabs"><span class="wb2034Tab free">🎮 ${esc(wb203T("Sans argent réel"))}</span><span class="wb2034Tab paid">💳 ${esc(wb203T("Offres payantes"))}</span></div>
+    ${shop.summary?`<div class="wb203Summary">${esc(shop.summary)}</div>`:""}
+    <div class="wb2034Section"><h3>🎮 ${esc(wb203T("Sans argent réel"))}</h3>${free.length?free.map(card).join(""):`<div class="wb2034Empty">—</div>`}</div>
+    <div class="wb2034Section"><h3>💳 ${esc(wb203T("Offres payantes"))}</h3>${paid.length?paid.map(card).join(""):`<div class="wb2034Empty">${esc(wb203T("Capture de pack nécessaire"))}</div>`}</div>
+    ${(shop.warnings||[]).length?`<div class="wb2034Warning">${shop.warnings.map(x=>`• ${esc(x)}`).join("<br>")}</div>`:""}
+    ${shop.next_capture?`<div class="wb2034Warning">📸 ${esc(shop.next_capture)}</div>`:""}
+  </div>`;
+}
+function wb2034Context(){
+  const a=wb203LastResult?.analysis||{};
+  const p=wb203LastResult?.player||{};
+  return {
+    focus:wb2034Focus(),
+    formation_power_m:wb203FormationPower(p,a),
+    drone_level:Number(p?.drone?.level||a?.drone_level||0)||null,
+    priorities:(a.priorities||[]).slice(0,3).map(x=>({target:x.target,action:x.action,reason:x.reason,evidence:x.evidence})),
+    budget:$("wb2034Budget")?.value||"0"
+  };
+}
+async function wb2034Scan(){
+  if(!wb17Session){wb2034Status(wb203T("Connecte ton compte WarBoost pour utiliser Smart Scan."),"err");return}
+  if(wb18Billing.plan!=="pro"){wb2034Status("Smart Shop Advisor est réservé à WarBoost PRO.","err");showPage("pro");return}
+  const files=[...($("wb2034Screens")?.files||[])].slice(0,4);
+  if(!files.length){wb2034Status(wb203T("Aucune capture boutique sélectionnée."),"err");return}
+  const btn=$("wb2034ScanBtn");if(btn)btn.disabled=true;
+  wb2034Status("Analyse des boutiques en cours…","");
+  try{
+    const images=[];for(const f of files)images.push(await wb19CompressFile(f));
+    if(JSON.stringify({images}).length>3900000)throw new Error("Captures trop lourdes. Sélectionne moins d’images ou recadre-les.");
+    const r=await fetch("/api/player-scan",{
+      method:"POST",
+      headers:billingAuthHeaders({"Content-Type":"application/json"}),
+      body:JSON.stringify({images,language:wb171Language||"fr",mode:"shop_advisor",shop_context:wb2034Context()})
+    });
+    const data=await r.json().catch(()=>({}));
+    if(data.usage)applyBillingState(data.usage);
+    if(!r.ok)throw new Error(data.error||`Erreur ${r.status}`);
+    wb2034Render(data);
+    try{wbSetItem("wb2034_shop_result",JSON.stringify(data))}catch(e){}
+    wb2034Status("Boutiques analysées ✅","ok");
+  }catch(e){wb2034Status(e.message||"Analyse boutique impossible.","err")}
+  finally{if(btn)btn.disabled=false}
+}
+function wb2034Restore(){
+  try{
+    const d=JSON.parse(localStorage.getItem("wb2034_shop_result")||"null");
+    if(d?.shop){wb2034LastResult=d;wb2034Render(d)}
+  }catch(e){}
+}
+
 
 function wb19NormalizePlayer(raw={},source="scan"){
   const p=raw.player&&typeof raw.player==="object"?raw.player:raw;
@@ -2634,7 +2868,7 @@ function exportRosterCSV(){
 
 const WB14_KEYS=[
   "wb12_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster",
-  "wb12_ai_history","wb14_snapshots","wb14_missions","wb15_tasks","wb16_operation","wb16_groups","wb19_imported_players"
+  "wb12_ai_history","wb14_snapshots","wb14_missions","wb15_tasks","wb16_operation","wb16_groups","wb19_imported_players","wb2034_shop_result"
 ];
 window.WB17_SYNC_KEYS=[...WB14_KEYS.filter(k=>k!=="wb12_account"),"wb17_language"];
 
@@ -2852,6 +3086,7 @@ Object.assign(WB171_TRANSLATIONS,{"WARBOOST V20.3 • SMART PLAYER SCAN":{"en":"
 Object.assign(WB171_TRANSLATIONS,{"V20.3 • SMART PLAYER SCAN":{"en":"V20.3 • SMART PLAYER SCAN","es":"V20.3 • ESCÁNER INTELIGENTE","de":"V20.3 • SMART PLAYER SCAN","ja":"V20.3 • スマートプレイヤースキャン","zh":"V20.3 • 智能玩家扫描"},"📸 Une capture → ton plan d’amélioration":{"en":"📸 One screenshot → your upgrade plan","es":"📸 Una captura → tu plan de mejora","de":"📸 Ein Screenshot → dein Upgrade-Plan","ja":"📸 1枚の画像 → 強化プラン","zh":"📸 一张截图 → 你的提升计划"},"Prends une capture des détails de ta formation comme dans Last War. WarBoost lit uniquement ce qui est visible et te dit immédiatement quoi améliorer en priorité.":{"en":"Take a screenshot of your formation details in Last War. WarBoost reads only what is visible and immediately tells you what to upgrade first.","es":"Haz una captura de los detalles de tu formación en Last War. WarBoost solo lee lo visible y te indica inmediatamente qué mejorar primero.","de":"Erstelle einen Screenshot deiner Formationsdetails in Last War. WarBoost liest nur sichtbare Werte und sagt dir sofort, was du zuerst verbessern solltest.","ja":"Last Warの編成詳細をスクリーンショットしてください。WarBoostは見えている情報だけを読み取り、何を最優先で強化すべきかすぐに提案します。","zh":"截取 Last War 的阵容详情。WarBoost 只读取画面中真正可见的信息，并立即告诉你优先提升什么。"},"✨ PRO • IA VISION":{"en":"✨ PRO • VISION AI","es":"✨ PRO • IA VISUAL","de":"✨ PRO • VISION-KI","ja":"✨ PRO • 画像AI","zh":"✨ PRO • 视觉 AI"},"1️⃣ Capture":{"en":"1️⃣ Screenshot","es":"1️⃣ Captura","de":"1️⃣ Screenshot","ja":"1️⃣ スクリーンショット","zh":"1️⃣ 截图"},"Formation, héros et équipements visibles.":{"en":"Visible formation, heroes and gear.","es":"Formación, héroes y equipo visibles.","de":"Sichtbare Formation, Helden und Ausrüstung.","ja":"表示されている編成、英雄、装備。","zh":"可见的阵容、英雄和装备。"},"2️⃣ Détection":{"en":"2️⃣ Detection","es":"2️⃣ Detección","de":"2️⃣ Erkennung","ja":"2️⃣ 検出","zh":"2️⃣ 识别"},"Puissance de formation, niveaux, étoiles et équipement.":{"en":"Formation power, levels, stars and gear.","es":"Potencia de formación, niveles, estrellas y equipo.","de":"Formationsstärke, Level, Sterne und Ausrüstung.","ja":"編成戦力、レベル、星、装備。","zh":"阵容战力、等级、星级和装备。"},"3️⃣ Priorités":{"en":"3️⃣ Priorities","es":"3️⃣ Prioridades","de":"3️⃣ Prioritäten","ja":"3️⃣ 優先順位","zh":"3️⃣ 优先级"},"Ordre d’amélioration immédiat, sans remplir le formulaire.":{"en":"Instant upgrade order without filling in the form.","es":"Orden de mejora inmediato sin rellenar el formulario.","de":"Sofortige Upgrade-Reihenfolge ohne Formular.","ja":"フォーム入力なしで強化順を即表示。","zh":"无需填写表单，立即给出提升顺序。"},"📷 Ma capture Last War":{"en":"📷 My Last War screenshot","es":"📷 Mi captura de Last War","de":"📷 Mein Last-War-Screenshot","ja":"📷 Last Warの画像","zh":"📷 我的 Last War 截图"},"Sélectionne 1 capture. Tu peux en ajouter jusqu’à 4 pour compléter l’analyse.":{"en":"Select 1 screenshot. You can add up to 4 to complete the analysis.","es":"Selecciona 1 captura. Puedes añadir hasta 4 para completar el análisis.","de":"Wähle 1 Screenshot. Für eine vollständigere Analyse kannst du bis zu 4 hinzufügen.","ja":"まず1枚選択してください。より詳しい分析には最大4枚まで追加できます。","zh":"先选择 1 张截图。最多可添加 4 张以完善分析。"},"✅ Mettre automatiquement dans mon profil les valeurs réellement détectées":{"en":"✅ Automatically add detected values to my profile","es":"✅ Añadir automáticamente a mi perfil los valores detectados","de":"✅ Erkannte Werte automatisch in mein Profil übernehmen","ja":"✅ 検出した値を自動でプロフィールに反映","zh":"✅ 自动将识别到的数值写入我的资料"},"📸 Scanner ma formation et me conseiller":{"en":"📸 Scan my formation and advise me","es":"📸 Escanear mi formación y aconsejarme","de":"📸 Formation scannen und beraten","ja":"📸 編成をスキャンしてアドバイス","zh":"📸 扫描我的阵容并给出建议"},"Les captures sont compressées sur ton téléphone. WarBoost ne les enregistre pas dans sa base. Les valeurs non visibles restent « non renseignées ».":{"en":"Screenshots are compressed on your phone. WarBoost does not save them in its database. Values that are not visible remain “not set”.","es":"Las capturas se comprimen en tu teléfono. WarBoost no las guarda en su base de datos. Los valores no visibles permanecen «no indicados».","de":"Screenshots werden auf deinem Smartphone komprimiert. WarBoost speichert sie nicht in seiner Datenbank. Nicht sichtbare Werte bleiben „nicht angegeben“.","ja":"画像はスマートフォン上で圧縮され、WarBoostのデータベースには保存されません。見えない値は「未設定」のままです。","zh":"截图会在手机上压缩，WarBoost 不会将其保存到数据库。看不到的数值会保持“未填写”。"},"↓ Outils avancés et saisie manuelle si tu veux compléter les informations non visibles ↓":{"en":"↓ Advanced tools and manual entry if you want to complete information that is not visible ↓","es":"↓ Herramientas avanzadas y entrada manual para completar información no visible ↓","de":"↓ Erweiterte Tools und manuelle Eingabe für nicht sichtbare Informationen ↓","ja":"↓ 見えない情報を補完する場合は高度なツールと手動入力 ↓","zh":"↓ 如需补充截图中不可见的信息，可使用高级工具和手动输入 ↓"},"OUTILS AVANCÉS":{"en":"ADVANCED TOOLS","es":"HERRAMIENTAS AVANZADAS","de":"ERWEITERTE TOOLS","ja":"高度なツール","zh":"高级工具"},"🧰 Import détaillé (optionnel)":{"en":"🧰 Detailed import (optional)","es":"🧰 Importación detallada (opcional)","de":"🧰 Detaillierter Import (optional)","ja":"🧰 詳細インポート（任意）","zh":"🧰 详细导入（可选）"},"Utilise cette zone seulement si tu veux compléter le Smart Scan avec plusieurs captures, une recherche publique ou gérer tes fiches enregistrées.":{"en":"Use this area only if you want to supplement Smart Scan with multiple screenshots, public search or saved player cards.","es":"Utiliza esta zona solo si quieres completar Smart Scan con varias capturas, búsqueda pública o gestionar fichas guardadas.","de":"Nutze diesen Bereich nur, wenn du Smart Scan mit mehreren Screenshots, öffentlicher Suche oder gespeicherten Spielerkarten ergänzen möchtest.","ja":"複数画像、公開検索、保存済みプレイヤーカードでSmart Scanを補完したい場合のみ使用してください。","zh":"仅当你想用多张截图、公开搜索或已保存玩家卡片补充 Smart Scan 时使用此区域。"},"Formation détectée":{"en":"Formation detected","es":"Formación detectada","de":"Formation erkannt","ja":"編成を検出","zh":"已识别阵容"},"Héros visibles":{"en":"Visible heroes","es":"Héroes visibles","de":"Sichtbare Helden","ja":"表示英雄","zh":"可见英雄"},"Équipements lus":{"en":"Gear items read","es":"Equipos leídos","de":"Erkannte Ausrüstung","ja":"読み取った装備","zh":"识别装备"},"Confiance":{"en":"Confidence","es":"Confianza","de":"Vertrauen","ja":"信頼度","zh":"置信度"},"🎯 Ce que tu dois améliorer en premier":{"en":"🎯 What you should upgrade first","es":"🎯 Lo que debes mejorar primero","de":"🎯 Was du zuerst verbessern solltest","ja":"🎯 最初に強化すべきもの","zh":"🎯 你应该优先提升什么"},"✅ Points forts visibles":{"en":"✅ Visible strengths","es":"✅ Puntos fuertes visibles","de":"✅ Sichtbare Stärken","ja":"✅ 見えている強み","zh":"✅ 可见优势"},"📷 Pour aller plus loin":{"en":"📷 To go further","es":"📷 Para ir más lejos","de":"📷 Für eine genauere Analyse","ja":"📷 さらに詳しく分析するには","zh":"📷 如需更深入分析"},"Impact":{"en":"Impact","es":"Impacto","de":"Auswirkung","ja":"効果","zh":"影响"},"Preuve visible":{"en":"Visible evidence","es":"Prueba visible","de":"Sichtbarer Beleg","ja":"画面上の根拠","zh":"可见依据"},"✅ Valeurs détectées ajoutées à ton profil WarBoost.":{"en":"✅ Detected values added to your WarBoost profile.","es":"✅ Valores detectados añadidos a tu perfil WarBoost.","de":"✅ Erkannte Werte wurden deinem WarBoost-Profil hinzugefügt.","ja":"✅ 検出した値をWarBoostプロフィールに反映しました。","zh":"✅ 已将识别到的数值写入 WarBoost 资料。"},"Analyse terminée ✅":{"en":"Analysis complete ✅","es":"Análisis terminado ✅","de":"Analyse abgeschlossen ✅","ja":"分析完了 ✅","zh":"分析完成 ✅"},"Analyse de la capture en cours…":{"en":"Analyzing screenshot…","es":"Analizando la captura…","de":"Screenshot wird analysiert…","ja":"画像を分析中…","zh":"正在分析截图…"},"Connecte ton compte WarBoost pour utiliser Smart Scan.":{"en":"Sign in to your WarBoost account to use Smart Scan.","es":"Conéctate a tu cuenta WarBoost para usar Smart Scan.","de":"Melde dich bei deinem WarBoost-Konto an, um Smart Scan zu verwenden.","ja":"Smart Scanを使うにはWarBoostアカウントにログインしてください。","zh":"登录 WarBoost 账户后才能使用 Smart Scan。"},"Smart Scan est réservé à WarBoost PRO.":{"en":"Smart Scan is available with WarBoost PRO.","es":"Smart Scan está reservado a WarBoost PRO.","de":"Smart Scan ist WarBoost PRO vorbehalten.","ja":"Smart ScanはWarBoost PRO限定です。","zh":"Smart Scan 仅限 WarBoost PRO。"},"Sélectionne au moins une capture Last War.":{"en":"Select at least one Last War screenshot.","es":"Selecciona al menos una captura de Last War.","de":"Wähle mindestens einen Last-War-Screenshot.","ja":"Last Warの画像を1枚以上選択してください。","zh":"请至少选择一张 Last War 截图。"},"fort":{"en":"high","es":"alto","de":"hoch","ja":"高","zh":"高"},"moyen":{"en":"medium","es":"medio","de":"mittel","ja":"中","zh":"中"},"faible":{"en":"low","es":"bajo","de":"niedrig","ja":"低","zh":"低"},"Voir la fiche":{"en":"View card","es":"Ver ficha","de":"Karte anzeigen","ja":"カードを見る","zh":"查看卡片"}});
 Object.assign(WB171_TRANSLATIONS,{"Drone":{"en":"Drone","es":"Dron","de":"Drohne","ja":"ドローン","zh":"无人机"},"Niv. drone":{"en":"Drone lvl.","es":"Niv. dron","de":"Drohnen-Lvl.","ja":"ドローンLv.","zh":"无人机等级"},"Détecté":{"en":"Detected","es":"Detectado","de":"Erkannt","ja":"検出","zh":"已识别"},"Structure":{"en":"Structure","es":"Estructura","de":"Struktur","ja":"構造","zh":"结构"},"✅ Structure validée":{"en":"✅ Structure valid","es":"✅ Estructura validada","de":"✅ Struktur bestätigt","ja":"✅ 構造確認済み","zh":"✅ 结构已验证"},"⚠️ Structure à vérifier":{"en":"⚠️ Check structure","es":"⚠️ Verificar estructura","de":"⚠️ Struktur prüfen","ja":"⚠️ 構造を確認","zh":"⚠️ 检查结构"},"Formation":{"en":"Formation","es":"Formación","de":"Formation","ja":"編成","zh":"编队"},"héros":{"en":"heroes","es":"héroes","de":"Helden","ja":"英雄","zh":"英雄"},"équipements":{"en":"gear items","es":"equipos","de":"Ausrüstung","ja":"装備","zh":"装备"},"Suzerain détecté":{"en":"Suzerain detected","es":"Soberano detectado","de":"Suzerain erkannt","ja":"スゼライン検出","zh":"已识别领主"},"DRONE VISIBLE":{"en":"DRONE VISIBLE","es":"DRON VISIBLE","de":"DROHNE SICHTBAR","ja":"ドローン表示","zh":"无人机可见"}});
 Object.assign(WB171_TRANSLATIONS,{"Priorités basées sur les écarts visibles":{"en":"Priorities based on visible gaps","es":"Prioridades basadas en diferencias visibles","de":"Prioritäten anhand sichtbarer Unterschiede","ja":"見える差に基づく優先順位","zh":"基于可见差距的优先级"},"WarBoost ne classe plus le Drone en priorité uniquement parce que son niveau est visible.":{"en":"WarBoost no longer ranks the Drone first just because its level is visible.","es":"WarBoost ya no pone el Dron primero solo porque su nivel sea visible.","de":"WarBoost setzt die Drohne nicht mehr nur deshalb an erste Stelle, weil ihr Level sichtbar ist.","ja":"WarBoostは、レベルが見えるという理由だけでドローンを最優先にはしません。","zh":"WarBoost 不会再仅因为无人机等级可见就把它排在第一优先级。"}});
+Object.assign(WB171_TRANSLATIONS,{"Que dois-je acheter ?":{"en":"What should I buy?","es":"¿Qué debería comprar?","de":"Was soll ich kaufen?","ja":"何を買うべき？","zh":"我该买什么？"},"Qu’est-ce que je dois acheter ?":{"en":"What should I buy?","es":"¿Qué debería comprar?","de":"Was soll ich kaufen?","ja":"何を買うべき？","zh":"我该买什么？"},"WarBoost relie les faiblesses détectées de ton compte aux boutiques Last War : Diamants, VIP, Alliance, Honneur, Campagne, Saison et offres payantes.":{"en":"WarBoost links your detected account weaknesses to Last War stores: Diamonds, VIP, Alliance, Honor, Campaign, Season and paid offers.","es":"WarBoost relaciona las debilidades detectadas de tu cuenta con las tiendas de Last War: Diamantes, VIP, Alianza, Honor, Campaña, Temporada y ofertas de pago.","de":"WarBoost verbindet erkannte Schwächen deines Kontos mit den Last-War-Shops: Diamanten, VIP, Allianz, Ehre, Kampagne, Saison und bezahlte Angebote.","ja":"WarBoostは検出した弱点をLast Warの各ショップ（ダイヤ、VIP、同盟、名誉、キャンペーン、シーズン、有料オファー）と結び付けます。","zh":"WarBoost 会把检测到的账号弱点与 Last War 商店对应起来：钻石、VIP、联盟、荣誉、战役、赛季和付费礼包。"},"Budget argent réel":{"en":"Real-money budget","es":"Presupuesto de dinero real","de":"Echtgeld-Budget","ja":"実課金予算","zh":"真实货币预算"},"Priorité":{"en":"Priority","es":"Prioridad","de":"Priorität","ja":"優先度","zh":"优先级"},"Auto • selon mon Smart Scan":{"en":"Auto • based on my Smart Scan","es":"Auto • según mi Smart Scan","de":"Auto • nach meinem Smart Scan","ja":"自動 • Smart Scanに基づく","zh":"自动 • 根据智能扫描"},"Équipement":{"en":"Gear","es":"Equipo","de":"Ausrüstung","ja":"装備","zh":"装备"},"Héros":{"en":"Heroes","es":"Héroes","de":"Helden","ja":"英雄","zh":"英雄"},"Construction / recherche":{"en":"Construction / research","es":"Construcción / investigación","de":"Bau / Forschung","ja":"建設 / 研究","zh":"建造 / 科研"},"Saison / VS":{"en":"Season / VS","es":"Temporada / VS","de":"Saison / VS","ja":"シーズン / VS","zh":"赛季 / VS"},"⚡ Mon plan d’achat conseillé":{"en":"⚡ My recommended shopping plan","es":"⚡ Mi plan de compra recomendado","de":"⚡ Mein empfohlener Einkaufsplan","ja":"⚡ おすすめ購入プラン","zh":"⚡ 我的推荐购买计划"},"Sans capture : WarBoost donne un plan prudent avec les monnaies du jeu et tient compte de ta priorité actuelle.":{"en":"Without screenshots, WarBoost gives a conservative in-game currency plan based on your current priority.","es":"Sin capturas, WarBoost ofrece un plan prudente con monedas del juego según tu prioridad actual.","de":"Ohne Screenshots erstellt WarBoost einen vorsichtigen Plan für Spielwährungen auf Basis deiner aktuellen Priorität.","ja":"スクショなしでは、現在の優先度に基づいてゲーム内通貨の控えめな購入プランを提示します。","zh":"没有截图时，WarBoost 会根据当前优先级给出谨慎的游戏内货币购买计划。"},"📸 Scanner les boutiques / packs actuels":{"en":"📸 Scan current stores / packs","es":"📸 Escanear tiendas / packs actuales","de":"📸 Aktuelle Shops / Pakete scannen","ja":"📸 現在のショップ / パックをスキャン","zh":"📸 扫描当前商店 / 礼包"},"Aucune capture boutique sélectionnée.":{"en":"No store screenshot selected.","es":"No se ha seleccionado ninguna captura de tienda.","de":"Kein Shop-Screenshot ausgewählt.","ja":"ショップのスクショが選択されていません。","zh":"未选择商店截图。"},"🔎 Analyser mes boutiques et mes packs":{"en":"🔎 Analyze my stores and packs","es":"🔎 Analizar mis tiendas y packs","de":"🔎 Meine Shops und Pakete analysieren","ja":"🔎 ショップとパックを分析","zh":"🔎 分析我的商店和礼包"},"Sans argent réel":{"en":"No real money","es":"Sin dinero real","de":"Ohne Echtgeld","ja":"無課金通貨","zh":"无需真实货币"},"Offres payantes":{"en":"Paid offers","es":"Ofertas de pago","de":"Bezahlte Angebote","ja":"有料オファー","zh":"付费礼包"},"ACHETER":{"en":"BUY","es":"COMPRAR","de":"KAUFEN","ja":"購入","zh":"购买"},"BON":{"en":"GOOD","es":"BUENO","de":"GUT","ja":"良い","zh":"不错"},"SELON BESOIN":{"en":"IF NEEDED","es":"SEGÚN NECESIDAD","de":"BEI BEDARF","ja":"必要なら","zh":"按需"},"PASSER":{"en":"SKIP","es":"PASAR","de":"AUSLASSEN","ja":"見送る","zh":"跳过"},"Plans d’équipement légendaires":{"en":"Legendary Gear Blueprints","es":"Planos de equipo legendario","de":"Legendäre Ausrüstungspläne","ja":"伝説装備設計図","zh":"传奇装备图纸"},"Fragments universels UR":{"en":"Universal UR shards","es":"Fragmentos universales UR","de":"Universelle UR-Fragmente","ja":"UR万能欠片","zh":"UR 通用碎片"},"Endurance 50":{"en":"50 Stamina","es":"50 de resistencia","de":"50 Ausdauer","ja":"スタミナ50","zh":"50 体力"},"Accélérateurs construction / recherche":{"en":"Construction / research speed-ups","es":"Aceleradores de construcción / investigación","de":"Bau-/Forschungsbeschleuniger","ja":"建設 / 研究加速","zh":"建造 / 科研加速"},"Pièces de drone":{"en":"Drone Parts","es":"Piezas de dron","de":"Drohnen-Teile","ja":"ドローン部品","zh":"无人机零件"},"Téléporteurs / boucliers":{"en":"Teleports / shields","es":"Teleportes / escudos","de":"Teleport / Schilde","ja":"テレポート / シールド","zh":"迁城 / 护盾"},"Fragments d’arme exclusive":{"en":"Exclusive Weapon Shards","es":"Fragmentos de arma exclusiva","de":"Exklusivwaffen-Fragmente","ja":"専用武器欠片","zh":"专属武器碎片"},"Scanner la boutique Saison actuelle":{"en":"Scan the current Season Store","es":"Escanear la tienda de Temporada actual","de":"Aktuellen Saison-Shop scannen","ja":"現在のシーズンショップをスキャン","zh":"扫描当前赛季商店"},"Capture de pack nécessaire":{"en":"Pack screenshot required","es":"Se necesita captura del pack","de":"Paket-Screenshot erforderlich","ja":"パックのスクショが必要","zh":"需要礼包截图"}});
 const WB171_PLACEHOLDERS={"Ton pseudo": {"en": "Your nickname", "es": "Tu apodo", "de": "Dein Spielname", "ja": "ニックネーム", "zh": "你的昵称"}, "ton@email.fr": {"en": "you@email.com", "es": "tu@email.com", "de": "du@email.de", "ja": "you@email.com", "zh": "you@email.com"}, "6 caractères minimum": {"en": "6 characters minimum", "es": "6 caracteres mínimo", "de": "Mindestens 6 Zeichen", "ja": "6文字以上", "zh": "至少6个字符"}, "Nouveau mot de passe": {"en": "New password", "es": "Nueva contraseña", "de": "Neues Passwort", "ja": "新しいパスワード", "zh": "新密码"}, "Ex : préparer les groupes pour 20h": {"en": "E.g. prepare groups for 8 PM", "es": "Ej.: preparar grupos para las 20h", "de": "Z. B. Gruppen für 20 Uhr vorbereiten", "ja": "例：20時のグループを準備", "zh": "例如：准备20点的分组"}, "Rechercher un joueur…": {"en": "Search player…", "es": "Buscar jugador…", "de": "Spieler suchen…", "ja": "プレイヤー検索…", "zh": "搜索玩家…"}};
 const WB171_SUPPORTED=["fr","en","es","de","ja","zh"];
 Object.assign(WB171_PLACEHOLDERS,{"Ex : Nouvelle phase de saison":{"en":"Ex: New season phase","es":"Ej.: Nueva fase de temporada","de":"Bsp.: Neue Saisonphase","ja":"例：新しいシーズンフェーズ","zh":"例：新的赛季阶段"},"Résumé visible dans la carte Live":{"en":"Summary shown in the Live card","es":"Resumen visible en la tarjeta Live","de":"Zusammenfassung in der Live-Karte","ja":"Liveカードに表示する概要","zh":"Live 卡片中显示的摘要"},"Conseils, changements, priorités, rappels…":{"en":"Tips, changes, priorities, reminders…","es":"Consejos, cambios, prioridades, recordatorios…","de":"Tipps, Änderungen, Prioritäten, Erinnerungen…","ja":"アドバイス、変更、優先事項、リマインダー…","zh":"建议、变更、优先级、提醒…"},"Créée automatiquement si vide":{"en":"Created automatically if empty","es":"Se crea automáticamente si está vacío","de":"Wird bei leerem Feld automatisch erstellt","ja":"空欄なら自動作成","zh":"留空则自动创建"}});
@@ -2923,6 +3158,7 @@ function setLanguage(lang){
   if(typeof wb193RenderAll==="function")wb193RenderAll();
   if(typeof wb194RenderAdminItems==="function"&&wb194AdminState?.items)wb194RenderAdminItems();
   if(typeof wb195RenderProposals==="function"&&wb195State?.items)wb195RenderProposals();
+  if(typeof wb2034Render==="function"&&wb2034LastResult)wb2034Render(wb2034LastResult);
   if(typeof wb20RefreshAppUI==="function")wb20RefreshAppUI();
   scheduleCloudSync("wb17_language");
 }
@@ -3593,6 +3829,7 @@ window.addEventListener('load',()=>{
 });
 
 
+wb2034Restore();
 initLanguage();
 refreshLiveContent(false);
 initCloud().then(()=>initBilling());
