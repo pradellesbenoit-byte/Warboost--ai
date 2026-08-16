@@ -54,13 +54,25 @@ export default async function handler(req,res){
 
   const content=[{
     type:"input_text",
-    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.
+    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.2.
 
 OBJECTIF:
 1. extraire uniquement les informations réellement visibles;
 2. distinguer impérativement la puissance TOTALE DU COMPTE de la puissance DE FORMATION;
-3. analyser l'équilibre visible des héros et équipements;
-4. produire un ordre concret de ce que le joueur doit améliorer en premier.
+3. reconnaître correctement la STRUCTURE de l'écran "Détails de la formation";
+4. lire le DRONE visible et son niveau lorsque le nombre est lisible;
+5. analyser l'équilibre visible des 5 héros et de leurs équipements;
+6. produire un ordre concret de ce que le joueur doit améliorer en premier.
+
+STRUCTURE LAST WAR À RESPECTER:
+- une formation comporte au maximum 5 HÉROS;
+- le portrait de SUZERAIN / compagnon placé à gauche de la rangée des héros n'est JAMAIS un 6e héros;
+- le DRONE n'est JAMAIS un héros;
+- l'icône circulaire avec un drone/appareil et un nombre (ex. 157) correspond au niveau du drone lorsqu'elle est clairement visible;
+- chaque héros dispose au maximum de 4 emplacements d'équipement;
+- sur une formation complète : maximum 5 héros et maximum 20 équipements;
+- les lignes d'équipements dans "Détails du héros" doivent être rattachées aux 5 héros, une ligne par héros;
+- ne compte jamais les icônes de compétences, drone, suzerain, décoration ou autres boutons comme équipement.
 
 RÈGLES ANTI-INVENTION:
 - n'invente jamais une statistique cachée;
@@ -70,6 +82,8 @@ RÈGLES ANTI-INVENTION:
 - power_m = puissance totale du compte UNIQUEMENT si l'écran l'indique clairement;
 - formation_power_m = puissance de la formation visible;
 - si le nom d'un héros n'est pas écrit mais que le portrait est reconnaissable avec forte confiance, tu peux le nommer; sinon utilise null et réfère-toi à sa position (Héros 1, Héros 2...);
+- le niveau du drone doit aller dans player.drone.level, jamais dans un héros;
+- ne compare pas directement le niveau du drone au niveau des héros : ce ne sont pas les mêmes systèmes de progression;
 - base chaque recommandation sur une preuve visible dans la capture;
 - ne donne pas de gain chiffré inventé. expected_impact est seulement high, medium ou low;
 - si la capture ne permet pas une recommandation fiable, demande la prochaine capture utile au lieu d'inventer.
@@ -128,8 +142,12 @@ Retourne uniquement la structure JSON demandée.`
         type:"object",additionalProperties:false,
         properties:{
           formation_power_m:{type:["number","null"]},
-          detected_heroes:{type:"integer",minimum:0,maximum:20},
-          visible_equipment_count:{type:"integer",minimum:0,maximum:40},
+          detected_heroes:{type:"integer",minimum:0,maximum:5},
+          visible_equipment_count:{type:"integer",minimum:0,maximum:20},
+          drone_detected:{type:"boolean"},
+          drone_level:{type:["number","null"]},
+          suzerain_detected:{type:"boolean"},
+          structure_valid:{type:"boolean"},
           confidence:{type:"number",minimum:0,maximum:1},
           summary:{type:"string"},
           strengths:{type:"array",maxItems:4,items:{type:"string"}},
@@ -148,7 +166,7 @@ Retourne uniquement la structure JSON demandée.`
           missing_information:{type:"array",maxItems:8,items:{type:"string"}},
           next_capture:{type:["string","null"]}
         },
-        required:["formation_power_m","detected_heroes","visible_equipment_count","confidence","summary","strengths","priorities","missing_information","next_capture"]
+        required:["formation_power_m","detected_heroes","visible_equipment_count","drone_detected","drone_level","suzerain_detected","structure_valid","confidence","summary","strengths","priorities","missing_information","next_capture"]
       }
     },
     required:["player","analysis"]
@@ -193,6 +211,64 @@ Retourne uniquement la structure JSON demandée.`
     if(!parsed?.player||!parsed?.analysis){
       await refundCredit(user.id);
       return json(res,502,{error:"Analyse incomplète. Réessaie avec une capture des détails de formation."});
+    }
+
+    // V20.3.2 — garde-fous déterministes pour l'écran Last War "Détails de la formation".
+    // Le Suzerain et le Drone ne doivent jamais devenir des héros.
+    if(!Array.isArray(parsed.player.squads))parsed.player.squads=[];
+    if(mode==="smart_formation"&&parsed.player.squads.length>1){
+      parsed.player.squads=parsed.player.squads.slice(0,1);
+    }
+    for(const squad of parsed.player.squads){
+      let heroes=Array.isArray(squad.heroes)?squad.heroes:[];
+      const byPosition=new Map();
+      const noPosition=[];
+      for(const h of heroes){
+        if(!h||typeof h!=="object")continue;
+        const pos=Number(h.position||0);
+        if(pos>=1&&pos<=5&&!byPosition.has(pos))byPosition.set(pos,h);
+        else noPosition.push(h);
+      }
+      heroes=[...byPosition.entries()].sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+      for(const h of noPosition){
+        if(heroes.length>=5)break;
+        if(!heroes.includes(h))heroes.push(h);
+      }
+      heroes=heroes.slice(0,5);
+      heroes.forEach((h,i)=>{
+        h.position=i+1;
+        h.equipment=(Array.isArray(h.equipment)?h.equipment:[]).slice(0,4);
+      });
+      squad.heroes=heroes;
+    }
+
+    const primary=parsed.player.squads[0]||null;
+    const actualHeroes=(primary?.heroes||[]).filter(h=>h&&(h.name||h.level!=null||h.stars!=null||(h.equipment||[]).length)).length;
+    const actualGear=(primary?.heroes||[]).reduce((n,h)=>n+(h?.equipment||[]).slice(0,4).length,0);
+    parsed.analysis.detected_heroes=Math.min(5,actualHeroes);
+    parsed.analysis.visible_equipment_count=Math.min(20,actualGear);
+
+    const droneLevel=Number(parsed.player?.drone?.level||parsed.analysis?.drone_level||0)||null;
+    if(droneLevel!=null){
+      parsed.player.drone.level=droneLevel;
+      parsed.analysis.drone_level=droneLevel;
+      parsed.analysis.drone_detected=true;
+    }else{
+      parsed.analysis.drone_level=null;
+      parsed.analysis.drone_detected=!!(parsed.player?.drone?.power_m);
+    }
+
+    parsed.analysis.structure_valid=
+      parsed.analysis.detected_heroes<=5 &&
+      parsed.analysis.visible_equipment_count<=20 &&
+      (primary?.heroes||[]).every(h=>(h?.equipment||[]).length<=4);
+
+    // Si l'écran est une formation complète et que 5 héros sont présents,
+    // l'absence de 20 équipements signifie simplement qu'une partie n'était pas lisible.
+    if(parsed.analysis.detected_heroes===5&&parsed.analysis.visible_equipment_count<20){
+      if(!Array.isArray(parsed.analysis.missing_information))parsed.analysis.missing_information=[];
+      const msg="Certains emplacements d’équipement ne sont pas assez lisibles pour être comptés avec certitude.";
+      if(!parsed.analysis.missing_information.includes(msg))parsed.analysis.missing_information.push(msg);
     }
 
     if(parsed.player.formation_power_m==null && parsed.analysis.formation_power_m!=null)parsed.player.formation_power_m=parsed.analysis.formation_power_m;
