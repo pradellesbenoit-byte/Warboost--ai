@@ -217,7 +217,7 @@ SORTIE
 
   const content=[{
     type:"input_text",
-    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.6.
+    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.7.
 
 ORDRE D’ANALYSE OBLIGATOIRE : héros → équipements → puissance de formation → Drone → Suzerain. N’évalue les priorités et la Boutique qu’après avoir terminé cette extraction.
 
@@ -350,7 +350,7 @@ Retourne uniquement la structure JSON demandée.`
 
   const model=process.env.OPENAI_VISION_MODEL||process.env.OPENAI_MODEL||"gpt-5";
   const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),72000);
+  const timeout=setTimeout(()=>controller.abort(),45000);
 
   try{
     const r=await fetch("https://api.openai.com/v1/responses",{
@@ -359,8 +359,8 @@ Retourne uniquement la structure JSON demandée.`
       signal:controller.signal,
       body:JSON.stringify({
         model,
-        reasoning:{effort:"minimal"},
-        max_output_tokens:8000,
+        reasoning:{effort:"none"},
+        max_output_tokens:5000,
         input:[{role:"user",content}],
         text:{verbosity:"low",format:{type:"json_schema",name:"warboost_smart_player_scan",strict:true,schema}}
       })
