@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V20 — Application</title>
+<title>WarBoost V20.1 — Application</title>
 
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/warboost-icon-192.png">
@@ -472,7 +472,7 @@ td input,td select{margin:0;padding:8px}
 @media(max-width:760px){.wb195Stats{grid-template-columns:1fr 1fr}.wb195Stats .wb195Stat:last-child{grid-column:1/-1}.wb195Actions button{width:100%}.wb195ProposalActions button{flex:1 1 auto}}
 
 
-/* ===== WARBOOST V20 • APPLICATION ===== */
+/* ===== WARBOOST V20.1 • APPLICATION ===== */
 .wb20AppCard{
   border:1px solid #355976;
   background:radial-gradient(circle at 90% -20%,#26305a 0,transparent 34%),linear-gradient(180deg,#0b1a2a,#091521);
@@ -509,8 +509,8 @@ td input,td select{margin:0;padding:8px}
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V20</em></button>
-  <span class="proBadge">📱 V20 • APP</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V20.1</em></button>
+  <span class="proBadge">📱 V20.1 • APP</span>
   <select id="language" class="lang" onchange="setLanguage(this.value)" aria-label="Language">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -557,7 +557,7 @@ td input,td select{margin:0;padding:8px}
   <div id="wb20AppCard" class="card wb20AppCard">
     <div class="wb20AppHead">
       <div>
-        <div class="eyebrow">V20 • APPLICATION</div>
+        <div class="eyebrow">V20.1 • APPLICATION</div>
         <div class="wb20AppTitle">
           <div class="wb20AppIcon">📱</div>
           <div>
@@ -585,7 +585,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card wb193LivePanel">
     <div class="wb193LiveHead">
       <div>
-        <div class="eyebrow">V20 • APP + LIVE</div>
+        <div class="eyebrow">V20.1 • APP + LIVE</div>
         <div class="wb193LiveTitle"><span class="wb193Pulse"></span><h2 style="margin:6px 0">🔄 Centre de mises à jour</h2></div>
         <p class="muted" style="margin:0">Saison, VS, héros, événements et briefs R5/R4 synchronisés depuis WarBoost.</p>
       </div>
@@ -2470,6 +2470,88 @@ Object.assign(WB171_TRANSLATIONS,{
   "Ton abonnement est annulé mais PRO reste actif jusqu'à cette date.":{"en":"Your subscription is canceled, but PRO stays active until this date.","es":"Tu suscripción está cancelada, pero PRO seguirá activo hasta esta fecha.","de":"Dein Abo ist gekündigt, PRO bleibt aber bis zu diesem Datum aktiv.","ja":"サブスクリプションは解約予定ですが、この日までPROを利用できます。","zh":"订阅已计划取消，但PRO将持续到该日期。"},
   "Le renouvellement automatique est désactivé.":{"en":"Automatic renewal is disabled.","es":"La renovación automática está desactivada.","de":"Die automatische Verlängerung ist deaktiviert.","ja":"自動更新は無効です。","zh":"自动续订已关闭。"}
 });
+
+Object.assign(WB171_TRANSLATIONS,{
+  "WARBOOST V20.1 • APPLICATION":{
+    "en":"WARBOOST V20.1 • APPLICATION",
+    "es":"WARBOOST V20.1 • APLICACIÓN",
+    "de":"WARBOOST V20.1 • APP",
+    "ja":"WARBOOST V20.1 • アプリ",
+    "zh":"WARBOOST V20.1 • 应用"
+  },
+  "V20.1 • APPLICATION":{
+    "en":"V20.1 • APP",
+    "es":"V20.1 • APLICACIÓN",
+    "de":"V20.1 • APP",
+    "ja":"V20.1 • アプリ",
+    "zh":"V20.1 • 应用"
+  },
+  "WarBoost devient installable sur ton téléphone : même compte cloud, mêmes données, PRO, Live Content, IA, alliance et War Room.":{
+    "en":"WarBoost can now be installed on your phone: same cloud account, same data, PRO, Live Content, AI, alliance and War Room.",
+    "es":"WarBoost ya se puede instalar en tu teléfono: misma cuenta cloud, mismos datos, PRO, Live Content, IA, alianza y War Room.",
+    "de":"WarBoost kann jetzt auf deinem Smartphone installiert werden: gleiches Cloud-Konto, gleiche Daten, PRO, Live Content, KI, Allianz und War Room.",
+    "ja":"WarBoostをスマートフォンにインストールできるようになりました。同じクラウドアカウント、データ、PRO、Live Content、AI、同盟、War Roomをそのまま利用できます。",
+    "zh":"WarBoost 现在可以安装到手机：继续使用同一个云账户、相同数据、PRO、Live Content、AI、联盟和 War Room。"
+  },
+  "WarBoost sur ton téléphone":{
+    "en":"WarBoost on your phone",
+    "es":"WarBoost en tu teléfono",
+    "de":"WarBoost auf deinem Smartphone",
+    "ja":"スマートフォンのWarBoost",
+    "zh":"手机上的 WarBoost"
+  },
+  "Installe WarBoost comme une application et garde le même compte, le même PRO et les mêmes données cloud.":{
+    "en":"Install WarBoost as an app and keep the same account, PRO plan and cloud data.",
+    "es":"Instala WarBoost como una aplicación y conserva la misma cuenta, el mismo PRO y los mismos datos cloud.",
+    "de":"Installiere WarBoost als App und behalte dasselbe Konto, PRO-Abo und dieselben Cloud-Daten.",
+    "ja":"WarBoostをアプリとしてインストールしても、同じアカウント、PROプラン、クラウドデータをそのまま使えます。",
+    "zh":"将 WarBoost 安装为应用，并继续使用同一个账户、PRO 套餐和云端数据。"
+  },
+  "📲 INSTALLATION":{"en":"📲 INSTALL","es":"📲 INSTALACIÓN","de":"📲 INSTALLATION","ja":"📲 インストール","zh":"📲 安装"},
+  "✅ APP INSTALLÉE":{"en":"✅ APP INSTALLED","es":"✅ APP INSTALADA","de":"✅ APP INSTALLIERT","ja":"✅ アプリ導入済み","zh":"✅ 应用已安装"},
+  "● EN LIGNE":{"en":"● ONLINE","es":"● EN LÍNEA","de":"● ONLINE","ja":"● オンライン","zh":"● 在线"},
+  "● HORS LIGNE":{"en":"● OFFLINE","es":"● SIN CONEXIÓN","de":"● OFFLINE","ja":"● オフライン","zh":"● 离线"},
+  "☁️ CLOUD LIÉ":{"en":"☁️ CLOUD LINKED","es":"☁️ CLOUD VINCULADO","de":"☁️ CLOUD VERKNÜPFT","ja":"☁️ クラウド連携","zh":"☁️ 云端已连接"},
+  "💾 MODE HORS LIGNE":{"en":"💾 OFFLINE MODE","es":"💾 MODO SIN CONEXIÓN","de":"💾 OFFLINE-MODUS","ja":"💾 オフラインモード","zh":"💾 离线模式"},
+  "📲 Installer WarBoost":{"en":"📲 Install WarBoost","es":"📲 Instalar WarBoost","de":"📲 WarBoost installieren","ja":"📲 WarBoostをインストール","zh":"📲 安装 WarBoost"},
+  "✅ WarBoost est installé":{"en":"✅ WarBoost is installed","es":"✅ WarBoost está instalado","de":"✅ WarBoost ist installiert","ja":"✅ WarBoostはインストール済み","zh":"✅ WarBoost 已安装"},
+  "📲 Installation disponible":{"en":"📲 Installation available","es":"📲 Instalación disponible","de":"📲 Installation verfügbar","ja":"📲 インストール可能","zh":"📲 可安装"},
+  "ℹ️ Comment ça marche":{"en":"ℹ️ How it works","es":"ℹ️ Cómo funciona","de":"ℹ️ So funktioniert es","ja":"ℹ️ 使い方","zh":"ℹ️ 使用方式"},
+  "↻ Vérifier une mise à jour":{"en":"↻ Check for updates","es":"↻ Buscar actualizaciones","de":"↻ Nach Updates suchen","ja":"↻ 更新を確認","zh":"↻ 检查更新"},
+  "Initialisation de l’application…":{"en":"Initializing the app…","es":"Inicializando la aplicación…","de":"App wird initialisiert…","ja":"アプリを初期化しています…","zh":"正在初始化应用…"},
+  "✅ WarBoost fonctionne maintenant comme une application. Ton compte cloud, ton abonnement PRO et tes données restent liés à warboost.fr.":{
+    "en":"✅ WarBoost now works as an app. Your cloud account, PRO subscription and data remain linked to warboost.fr.",
+    "es":"✅ WarBoost ahora funciona como una aplicación. Tu cuenta cloud, tu suscripción PRO y tus datos siguen vinculados a warboost.fr.",
+    "de":"✅ WarBoost funktioniert jetzt als App. Dein Cloud-Konto, dein PRO-Abo und deine Daten bleiben mit warboost.fr verknüpft.",
+    "ja":"✅ WarBoostはアプリとして動作しています。クラウドアカウント、PRO契約、データはwarboost.frと引き続き連携されます。",
+    "zh":"✅ WarBoost 现在作为应用运行。你的云账户、PRO 订阅和数据仍与 warboost.fr 保持关联。"
+  },
+  "📲 Prêt à installer. Appuie sur « Installer WarBoost » pour ajouter l’application à ton téléphone.":{
+    "en":"📲 Ready to install. Tap “Install WarBoost” to add the app to your phone.",
+    "es":"📲 Listo para instalar. Pulsa «Instalar WarBoost» para añadir la aplicación a tu teléfono.",
+    "de":"📲 Bereit zur Installation. Tippe auf „WarBoost installieren“, um die App zu deinem Smartphone hinzuzufügen.",
+    "ja":"📲 インストール準備完了。「WarBoostをインストール」を押してスマートフォンに追加してください。",
+    "zh":"📲 已准备安装。点击“安装 WarBoost”将应用添加到手机。"
+  },
+  "🌐 WarBoost fonctionne déjà dans le navigateur. Sur Android/Chrome, le bouton d’installation s’active dès que le navigateur autorise l’installation.":{
+    "en":"🌐 WarBoost already works in the browser. On Android/Chrome, the install button becomes available when the browser allows installation.",
+    "es":"🌐 WarBoost ya funciona en el navegador. En Android/Chrome, el botón de instalación se activa cuando el navegador permite instalarla.",
+    "de":"🌐 WarBoost funktioniert bereits im Browser. Unter Android/Chrome wird die Installationsschaltfläche verfügbar, sobald der Browser die Installation erlaubt.",
+    "ja":"🌐 WarBoostはブラウザでも利用できます。Android/Chromeでインストール可能になると、インストールボタンが有効になります。",
+    "zh":"🌐 WarBoost 已可在浏览器中使用。当 Android/Chrome 允许安装时，安装按钮会自动可用。"
+  },
+  "Service de mise à jour non disponible pour le moment.":{"en":"Update service is currently unavailable.","es":"El servicio de actualización no está disponible en este momento.","de":"Der Update-Dienst ist derzeit nicht verfügbar.","ja":"現在、更新サービスを利用できません。","zh":"更新服务当前不可用。"},
+  "↻ Vérification de la dernière version…":{"en":"↻ Checking the latest version…","es":"↻ Comprobando la última versión…","de":"↻ Neueste Version wird geprüft…","ja":"↻ 最新バージョンを確認中…","zh":"↻ 正在检查最新版本…"},
+  "✅ WarBoost est à jour.":{"en":"✅ WarBoost is up to date.","es":"✅ WarBoost está actualizado.","de":"✅ WarBoost ist aktuell.","ja":"✅ WarBoostは最新です。","zh":"✅ WarBoost 已是最新版本。"},
+  "Impossible de vérifier la mise à jour pour le moment.":{"en":"Unable to check for updates right now.","es":"No se pueden buscar actualizaciones en este momento.","de":"Updates können derzeit nicht geprüft werden.","ja":"現在、更新を確認できません。","zh":"目前无法检查更新。"},
+  "📴 Hors connexion : vérification impossible.":{"en":"📴 Offline: update check unavailable.","es":"📴 Sin conexión: no se puede comprobar la actualización.","de":"📴 Offline: Update-Prüfung nicht möglich.","ja":"📴 オフラインのため更新を確認できません。","zh":"📴 离线：无法检查更新。"},
+  "WarBoost reste accessible, mais le mode hors connexion n’a pas pu être activé.":{"en":"WarBoost is still available, but offline mode could not be enabled.","es":"WarBoost sigue disponible, pero no se ha podido activar el modo sin conexión.","de":"WarBoost bleibt verfügbar, aber der Offline-Modus konnte nicht aktiviert werden.","ja":"WarBoostは利用できますが、オフラインモードを有効にできませんでした。","zh":"WarBoost 仍可使用，但无法启用离线模式。"},
+  "📴 Hors connexion — WarBoost utilise les données disponibles sur le téléphone.":{"en":"📴 Offline — WarBoost is using data available on your phone.","es":"📴 Sin conexión — WarBoost utiliza los datos disponibles en tu teléfono.","de":"📴 Offline — WarBoost verwendet die auf deinem Smartphone verfügbaren Daten.","ja":"📴 オフライン — WarBoostはスマートフォン内の利用可能なデータを使用しています。","zh":"📴 离线 — WarBoost 正在使用手机上可用的数据。"},
+  "✨ Nouvelle version WarBoost disponible":{"en":"✨ New WarBoost version available","es":"✨ Nueva versión de WarBoost disponible","de":"✨ Neue WarBoost-Version verfügbar","ja":"✨ WarBoostの新バージョンがあります","zh":"✨ WarBoost 有新版本"},
+  "La mise à jour est prête. Tes données locales et ton compte cloud sont conservés.":{"en":"The update is ready. Your local data and cloud account will be kept.","es":"La actualización está lista. Se conservarán tus datos locales y tu cuenta cloud.","de":"Das Update ist bereit. Deine lokalen Daten und dein Cloud-Konto bleiben erhalten.","ja":"更新の準備ができました。ローカルデータとクラウドアカウントは保持されます。","zh":"更新已准备好。你的本地数据和云账户都会保留。"},
+  "Mettre à jour maintenant":{"en":"Update now","es":"Actualizar ahora","de":"Jetzt aktualisieren","ja":"今すぐ更新","zh":"立即更新"}
+});
+
 const WB171_PLACEHOLDERS={"Ton pseudo": {"en": "Your nickname", "es": "Tu apodo", "de": "Dein Spielname", "ja": "ニックネーム", "zh": "你的昵称"}, "ton@email.fr": {"en": "you@email.com", "es": "tu@email.com", "de": "du@email.de", "ja": "you@email.com", "zh": "you@email.com"}, "6 caractères minimum": {"en": "6 characters minimum", "es": "6 caracteres mínimo", "de": "Mindestens 6 Zeichen", "ja": "6文字以上", "zh": "至少6个字符"}, "Nouveau mot de passe": {"en": "New password", "es": "Nueva contraseña", "de": "Neues Passwort", "ja": "新しいパスワード", "zh": "新密码"}, "Ex : préparer les groupes pour 20h": {"en": "E.g. prepare groups for 8 PM", "es": "Ej.: preparar grupos para las 20h", "de": "Z. B. Gruppen für 20 Uhr vorbereiten", "ja": "例：20時のグループを準備", "zh": "例如：准备20点的分组"}, "Rechercher un joueur…": {"en": "Search player…", "es": "Buscar jugador…", "de": "Spieler suchen…", "ja": "プレイヤー検索…", "zh": "搜索玩家…"}};
 const WB171_SUPPORTED=["fr","en","es","de","ja","zh"];
 function wb171T(key,lang=wb171Language){
@@ -2538,6 +2620,7 @@ function applyLanguage(lang){
 function setLanguage(lang){
   applyLanguage(lang);
   if(typeof wb193RenderAll==="function")wb193RenderAll();
+  if(typeof wb20RefreshAppUI==="function")wb20RefreshAppUI();
   scheduleCloudSync("wb17_language");
 }
 const wb171Observer=new MutationObserver(mutations=>{
@@ -3093,6 +3176,30 @@ function wb20RefreshAppUI(){
     wb20SetStatus('🌐 WarBoost fonctionne déjà dans le navigateur. Sur Android/Chrome, le bouton d’installation s’active dès que le navigateur autorise l’installation.');
   }
 }
+
+function wb20Msg(key){
+  const lang=(typeof wb171Language==="string"&&wb171Language)||localStorage.getItem("wb17_language")||"fr";
+  const messages={
+    installHelp:{
+      fr:"Si le bouton d’installation du navigateur n’est pas encore disponible : ouvre le menu ⋮ de Chrome puis choisis « Installer l’application » ou « Ajouter à l’écran d’accueil ».",
+      en:"If the browser install button is not available yet, open Chrome’s ⋮ menu and choose “Install app” or “Add to Home screen”.",
+      es:"Si el botón de instalación del navegador aún no está disponible, abre el menú ⋮ de Chrome y elige «Instalar aplicación» o «Añadir a pantalla de inicio».",
+      de:"Wenn die Installationsschaltfläche noch nicht verfügbar ist, öffne das ⋮-Menü in Chrome und wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.",
+      ja:"ブラウザのインストールボタンがまだ表示されない場合は、Chromeの⋮メニューから「アプリをインストール」または「ホーム画面に追加」を選んでください。",
+      zh:"如果浏览器尚未显示安装按钮，请打开 Chrome 的 ⋮ 菜单，然后选择“安装应用”或“添加到主屏幕”。"
+    },
+    appInfo:{
+      fr:"V20.1 utilise la technologie PWA : WarBoost reste accessible sur warboost.fr et peut aussi être installé comme une application. Les deux utilisent le même compte WarBoost et les mêmes données cloud. Une partie de l’interface reste disponible hors connexion ; les fonctions IA, paiement et synchronisation nécessitent Internet.",
+      en:"V20.1 uses PWA technology: WarBoost remains available on warboost.fr and can also be installed as an app. Both use the same WarBoost account and cloud data. Part of the interface remains available offline; AI, billing and synchronization require an Internet connection.",
+      es:"V20.1 utiliza tecnología PWA: WarBoost sigue disponible en warboost.fr y también puede instalarse como aplicación. Ambos utilizan la misma cuenta WarBoost y los mismos datos cloud. Parte de la interfaz sigue disponible sin conexión; la IA, los pagos y la sincronización necesitan Internet.",
+      de:"V20.1 nutzt PWA-Technologie: WarBoost bleibt unter warboost.fr erreichbar und kann zusätzlich als App installiert werden. Beide nutzen dasselbe WarBoost-Konto und dieselben Cloud-Daten. Teile der Oberfläche funktionieren offline; KI, Zahlung und Synchronisierung benötigen Internet.",
+      ja:"V20.1はPWA技術を使用しています。WarBoostはwarboost.frでも利用でき、アプリとしてインストールすることもできます。どちらも同じWarBoostアカウントとクラウドデータを使用します。画面の一部はオフラインでも利用できますが、AI、決済、同期にはインターネット接続が必要です。",
+      zh:"V20.1 使用 PWA 技术：WarBoost 仍可通过 warboost.fr 使用，也可以安装为应用。两者使用同一个 WarBoost 账户和云端数据。部分界面可离线使用；AI、支付和同步功能需要联网。"
+    }
+  };
+  return messages[key]?.[lang]||messages[key]?.fr||"";
+}
+
 async function wb20InstallApp(){
   if(wb20IsStandalone()){wb20RefreshAppUI();return}
   if(wb20InstallPrompt){
@@ -3104,10 +3211,10 @@ async function wb20InstallApp(){
     wb20RefreshAppUI();
     return;
   }
-  alert('Si le bouton d’installation du navigateur n’est pas encore disponible : ouvre le menu ⋮ de Chrome puis choisis « Installer l’application » ou « Ajouter à l’écran d’accueil ».');
+  alert(wb20Msg("installHelp"));
 }
 function wb20OpenAppInfo(){
-  alert('V20 utilise la technologie PWA : WarBoost reste accessible sur warboost.fr et peut aussi être installé comme une application. Les deux utilisent le même compte WarBoost et les mêmes données cloud. Une partie de l’interface reste disponible hors connexion ; les fonctions IA, paiement et synchronisation nécessitent Internet.');
+  alert(wb20Msg("appInfo"));
 }
 function wb20ShowUpdate(){
   document.getElementById('wb20UpdateToast')?.classList.add('show');
