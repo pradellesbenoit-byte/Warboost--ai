@@ -217,7 +217,9 @@ SORTIE
 
   const content=[{
     type:"input_text",
-    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.4.
+    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.6.
+
+ORDRE D’ANALYSE OBLIGATOIRE : héros → équipements → puissance de formation → Drone → Suzerain. N’évalue les priorités et la Boutique qu’après avoir terminé cette extraction.
 
 OBJECTIF:
 1. extraire uniquement les informations réellement visibles;
@@ -348,7 +350,7 @@ Retourne uniquement la structure JSON demandée.`
 
   const model=process.env.OPENAI_VISION_MODEL||process.env.OPENAI_MODEL||"gpt-5";
   const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),52000);
+  const timeout=setTimeout(()=>controller.abort(),72000);
 
   try{
     const r=await fetch("https://api.openai.com/v1/responses",{
@@ -357,7 +359,8 @@ Retourne uniquement la structure JSON demandée.`
       signal:controller.signal,
       body:JSON.stringify({
         model,
-        max_output_tokens:4500,
+        reasoning:{effort:"minimal"},
+        max_output_tokens:8000,
         input:[{role:"user",content}],
         text:{verbosity:"low",format:{type:"json_schema",name:"warboost_smart_player_scan",strict:true,schema}}
       })
@@ -372,8 +375,12 @@ Retourne uniquement la structure JSON demandée.`
       return json(res,r.status===429?429:502,{error:data?.error?.message||"Erreur du moteur Smart Scan.",usage:refunded});
     }
     if(data?.status==="incomplete"){
+      const reason=String(data?.incomplete_details?.reason||"");
       await refundCredit(user.id);
-      return json(res,502,{error:"Le Smart Scan a été interrompu avant la fin. Réessaie avec une seule capture nette."});
+      const msg=reason==="max_output_tokens"
+        ?"Le Smart Scan a manqué de place pour terminer l’analyse. WarBoost a remboursé la requête IA : relance simplement le scan."
+        :"Le Smart Scan a été interrompu avant la fin. WarBoost a remboursé la requête IA : relance simplement le scan.";
+      return json(res,502,{error:msg,incomplete_reason:reason});
     }
 
     const text=outputText(data);let parsed;
