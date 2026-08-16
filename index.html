@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V19.4 — Live Admin</title>
+<title>WarBoost V19.5 — Auto Update Engine</title>
 <style>
 :root{
   --bg:#07111f;--panel:#101a2a;--panel2:#0a1422;--line:#2b3c57;
@@ -436,12 +436,36 @@ td input,td select{margin:0;padding:8px}
 .wb194AdminStatus.ok{color:#76e2ad}.wb194AdminStatus.err{color:#ff8f8f}
 @media(max-width:760px){.wb194AdminGrid{grid-template-columns:1fr}.wb194AdminGrid .wide{grid-column:auto}.wb194AdminModal .modal{width:95vw;padding:16px}.wb194AdminActions .btn{width:100%}}
 
+
+/* ===== V19.5 • AUTO UPDATE ENGINE ===== */
+.wb195Engine{border:1px solid #355976;background:linear-gradient(180deg,#0a1b29,#08131f);border-radius:16px;padding:14px;margin:0 0 16px;position:relative;overflow:hidden}
+.wb195Engine:before{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,#69d7ff,#8f7dff,#f2c55d)}
+.wb195EngineTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.wb195EngineTitle{display:flex;gap:9px;align-items:center}.wb195EngineTitle h3{margin:0}
+.wb195BotDot{width:11px;height:11px;border-radius:50%;background:#69d7ff;box-shadow:0 0 0 0 #69d7ff88;animation:wb195pulse 1.8s infinite}
+@keyframes wb195pulse{0%{box-shadow:0 0 0 0 #69d7ff88}70%{box-shadow:0 0 0 8px #69d7ff00}100%{box-shadow:0 0 0 0 #69d7ff00}}
+.wb195Stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.wb195Stat{border:1px solid #29445b;background:#07121e;border-radius:12px;padding:10px}.wb195Stat span{display:block;color:#8195aa;font-size:10px}.wb195Stat strong{display:block;margin-top:3px;font-size:18px}
+.wb195Actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.wb195ScanBtn{border:1px solid #49749a;background:linear-gradient(180deg,#173a58,#102a41);color:#e8f6ff;border-radius:11px;padding:10px 12px;font-weight:950}.wb195ScanBtn:disabled{opacity:.55}
+.wb195Info{margin-top:9px;color:#8fa4b8;font-size:11px;line-height:1.45}
+.wb195Status{margin-top:9px;min-height:18px;color:#aabed1;font-size:12px}.wb195Status.ok{color:#76e2ad}.wb195Status.err{color:#ff8f8f}.wb195Status.warn{color:#f4d47f}
+.wb195ProposalList{display:grid;gap:10px;margin-top:12px}
+.wb195Proposal{border:1px solid #2d4a63;background:#071420;border-radius:14px;padding:12px}.wb195Proposal.published{opacity:.68}.wb195Proposal.rejected{opacity:.58}
+.wb195ProposalTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.wb195Proposal h4{margin:7px 0 5px;font-size:15px}.wb195Proposal p{margin:0;color:#a0b2c4;font-size:12px;line-height:1.5}
+.wb195ProposalBody{margin-top:8px;color:#d5dfeb;font-size:12px;line-height:1.5;white-space:pre-wrap}
+.wb195ProposalMeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.wb195Chip{display:inline-flex;align-items:center;border:1px solid #395b78;border-radius:999px;padding:3px 7px;font-size:10px;color:#c7dbef;font-weight:900}.wb195Chip.good{border-color:#28634f;color:#91e7c1}.wb195Chip.hot{border-color:#806327;color:#ffdc88}.wb195Chip.off{border-color:#6f3d3d;color:#ffaeae}
+.wb195Sources{margin-top:9px;display:grid;gap:4px}.wb195Sources a{color:#8ecfff;font-size:11px;text-decoration:none;overflow-wrap:anywhere}.wb195Sources a:hover{text-decoration:underline}
+.wb195ProposalActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.wb195ProposalActions button{border:1px solid #35536d;background:#10233a;color:#dcecff;border-radius:9px;padding:8px 9px;font-weight:850}.wb195ProposalActions .publish{border-color:#50702d;background:#193018;color:#ccf2ac}.wb195ProposalActions .reject{border-color:#713c3c;background:#281212;color:#ffc0c0}
+.wb195AutoBadge{display:inline-flex;align-items:center;gap:6px;border:1px solid #4e567a;background:#15172b;color:#cbd0ff;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:950}
+@media(max-width:760px){.wb195Stats{grid-template-columns:1fr 1fr}.wb195Stats .wb195Stat:last-child{grid-column:1/-1}.wb195Actions button{width:100%}.wb195ProposalActions button{flex:1 1 auto}}
+
 </style>
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V19.4</em></button>
-  <span class="proBadge">🛠️ V19.4 • LIVE ADMIN</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V19.5</em></button>
+  <span class="proBadge">🤖 V19.5 • AUTO UPDATE</span>
   <select id="language" class="lang" onchange="setLanguage(this.value)" aria-label="Language">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -460,7 +484,7 @@ td input,td select{margin:0;padding:8px}
 </div>
 
 <section class="hero">
-  <div class="eyebrow">WARBOOST V19.4 • LIVE ADMIN</div>
+  <div class="eyebrow">WARBOOST V19.5 • AUTO UPDATE ENGINE</div>
   <h1>Ton compte. Ton alliance. <span style="color:var(--red)">Ton copilote IA.</span></h1>
   <p>Live Content Saison / VS / héros / événements, import alliance R5/R4, roster complet, compte cloud, abonnement PRO sécurisé et War Room.</p>
 </section>
@@ -480,7 +504,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card wb193LivePanel">
     <div class="wb193LiveHead">
       <div>
-        <div class="eyebrow">V19.4 • LIVE + ADMIN</div>
+        <div class="eyebrow">V19.5 • LIVE + AUTO UPDATE</div>
         <div class="wb193LiveTitle"><span class="wb193Pulse"></span><h2 style="margin:6px 0">🔄 Centre de mises à jour</h2></div>
         <p class="muted" style="margin:0">Saison, VS, héros, événements et briefs R5/R4 synchronisés depuis WarBoost.</p>
       </div>
@@ -1065,17 +1089,42 @@ td input,td select{margin:0;padding:8px}
 
 <div id="wb194AdminModal" class="modalBack wb194AdminModal" onclick="if(event.target===this)wb194CloseAdmin()">
   <div class="modal">
-    <div class="eyebrow">V19.4 • LIVE ADMIN</div>
+    <div class="eyebrow">V19.5 • LIVE ADMIN + AUTO UPDATE</div>
     <div class="wb194AdminHero">
       <div class="wb194AdminHeroTop">
         <div>
           <h2 style="margin:2px 0 6px">🛠️ Administration Live WarBoost</h2>
-          <p class="muted" style="margin:0">Publie Saison, VS, héros, événements et briefs R5/R4 sans redéployer l’application.</p>
+          <p class="muted" style="margin:0">Valide, modifie ou publie les mises à jour proposées automatiquement par WarBoost.</p>
         </div>
         <span id="wb194AdminRole" class="wb194AdminRole">ADMIN</span>
       </div>
     </div>
 
+
+    <div class="wb195Engine">
+      <div class="wb195EngineTop">
+        <div>
+          <div class="eyebrow">V19.5 • AUTO UPDATE ENGINE</div>
+          <div class="wb195EngineTitle"><span class="wb195BotDot"></span><h3>🤖 Veille Last War → brouillons</h3></div>
+          <p class="muted" style="margin:6px 0 0">WarBoost recherche les changements récents et prépare uniquement des propositions. Rien n’est publié sans validation Admin.</p>
+        </div>
+        <span class="wb195AutoBadge">🛡️ VALIDATION HUMAINE</span>
+      </div>
+      <div class="wb195Stats">
+        <div class="wb195Stat"><span>À valider</span><strong id="wb195PendingCount">0</strong></div>
+        <div class="wb195Stat"><span>Dernier scan</span><strong id="wb195LastScan" style="font-size:13px">—</strong></div>
+        <div class="wb195Stat"><span>Auto-scan</span><strong style="font-size:13px">12 h</strong></div>
+      </div>
+      <div class="wb195Actions">
+        <button id="wb195ScanBtn" class="wb195ScanBtn" onclick="wb195ScanNow(true)">🔎 Scanner les nouveautés Last War</button>
+        <button class="miniBtn" onclick="wb195LoadProposals()">↻ Recharger les propositions</button>
+      </div>
+      <div class="wb195Info">À l’ouverture de ton compte Admin, WarBoost peut lancer au maximum un scan automatique toutes les 12 h. Le moteur privilégie les informations récentes et demande des sources avant de créer un brouillon.</div>
+      <div id="wb195Status" class="wb195Status"></div>
+      <div id="wb195ProposalList" class="wb195ProposalList"><div class="wb193LiveEmpty">Chargement des propositions…</div></div>
+    </div>
+
+    <div class="eyebrow" style="margin-bottom:8px">✍️ ÉDITEUR LIVE MANUEL</div>
     <input id="wb194Id" type="hidden">
     <div class="wb194AdminGrid">
       <label>Rubrique
@@ -1155,6 +1204,87 @@ td input,td select{margin:0;padding:8px}
 const $=id=>document.getElementById(id);
 
 
+/* ===== V19.5 • AUTO UPDATE ENGINE ===== */
+const WB195_AUTO_SCAN_MS=12*60*60*1000;
+const WB195_LAST_SCAN_KEY="wb195_last_auto_scan_at";
+let wb195State={items:[],loading:false,editingProposalId:null,lastScan:null};
+function wb195Status(msg,type=""){
+  const e=$("wb195Status");if(!e)return;e.textContent=msg||"";e.className="wb195Status "+type;
+}
+function wb195SafeUrl(v){try{const u=new URL(String(v||""));return /^https?:$/.test(u.protocol)?u.toString():""}catch{return ""}}
+function wb195CategoryIcon(c){return ({general:"🔄",season:"🌍",vs:"🏆",hero:"🦸",event:"📅",r5r4:"🧠"})[c]||"🔔"}
+function wb195ProposalById(id){return (wb195State.items||[]).find(x=>x.id===id)}
+function wb195UpdateStats(meta={}){
+  const pending=(wb195State.items||[]).filter(x=>x.status==="pending").length;
+  if($("wb195PendingCount"))$("wb195PendingCount").textContent=String(pending);
+  const last=meta.last_scan_at||wb195State.lastScan;
+  if(last){wb195State.lastScan=last;if($("wb195LastScan"))$("wb195LastScan").textContent=wb193Date(last)}
+}
+async function wb195LoadProposals(){
+  const list=$("wb195ProposalList");if(list)list.innerHTML='<div class="wb193LiveEmpty">Chargement…</div>';
+  try{
+    const r=await fetch('/api/update-engine',{headers:wb194Headers(),cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Erreur ${r.status}`);
+    wb195State.items=Array.isArray(d.items)?d.items:[];wb195State.lastScan=d.last_scan_at||null;wb195RenderProposals();wb195UpdateStats(d);
+  }catch(e){if(list)list.innerHTML=`<div class="wb193LiveEmpty">${esc(e.message||"Impossible de charger les propositions.")}</div>`}
+}
+function wb195RenderProposals(){
+  const list=$("wb195ProposalList");if(!list)return;const all=wb195State.items||[];
+  const items=[...all].sort((a,b)=>{const sa=a.status==="pending"?0:a.status==="published"?1:2,sb=b.status==="pending"?0:b.status==="published"?1:2;return sa-sb||new Date(b.detected_at||0)-new Date(a.detected_at||0)}).slice(0,30);
+  if(!items.length){list.innerHTML='<div class="wb193LiveEmpty">Aucune proposition pour le moment. Lance un scan pour rechercher les nouveautés Last War.</div>';wb195UpdateStats();return}
+  list.innerHTML=items.map(x=>{
+    const ev=Array.isArray(x.evidence)?x.evidence:[];
+    const links=ev.map(s=>({title:s?.title||s?.label||"Source",url:wb195SafeUrl(s?.url)})).filter(s=>s.url).slice(0,4);
+    const mainUrl=wb195SafeUrl(x.source_url);if(mainUrl&&!links.some(s=>s.url===mainUrl))links.unshift({title:x.source_label||"Source principale",url:mainUrl});
+    const status=x.status||"pending";
+    return `<article class="wb195Proposal ${esc(status)}">
+      <div class="wb195ProposalTop"><div><span class="wb193LiveBadge">${esc(wb195CategoryIcon(x.category))} ${esc(wb193Badge(x.category))}</span><h4>${esc(x.title||"Proposition")}</h4></div><span class="wb195Chip ${Number(x.confidence||0)>=85?'good':Number(x.confidence||0)>=70?'hot':''}">${Number(x.confidence||0)}% confiance</span></div>
+      ${x.summary?`<p>${esc(x.summary)}</p>`:""}
+      ${x.body?`<div class="wb195ProposalBody">${esc(x.body)}</div>`:""}
+      <div class="wb195ProposalMeta"><span class="wb195Chip ${status==='pending'?'hot':status==='published'?'good':'off'}">${status==='pending'?'À VALIDER':status==='published'?'PUBLIÉ':'IGNORÉ'}</span><span class="wb195Chip">Priorité ${Number(x.priority||30)}</span><span class="wb195Chip">${wb193Date(x.detected_at)}</span></div>
+      ${links.length?`<div class="wb195Sources">${links.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">↗ ${esc(s.title)}</a>`).join('')}</div>`:""}
+      ${status==='pending'?`<div class="wb195ProposalActions"><button onclick="wb195EditProposal('${x.id}')">✏️ Réviser</button><button class="publish" onclick="wb195PublishProposal('${x.id}')">✅ Publier</button><button class="reject" onclick="wb195RejectProposal('${x.id}')">✕ Ignorer</button></div>`:""}
+    </article>`;
+  }).join('');wb195UpdateStats();
+}
+async function wb195ScanNow(manual=false){
+  if(wb195State.loading)return;wb195State.loading=true;const b=$("wb195ScanBtn");if(b){b.disabled=true;b.textContent="🔎 Recherche en cours…"}wb195Status("Recherche web + analyse des changements récents. Cela peut prendre quelques secondes…","");
+  try{
+    const r=await fetch('/api/update-engine',{method:'POST',headers:wb194Headers({'Content-Type':'application/json'}),body:JSON.stringify({action:'scan',manual:!!manual})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Erreur ${r.status}`);
+    localStorage.setItem(WB195_LAST_SCAN_KEY,String(Date.now()));
+    wb195Status(d.skipped?"Un scan récent existe déjà : propositions rechargées.":`${Number(d.inserted||0)} nouvelle(s) proposition(s) ajoutée(s) sur ${Number(d.found||0)} changement(s) détecté(s).`,d.inserted?"ok":"warn");
+    await wb195LoadProposals();
+  }catch(e){wb195Status(e.message||"Le scan automatique a échoué.","err")}
+  finally{wb195State.loading=false;if(b){b.disabled=false;b.textContent="🔎 Scanner les nouveautés Last War"}}
+}
+async function wb195MaybeAutoScan(){
+  if(!wb194AdminState?.is_admin||wb195State.loading)return;
+  const last=Number(localStorage.getItem(WB195_LAST_SCAN_KEY)||0);
+  if(Date.now()-last<WB195_AUTO_SCAN_MS){await wb195LoadProposals();return}
+  await wb195ScanNow(false);
+}
+function wb195EditProposal(id){
+  const x=wb195ProposalById(id);if(!x)return;wb195State.editingProposalId=id;
+  const firstEvidence=Array.isArray(x.evidence)?x.evidence.find(e=>wb195SafeUrl(e?.url)):null;
+  const vals={wb194Id:"",wb194Category:x.category||"general",wb194Priority:String(x.priority||30),wb194Title:x.title||"",wb194Summary:x.summary||"",wb194Body:x.body||"",wb194Icon:wb195CategoryIcon(x.category),wb194Badge:wb193Badge(x.category),wb194SourceLabel:x.source_label||firstEvidence?.title||"WarBoost Auto Update",wb194SourceUrl:x.source_url||firstEvidence?.url||"",wb194StartsAt:"",wb194EndsAt:"",wb194Key:""};
+  Object.entries(vals).forEach(([k,v])=>{if($(k))$(k).value=v});if($("wb194Active"))$("wb194Active").checked=true;wb194Status("Brouillon Auto Update chargé. Modifie-le puis publie.","ok");$("wb194AdminModal")?.querySelector('.modal')?.scrollTo({top:Math.max(0,$("wb194Title")?.offsetTop-110),behavior:'smooth'});
+}
+async function wb195ProposalAction(id,action,extra={}){
+  const r=await fetch('/api/update-engine',{method:'POST',headers:wb194Headers({'Content-Type':'application/json'}),body:JSON.stringify({action,id,...extra})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Erreur ${r.status}`);return d;
+}
+async function wb195PublishProposal(id){
+  const x=wb195ProposalById(id);if(!x)return;if(!confirm(`Publier « ${x.title} » dans WarBoost Live ?`))return;
+  wb195Status("Publication du brouillon…","");try{await wb195ProposalAction(id,'publish');wb195Status("Proposition publiée dans Live Content ✅","ok");await Promise.all([wb195LoadProposals(),refreshLiveContent(true),wb194LoadAdminItems()]);toast("Mise à jour publiée ✅")}catch(e){wb195Status(e.message||"Publication impossible.","err")}
+}
+async function wb195RejectProposal(id){
+  const x=wb195ProposalById(id);if(!x)return;if(!confirm(`Ignorer « ${x.title} » ?`))return;
+  try{await wb195ProposalAction(id,'reject');await wb195LoadProposals();wb195Status("Proposition ignorée.","warn")}catch(e){wb195Status(e.message||"Action impossible.","err")}
+}
+async function wb195MarkEditedPublished(proposalId,contentId){
+  if(!proposalId)return;try{await wb195ProposalAction(proposalId,'mark_published',{published_content_id:contentId||null})}catch(e){console.warn('WarBoost proposal mark published',e)}
+}
+
+
+
 /* ===== V19.4 • LIVE ADMIN ===== */
 let wb194AdminState={checked:false,checking:false,is_admin:false,role:null,items:[]};
 function wb194Status(msg,type=""){
@@ -1179,6 +1309,7 @@ async function wb194CheckAdmin(force=false){
     wb194AdminState.checked=true;wb194AdminState.is_admin=!!(r.ok&&d.is_admin);wb194AdminState.role=d.role||null;
     wb194SetVisible(wb194AdminState.is_admin);
     if($("wb194AdminRole"))$("wb194AdminRole").textContent=(wb194AdminState.role||"ADMIN").toUpperCase();
+    if(wb194AdminState.is_admin&&typeof wb195MaybeAutoScan==="function")setTimeout(()=>wb195MaybeAutoScan(),250);
     return wb194AdminState.is_admin;
   }catch(e){wb194AdminState.checked=true;wb194AdminState.is_admin=false;wb194SetVisible(false);return false}
   finally{wb194AdminState.checking=false}
@@ -1186,7 +1317,7 @@ async function wb194CheckAdmin(force=false){
 function wb194CloseAdmin(){$("wb194AdminModal")?.classList.remove("open")}
 async function wb194OpenAdmin(){
   const ok=await wb194CheckAdmin(true);if(!ok){toast("Accès administrateur refusé");return}
-  $("wb194AdminModal")?.classList.add("open");wb194ResetForm();await wb194LoadAdminItems();
+  $("wb194AdminModal")?.classList.add("open");wb194ResetForm();await Promise.all([wb194LoadAdminItems(),wb195LoadProposals()]);
 }
 function wb194Slug(v){
   return String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,90);
@@ -1196,6 +1327,7 @@ function wb194LocalDate(v){
 }
 function wb194IsoFromLocal(v){if(!v)return null;const d=new Date(v);return Number.isNaN(d.getTime())?null:d.toISOString()}
 function wb194ResetForm(){
+  if(typeof wb195State!=="undefined")wb195State.editingProposalId=null;
   const values={wb194Id:"",wb194Category:"general",wb194Priority:"30",wb194Title:"",wb194Summary:"",wb194Body:"",wb194Icon:"🔄",wb194Badge:"LIVE",wb194SourceLabel:"WarBoost Live",wb194SourceUrl:"",wb194StartsAt:"",wb194EndsAt:"",wb194Key:""};
   Object.entries(values).forEach(([id,v])=>{if($(id))$(id).value=v});if($("wb194Active"))$("wb194Active").checked=true;wb194Status("Nouveau contenu prêt à être publié.","");
 }
@@ -1212,6 +1344,7 @@ async function wb194SaveContent(){
     const r=await fetch('/api/live-admin',{method:'POST',headers:wb194Headers({'Content-Type':'application/json'}),body:JSON.stringify(data)});
     const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Erreur ${r.status}`);
     wb194Status(data.id?"Contenu modifié ✅":"Contenu publié ✅","ok");
+    if(wb195State?.editingProposalId){await wb195MarkEditedPublished(wb195State.editingProposalId,d?.item?.id||null);wb195State.editingProposalId=null;await wb195LoadProposals()}
     await wb194LoadAdminItems();await refreshLiveContent(true);wb194ResetForm();toast("Live publié ✅");
   }catch(e){wb194Status(e.message||"Enregistrement impossible.","err")}
 }
