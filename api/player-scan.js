@@ -36,9 +36,9 @@ export default async function handler(req,res){
   }
 
   const images=Array.isArray(req.body?.images)?req.body.images:[];
-  if(!images.length||images.length>4){
+  if(!images.length||images.length>10){
     await refundCredit(user.id);
-    return json(res,400,{error:"Envoie entre 1 et 4 captures.",usage:{...usage,used:Math.max(0,usage.used-1),remaining:Math.min(usage.limit,usage.remaining+1)}});
+    return json(res,400,{error:"Envoie entre 1 et 10 captures.",usage:{...usage,used:Math.max(0,usage.used-1),remaining:Math.min(usage.limit,usage.remaining+1)}});
   }
   if(images.some(x=>typeof x!=="string"||!/^data:image\/(?:png|jpeg|jpg|webp);base64,/i.test(x))){
     await refundCredit(user.id);return json(res,400,{error:"Format d’image non accepté."});
@@ -104,15 +104,18 @@ export default async function handler(req,res){
       required:["shop"]
     };
 
-    const shopContent=[{
-      type:"input_text",
-      text:`Tu es le Smart Shop Advisor de WarBoost V20.3.5 pour Last War: Survival.
+    const shopModel=process.env.OPENAI_VISION_MODEL||process.env.OPENAI_MODEL||"gpt-5";
+    const batchSize=2;
+    const batches=[];
+    for(let i=0;i<images.length;i+=batchSize)batches.push(images.slice(i,i+batchSize));
+
+    const basePrompt=`Tu es le Smart Shop Advisor de WarBoost V20.4.2 pour Last War: Survival.
 
 BUT
 - Lire UNIQUEMENT les boutiques/offres visibles dans les captures.
 - Reconnaître si possible : Boutique Diamants, VIP, Alliance, Honneur, Campagne, Saison, packs/offres payantes, ou autre.
 - Classer ce qui vaut le coup pour CE joueur, en distinguant "sans argent réel" et "payant".
-- Le classement doit d'abord servir les FAIBLESSES DE FORMATION transmises par le Smart Scan. Une offre intéressante en général mais sans rapport avec l'escouade doit être rétrogradée.
+- Le classement doit d'abord servir les FAIBLESSES DE FORMATION transmises par le Smart Scan.
 - Répondre en ${language}.
 
 CONTEXTE JOUEUR
@@ -125,99 +128,121 @@ CONTEXTE JOUEUR
 
 RÈGLES DE FIABILITÉ
 - N'invente jamais un article, un prix, une quantité ou une remise non visible.
-- Si le nom exact est illisible, décris l'article seulement si son icône/texte est suffisamment clair; sinon ne le recommande pas.
-- Pour un pack payant, le prix doit être celui affiché. Ne convertis pas une devise.
-- Un pourcentage de "valeur" ou "remise" affiché par le jeu n'est PAS une preuve suffisante de bon achat.
-- Ne promet jamais un gain de puissance chiffré si ce gain n'est pas visible.
-- Si plusieurs captures montrent la même offre, ne la duplique pas.
+- Si le nom exact est illisible, ne recommande l'article que si l'icône/texte est suffisamment clair.
+- Pour un pack payant, utilise uniquement le prix affiché. Ne convertis pas une devise.
+- Un pourcentage de valeur/remise affiché par le jeu n'est PAS une preuve suffisante de bon achat.
+- Ne promets jamais un gain de puissance chiffré s'il n'est pas visible.
+- Ne duplique pas une offre montrée plusieurs fois.
+- evidence doit citer ce qui est réellement visible.
 
-RÈGLES DE BASE WARBOOST (à utiliser comme orientation, pas comme excuse pour inventer)
-- Boutique Honneur : les Plans d'équipement légendaires sont généralement une priorité très forte, surtout si l'équipement est le besoin du joueur.
-- Boutique Alliance : fragments UR, accélérateurs construction/recherche, pièces de Drone sont des achats souvent utiles; conserver aussi assez de boucliers/téléporteurs pour les besoins opérationnels.
-- Boutique VIP : endurance, fragments universels légendaires/UR et accélérateurs sont souvent intéressants; adapter au besoin réel du joueur et à son stock visible.
-- Boutique Diamants : être prudent; éviter les achats de routine si un objet équivalent est disponible plus avantageusement ailleurs; téléporteurs/besoins urgents peuvent être situationnels.
-- Boutique Campagne : coffres de ressources/campagne, pièces de Drone et fragments d'arme exclusive peuvent être utiles selon la progression.
-- Boutique Saison : le contenu varie; classer seulement ce qui est réellement visible dans la capture.
+RÈGLES WARBOOST
+- Honneur : Plans d'équipement légendaires souvent prioritaires si l'équipement est le besoin.
+- Alliance : fragments UR, accélérateurs et pièces de Drone peuvent être utiles; garder les besoins opérationnels.
+- VIP : endurance, fragments universels UR et accélérateurs selon le besoin réel.
+- Diamants : prudence; éviter les achats de routine sans lien direct avec la priorité.
+- Campagne : ressources, pièces de Drone, fragments d'arme exclusive selon la progression.
+- Saison : contenu variable; classer uniquement ce qui est visible.
 
 RÈGLES PAYANTES
-- Si budget="${budget}" vaut "0", classer toutes les offres payantes en "skip".
-- Sinon, ne recommande un pack payant en "buy_now" que si son contenu visible correspond DIRECTEMENT à une priorité Smart Scan et offre une valeur claire par rapport aux autres offres visibles.
-- Si une ressource équivalente est facilement accessible via une monnaie du jeu visible, signale-le et baisse la priorité du pack payant.
-- Respecte le budget : petit budget = très sélectif; budget élevé ne signifie jamais "acheter tout".
-- Si les packs visibles ne correspondent pas au besoin du joueur, la bonne recommandation peut être de ne rien acheter.
-- Pour chaque recommandation, player_fit doit indiquer clairement quel besoin de la formation elle sert : gear, heroes, drone, speed, season ou general.
-- Si une offre ne sert aucun besoin de formation détecté, elle ne peut pas être "buy_now".
+- Si budget="${budget}" vaut "0", toutes les offres payantes doivent être "skip".
+- Sinon, "buy_now" seulement si le contenu visible correspond directement à une priorité Smart Scan.
+- Respecte le budget. Budget élevé ne veut jamais dire acheter tout.
+- Si rien ne correspond au besoin, recommande de ne rien acheter.
+- player_fit : gear, heroes, drone, speed, season ou general.
+- Une offre sans lien avec la formation ne peut pas être "buy_now".
 
 SORTIE
-- "in_game" = achats avec monnaies du jeu (diamants, points VIP si applicable, alliance, honneur, campagne, saison, etc.), sans paiement réel au moment de l'achat.
-- "paid" = argent réel / lingots / briques d'or / packs payants.
-- evidence doit citer ce qui est VISIBLE dans la capture (nom, prix, quantité, icône clairement identifiée).
-- Trie recommendations par utilité réelle pour le joueur.`
-    }];
-    for(const image_url of images)shopContent.push({type:"input_image",image_url,detail:"high"});
+- "in_game" = monnaies du jeu, sans paiement réel au moment de l'achat.
+- "paid" = argent réel / packs payants.
+- Trie les recommandations par utilité réelle pour le joueur.`;
 
-    const shopModel=process.env.OPENAI_VISION_MODEL||process.env.OPENAI_MODEL||"gpt-5";
-    const shopController=new AbortController();
-    const shopTimeout=setTimeout(()=>shopController.abort(),52000);
-    try{
-      const rr=await fetch("https://api.openai.com/v1/responses",{
-        method:"POST",
-        headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},
-        signal:shopController.signal,
-        body:JSON.stringify({
+    async function analyzeShopBatch(batch,batchIndex){
+      const shopContent=[{type:"input_text",text:`${basePrompt}\n\nLOT ${batchIndex+1}/${batches.length} • ${batch.length} capture(s). Analyse uniquement ce lot.`}];
+      for(const image_url of batch)shopContent.push({type:"input_image",image_url,detail:"high"});
+
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),70000);
+      const makeBody=(withReasoning=true)=>{
+        const body={
           model:shopModel,
-          max_output_tokens:5000,
+          max_output_tokens:3200,
           input:[{role:"user",content:shopContent}],
           text:{verbosity:"low",format:{type:"json_schema",name:"warboost_shop_advisor",strict:true,schema:shopSchema}}
-        })
+        };
+        if(withReasoning)body.reasoning={effort:"minimal"};
+        return body;
+      };
+      const call=body=>fetch("https://api.openai.com/v1/responses",{
+        method:"POST",
+        headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,"Content-Type":"application/json"},
+        signal:controller.signal,
+        body:JSON.stringify(body)
       });
-      const raw=await rr.text();let od={};
-      try{od=raw?JSON.parse(raw):{}}catch{od={error:{message:raw.slice(0,500)}}}
-      if(!rr.ok){
+
+      try{
+        let rr=await call(makeBody(true));
+        let raw=await rr.text();let od={};
+        try{od=raw?JSON.parse(raw):{}}catch{od={error:{message:raw.slice(0,500)}}}
+        const technical=String(od?.error?.message||"");
+        if(!rr.ok&&rr.status===400&&/reasoning|effort|unsupported value/i.test(technical)){
+          rr=await call(makeBody(false));
+          raw=await rr.text();od={};
+          try{od=raw?JSON.parse(raw):{}}catch{od={error:{message:raw.slice(0,500)}}}
+        }
+        if(!rr.ok){
+          const err=new Error("Lot boutique non analysé");err.status=rr.status;err.technical=String(od?.error?.message||"");throw err;
+        }
+        if(od?.status==="incomplete")throw new Error("Lot boutique interrompu");
+        const parsed=parseJson(outputText(od));
+        if(!parsed?.shop)throw new Error("Lot boutique incomplet");
+        return parsed.shop;
+      }finally{clearTimeout(timeout)}
+    }
+
+    try{
+      // Compatibilité héritée : le mode shop_advisor reste accepté mais V20.4.2 ne l'expose plus dans l’interface.
+      // Côté WarBoost, l'utilisateur ne consomme qu'un seul crédit pour toute l'analyse.
+      const settled=await Promise.allSettled(batches.map((batch,i)=>analyzeShopBatch(batch,i)));
+      const ok=settled.filter(x=>x.status==="fulfilled").map(x=>x.value);
+      const failed=settled.filter(x=>x.status==="rejected");
+
+      if(!ok.length){
         await refundCredit(user.id);
         const refunded={...usage,used:Math.max(0,usage.used-1),remaining:Math.min(usage.limit,usage.remaining+1)};
-        return json(res,rr.status===429?429:502,{error:od?.error?.message||"Erreur du Smart Shop Advisor.",usage:refunded});
-      }
-      if(od?.status==="incomplete"){
-        await refundCredit(user.id);
-        return json(res,502,{error:"L’analyse des boutiques a été interrompue. Réessaie avec moins de captures."});
-      }
-      let parsed;
-      try{parsed=parseJson(outputText(od))}catch(e){
-        await refundCredit(user.id);
-        return json(res,502,{error:"Réponse boutique inexploitable. Réessaie avec une capture plus nette."});
-      }
-      if(!parsed?.shop)return json(res,502,{error:"Analyse boutique incomplète."});
-
-      // garde-fou budget F2P
-      if(budget==="0"&&Array.isArray(parsed.shop.recommendations)){
-        parsed.shop.recommendations=parsed.shop.recommendations.map(x=>{
-          if(x.spend_type==="paid")return {...x,verdict:"skip",reason:"Budget réglé sur 0 € : WarBoost ne recommande aucun achat payant."};
-          return x;
-        });
+        const throttled=failed.some(x=>Number(x.reason?.status)===429);
+        return json(res,throttled?429:502,{error:throttled?"Le moteur IA est momentanément saturé. Réessaie dans quelques instants.":"WarBoost n’a pas pu analyser les captures boutique. Le crédit IA a été remboursé : relance l’analyse.",usage:refunded});
       }
 
-      // classement stable sans doublons grossiers
-      const seen=new Set();
-      parsed.shop.recommendations=(parsed.shop.recommendations||[]).filter(x=>{
-        const k=`${x.spend_type}|${x.shop_type}|${x.item_name}|${x.price_text||""}`.toLowerCase();
-        if(seen.has(k))return false;seen.add(k);return true;
-      }).sort((a,b)=>Number(a.rank||99)-Number(b.rank||99)).map((x,i)=>({...x,rank:i+1})).slice(0,14);
+      const uniq=(arr,keyFn)=>{const seen=new Set();return arr.filter(x=>{const k=keyFn(x);if(seen.has(k))return false;seen.add(k);return true})};
+      const detected_shops=uniq(ok.flatMap(x=>x.detected_shops||[]),x=>String(x||"").trim().toLowerCase()).slice(0,20);
+      const offers=uniq(ok.flatMap(x=>x.offers||[]),x=>`${x.shop_type}|${x.item_name}|${x.price_text||""}|${x.quantity_text||""}`.toLowerCase()).slice(0,60);
+      const verdictOrder={buy_now:0,good:1,situational:2,skip:3};
+      let recommendations=uniq(ok.flatMap(x=>x.recommendations||[]),x=>`${x.spend_type}|${x.shop_type}|${x.item_name}|${x.price_text||""}`.toLowerCase())
+        .sort((a,b)=>(verdictOrder[a.verdict]??9)-(verdictOrder[b.verdict]??9)||Number(b.confidence||0)-Number(a.confidence||0)||Number(a.rank||99)-Number(b.rank||99));
 
-      return json(res,200,{shop:parsed.shop,model:shopModel,usage});
+      if(budget==="0")recommendations=recommendations.map(x=>x.spend_type==="paid"?{...x,verdict:"skip",reason:"Budget réglé sur 0 € : WarBoost ne recommande aucun achat payant."}:x);
+      recommendations=recommendations.slice(0,18).map((x,i)=>({...x,rank:i+1}));
+
+      const warnings=uniq(ok.flatMap(x=>x.warnings||[]),x=>String(x||"").trim().toLowerCase()).slice(0,8);
+      if(failed.length)warnings.unshift(`${failed.length} lot(s) sur ${batches.length} n’ont pas pu être analysés. Les résultats affichés proviennent des autres captures.`);
+      const next_capture=ok.map(x=>x.next_capture).find(Boolean)||null;
+      const shop={
+        summary:`${images.length} capture(s) traitée(s) • ${detected_shops.length} boutique(s) détectée(s) • ${recommendations.length} recommandation(s).`,
+        detected_shops,offers,recommendations,warnings:warnings.slice(0,8),next_capture
+      };
+      return json(res,200,{shop,model:shopModel,usage,batches:{total:batches.length,success:ok.length,failed:failed.length}});
     }catch(e){
       await refundCredit(user.id);
       const refunded={...usage,used:Math.max(0,usage.used-1),remaining:Math.min(usage.limit,usage.remaining+1)};
-      if(e?.name==="AbortError")return json(res,504,{error:"Le scan des boutiques a mis trop de temps. Réessaie avec 1 ou 2 captures.",usage:refunded});
       console.error("smart shop advisor",e);
-      return json(res,500,{error:"Erreur serveur pendant l’analyse des boutiques.",usage:refunded});
-    }finally{clearTimeout(shopTimeout)}
+      return json(res,500,{error:"Erreur serveur pendant l’analyse des boutiques. Le crédit IA a été remboursé.",usage:refunded});
+    }
   }
 
 
   const content=[{
     type:"input_text",
-    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.8.
+    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.4.2.
 
 ORDRE D’ANALYSE OBLIGATOIRE : héros → équipements → puissance de formation → Drone → Suzerain. N’évalue les priorités et la Boutique qu’après avoir terminé cette extraction.
 
