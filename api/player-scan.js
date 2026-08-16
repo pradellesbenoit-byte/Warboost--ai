@@ -54,7 +54,7 @@ export default async function handler(req,res){
 
   const content=[{
     type:"input_text",
-    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.2.
+    text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.3.3.
 
 OBJECTIF:
 1. extraire uniquement les informations réellement visibles;
@@ -87,6 +87,17 @@ RÈGLES ANTI-INVENTION:
 - base chaque recommandation sur une preuve visible dans la capture;
 - ne donne pas de gain chiffré inventé. expected_impact est seulement high, medium ou low;
 - si la capture ne permet pas une recommandation fiable, demande la prochaine capture utile au lieu d'inventer.
+
+RÈGLES DE PRIORISATION V20.3.3:
+1. Classe d'abord les FAIBLESSES RELATIVES visibles dans la formation.
+2. Pour les équipements, compare les 20 pièces entre elles : niveau, étoiles/points visibles, qualité/tier/couleur si clairement lisible.
+3. Si toutes les pièces sont au même niveau (par exemple Lv40), ne recommande PAS automatiquement "monter au-delà de Lv40". Cherche plutôt les pièces ayant moins d'étoiles/points, une qualité inférieure, ou un retard visible.
+4. Pour un héros, une priorité est justifiée seulement si son niveau, ses étoiles, son arme exclusive ou ses équipements sont visiblement en retard par rapport aux autres héros.
+5. Le Drone NE DOIT JAMAIS être priorité n°1 uniquement parce que son niveau est lisible ou parce qu'il "impacte toute la formation".
+6. Un niveau de Drone isolé (ex. 157) ne prouve pas que le Drone est en retard. Sans écran détaillé du Drone/modules/composants, mets requires_more_info=true et place cette recommandation APRÈS les faiblesses visibles des héros/équipements.
+7. Pour mettre le Drone en priorité n°1, il faut une preuve supplémentaire visible : module/composant/compétence clairement en retard, indicateur comparatif, ou autre donnée explicite montrant une faiblesse.
+8. L'evidence d'une priorité doit citer précisément ce qui est visible (ex. "pièce du héros 3 avec moins d'étoiles que les autres"), pas une règle générale du jeu.
+9. Si aucune faiblesse relative n'est lisible avec assez de confiance, ne fabrique pas de priorité forte : explique que la formation paraît homogène et demande une capture plus rapprochée.
 
 LANGUE DE LA RÉPONSE: ${language}.
 MODE: ${mode}.
@@ -269,6 +280,51 @@ Retourne uniquement la structure JSON demandée.`
       if(!Array.isArray(parsed.analysis.missing_information))parsed.analysis.missing_information=[];
       const msg="Certains emplacements d’équipement ne sont pas assez lisibles pour être comptés avec certitude.";
       if(!parsed.analysis.missing_information.includes(msg))parsed.analysis.missing_information.push(msg);
+    }
+
+
+    // V20.3.3 — Priorités fiables : un simple niveau de Drone n'est pas une preuve de retard.
+    if(Array.isArray(parsed.analysis.priorities)){
+      const isDrone=p=>/\bdrone\b/i.test(`${p?.target||""} ${p?.action||""} ${p?.reason||""}`);
+      const droneSupported=p=>{
+        const e=String(p?.evidence||"").toLowerCase();
+        // Un nombre/une icône de niveau seul ne suffit pas.
+        const onlyLevel=/\b(level|niveau|niv\.?|lvl\.?)\b/.test(e) && !/(module|composant|component|skill|compétence|retard|inférieur|lower|behind|étoile|star|qualité|tier)/i.test(e);
+        const strong=/(module|composant|component|skill|compétence|retard|inférieur|lower|behind|étoile|star|qualité|tier)/i.test(e);
+        return strong && !onlyLevel;
+      };
+
+      const normal=[];
+      const weakDrone=[];
+      for(const p of parsed.analysis.priorities){
+        if(isDrone(p)&&!droneSupported(p)){
+          p.requires_more_info=true;
+          p.confidence=Math.min(Number(p.confidence||0.5),0.55);
+          p.expected_impact=p.expected_impact==="high"?"medium":(p.expected_impact||"medium");
+          p.severity=p.severity==="critical"||p.severity==="high"?"medium":(p.severity||"medium");
+          if(!String(p.reason||"").toLowerCase().includes("détail")){
+            p.reason="Le niveau du Drone est visible, mais cela ne suffit pas à prouver qu’il est le maillon faible de cette formation.";
+          }
+          if(!String(p.action||"").toLowerCase().includes("détail")){
+            p.action="Ouvrir les détails du Drone et de ses modules avant d’en faire une priorité majeure.";
+          }
+          weakDrone.push(p);
+        }else{
+          normal.push(p);
+        }
+      }
+
+      // Les priorités appuyées par une faiblesse visible passent avant le Drone non prouvé.
+      parsed.analysis.priorities=[...normal,...weakDrone].slice(0,5).map((p,i)=>({...p,rank:i+1}));
+
+      if(weakDrone.length){
+        if(!Array.isArray(parsed.analysis.missing_information))parsed.analysis.missing_information=[];
+        const msg="Capture détaillée du Drone/modules nécessaire pour savoir s’il mérite réellement une priorité élevée.";
+        if(!parsed.analysis.missing_information.includes(msg))parsed.analysis.missing_information.push(msg);
+        if(!parsed.analysis.next_capture){
+          parsed.analysis.next_capture="Ouvre les détails du Drone et prends une capture de son niveau, de ses modules/composants et améliorations visibles.";
+        }
+      }
     }
 
     if(parsed.player.formation_power_m==null && parsed.analysis.formation_power_m!=null)parsed.player.formation_power_m=parsed.analysis.formation_power_m;
