@@ -3,6 +3,12 @@ function send(res,status,data){
   res.setHeader("Content-Type","application/json; charset=utf-8");
   return res.status(status).json(data);
 }
+
+function sendPublic(res,status,data){
+  res.setHeader("Cache-Control","public, s-maxage=300, stale-while-revalidate=600");
+  res.setHeader("Content-Type","application/json; charset=utf-8");
+  return res.status(status).json(data);
+}
 function env(){return {url:process.env.SUPABASE_URL,secret:process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY}}
 function serviceHeaders(extra={}){
   const {secret}=env();
@@ -43,6 +49,42 @@ async function listItems(){
 }
 export default async function handler(req,res){
   const {url,secret}=env();if(!url||!secret)return send(res,503,{error:"Live Admin non configuré."});
+
+  // V19.5.1: contenu Live public servi par la même Serverless Function
+  // afin de rester sous la limite du plan Vercel Hobby.
+  if(req.method==="GET" && String(req.query?.mode||"")==="public"){
+    try{
+      const select="content_key,category,scope,title,summary,body,payload,priority,starts_at,ends_at,source_label,source_url,version,published_at,updated_at";
+      const endpoint=`${url}/rest/v1/warboost_live_content?is_active=eq.true&select=${encodeURIComponent(select)}&order=priority.asc,published_at.desc`;
+      const r=await fetch(endpoint,{headers:serviceHeaders()});
+      const data=await r.json().catch(()=>[]);
+      if(!r.ok)throw new Error(data?.message||`Supabase ${r.status}`);
+
+      const now=Date.now();
+      let items=(Array.isArray(data)?data:[]).filter(row=>{
+        const start=row?.starts_at?Date.parse(row.starts_at):null;
+        const end=row?.ends_at?Date.parse(row.ends_at):null;
+        return (!start||start<=now)&&(!end||end>=now);
+      });
+
+      const updated=items.reduce((m,x)=>{
+        const d=Date.parse(x.updated_at||x.published_at||0)||0;
+        return d>m?d:m;
+      },0);
+
+      return sendPublic(res,200,{
+        ok:true,
+        version:"19.5.1",
+        updated_at:updated?new Date(updated).toISOString():new Date().toISOString(),
+        count:items.length,
+        items
+      });
+    }catch(e){
+      console.error("WarBoost live public",e);
+      return sendPublic(res,502,{error:"Impossible de charger le contenu Live WarBoost."});
+    }
+  }
+
   const auth=await requireAdmin(req,res);if(!auth)return;
   if(req.method==="GET"){
     if(String(req.query?.mode||"")==="me")return send(res,200,{ok:true,is_admin:true,role:auth.role});
