@@ -256,6 +256,7 @@ OBJECTIF:
 
 STRUCTURE LAST WAR À RESPECTER:
 - une formation comporte au maximum 5 HÉROS;
+- un héros Last War a au maximum 5 ÉTOILES : la valeur hero.stars doit toujours rester entre 0 et 5;
 - le portrait de SUZERAIN / compagnon placé à gauche de la rangée des héros n'est JAMAIS un 6e héros;
 - le DRONE n'est JAMAIS un héros;
 - l'icône circulaire avec un drone/appareil et un nombre (ex. 157) correspond au niveau du drone lorsqu'elle est clairement visible;
@@ -316,7 +317,7 @@ Retourne uniquement la structure JSON demandée.`
                   items:{
                     type:"object",additionalProperties:false,
                     properties:{
-                      name:{type:["string","null"]},position:{type:"integer",minimum:1,maximum:5},level:{type:["number","null"]},stars:{type:["number","null"]},
+                      name:{type:["string","null"]},position:{type:"integer",minimum:1,maximum:5},level:{type:["number","null"]},stars:{type:["number","null"],minimum:0,maximum:5},
                       exclusive_weapon:{type:["number","null"]},gear_average:{type:["number","null"]},
                       equipment:{
                         type:"array",maxItems:4,
@@ -464,6 +465,9 @@ Retourne uniquement la structure JSON demandée.`
       heroes=heroes.slice(0,5);
       heroes.forEach((h,i)=>{
         h.position=i+1;
+        if(h.stars!==null&&h.stars!==undefined){
+          const n=Number(h.stars);h.stars=Number.isFinite(n)?Math.max(0,Math.min(5,n)):null;
+        }
         h.equipment=(Array.isArray(h.equipment)?h.equipment:[]).slice(0,4);
       });
       squad.heroes=heroes;
@@ -498,6 +502,23 @@ Retourne uniquement la structure JSON demandée.`
       if(!parsed.analysis.missing_information.includes(msg))parsed.analysis.missing_information.push(msg);
     }
 
+
+    // V20.4.7 — les héros sont plafonnés à 5 étoiles, y compris dans les textes générés.
+    const fixHeroStarText=value=>{
+      let t=String(value??"");
+      if(/h[ée]ros|hero/i.test(t)){
+        t=t.replace(/\b(?:[6-9]|[1-9]\d+(?:[.,]\d+)?)\s*★/g,"5★");
+        t=t.replace(/\b(?:[6-9]|[1-9]\d+(?:[.,]\d+)?)\s*[ée]toiles?\b/gi,"5 étoiles");
+      }
+      return t;
+    };
+    if(Array.isArray(parsed.analysis.strengths))parsed.analysis.strengths=parsed.analysis.strengths.map(fixHeroStarText);
+    if(Array.isArray(parsed.analysis.missing_information))parsed.analysis.missing_information=parsed.analysis.missing_information.map(fixHeroStarText);
+    if(Array.isArray(parsed.analysis.priorities))parsed.analysis.priorities=parsed.analysis.priorities.map(p=>{
+      if(!p||typeof p!=="object")return p;
+      for(const k of ["target","action","reason","evidence"])if(p[k]!=null)p[k]=fixHeroStarText(p[k]);
+      return p;
+    });
 
     // V20.3.3 — Priorités fiables : un simple niveau de Drone n'est pas une preuve de retard.
     if(Array.isArray(parsed.analysis.priorities)){
