@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V20.3.9 — Player Cleanup</title>
+<title>WarBoost V20.4.0 — Smart Player Flow</title>
 
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/warboost-icon-192.png">
@@ -633,8 +633,8 @@ td input,td select{margin:0;padding:8px}
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V20.3.9</em></button>
-  <span class="proBadge">🧹 V20.3.9 • PLAYER CLEANUP</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V20.4.0</em></button>
+  <span class="proBadge">⚡ V20.4.0 • SMART PLAYER FLOW</span>
   <select id="language" class="lang" onchange="setLanguage(this.value)" aria-label="Language">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -828,7 +828,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card wb203SmartCard">
     <div class="wb203Hero">
       <div>
-        <div class="eyebrow">V20.3.9 • SMART PLAYER SCAN</div>
+        <div class="eyebrow">V20.4.0 • SMART PLAYER SCAN</div>
         <h2>📸 Une capture → ton plan d’amélioration</h2>
         <p class="muted">Prends une capture des détails de ta formation comme dans Last War. WarBoost lit uniquement ce qui est visible et te dit immédiatement quoi améliorer en priorité.</p>
       </div>
@@ -871,7 +871,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card wb2034ShopCard" id="wb2034ShopCard" hidden>
     <div class="wb2034Head">
       <div>
-        <div class="eyebrow">V20.3.9 • FORMATION → SHOP</div>
+        <div class="eyebrow">V20.4.0 • FORMATION → SHOP</div>
         <h2 style="margin:6px 0">🛒 Achats pour faire évoluer cette escouade</h2>
         <p class="muted" style="margin:0">Ce plan est calculé automatiquement à partir de la formation que tu viens de scanner : équipements, héros, Drone et écarts réellement visibles.</p>
       </div>
@@ -914,40 +914,6 @@ td input,td select{margin:0;padding:8px}
     <div id="wb2034Result"></div>
   </div>
 
-
-  <div class="wb203AdvancedLabel">↓ Outils avancés et saisie manuelle si tu veux compléter les informations non visibles ↓</div>
-
-
-  <div class="card wb19ImportCard">
-    <div class="eyebrow">OUTILS AVANCÉS</div>
-    <h2 style="margin:6px 0">🧰 Import détaillé (optionnel)</h2>
-    <p class="muted" style="margin-top:0">Utilise cette zone seulement si tu veux compléter le Smart Scan avec plusieurs captures ou gérer tes fiches enregistrées.</p>
-
-    <div class="wb19ModeGrid">
-      <div class="wb19Mode"><b>📸 Scan de captures</b><small>Jusqu’à 4 captures. L’IA extrait uniquement les valeurs visibles et signale les champs incertains.</small></div>
-      <div class="wb19Mode"><b>👥 Base joueurs</b><small>Enregistre les fiches importées, recharge-les dans ton profil ou ajoute-les directement au roster.</small></div>
-    </div>
-
-    <div>
-      <h3 style="margin:5px 0 8px">📸 Scanner des captures</h3>
-      <div class="wb19Drop">
-        <b>Captures Last War</b>
-        <input id="wb19Screens" type="file" accept="image/png,image/jpeg,image/webp" multiple onchange="wb19FilesChanged()">
-        <div id="wb19FileList" class="wb19FileList">Aucune capture sélectionnée.</div>
-      </div>
-      <button id="wb19ScanBtn" class="btn gold" onclick="wb19ScanScreenshots()">✨ Analyser les captures (avancé)</button>
-      <div class="wb19Privacy">PRO uniquement • 1 scan = 1 requête IA. Les images sont compressées sur le téléphone avant l’envoi et WarBoost ne les enregistre pas dans sa base.</div>
-    </div>
-
-    <div id="wb19ImportStatus" class="status"></div>
-    <div id="wb19Draft"></div>
-
-    <div style="margin-top:18px">
-      <h3 style="margin-bottom:4px">👥 Joueurs importés</h3>
-      <p class="muted" style="margin-top:0">Les fiches sont sauvegardées localement et incluses dans la sauvegarde cloud WarBoost.</p>
-      <div id="wb19Imported" class="wb19Imported"></div>
-    </div>
-  </div>
 
   <div class="card" id="wb203LegacyPlayerAnalysis" style="display:none!important" aria-hidden="true">
     <h2>🎮 Analyse avancée du compte</h2>
@@ -2125,7 +2091,6 @@ function wb203RenderResult(data){
     ${(missing.length||next)?`<div class="wb203Missing"><b>${esc(wb203T("📷 Pour aller plus loin"))}</b><div>${missing.map(x=>`• ${esc(x)}`).join("<br>")}${next?`${missing.length?"<br>":""}→ ${esc(next)}`:""}</div></div>`:""}
     <div class="wb203Actions">
       <button class="btn" onclick="wb203ApplyNow()">✅ ${esc(wb203T("Mettre à jour ton compte"))}</button>
-      <button class="btn secondary" onclick="wb203OpenDetailedCard()">📋 ${esc(wb203T("Voir la fiche"))}</button>
       <button class="btn gold" onclick="wb2034Open()">🛒 ${esc(wb203T("Que dois-je acheter ?"))}</button>
     </div>
   </div>`;
