@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V19.3 — Live Content</title>
+<title>WarBoost V19.4 — Live Admin</title>
 <style>
 :root{
   --bg:#07111f;--panel:#101a2a;--panel2:#0a1422;--line:#2b3c57;
@@ -407,12 +407,41 @@ td input,td select{margin:0;padding:8px}
 .wb193LiveToolbar button{border:1px solid #35536d;background:#10233a;color:#dcecff;border-radius:10px;padding:8px 10px;font-weight:850}
 @media(max-width:760px){.wb193LiveGrid{grid-template-columns:1fr}}
 
+
+/* ===== V19.4 • LIVE ADMIN ===== */
+.wb194AdminBtn{display:none!important;border-color:#8f6b2a!important;background:linear-gradient(180deg,#50330d,#2e1e08)!important;color:#ffe6a6!important}
+.wb194AdminBtn.show{display:inline-flex!important;align-items:center;justify-content:center;gap:6px}
+.wb194AdminModal .modal{max-width:940px;width:min(940px,94vw);max-height:92vh;overflow:auto}
+.wb194AdminHero{border:1px solid #775922;background:linear-gradient(180deg,#251b08,#0d1725);border-radius:16px;padding:14px;margin:10px 0 14px}
+.wb194AdminHeroTop{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.wb194AdminRole{display:inline-flex;border:1px solid #8c6925;background:#2b200b;color:#ffe09a;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950}
+.wb194AdminGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wb194AdminGrid .wide{grid-column:1/-1}
+.wb194AdminGrid label{margin:0}
+.wb194AdminCheck{display:flex!important;align-items:center;gap:9px;border:1px solid #29445b;background:#081421;border-radius:12px;padding:11px 12px}
+.wb194AdminCheck input{width:auto;margin:0}
+.wb194AdminActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.wb194AdminList{display:grid;gap:9px;margin-top:12px}
+.wb194AdminItem{border:1px solid #29445b;background:#081421;border-radius:14px;padding:12px}
+.wb194AdminItem.inactive{opacity:.66}
+.wb194AdminItemTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.wb194AdminItem h4{margin:4px 0 6px;font-size:15px}
+.wb194AdminItem p{margin:0;color:#9eb0c3;font-size:12px;line-height:1.45}
+.wb194AdminItemMeta{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.wb194AdminMini{display:inline-flex;border:1px solid #365470;border-radius:999px;padding:3px 7px;color:#bcd1e6;font-size:10px;font-weight:900}
+.wb194AdminItemActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.wb194AdminItemActions button{border:1px solid #35536d;background:#10233a;color:#dcecff;border-radius:9px;padding:7px 9px;font-weight:850}
+.wb194AdminItemActions .danger{border-color:#7f3838;background:#2a1111;color:#ffc2c2}
+.wb194AdminStatus{margin-top:10px;min-height:20px;color:#aebed0;font-size:12px}
+.wb194AdminStatus.ok{color:#76e2ad}.wb194AdminStatus.err{color:#ff8f8f}
+@media(max-width:760px){.wb194AdminGrid{grid-template-columns:1fr}.wb194AdminGrid .wide{grid-column:auto}.wb194AdminModal .modal{width:95vw;padding:16px}.wb194AdminActions .btn{width:100%}}
+
 </style>
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V19.3</em></button>
-  <span class="proBadge">🔄 V19.3 • LIVE CONTENT</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V19.4</em></button>
+  <span class="proBadge">🛠️ V19.4 • LIVE ADMIN</span>
   <select id="language" class="lang" onchange="setLanguage(this.value)" aria-label="Language">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -431,7 +460,7 @@ td input,td select{margin:0;padding:8px}
 </div>
 
 <section class="hero">
-  <div class="eyebrow">WARBOOST V19.3 • ALLIANCE 100</div>
+  <div class="eyebrow">WARBOOST V19.4 • LIVE ADMIN</div>
   <h1>Ton compte. Ton alliance. <span style="color:var(--red)">Ton copilote IA.</span></h1>
   <p>Live Content Saison / VS / héros / événements, import alliance R5/R4, roster complet, compte cloud, abonnement PRO sécurisé et War Room.</p>
 </section>
@@ -451,13 +480,14 @@ td input,td select{margin:0;padding:8px}
   <div class="card wb193LivePanel">
     <div class="wb193LiveHead">
       <div>
-        <div class="eyebrow">V19.3 • LIVE CONTENT</div>
+        <div class="eyebrow">V19.4 • LIVE + ADMIN</div>
         <div class="wb193LiveTitle"><span class="wb193Pulse"></span><h2 style="margin:6px 0">🔄 Centre de mises à jour</h2></div>
         <p class="muted" style="margin:0">Saison, VS, héros, événements et briefs R5/R4 synchronisés depuis WarBoost.</p>
       </div>
       <div class="wb193LiveToolbar">
         <span id="wb193HomeStatus" class="wb193LiveStatus">Connexion…</span>
         <button onclick="refreshLiveContent(true)">↻ Actualiser</button>
+        <button id="wb194AdminBtn" class="wb194AdminBtn" onclick="wb194OpenAdmin()">🛠️ Admin Live</button>
       </div>
     </div>
     <div id="wb193HomeFeed" class="wb193LiveGrid"><div class="wb193LiveEmpty">Chargement du contenu Live…</div></div>
@@ -1032,6 +1062,85 @@ td input,td select{margin:0;padding:8px}
   </div>
 </div>
 
+
+<div id="wb194AdminModal" class="modalBack wb194AdminModal" onclick="if(event.target===this)wb194CloseAdmin()">
+  <div class="modal">
+    <div class="eyebrow">V19.4 • LIVE ADMIN</div>
+    <div class="wb194AdminHero">
+      <div class="wb194AdminHeroTop">
+        <div>
+          <h2 style="margin:2px 0 6px">🛠️ Administration Live WarBoost</h2>
+          <p class="muted" style="margin:0">Publie Saison, VS, héros, événements et briefs R5/R4 sans redéployer l’application.</p>
+        </div>
+        <span id="wb194AdminRole" class="wb194AdminRole">ADMIN</span>
+      </div>
+    </div>
+
+    <input id="wb194Id" type="hidden">
+    <div class="wb194AdminGrid">
+      <label>Rubrique
+        <select id="wb194Category">
+          <option value="general">🔄 Général</option>
+          <option value="season">🌍 Saison</option>
+          <option value="vs">🏆 VS Alliance</option>
+          <option value="hero">🦸 Héros</option>
+          <option value="event">📅 Événement</option>
+          <option value="r5r4">🧠 R5/R4</option>
+        </select>
+      </label>
+      <label>Priorité
+        <input id="wb194Priority" type="number" min="1" max="999" value="30">
+      </label>
+      <label class="wide">Titre
+        <input id="wb194Title" maxlength="160" placeholder="Ex : Nouvelle phase de saison">
+      </label>
+      <label class="wide">Résumé
+        <textarea id="wb194Summary" rows="2" maxlength="500" placeholder="Résumé visible dans la carte Live"></textarea>
+      </label>
+      <label class="wide">Contenu
+        <textarea id="wb194Body" rows="6" maxlength="6000" placeholder="Conseils, changements, priorités, rappels…"></textarea>
+      </label>
+      <label>Icône
+        <input id="wb194Icon" maxlength="12" value="🔄" placeholder="🌍">
+      </label>
+      <label>Badge
+        <input id="wb194Badge" maxlength="32" value="LIVE" placeholder="SAISON">
+      </label>
+      <label>Source
+        <input id="wb194SourceLabel" maxlength="120" value="WarBoost Live" placeholder="WarBoost Live">
+      </label>
+      <label>URL source (optionnel)
+        <input id="wb194SourceUrl" type="url" maxlength="500" placeholder="https://…">
+      </label>
+      <label>Début (optionnel)
+        <input id="wb194StartsAt" type="datetime-local">
+      </label>
+      <label>Fin (optionnel)
+        <input id="wb194EndsAt" type="datetime-local">
+      </label>
+      <label class="wide">Clé interne
+        <input id="wb194Key" maxlength="120" placeholder="Créée automatiquement si vide">
+      </label>
+      <label class="wb194AdminCheck wide"><input id="wb194Active" type="checkbox" checked> Publier / garder actif dans WarBoost Live</label>
+    </div>
+
+    <div class="wb194AdminActions">
+      <button class="btn gold" onclick="wb194SaveContent()">🚀 Publier / Enregistrer</button>
+      <button class="btn secondary" onclick="wb194ResetForm()">➕ Nouveau contenu</button>
+      <button class="btn secondary" onclick="refreshLiveContent(true);toast('Live actualisé ✅')">↻ Actualiser le Live</button>
+      <button class="btn secondary" onclick="wb194CloseAdmin()">Fermer</button>
+    </div>
+    <div id="wb194AdminStatus" class="wb194AdminStatus"></div>
+
+    <hr style="border:0;border-top:1px solid #29445b;margin:18px 0">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+      <div><h3 style="margin:0">📚 Contenus publiés</h3><p class="muted" style="margin:4px 0 0">Touchez Modifier pour reprendre un contenu existant.</p></div>
+      <button class="miniBtn" onclick="wb194LoadAdminItems()">↻ Recharger</button>
+    </div>
+    <div id="wb194AdminList" class="wb194AdminList"><div class="wb193LiveEmpty">Chargement…</div></div>
+  </div>
+</div>
+
 <div class="bottom"><div class="inner">
   <button data-page="home" class="active"><span>🏠</span><small>Accueil</small></button>
   <button data-page="player"><span>🎮</span><small>Joueur</small></button>
@@ -1044,6 +1153,99 @@ td input,td select{margin:0;padding:8px}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $=id=>document.getElementById(id);
+
+
+/* ===== V19.4 • LIVE ADMIN ===== */
+let wb194AdminState={checked:false,checking:false,is_admin:false,role:null,items:[]};
+function wb194Status(msg,type=""){
+  const e=$("wb194AdminStatus");if(!e)return;e.textContent=msg||"";e.className="wb194AdminStatus "+type;
+}
+function wb194SetVisible(on){
+  const b=$("wb194AdminBtn");if(b)b.classList.toggle("show",!!on);
+  if(!on)$("wb194AdminModal")?.classList.remove("open");
+}
+function wb194Headers(extra={}){
+  const token=wb17Session?.access_token;
+  return {...extra,...(token?{Authorization:`Bearer ${token}`}:{})};
+}
+async function wb194CheckAdmin(force=false){
+  if(!wb17Session){wb194AdminState={checked:true,checking:false,is_admin:false,role:null,items:[]};wb194SetVisible(false);return false}
+  if(wb194AdminState.checking)return wb194AdminState.is_admin;
+  if(wb194AdminState.checked&&!force){wb194SetVisible(wb194AdminState.is_admin);return wb194AdminState.is_admin}
+  wb194AdminState.checking=true;
+  try{
+    const r=await fetch('/api/live-admin?mode=me',{headers:wb194Headers(),cache:'no-store'});
+    const d=await r.json().catch(()=>({}));
+    wb194AdminState.checked=true;wb194AdminState.is_admin=!!(r.ok&&d.is_admin);wb194AdminState.role=d.role||null;
+    wb194SetVisible(wb194AdminState.is_admin);
+    if($("wb194AdminRole"))$("wb194AdminRole").textContent=(wb194AdminState.role||"ADMIN").toUpperCase();
+    return wb194AdminState.is_admin;
+  }catch(e){wb194AdminState.checked=true;wb194AdminState.is_admin=false;wb194SetVisible(false);return false}
+  finally{wb194AdminState.checking=false}
+}
+function wb194CloseAdmin(){$("wb194AdminModal")?.classList.remove("open")}
+async function wb194OpenAdmin(){
+  const ok=await wb194CheckAdmin(true);if(!ok){toast("Accès administrateur refusé");return}
+  $("wb194AdminModal")?.classList.add("open");wb194ResetForm();await wb194LoadAdminItems();
+}
+function wb194Slug(v){
+  return String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,90);
+}
+function wb194LocalDate(v){
+  if(!v)return "";const d=new Date(v);if(Number.isNaN(d.getTime()))return "";const z=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+function wb194IsoFromLocal(v){if(!v)return null;const d=new Date(v);return Number.isNaN(d.getTime())?null:d.toISOString()}
+function wb194ResetForm(){
+  const values={wb194Id:"",wb194Category:"general",wb194Priority:"30",wb194Title:"",wb194Summary:"",wb194Body:"",wb194Icon:"🔄",wb194Badge:"LIVE",wb194SourceLabel:"WarBoost Live",wb194SourceUrl:"",wb194StartsAt:"",wb194EndsAt:"",wb194Key:""};
+  Object.entries(values).forEach(([id,v])=>{if($(id))$(id).value=v});if($("wb194Active"))$("wb194Active").checked=true;wb194Status("Nouveau contenu prêt à être publié.","");
+}
+function wb194FormData(){
+  const title=String($("wb194Title")?.value||"").trim();
+  let key=String($("wb194Key")?.value||"").trim();if(!key&&title)key=`admin_${wb194Slug(title)}_${Date.now().toString().slice(-6)}`;
+  return {id:String($("wb194Id")?.value||"").trim()||null,content_key:key,category:String($("wb194Category")?.value||"general"),priority:Number($("wb194Priority")?.value||30),title,summary:String($("wb194Summary")?.value||"").trim(),body:String($("wb194Body")?.value||"").trim(),icon:String($("wb194Icon")?.value||"").trim(),badge:String($("wb194Badge")?.value||"").trim(),source_label:String($("wb194SourceLabel")?.value||"").trim(),source_url:String($("wb194SourceUrl")?.value||"").trim()||null,starts_at:wb194IsoFromLocal($("wb194StartsAt")?.value),ends_at:wb194IsoFromLocal($("wb194EndsAt")?.value),is_active:!!$("wb194Active")?.checked};
+}
+async function wb194SaveContent(){
+  if(!(await wb194CheckAdmin(false)))return wb194Status("Accès administrateur requis.","err");
+  const data=wb194FormData();if(!data.title)return wb194Status("Ajoute un titre avant de publier.","err");
+  wb194Status("Enregistrement en cours…","");
+  try{
+    const r=await fetch('/api/live-admin',{method:'POST',headers:wb194Headers({'Content-Type':'application/json'}),body:JSON.stringify(data)});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Erreur ${r.status}`);
+    wb194Status(data.id?"Contenu modifié ✅":"Contenu publié ✅","ok");
+    await wb194LoadAdminItems();await refreshLiveContent(true);wb194ResetForm();toast("Live publié ✅");
+  }catch(e){wb194Status(e.message||"Enregistrement impossible.","err")}
+}
+async function wb194LoadAdminItems(){
+  const list=$("wb194AdminList");if(list)list.innerHTML='<div class="wb193LiveEmpty">Chargement…</div>';
+  try{
+    const r=await fetch('/api/live-admin',{headers:wb194Headers(),cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Erreur ${r.status}`);
+    wb194AdminState.items=Array.isArray(d.items)?d.items:[];wb194RenderAdminItems();
+  }catch(e){if(list)list.innerHTML=`<div class="wb193LiveEmpty">${esc(e.message||"Impossible de charger les contenus.")}</div>`}
+}
+function wb194RenderAdminItems(){
+  const list=$("wb194AdminList");if(!list)return;const items=wb194AdminState.items||[];
+  if(!items.length){list.innerHTML='<div class="wb193LiveEmpty">Aucun contenu publié.</div>';return}
+  list.innerHTML=items.map(x=>`<article class="wb194AdminItem ${x.is_active?'':'inactive'}">
+    <div class="wb194AdminItemTop"><div><span class="wb193LiveBadge">${esc(wb193Badge(x.category))}</span><h4>${esc(x.title||'Sans titre')}</h4></div><span>${esc(x.payload?.icon||wb193Icon(x))}</span></div>
+    ${x.summary?`<p>${esc(x.summary)}</p>`:''}
+    <div class="wb194AdminItemMeta"><span class="wb194AdminMini">${x.is_active?'ACTIF':'INACTIF'}</span><span class="wb194AdminMini">Priorité ${Number(x.priority||50)}</span><span class="wb194AdminMini">v${Number(x.version||1)}</span><span class="wb194AdminMini">${wb193Date(x.updated_at)}</span></div>
+    <div class="wb194AdminItemActions"><button onclick="wb194EditContent('${x.id}')">✏️ Modifier</button><button onclick="wb194ToggleContent('${x.id}',${x.is_active?'false':'true'})">${x.is_active?'⏸️ Désactiver':'▶️ Réactiver'}</button><button class="danger" onclick="wb194DeleteContent('${x.id}')">🗑️ Supprimer</button></div>
+  </article>`).join('');
+}
+function wb194Find(id){return (wb194AdminState.items||[]).find(x=>x.id===id)}
+function wb194EditContent(id){
+  const x=wb194Find(id);if(!x)return;const p=x.payload||{};
+  const vals={wb194Id:x.id||'',wb194Category:x.category||'general',wb194Priority:String(x.priority||30),wb194Title:x.title||'',wb194Summary:x.summary||'',wb194Body:x.body||'',wb194Icon:p.icon||'',wb194Badge:p.badge||'',wb194SourceLabel:x.source_label||'',wb194SourceUrl:x.source_url||'',wb194StartsAt:wb194LocalDate(x.starts_at),wb194EndsAt:wb194LocalDate(x.ends_at),wb194Key:x.content_key||''};
+  Object.entries(vals).forEach(([id,v])=>{if($(id))$(id).value=v});if($("wb194Active"))$("wb194Active").checked=!!x.is_active;wb194Status("Modification de « "+(x.title||"")+" »","");$("wb194AdminModal")?.querySelector('.modal')?.scrollTo({top:0,behavior:'smooth'});
+}
+async function wb194ToggleContent(id,on){
+  const x=wb194Find(id);if(!x)return;try{const r=await fetch('/api/live-admin',{method:'POST',headers:wb194Headers({'Content-Type':'application/json'}),body:JSON.stringify({id:x.id,content_key:x.content_key,category:x.category,title:x.title,summary:x.summary,body:x.body,priority:x.priority,is_active:!!on,source_label:x.source_label,source_url:x.source_url,starts_at:x.starts_at,ends_at:x.ends_at,icon:x.payload?.icon,badge:x.payload?.badge})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Erreur ${r.status}`);await wb194LoadAdminItems();await refreshLiveContent(true);toast(on?'Contenu réactivé ✅':'Contenu désactivé ✅')}catch(e){wb194Status(e.message||'Action impossible','err')}
+}
+async function wb194DeleteContent(id){
+  const x=wb194Find(id);if(!x)return;if(!confirm(`Supprimer définitivement « ${x.title} » ?`))return;
+  try{const r=await fetch(`/api/live-admin?id=${encodeURIComponent(id)}`,{method:'DELETE',headers:wb194Headers()});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Erreur ${r.status}`);await wb194LoadAdminItems();await refreshLiveContent(true);toast('Contenu supprimé ✅')}catch(e){wb194Status(e.message||'Suppression impossible','err')}
+}
+
 
 
 /* ===== V19.3 • LIVE CONTENT ===== */
@@ -2199,9 +2401,11 @@ async function initCloud(){
       if(event==="PASSWORD_RECOVERY"){wb17RecoveryMode=true;openAccount()}
       if(event==="SIGNED_OUT")wb17RecoveryMode=false;
       renderCloudUI();
+      if(typeof wb194CheckAdmin==="function")wb194CheckAdmin(true);
       if(typeof refreshBilling==="function")refreshBilling();
     });
     renderCloudUI();
+    if(typeof wb194CheckAdmin==="function")wb194CheckAdmin(true);
   }catch(e){
     wb17CloudConfigured=false;renderCloudUI();
     cloudSetStatus("Cloud non configuré : WarBoost continue en mode local.","");
