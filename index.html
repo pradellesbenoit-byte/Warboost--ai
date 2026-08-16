@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111f">
-<title>WarBoost V20.4.7 — Héros 5★ + recommandations fiables</title>
+<title>WarBoost V20.4.8 — Synchronisation langues complète</title>
 
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="/warboost-icon-192.png">
@@ -650,7 +650,7 @@ td input,td select{margin:0;padding:8px}
 .wb2043SaveBar{position:sticky;bottom:72px;z-index:8;display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding:10px;border:1px solid #41637f;background:#081521eF;border-radius:13px;backdrop-filter:blur(8px)}.wb2043SaveBar .btn{flex:1 1 180px}.wb2043SourceNote{color:#8196aa;font-size:10px;line-height:1.4;margin-top:7px}
 @media(max-width:760px){.wb2043Grid{grid-template-columns:1fr}.wb2043MiniGrid{grid-template-columns:1.5fr 1fr 1fr}.wb2043MiniGrid label:nth-child(4),.wb2043MiniGrid label:nth-child(5){grid-column:auto}.wb2043EquipRow{grid-template-columns:1fr 1fr}.wb2043EquipSlot{grid-column:1/-1;padding-bottom:0}.wb2043SaveBar{bottom:78px}}
 
-/* ===== V20.4.7 • HÉROS 5★ + RECOMMANDATIONS FIABLES ===== */
+/* ===== V20.4.8 • HÉROS 5★ + RECOMMANDATIONS FIABLES ===== */
 .wb2045Subhead{grid-column:1/-1;margin-top:4px;padding:8px 9px;border-radius:10px;background:#0a2230;border-left:3px solid #55d7ff;color:#bfe8f6;font-size:10px;font-weight:900}
 .wb2045TechHint{grid-column:1/-1;color:#8fa6bb;font-size:10px;line-height:1.45;padding:2px 0 4px}
 .wb2045TechPanel{margin-top:12px;border:1px solid #3d627c;background:linear-gradient(180deg,#081d2a,#071521);border-radius:15px;padding:12px}
@@ -662,8 +662,8 @@ td input,td select{margin:0;padding:8px}
 </head>
 <body>
 <header>
-  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V20.4.7</em></button>
-  <span class="proBadge">⭐ V20.4.7 • 5★ + REFRESH</span>
+  <button class="brand" onclick="showPage('player')">War<span>Boost</span><em>V20.4.8</em></button>
+  <span class="proBadge">🌐 V20.4.8 • LANG SYNC</span>
   <select id="language" class="lang" onchange="setLanguage(this.value)" aria-label="Language">
     <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
     <option value="de">DE</option><option value="ja">日本語</option><option value="zh">中文</option>
@@ -857,7 +857,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card wb203SmartCard">
     <div class="wb203Hero">
       <div>
-        <div class="eyebrow">V20.4.7 • MON ESCOUADE</div>
+        <div class="eyebrow">V20.4.8 • MON ESCOUADE</div>
         <h2>🎯 Mon escouade WarBoost</h2>
         <p class="muted">WarBoost conserve ta dernière formation validée. Le scan préremplit automatiquement ce qu’il voit, puis tu peux compléter tous les détails manquants dans un seul formulaire simple. Les données sont réutilisées pour les priorités, le Coach Centre technologie et la Boutique IA.</p>
       </div>
@@ -990,7 +990,7 @@ td input,td select{margin:0;padding:8px}
   <div class="card wb2034ShopCard" id="wb2034ShopCard" hidden>
     <div class="wb2034Head">
       <div>
-        <div class="eyebrow">V20.4.7 • ESCOUADE → BOUTIQUE</div>
+        <div class="eyebrow">V20.4.8 • ESCOUADE → BOUTIQUE</div>
         <h2 style="margin:6px 0">🛒 Boutique automatique WarBoost</h2>
         <p class="muted" style="margin:0">Plus besoin d’ajouter des captures de boutiques. WarBoost relie automatiquement les faiblesses de ton escouade enregistrée à son catalogue de priorités Last War.</p>
       </div>
@@ -2250,7 +2250,7 @@ function wb2043ManualPriority(focus){
   const map={gear:["Équipement","Renforcer la pièce ou le héros le plus en retard."],heroes:["Héros","Concentrer fragments, étoiles et arme exclusive sur le héros prioritaire."],drone:["Drone","Concentrer les composants sur la progression du Drone."],speed:["Construction / recherche","Prioriser les accélérateurs et recherches utiles à l’objectif actuel."],season:["Saison / VS","Prioriser les ressources directement utiles à la saison ou au VS."]};
   const x=map[focus];return x?{rank:1,severity:"high",target:x[0],action:x[1],reason:"Priorité choisie manuellement dans Mon escouade WarBoost.",evidence:"Choix utilisateur",expected_impact:"high"}:null;
 }
-/* ===== V20.4.7 • DONNÉES CENTRE TECHNOLOGIE + GARDE-FOUS ===== */
+/* ===== V20.4.8 • DONNÉES CENTRE TECHNOLOGIE + GARDE-FOUS ===== */
 function wb2045TechDataFromForm(){
   return {
     level:wb2043Num("wb2045TechCenterLevel"),t10:wb2043Text("wb2045T10"),
@@ -2293,9 +2293,9 @@ function wb2045TechPanelHtml(data){
   const recs=wb2045TechRecommendations(data),tc=data?.manual_details?.tech_center||{},entered=Object.entries(tc).filter(([k,v])=>k!=="level"&&k!=="t10"&&v!==null&&v!==undefined&&String(v)!=="").length,kind=wb2045SquadKind(data);
   const mode=entered>=3?"CONSEIL PRÉCIS":entered?"CONSEIL AFFINÉ":"ORIENTATION AUTO";
   const squadLabel=kind==="aircraft"?"Avion":kind==="tank"?"Tank":kind==="missile"?"Missile":kind==="mixed"?"Mixte":"non renseignée";
-  const rows=recs.map((r,i)=>`<div class="wb2045TechRow"><div class="wb2045TechTop"><span class="wb2045TechRank">${i+1}</span><span class="wb2045TechTitle">${esc(r.title)}</span><span class="wb2045TechPct">${r.pct===null?"% non renseigné":esc(String(r.pct).replace(".",","))+"%"}</span></div><div class="wb2045TechAction">→ ${esc(r.action)}</div><div class="wb2045TechWhy">${esc(r.why)}</div></div>`).join("");
+  const rows=recs.map((r,i)=>`<div class="wb2045TechRow"><div class="wb2045TechTop"><span class="wb2045TechRank">${i+1}</span><span class="wb2045TechTitle">${esc(wb203T(r.title))}</span><span class="wb2045TechPct">${r.pct===null?esc(wb203T("% non renseigné")):esc(String(r.pct).replace(".",","))+"%"}</span></div><div class="wb2045TechAction">→ ${esc(wb203T(r.action))}</div><div class="wb2045TechWhy">${esc(wb203T(r.why))}</div></div>`).join("");
   const missing=entered<3?`Pour rendre ce classement exact, renseigne au minimum <b>Forces Spéciales</b>, <b>Équipe 1</b> et ${kind==="aircraft"?"<b>Spécialisation Avion</b>":kind==="tank"?"<b>Spécialisation Tank</b>":kind==="missile"?"<b>Spécialisation Missile</b>":"la spécialisation correspondant à ton équipe"}.`:"Les pourcentages enregistrés sont utilisés directement pour classer les branches.";
-  return `<div class="wb2045TechPanel"><div class="wb2045TechHead"><div><h4>🔬 Centre technologie • quoi monter maintenant</h4><p>Conseil calculé pour ton escouade ${esc(squadLabel)} et tes pourcentages enregistrés.</p></div><span class="wb2045TechMode">${mode}</span></div><div class="wb2045TechList">${rows}</div><div class="wb2045TechFoot">${missing}</div><button class="btn secondary wb2045TechButton" onclick="wb2045OpenTechDetails()">✏️ Renseigner / modifier mon Centre technologie</button></div>`;
+  return `<div class="wb2045TechPanel"><div class="wb2045TechHead"><div><h4>${esc(wb203T("🔬 Centre technologie • quoi monter maintenant"))}</h4><p>Conseil calculé pour ton escouade ${esc(squadLabel)} et tes pourcentages enregistrés.</p></div><span class="wb2045TechMode">${esc(wb203T(mode))}</span></div><div class="wb2045TechList">${rows}</div><div class="wb2045TechFoot">${missing}</div><button class="btn secondary wb2045TechButton" onclick="wb2045OpenTechDetails()">${esc(wb203T("✏️ Renseigner / modifier mon Centre technologie"))}</button></div>`;
 }
 function wb2045OpenTechDetails(){wb2043ToggleDetails(true);setTimeout(()=>{const d=document.getElementById("wb2045TechDetails");if(d){d.open=true;d.scrollIntoView({behavior:"smooth",block:"start"})}},120)}
 
@@ -2376,9 +2376,9 @@ function wb2044ReconcileManualData(data){
 }
 
 function wb203T(key){
+  if(typeof wb171T==="function")return wb171T(key,(typeof wb171Language==="string"&&wb171Language)||"fr");
   if(typeof wb202T==="function")return wb202T(key);
-  const lang=(typeof wb171Language==="string"&&wb171Language)||"fr";
-  return WB171_TRANSLATIONS?.[key]?.[lang]||key;
+  return key;
 }
 function wb203Status(msg="",cls=""){
   const el=$("wb203Status");if(!el)return;
@@ -2461,7 +2461,7 @@ function wb203RenderResult(data){
   const safeSummary=wb203CanonicalSummary(p,a,formation,heroes,gear);
   const hasManual=!!data?.manual_details;
   const completion=hasManual&&typeof wb2043CompletionFromData==="function"?wb2043CompletionFromData(data):0;
-  const sourceLabel=hasManual?"SAISIE + SCAN":"VISION IA";
+  const sourceLabel=wb203T(hasManual?"SAISIE + SCAN":"VISION IA");
 
   const priorityHtml=priorities.length?priorities
     .sort((x,y)=>Number(x.rank||99)-Number(y.rank||99))
@@ -2472,10 +2472,10 @@ function wb203RenderResult(data){
           <div class="wb203Rank">${esc(x.rank||i+1)}</div>
           <span class="wb203Impact">${esc(wb203T("Impact"))} : ${esc(wb203ImpactLabel(x.expected_impact))}</span>
         </div>
-        <h4>${esc(x.target||`Priorité ${i+1}`)}</h4>
-        <div class="wb203Action"><b>→ ${esc(x.action||"")}</b></div>
-        ${x.reason?`<div class="wb203Why">${esc(x.reason)}</div>`:""}
-        ${x.evidence?`<div class="wb203Evidence"><b>${esc(x.source==="manual"||hasManual?"Donnée utilisée":wb203T("Preuve visible"))} :</b> ${esc(x.evidence)}</div>`:""}
+        <h4>${esc(wb203T(x.target||`Priorité ${i+1}`))}</h4>
+        <div class="wb203Action"><b>→ ${esc(wb203T(x.action||""))}</b></div>
+        ${x.reason?`<div class="wb203Why">${esc(wb203T(x.reason))}</div>`:""}
+        ${x.evidence?`<div class="wb203Evidence"><b>${esc(x.source==="manual"||hasManual?wb203T("Donnée utilisée"):wb203T("Preuve visible"))} :</b> ${esc(wb203T(x.evidence))}</div>`:""}
       </div>`;
     }).join("")
     :`<div class="wb19Warnings">${esc(a.summary||"Aucune priorité fiable n’a pu être déterminée avec cette capture.")}</div>`;
@@ -2486,19 +2486,19 @@ function wb203RenderResult(data){
       <span class="wb19Source">${esc(sourceLabel)}</span>
     </div>
     <div class="wb203Detected">
-      <div><small>${esc(hasManual?"Formation enregistrée":wb203T("Formation détectée"))}</small><strong>${formation?esc(formation.toFixed(2).replace(".00",""))+"M":esc(wb203T("À confirmer"))}</strong></div>
-      <div><small>${esc(hasManual?"Héros renseignés":wb203T("Héros visibles"))}</small><strong>${heroes?esc(heroes)+"/5":esc(wb203T("À confirmer"))}</strong></div>
-      <div><small>${esc(hasManual?"Équipements renseignés":wb203T("Équipements lus"))}</small><strong>${gear?esc(gear)+"/20":esc(wb203T("À confirmer"))}</strong></div>
+      <div><small>${esc(hasManual?wb203T("Formation enregistrée"):wb203T("Formation détectée"))}</small><strong>${formation?esc(formation.toFixed(2).replace(".00",""))+"M":esc(wb203T("À confirmer"))}</strong></div>
+      <div><small>${esc(hasManual?wb203T("Héros renseignés"):wb203T("Héros visibles"))}</small><strong>${heroes?esc(heroes)+"/5":esc(wb203T("À confirmer"))}</strong></div>
+      <div><small>${esc(hasManual?wb203T("Équipements renseignés"):wb203T("Équipements lus"))}</small><strong>${gear?esc(gear)+"/20":esc(wb203T("À confirmer"))}</strong></div>
       <div><small>${esc(wb203T("Drone"))}</small><strong>${esc(droneLabel)}</strong></div>
       <div><small>${esc(wb203T("Structure"))}</small><strong>${esc(structureLabel)}</strong></div>
-      <div><small>${esc(hasManual?"Détails":wb203T("Confiance"))}</small><strong>${hasManual?esc(completion)+"%":(confidence?esc(confidence)+"%":esc(wb203T("À confirmer")))}</strong></div>
+      <div><small>${esc(hasManual?wb203T("Détails"):wb203T("Confiance"))}</small><strong>${hasManual?esc(completion)+"%":(confidence?esc(confidence)+"%":esc(wb203T("À confirmer")))}</strong></div>
     </div>
-    ${safeSummary?`<div class="wb203Summary">${esc(safeSummary)}</div>`:""}
-    <div class="wb203ScanHelp"><b>🧠 ${esc(hasManual?"Priorités basées sur toutes tes données enregistrées":wb203T("Priorités basées sur les écarts visibles"))}</b><br>${esc(hasManual?"Les valeurs que tu as saisies manuellement sont prioritaires sur ce que le scan pouvait ou non voir.":wb203T("WarBoost ne classe plus le Drone en priorité uniquement parce que son niveau est visible."))}</div>
+    ${safeSummary?`<div class="wb203Summary">${esc(wb203T(safeSummary))}</div>`:""}
+    <div class="wb203ScanHelp"><b>🧠 ${esc(hasManual?wb203T("Priorités basées sur toutes tes données enregistrées"):wb203T("Priorités basées sur les écarts visibles"))}</b><br>${esc(hasManual?wb203T("Les valeurs que tu as saisies manuellement sont prioritaires sur ce que le scan pouvait ou non voir."):wb203T("WarBoost ne classe plus le Drone en priorité uniquement parce que son niveau est visible."))}</div>
     <div class="wb203PriorityList">${priorityHtml}</div>
     ${typeof wb2045TechPanelHtml==="function"?wb2045TechPanelHtml(data):""}
-    ${strengths.length?`<div class="wb203Strengths"><b>${esc(hasManual?"✅ Points forts enregistrés":wb203T("✅ Points forts visibles"))}</b><div>${strengths.map(x=>`• ${esc(x)}`).join("<br>")}</div></div>`:""}
-    ${(missing.length||next)?`<div class="wb203Missing"><b>${esc(hasManual?"✏️ Détails encore manquants":wb203T("📷 Pour aller plus loin"))}</b><div>${missing.map(x=>`• ${esc(x)}`).join("<br>")}${next?`${missing.length?"<br>":""}→ ${esc(next)}`:""}</div></div>`:""}
+    ${strengths.length?`<div class="wb203Strengths"><b>${esc(hasManual?wb203T("✅ Points forts enregistrés"):wb203T("✅ Points forts visibles"))}</b><div>${strengths.map(x=>`• ${esc(wb203T(x))}`).join("<br>")}</div></div>`:""}
+    ${(missing.length||next)?`<div class="wb203Missing"><b>${esc(hasManual?wb203T("✏️ Détails encore manquants"):wb203T("📷 Pour aller plus loin"))}</b><div>${missing.map(x=>`• ${esc(wb203T(x))}`).join("<br>")}${next?`${missing.length?"<br>":""}→ ${esc(wb203T(next))}`:""}</div></div>`:""}
     <div class="wb203Actions">
       <button class="btn" onclick="wb203ApplyNow()">✅ ${esc(wb203T("Mettre à jour ton compte"))}</button>
       <button class="btn gold" onclick="wb2034Open()">🛒 ${esc(wb203T("Que dois-je acheter ?"))}</button>
@@ -2787,7 +2787,7 @@ function wb2034BuildPlan(){
 function wb2034ShowBaseline(options={}){
   const scroll=!!options.scroll;
   const btn=$("wb2034RefreshBtn");
-  if(btn){btn.disabled=true;btn.textContent="↻ Recalcul en cours…"}
+  if(btn){btn.disabled=true;btn.textContent=wb203T("↻ Recalcul en cours…")}
   try{
     // Recharge toujours la dernière escouade réellement enregistrée avant de recalculer.
     const saved=wb2042ReadSavedSquad();
@@ -2806,7 +2806,7 @@ function wb2034ShowBaseline(options={}){
         recommendations:[],
         warnings:["La Boutique IA doit d’abord connaître les faiblesses de ton escouade enregistrée."]
       },local:true});
-      wb2034Status("En attente d’une escouade enregistrée.","");
+      wb2034Status(wb203T("En attente d’une escouade enregistrée."),"");
       return false;
     }
     // Recalcule aussi les priorités visibles pour que la Boutique et la fiche utilisent exactement les mêmes données.
@@ -2818,15 +2818,15 @@ function wb2034ShowBaseline(options={}){
     const budget=$("wb2034Budget")?.value||"0";
     try{localStorage.setItem("wb2034_budget",budget)}catch(e){}
     const now=new Intl.DateTimeFormat((wb171Language||"fr")==="fr"?"fr-FR":undefined,{hour:"2-digit",minute:"2-digit"}).format(new Date());
-    wb2034Status(`Recommandations actualisées à ${now} ✅`,"ok");
+    wb2034Status(wb203T(`Recommandations actualisées à ${now} ✅`),"ok");
     if(scroll)setTimeout(()=>$("wb2034Result")?.scrollIntoView({behavior:"smooth",block:"start"}),80);
     return true;
   }catch(e){
     console.error("refresh recommendations",e);
-    wb2034Status("Impossible d’actualiser les recommandations. Réessaie après avoir enregistré ton escouade.","err");
+    wb2034Status(wb203T("Impossible d’actualiser les recommandations. Réessaie après avoir enregistré ton escouade."),"err");
     return false;
   }finally{
-    if(btn){btn.disabled=false;btn.textContent="↻ Actualiser mes recommandations"}
+    if(btn){btn.disabled=false;btn.textContent=wb203T("↻ Actualiser mes recommandations")}
   }
 }
 function wb2034RefreshButton(){return wb2034ShowBaseline({scroll:true})}
@@ -2844,18 +2844,18 @@ function wb2034Render(data){
   const paid=recs.filter(x=>x.spend_type==="paid");
   const card=x=>`<div class="wb2034Buy">
     <span class="wb2034Rank">${esc(x.rank||"•")}</span>
-    <div><h4>${esc(x.item_name||"—")}</h4><p>${esc(x.reason||"")}</p>
-      <div class="wb2034ShopName">${esc(x.shop_type||"")} ${x.price_text?`• ${esc(x.price_text)}`:""}</div>
-      ${x.evidence?`<div class="wb2034Evidence">${esc(x.evidence)}</div>`:""}
+    <div><h4>${esc(wb203T(x.item_name||"—"))}</h4><p>${esc(wb203T(x.reason||""))}</p>
+      <div class="wb2034ShopName">${esc(wb203T(x.shop_type||""))} ${x.price_text?`• ${esc(x.price_text)}`:""}</div>
+      ${x.evidence?`<div class="wb2034Evidence">${esc(wb203T(x.evidence))}</div>`:""}
     </div>
     <span class="wb2034Verdict ${esc(x.verdict||"situational")}">${esc(wb2034VerdictLabel(x.verdict))}</span>
   </div>`;
   root.innerHTML=`<div class="wb2034Result">
     <div class="wb2034Tabs"><span class="wb2034Tab free">🎮 ${esc(wb203T("Sans argent réel"))}</span><span class="wb2034Tab paid">💳 ${esc(wb203T("Offres payantes"))}</span></div>
-    ${shop.summary?`<div class="wb203Summary">${esc(shop.summary)}</div>`:""}
+    ${shop.summary?`<div class="wb203Summary">${esc(wb203T(shop.summary))}</div>`:""}
     <div class="wb2034Section"><h3>🎮 ${esc(wb203T("Sans argent réel"))}</h3>${free.length?free.map(card).join(""):`<div class="wb2034Empty">—</div>`}</div>
     <div class="wb2034Section"><h3>💳 ${esc(wb203T("Offres payantes"))}</h3>${paid.length?paid.map(card).join(""):`<div class="wb2034Empty">Aucune offre payante recommandée</div>`}</div>
-    ${(shop.warnings||[]).length?`<div class="wb2034Warning">${shop.warnings.map(x=>`• ${esc(x)}`).join("<br>")}</div>`:""}
+    ${(shop.warnings||[]).length?`<div class="wb2034Warning">${shop.warnings.map(x=>`• ${esc(wb203T(x))}`).join("<br>")}</div>`:""}
     ${shop.next_capture?`<div class="wb2034Warning">📸 ${esc(shop.next_capture)}</div>`:""}
   </div>`;
 }
@@ -3004,6 +3004,9 @@ function showPage(id){
   if(id==="home")refreshDashboard();
   document.querySelectorAll(".page").forEach(x=>x.classList.toggle("active",x.id==="page-"+id));
   document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x.dataset.page===id));
+  const active=document.getElementById("page-"+id);
+  if(active&&typeof wb171TranslateElement==="function"&&typeof wb171Language==="string")wb171TranslateElement(active,wb171Language);
+  setTimeout(()=>{if(active&&typeof wb171TranslateElement==="function")wb171TranslateElement(active,wb171Language)},0);
   window.scrollTo({top:0,behavior:"smooth"});
 }
 document.querySelectorAll("[data-page]").forEach(x=>x.onclick=()=>showPage(x.dataset.page));
@@ -3677,9 +3680,64 @@ Object.assign(WB171_TRANSLATIONS,{"Achats pour faire évoluer cette escouade":{"
 const WB171_PLACEHOLDERS={"Ton pseudo": {"en": "Your nickname", "es": "Tu apodo", "de": "Dein Spielname", "ja": "ニックネーム", "zh": "你的昵称"}, "ton@email.fr": {"en": "you@email.com", "es": "tu@email.com", "de": "du@email.de", "ja": "you@email.com", "zh": "you@email.com"}, "6 caractères minimum": {"en": "6 characters minimum", "es": "6 caracteres mínimo", "de": "Mindestens 6 Zeichen", "ja": "6文字以上", "zh": "至少6个字符"}, "Nouveau mot de passe": {"en": "New password", "es": "Nueva contraseña", "de": "Neues Passwort", "ja": "新しいパスワード", "zh": "新密码"}, "Ex : préparer les groupes pour 20h": {"en": "E.g. prepare groups for 8 PM", "es": "Ej.: preparar grupos para las 20h", "de": "Z. B. Gruppen für 20 Uhr vorbereiten", "ja": "例：20時のグループを準備", "zh": "例如：准备20点的分组"}, "Rechercher un joueur…": {"en": "Search player…", "es": "Buscar jugador…", "de": "Spieler suchen…", "ja": "プレイヤー検索…", "zh": "搜索玩家…"}};
 const WB171_SUPPORTED=["fr","en","es","de","ja","zh"];
 Object.assign(WB171_PLACEHOLDERS,{"Ex : Nouvelle phase de saison":{"en":"Ex: New season phase","es":"Ej.: Nueva fase de temporada","de":"Bsp.: Neue Saisonphase","ja":"例：新しいシーズンフェーズ","zh":"例：新的赛季阶段"},"Résumé visible dans la carte Live":{"en":"Summary shown in the Live card","es":"Resumen visible en la tarjeta Live","de":"Zusammenfassung in der Live-Karte","ja":"Liveカードに表示する概要","zh":"Live 卡片中显示的摘要"},"Conseils, changements, priorités, rappels…":{"en":"Tips, changes, priorities, reminders…","es":"Consejos, cambios, prioridades, recordatorios…","de":"Tipps, Änderungen, Prioritäten, Erinnerungen…","ja":"アドバイス、変更、優先事項、リマインダー…","zh":"建议、变更、优先级、提醒…"},"Créée automatiquement si vide":{"en":"Created automatically if empty","es":"Se crea automáticamente si está vacío","de":"Wird bei leerem Feld automatisch erstellt","ja":"空欄なら自動作成","zh":"留空则自动创建"}});
+
+/* ===== V20.4.8 • LANGUAGE SYNC FOR V20.4 UI ===== */
+Object.assign(WB171_TRANSLATIONS,{"V20.4.8 • MON ESCOUADE":{"en":"V20.4.8 • MY SQUAD"},"🎯 Mon escouade WarBoost":{"en":"🎯 My WarBoost squad"},"WarBoost conserve ta dernière formation validée. Le scan préremplit automatiquement ce qu’il voit, puis tu peux compléter tous les détails manquants dans un seul formulaire simple. Les données sont réutilisées pour les priorités, le Coach Centre technologie et la Boutique IA.":{"en":"WarBoost keeps your latest validated squad. The scan automatically pre-fills what it can see, then you can complete any missing details in one simple form. The data is reused for priorities, the Tech Center Coach and the AI Shop."},"✨ PRO • MÉMOIRE IA":{"en":"✨ PRO • AI MEMORY"},"1️⃣ Préremplir":{"en":"1️⃣ Pre-fill"},"Par capture ou saisie directe : choisis le plus simple.":{"en":"Use a screenshot or enter it directly: choose the easiest option."},"2️⃣ Réutiliser":{"en":"2️⃣ Reuse"},"Priorités et conseils disponibles sans nouvelle capture.":{"en":"Priorities and advice are available without another screenshot."},"3️⃣ Compléter":{"en":"3️⃣ Complete"},"Ajoute les héros, équipements, Drone, Centre technologie et extras au même endroit.":{"en":"Add heroes, gear, Drone, Tech Center and extras in one place."},"🎯 Utiliser mon escouade enregistrée":{"en":"🎯 Use my saved squad"},"✏️ Compléter tous les détails":{"en":"✏️ Complete all details"},"📷 Mettre à jour par capture":{"en":"📷 Update from screenshot"},"SAISIE SIMPLE • TOUT AU MÊME ENDROIT":{"en":"SIMPLE ENTRY • EVERYTHING IN ONE PLACE"},"✏️ Détails complets de mon compte":{"en":"✏️ Full account details"},"Les valeurs déjà détectées sont préremplies. Complète uniquement ce que tu connais : les champs inconnus peuvent rester vides.":{"en":"Detected values are already pre-filled. Only complete what you know; unknown fields can stay empty."},"0% renseigné":{"en":"0% completed"},"Le plus simple :":{"en":"Easiest way:"},"commence par « Essentiel », puis ouvre chaque héros. L’équipement détaillé est facultatif et reste replié tant que tu n’en as pas besoin.":{"en":"start with “Essentials”, then open each hero. Detailed gear is optional and stays collapsed until you need it."},"1️⃣ Essentiel • compte + escouade + Drone":{"en":"1️⃣ Essentials • account + squad + Drone"},"Pseudo":{"en":"Nickname"},"Serveur":{"en":"Server"},"Alliance":{"en":"Alliance"},"Rôle":{"en":"Role"},"Niveau QG":{"en":"HQ level"},"Puissance totale (M)":{"en":"Total power (M)"},"Type d’escouade":{"en":"Squad type"},"Avion":{"en":"Aircraft"},"Mixte":{"en":"Mixed"},"Puissance escouade (M)":{"en":"Squad power (M)"},"Niveau Drone":{"en":"Drone level"},"Puissance Drone (M)":{"en":"Drone power (M)"},"Technologie (%)":{"en":"Technology (%)"},"Équipement global (%)":{"en":"Overall gear (%)"},"Priorité que tu veux travailler":{"en":"Priority you want to work on"},"Auto • garder les priorités WarBoost":{"en":"Auto • keep WarBoost priorities"},"🛡️ Équipement":{"en":"🛡️ Gear"},"⭐ Héros / étoiles / armes":{"en":"⭐ Heroes / stars / weapons"},"⏱️ Construction / recherche":{"en":"⏱️ Construction / research"},"🌍 Saison / VS":{"en":"🌍 Season / VS"},"2️⃣ Mes 5 héros • niveau, étoiles, arme, équipement":{"en":"2️⃣ My 5 heroes • level, stars, weapon, gear"},"3️⃣ Centre technologie • recommandations selon mon escouade":{"en":"3️⃣ Tech Center • recommendations for my squad"},"Simple :":{"en":"Simple:"},"recopie les % affichés dans le Centre technologie. Si le jeu affiche":{"en":"copy the percentages shown in the Tech Center. If the game shows"},"Niveau Max":{"en":"Max Level"},", mets":{"en":", enter"},". Tu peux laisser le reste vide. WarBoost utilisera toutes les branches renseignées pour classer quoi monter selon ton escouade.":{"en":". You can leave the rest empty. WarBoost will use every entered branch to rank what to upgrade for your squad."},"Niveau Centre techno":{"en":"Tech Center level"},"T10 débloquées ?":{"en":"T10 unlocked?"},"— Je ne sais pas —":{"en":"— I don’t know —"},"✅ Oui":{"en":"✅ Yes"},"❌ Non":{"en":"❌ No"},"⚔️ Combat principal":{"en":"⚔️ Main combat"},"Forces Spéciales (%)":{"en":"Special Forces (%)"},"Équipe 1 (%)":{"en":"Squad 1 (%)"},"Unités (%)":{"en":"Units (%)"},"Héros (%)":{"en":"Heroes (%)"},"🎯 Spécialisations • WarBoost privilégie automatiquement celle de ton escouade":{"en":"🎯 Specializations • WarBoost automatically prioritizes your squad type"},"Spécialisation Avion (%)":{"en":"Aircraft Specialization (%)"},"Spécialisation Tank (%)":{"en":"Tank Specialization (%)"},"Spécialisation Missile (%)":{"en":"Missile Specialization (%)"},"👥 Autres équipes":{"en":"👥 Other squads"},"Équipe 2 (%)":{"en":"Squad 2 (%)"},"Équipe 3 (%)":{"en":"Squad 3 (%)"},"Équipe 4 statut":{"en":"Squad 4 status"},"— Non renseigné —":{"en":"— Not entered —"},"🔒 Verrouillée":{"en":"🔒 Locked"},"✅ Débloquée":{"en":"✅ Unlocked"},"Équipe 4 (%)":{"en":"Squad 4 (%)"},"🛡️ Guerre / défense / événements":{"en":"🛡️ War / defense / events"},"Duel d’Alliances (%)":{"en":"Alliance Duel (%)"},"Assiéger pour Saisir (%)":{"en":"Siege to Seize (%)"},"Fortification des Défenses (%)":{"en":"Defense Fortification (%)"},"Camion Interurbain (%)":{"en":"Intercity Truck (%)"},"⚙️ Progression / économie":{"en":"⚙️ Progression / economy"},"Développement (%)":{"en":"Development (%)"},"Économie (%)":{"en":"Economy (%)"},"L’Ère du Pétrole (%)":{"en":"Age of Oil (%)"},"4️⃣ Extras • saison, profession, Suzerain":{"en":"4️⃣ Extras • season, profession, Overlord"},"Saison":{"en":"Season"},"Profession":{"en":"Profession"},"Suzerain / familier":{"en":"Overlord / companion"},"Niveau Suzerain":{"en":"Overlord level"},"Notes utiles":{"en":"Useful notes"},"💾 Enregistrer tous mes détails":{"en":"💾 Save all my details"},"Fermer":{"en":"Close"},"Les valeurs que tu enregistres ici deviennent la référence de WarBoost. Elles passent avant les anciennes informations du Smart Scan et sont utilisées pour les priorités et la Boutique IA.":{"en":"Values saved here become WarBoost’s reference. They override older Smart Scan information and are used for priorities and the AI Shop."},"📷 Première configuration / mise à jour":{"en":"📷 First setup / update"},"Une capture reste disponible comme raccourci pour préremplir automatiquement les détails visibles. Tu peux ensuite compléter le reste manuellement. Cette capture n’est pas conservée par WarBoost.":{"en":"A screenshot remains available as a shortcut to automatically pre-fill visible details. You can then complete the rest manually. WarBoost does not keep the screenshot."},"Sélectionne 1 capture nette de ta formation Last War.":{"en":"Select 1 clear screenshot of your Last War squad."},"✅ Mettre automatiquement dans mon profil les valeurs réellement détectées":{"en":"✅ Automatically add genuinely detected values to my profile"},"✨ Analyser et enregistrer mon escouade":{"en":"✨ Analyze and save my squad"},"La capture est compressée sur ton téléphone et n’est pas enregistrée dans la base WarBoost. Seules les données détectées sont mémorisées dans WarBoost et peuvent être incluses dans ta sauvegarde Cloud si elle est activée.":{"en":"The screenshot is compressed on your phone and is not stored in the WarBoost database. Only detected data is saved in WarBoost and can be included in your Cloud backup if enabled."},"🛍️ Boutique IA":{"en":"🛍️ AI Shop"},"Disponible dès qu’une escouade est enregistrée.":{"en":"Available as soon as a squad is saved."},"V20.4.8 • ESCOUADE → BOUTIQUE":{"en":"V20.4.8 • SQUAD → SHOP"},"🛒 Boutique automatique WarBoost":{"en":"🛒 WarBoost automatic shop"},"Plus besoin d’ajouter des captures de boutiques. WarBoost relie automatiquement les faiblesses de ton escouade enregistrée à son catalogue de priorités Last War.":{"en":"No need to add shop screenshots anymore. WarBoost automatically links weaknesses in your saved squad to its Last War priority catalog."},"✨ PRO • BOUTIQUE IA":{"en":"✨ PRO • AI SHOP"},"Budget argent réel":{"en":"Real-money budget"},"Petit budget • jusqu’à 10 €/mois":{"en":"Small budget • up to €10/month"},"Escouade utilisée":{"en":"Squad used"},"🎯 En attente d’une escouade enregistrée":{"en":"🎯 Waiting for a saved squad"},"Les achats sont classés à partir de tes besoins : équipement, héros, Drone, progression et saison.":{"en":"Purchases are ranked from your needs: gear, heroes, Drone, progression and season."},"Catalogue automatique • aucune capture boutique":{"en":"Automatic catalog • no shop screenshot"},"WarBoost utilise les règles de priorité de ses boutiques (VIP, Alliance, Honneur, Diamants, Campagne, Saison et offres payantes) et les adapte à ton escouade. Les offres temporaires non connues ne sont jamais inventées.":{"en":"WarBoost uses priority rules for its shops (VIP, Alliance, Honor, Diamonds, Campaign, Season and paid offers) and adapts them to your squad. Unknown temporary offers are never invented."},"↻ Actualiser mes recommandations":{"en":"↻ Refresh my recommendations"},"Le plan gratuit + payant est recalculé depuis ton escouade enregistrée et ton budget.":{"en":"The free + paid plan is recalculated from your saved squad and budget."},"📭 Aucune escouade enregistrée":{"en":"📭 No saved squad"},"Tu peux créer ton escouade avec une capture ou directement avec « Compléter tous les détails ». Ensuite, elle sera réutilisée automatiquement.":{"en":"You can create your squad from a screenshot or directly with “Complete all details”. It will then be reused automatically."},"✅ Escouade enregistrée":{"en":"✅ Squad saved"},"Dernière mise à jour :":{"en":"Last update:"},"MÉMORISÉE":{"en":"SAVED"},"Formation":{"en":"Squad power"},"Héros":{"en":"Heroes"},"Équipements":{"en":"Gear"},"WarBoost utilise toutes les données enregistrées pour les priorités et la Boutique IA. Les valeurs saisies manuellement sont considérées comme fiables et passent avant le scan.":{"en":"WarBoost uses all saved data for priorities and the AI Shop. Manually entered values are considered reliable and override the scan."},"Escouade enregistrée chargée ✅":{"en":"Saved squad loaded ✅"},"Équipement":{"en":"Gear"},"Renforcer la pièce ou le héros le plus en retard.":{"en":"Strengthen the gear piece or hero that is furthest behind."},"Concentrer fragments, étoiles et arme exclusive sur le héros prioritaire.":{"en":"Focus fragments, stars and exclusive weapon on the priority hero."},"Concentrer les composants sur la progression du Drone.":{"en":"Focus components on Drone progression."},"Construction / recherche":{"en":"Construction / research"},"Prioriser les accélérateurs et recherches utiles à l’objectif actuel.":{"en":"Prioritize speed-ups and research that support the current goal."},"Saison / VS":{"en":"Season / VS"},"Prioriser les ressources directement utiles à la saison ou au VS.":{"en":"Prioritize resources directly useful for the Season or VS."},"Priorité choisie manuellement dans Mon escouade WarBoost.":{"en":"Priority manually selected in My WarBoost Squad."},"Choix utilisateur":{"en":"User choice"},"Spécialisation Avion":{"en":"Aircraft Specialization"},"Spécialisation Tank":{"en":"Tank Specialization"},"Spécialisation Missile":{"en":"Missile Specialization"},"Forces Spéciales":{"en":"Special Forces"},"Équipe 1":{"en":"Squad 1"},"Unités":{"en":"Units"},"Équipe 2":{"en":"Squad 2"},"Équipe 3":{"en":"Squad 3"},"Équipe 4":{"en":"Squad 4"},"Assiéger pour Saisir":{"en":"Siege to Seize"},"Fortification des Défenses":{"en":"Defense Fortification"},"Camion Interurbain":{"en":"Intercity Truck"},"Duel d’Alliances":{"en":"Alliance Duel"},"Développement":{"en":"Development"},"Économie":{"en":"Economy"},"L’Ère du Pétrole":{"en":"Age of Oil"},"Priorise cette branche et ses prérequis de combat jusqu’à débloquer tes T10.":{"en":"Prioritize this branch and its combat prerequisites until you unlock T10."},"T10 indiquées comme non débloquées : c’est le verrou le plus important avant d’investir trop loin dans des branches secondaires.":{"en":"T10 are marked as not unlocked: this is the most important gate before investing too far in secondary branches."},"Continue les recherches de combat utiles, en privilégiant les bonus qui renforcent directement ton escouade principale.":{"en":"Continue useful combat research, prioritizing bonuses that directly strengthen your main squad."},"Les T10 sont déjà débloquées : Forces Spéciales reste utile mais peut passer derrière la spécialisation de ton type si elle est en retard.":{"en":"T10 are already unlocked: Special Forces remains useful but can rank behind your unit-type specialization if that specialization is behind."},"Le statut T10 n’est pas renseigné : Forces Spéciales reste une branche structurante du combat.":{"en":"T10 status is not entered: Special Forces remains a core combat branch."},"Renforce d’abord les bonus de l’Équipe 1, car ton type d’équipe n’est pas assez précis pour choisir une spécialisation dédiée.":{"en":"Strengthen Squad 1 bonuses first because your squad type is not precise enough to choose a dedicated specialization."},"Conseil sûr pour une formation mixte ou un type non renseigné.":{"en":"Safe advice for a mixed squad or an unspecified type."},"Monte les bonus de combat de l’Équipe 1 qui bénéficient à ta formation principale.":{"en":"Upgrade Squad 1 combat bonuses that benefit your main formation."},"C’est ton escouade utilisée pour les priorités WarBoost.":{"en":"This is the squad used for WarBoost priorities."},"Priorise les bonus de puissance de combat utiles à tes troupes principales avant les bonus secondaires.":{"en":"Prioritize combat power bonuses useful to your main troops before secondary bonuses."},"Les recherches Unités renforcent directement la base de combat de ta formation.":{"en":"Units research directly strengthens the combat base of your formation."},"Complète les bonus Héros qui améliorent directement les 5 héros de ton équipe principale.":{"en":"Complete Hero bonuses that directly improve the 5 heroes in your main squad."},"Utile lorsque tes héros sont déjà bien montés et que la technologie est en retard.":{"en":"Useful when your heroes are already well developed and technology is behind."},"Les pourcentages enregistrés sont utilisés directement pour classer les branches.":{"en":"Saved percentages are used directly to rank the branches."},"🔬 Centre technologie • quoi monter maintenant":{"en":"🔬 Tech Center • what to upgrade now"},"CONSEIL PRÉCIS":{"en":"PRECISE ADVICE"},"CONSEIL AFFINÉ":{"en":"REFINED ADVICE"},"ORIENTATION AUTO":{"en":"AUTO GUIDANCE"},"% non renseigné":{"en":"% not entered"},"✏️ Renseigner / modifier mon Centre technologie":{"en":"✏️ Enter / edit my Tech Center"},"la spécialisation correspondant à ton équipe":{"en":"the specialization matching your squad"},"MON ESCOUADE WARBOOST":{"en":"MY WARBOOST SQUAD"},"🎯 Ce que tu dois améliorer en premier":{"en":"🎯 What you should improve first"},"SAISIE + SCAN":{"en":"ENTRY + SCAN"},"VISION IA":{"en":"AI VISION"},"Formation enregistrée":{"en":"Saved formation"},"Formation détectée":{"en":"Detected formation"},"Héros renseignés":{"en":"Heroes entered"},"Héros visibles":{"en":"Visible heroes"},"Équipements renseignés":{"en":"Gear entered"},"Équipements lus":{"en":"Gear read"},"Structure":{"en":"Structure"},"Détails":{"en":"Details"},"Confiance":{"en":"Confidence"},"À confirmer":{"en":"To confirm"},"Priorités basées sur toutes tes données enregistrées":{"en":"Priorities based on all your saved data"},"Priorités basées sur les écarts visibles":{"en":"Priorities based on visible gaps"},"Les valeurs que tu as saisies manuellement sont prioritaires sur ce que le scan pouvait ou non voir.":{"en":"Values you entered manually take priority over what the scan could or could not see."},"WarBoost ne classe plus le Drone en priorité uniquement parce que son niveau est visible.":{"en":"WarBoost no longer ranks the Drone as a priority just because its level is visible."},"✅ Points forts enregistrés":{"en":"✅ Saved strengths"},"✅ Points forts visibles":{"en":"✅ Visible strengths"},"✏️ Détails encore manquants":{"en":"✏️ Details still missing"},"📷 Pour aller plus loin":{"en":"📷 To go further"},"Mettre à jour ton compte":{"en":"Update your account"},"Que dois-je acheter ?":{"en":"What should I buy?"},"Donnée utilisée":{"en":"Data used"},"Preuve visible":{"en":"Visible evidence"},"Impact":{"en":"Impact"},"fort":{"en":"high"},"moyen":{"en":"medium"},"faible":{"en":"low"},"Priorités recalculées à partir de ton escouade enregistrée. Les valeurs saisies manuellement passent avant les anciennes limites du scan.":{"en":"Priorities recalculated from your saved squad. Manually entered values override the old scan limitations."},"Complète les champs encore manquants dans « Compléter tous les détails ».":{"en":"Complete the remaining missing fields in “Complete all details”."},"Tous les détails renseignés ont été enregistrés et les priorités recalculées ✅":{"en":"All entered details have been saved and priorities recalculated ✅"},"Nom / slot":{"en":"Name / slot"},"Niveau":{"en":"Level"},"Étoiles":{"en":"Stars"},"Rang / tier":{"en":"Rank / tier"},"Nom":{"en":"Name"},"Niv.":{"en":"Lvl."},"Étoiles (max 5)":{"en":"Stars (max 5)"},"Arme excl.":{"en":"Exclusive weapon"},"Équip. moy.":{"en":"Avg. gear"},"＋ Équipement détaillé (4 pièces)":{"en":"＋ Detailed gear (4 pieces)"},"ESCOUADE 1":{"en":"SQUAD 1"},"Sans argent réel":{"en":"No real money"},"Offres payantes":{"en":"Paid offers"},"Aucune offre payante recommandée":{"en":"No paid offer recommended"},"ACHETER":{"en":"BUY"},"BON":{"en":"GOOD"},"PASSER":{"en":"SKIP"},"SELON BESOIN":{"en":"AS NEEDED"},"Priorité formation":{"en":"Squad priority"},"Plans d’équipement légendaires":{"en":"Legendary gear blueprints"},"Fragments universels UR":{"en":"Universal UR shards"},"Fragments d’arme exclusive":{"en":"Exclusive weapon shards"},"Pièces de drone":{"en":"Drone parts"},"Accélérateurs construction / recherche":{"en":"Construction / research speed-ups"},"Téléporteurs / boucliers":{"en":"Teleports / shields"},"Endurance 50":{"en":"Stamina 50"},"Scanner la boutique Saison actuelle":{"en":"Check the current Season shop"},"Plan lié à ton escouade":{"en":"Plan linked to your squad"},"Les recommandations sont liées à ton escouade enregistrée. WarBoost n’invente jamais une offre temporaire qu’il ne connaît pas.":{"en":"Recommendations are linked to your saved squad. WarBoost never invents a temporary offer it does not know."},"Enregistre d’abord ton escouade. WarBoost construira ensuite automatiquement le plan d’achat gratuit + payant adapté à cette équipe.":{"en":"Save your squad first. WarBoost will then automatically build the free + paid purchase plan for that team."},"La Boutique IA doit d’abord connaître les faiblesses de ton escouade enregistrée.":{"en":"The AI Shop must first know the weaknesses of your saved squad."},"En attente d’une escouade enregistrée.":{"en":"Waiting for a saved squad."},"Impossible d’actualiser les recommandations. Réessaie après avoir enregistré ton escouade.":{"en":"Unable to refresh recommendations. Try again after saving your squad."},"↻ Recalcul en cours…":{"en":"↻ Recalculating…"},"Budget 0 € : aucun achat payant recommandé. Le plan utilise uniquement les monnaies et boutiques du jeu.":{"en":"€0 budget: no paid purchase recommended. The plan only uses in-game currencies and shops."},"Budget utilisateur":{"en":"User budget"},"Packs sans lien avec ta priorité":{"en":"Packs unrelated to your priority"},"Même avec un bon pourcentage de valeur affiché, passe si le contenu n’améliore pas le point faible détecté de ton escouade.":{"en":"Even with a high displayed value percentage, skip it if the contents do not improve your squad’s detected weak point."},"Règle de prudence WarBoost":{"en":"WarBoost caution rule"},"5 étoiles":{"en":"5 stars"},"Escouade principale":{"en":"Main squad"},"Formation actuelle":{"en":"Current formation"},"non renseignée":{"en":"not entered"},"non renseigné":{"en":"not entered"},"dans le profil":{"en":"in the profile"},"Saisie manuelle":{"en":"Manual entry"}});
+Object.assign(WB171_PLACEHOLDERS,{"Ex : Benoit":{"en":"Ex: Benoit"},"Ex : 884":{"en":"Ex: 884"},"Ex : ALL4":{"en":"Ex: ALL4"},"Ex : 30":{"en":"Ex: 30"},"Ex : 219":{"en":"Ex: 219"},"Ex : 65":{"en":"Ex: 65"},"Ex : 157":{"en":"Ex: 157"},"Optionnel":{"en":"Optional"},"Ex : 89":{"en":"Ex: 89"},"100 si Niveau Max":{"en":"100 if Max Level"},"Ex : 73":{"en":"Ex: 73"},"Ex : 94":{"en":"Ex: 94"},"Ex : 43":{"en":"Ex: 43"},"Ex : 0":{"en":"Ex: 0"},"Ex : 39":{"en":"Ex: 39"},"Si débloquée":{"en":"If unlocked"},"Ex : 35":{"en":"Ex: 35"},"Ex : 67":{"en":"Ex: 67"},"Ex : Saison 6":{"en":"Ex: Season 6"},"Ex : Ingénieur":{"en":"Ex: Engineer"},"Ex : Gorille":{"en":"Ex: Gorilla"},"Ex : 40":{"en":"Ex: 40"},"Tout détail que tu veux conserver : objectif, ressource manquante, prochaine amélioration…":{"en":"Any detail you want to keep: goal, missing resource, next upgrade…"}});
+
+
+Object.assign(WB171_TRANSLATIONS,{"Monte cette branche seulement après les priorités de l’Équipe 1, sauf si ton équipe 2 devient importante pour ton objectif actuel.":{"en":"Upgrade this branch only after Squad 1 priorities, unless Squad 2 becomes important for your current goal."},"Branche secondaire : utile pour renforcer ta deuxième formation, mais elle ne doit pas détourner les ressources de ton escouade principale.":{"en":"Secondary branch: useful for strengthening your second formation, but it should not divert resources from your main squad."},"Garde cette branche derrière Équipe 1 et ta spécialisation principale, sauf besoin spécifique de plusieurs formations.":{"en":"Keep this branch behind Squad 1 and your main specialization unless you specifically need several formations."},"Branche secondaire pour la troisième formation.":{"en":"Secondary branch for the third formation."},"Ne l’investis qu’après le cœur de ton escouade principale et lorsque l’Équipe 4 est réellement débloquée et utile.":{"en":"Invest here only after the core of your main squad and once Squad 4 is actually unlocked and useful."},"Branche très secondaire pour ton plan d’évolution principal.":{"en":"Very low-priority branch for your main progression plan."},"À monter pour les objectifs de siège/prise quand ce contenu devient prioritaire ; sinon garde tes ressources sur le combat principal.":{"en":"Upgrade this for siege/capture objectives when that content becomes a priority; otherwise keep your resources on main combat."},"Branche situationnelle : elle ne renforce pas toujours directement ton escouade principale.":{"en":"Situational branch: it does not always directly strengthen your main squad."},"À monter si la défense de base ou les activités défensives sont ton besoin actuel ; sinon priorité inférieure au combat de l’Équipe 1.":{"en":"Upgrade this if base defense or defensive activities are your current need; otherwise keep it below Squad 1 combat."},"Branche défensive et situationnelle.":{"en":"Defensive and situational branch."},"Monte-la surtout pour améliorer les bénéfices liés aux camions, après les technologies qui renforcent directement ton équipe principale.":{"en":"Upgrade it mainly to improve truck-related rewards, after technologies that directly strengthen your main team."},"Branche de rendement/activité, pas une priorité de puissance directe pour ton escouade.":{"en":"Yield/activity branch, not a direct squad-power priority."},"Monte cette branche si ton objectif immédiat est le VS / Duel d’alliance ; sinon garde la priorité au combat de l’escouade.":{"en":"Upgrade this branch if your immediate goal is VS / Alliance Duel; otherwise keep squad combat first."},"Priorité événementielle plutôt qu’un gain direct permanent pour l’escouade.":{"en":"Event priority rather than a permanent direct gain for the squad."},"Prends les recherches qui réduisent les temps et améliorent ton rendement si ton objectif est d’accélérer ta progression.":{"en":"Choose research that reduces timers and improves efficiency if your goal is faster progression."},"Branche de progression, moins directe qu’une spécialisation de combat pour gagner les duels.":{"en":"Progression branch, less direct than a combat specialization for winning duels."},"Monte-la surtout si tes ressources deviennent le frein principal de tes recherches et améliorations.":{"en":"Upgrade it mainly if resources become the main bottleneck for your research and upgrades."},"Gain de long terme, généralement moins direct sur la puissance de l’escouade.":{"en":"Long-term gain, usually less direct for squad power."},"À développer selon tes prérequis de progression avancée, après les besoins directs de ton escouade.":{"en":"Develop it according to your advanced progression prerequisites, after your squad’s direct needs."},"Branche avancée : priorité variable selon ton stade de compte.":{"en":"Advanced branch: priority varies with your account stage."},"À privilégier pour corriger directement une faiblesse d’équipement détectée sur ta formation.":{"en":"Prioritize this to directly fix a gear weakness detected in your formation."},"À acheter seulement si la boutique actuelle propose une ressource qui sert directement la pièce en retard.":{"en":"Buy only if the current shop offers a resource that directly helps the lagging gear piece."},"Prioritaire si le Smart Scan montre un héros en retard en étoiles ou progression.":{"en":"Priority if Smart Scan shows a hero lagging in stars or progression."},"À privilégier uniquement si l’arme exclusive du héros concerné est réellement le point faible visible.":{"en":"Prioritize only if that hero’s exclusive weapon is truly the visible weak point."},"À privilégier si ton escouade enregistrée confirme que le Drone est le frein de progression.":{"en":"Prioritize if your saved squad confirms the Drone is the progression bottleneck."},"Deuxième source à vérifier si des pièces de Drone sont disponibles actuellement.":{"en":"Second source to check if Drone parts are currently available."},"Aligné avec le besoin de développement détecté.":{"en":"Aligned with the detected development need."},"Utile seulement si l’endurance débloque davantage de progression ou de récompenses utiles.":{"en":"Useful only if stamina unlocks more progression or useful rewards."},"Le contenu Saison varie : privilégie uniquement les articles actuels qui correspondent à la faiblesse détectée.":{"en":"Season content varies: prioritize only current items that match the detected weakness."},"N’utilise pas tes diamants pour un achat sans lien direct avec l’évolution de ta formation. Garde-les pour un besoin utile ou urgent.":{"en":"Do not spend diamonds on purchases unrelated to your squad progression. Keep them for a useful or urgent need."},"À privilégier seulement si son contenu sert directement la faiblesse d’équipement détectée.":{"en":"Prioritize only if its contents directly address the detected gear weakness."},"À privilégier uniquement s’il accélère le héros réellement en retard sur ta formation.":{"en":"Prioritize only if it accelerates the hero that is actually behind in your formation."},"À envisager uniquement si le Drone est confirmé comme un vrai point faible.":{"en":"Consider only if the Drone is confirmed as a real weak point."},"À privilégier si ton objectif détecté est le développement rapide.":{"en":"Prioritize if your detected goal is fast development."},"Seulement si le contenu visible correspond directement à ta priorité actuelle.":{"en":"Only if the visible contents directly match your current priority."}," Vérifie le contenu exact et le prix affichés dans Last War avant l’achat ; WarBoost ne valide pas une offre temporaire inconnue.":{"en":" Check the exact contents and displayed price in Last War before buying; WarBoost does not validate an unknown temporary offer."},"Pack avec Plans d’équipement / matériaux d’équipement":{"en":"Pack with gear blueprints / gear materials"},"Pack avec fragments UR / progression du héros ciblé":{"en":"Pack with UR shards / targeted hero progression"},"Pack avec pièces / composants de Drone":{"en":"Pack with Drone parts / components"},"Pack accélérateurs construction / recherche":{"en":"Construction / research speed-up pack"},"Pack Saison lié à la ressource prioritaire":{"en":"Season pack linked to the priority resource"},"Payant":{"en":"Paid"},"Packs":{"en":"Packs"},"Diamants":{"en":"Diamonds"},"Honneur":{"en":"Honor"},"Campagne":{"en":"Campaign"}});
+
+function wb2048FlexibleTranslation(text,lang){
+  if(!text||lang==="fr")return text||"";
+  const exact=WB171_TRANSLATIONS?.[text]?.[lang];
+  if(exact)return exact;
+  if(lang!=="en")return text;
+  let m;
+  m=text.match(/^Investis en priorité dans (.+), surtout les bonus offensifs et de taille\/efficacité d’escouade lorsqu’ils sont disponibles\.$/u);
+  if(m)return `Prioritize ${wb2048FlexibleTranslation(m[1],lang)}, especially offensive bonuses and squad size/efficiency bonuses when available.`;
+  m=text.match(/^Ton escouade principale est (Avion|Tank|Missile) : cette spécialisation profite directement à ton équipe 1\.$/u);
+  if(m)return `Your main squad is ${wb2048FlexibleTranslation(m[1],lang)}: this specialization directly benefits Squad 1.`;
+  m=text.match(/^Pour rendre ce classement exact, renseigne au minimum (.+)$/u);
+  if(m)return `To make this ranking exact, enter at least ${m[1]}`;
+  m=text.match(/^20 équipements renseignés : niveaux et étoiles connus(, rangs\/qualités connus)?\.$/u);
+  if(m)return `20 gear pieces entered: levels and stars known${m[1]?", ranks/qualities known":""}.`;
+  m=text.match(/^Armes exclusives renseignées pour les 5 héros : niveau homogène (.+)\.$/u);
+  if(m)return `Exclusive weapons entered for all 5 heroes: uniform level ${m[1]}.`;
+  m=text.match(/^Niveau héros • (.+)$/u); if(m)return `Hero level • ${m[1]}`;
+  m=text.match(/^Arme exclusive • (.+)$/u); if(m)return `Exclusive weapon • ${m[1]}`;
+  m=text.match(/^Étoiles • (.+)$/u); if(m)return `Stars • ${m[1]}`;
+  m=text.match(/^Équipement • (.+)$/u); if(m)return `Gear • ${m[1]}`;
+  m=text.match(/^Saisie manuelle : (.+)$/u); if(m)return `Manual entry: ${m[1]}`;
+  const rules=[
+    [/^Dernière mise à jour\s*:\s*(.+)$/u,"Last update: $1"],
+    [/^(\d+(?:[.,]\d+)?)%\s*renseigné$/u,"$1% completed"],
+    [/^(\d+(?:[.,]\d+)?)%\s*DÉTAILS$/u,"$1% DETAILS"],
+    [/^Priorité\s+(\d+)$/u,"Priority $1"],
+    [/^Héros\s+(\d+)$/u,"Hero $1"],
+    [/^Équipement\s+(\d+)$/u,"Equipment $1"],
+    [/^Escouade\s+(\d+)$/u,"Squad $1"],
+    [/^Niveau Drone\s+(\d+)$/u,"Drone level $1"],
+    [/^Recommandations actualisées à\s+(.+)\s+✅$/u,"Recommendations refreshed at $1 ✅"],
+    [/^Conseil calculé pour ton escouade\s+(.+)\s+et tes pourcentages enregistrés\.$/u,"Advice calculated for your $1 squad and your saved percentages."],
+    [/^Ton escouade principale est Avion\s*:\s*(.+)$/u,"Your main squad is Aircraft: $1"],
+    [/^Ton escouade principale est Tank\s*:\s*(.+)$/u,"Your main squad is Tank: $1"],
+    [/^Ton escouade principale est Missile\s*:\s*(.+)$/u,"Your main squad is Missile: $1"],
+    [/^Investis en priorité dans Spécialisation Avion,(.+)$/u,"Prioritize Aircraft Specialization,$1"],
+    [/^Investis en priorité dans Spécialisation Tank,(.+)$/u,"Prioritize Tank Specialization,$1"],
+    [/^Investis en priorité dans Spécialisation Missile,(.+)$/u,"Prioritize Missile Specialization,$1"],
+    [/^Plan lié à ton escouade\s*•\s*(.+)$/u,"Plan linked to your squad • $1"],
+    [/^Priorité formation\s*:\s*(.+)$/u,"Squad priority: $1"],
+    [/^Donnée utilisée\s*:\s*(.+)$/u,"Data used: $1"],
+    [/^Preuve visible\s*:\s*(.+)$/u,"Visible evidence: $1"]
+  ];
+  for(const [re,repl] of rules){if(re.test(text))return text.replace(re,repl)}
+  return text;
+}
+
 function wb171T(key,lang=wb171Language){
   if(lang==="fr")return key;
-  return WB171_TRANSLATIONS[key]?.[lang]||key;
+  return wb2048FlexibleTranslation(key,lang);
 }
 let wb171Language=localStorage.getItem("wb17_language")||"fr";
 const wb171OriginalText=new WeakMap();
@@ -3692,7 +3750,7 @@ function wb171TranslateTextNode(node,lang){
   if(!trimmed)return;
   if(!wb171OriginalText.has(node))wb171OriginalText.set(node,trimmed);
   const original=wb171OriginalText.get(node);
-  const translated=lang==="fr"?original:(WB171_TRANSLATIONS[original]?.[lang]||original);
+  const translated=lang==="fr"?original:wb2048FlexibleTranslation(original,lang);
   const lead=raw.match(/^\s*/)?.[0]||"";
   const trail=raw.match(/\s*$/)?.[0]||"";
   const next=lead+translated+trail;
@@ -3746,7 +3804,12 @@ function setLanguage(lang){
   if(typeof wb194RenderAdminItems==="function"&&wb194AdminState?.items)wb194RenderAdminItems();
   if(typeof wb195RenderProposals==="function"&&wb195State?.items)wb195RenderProposals();
   if(typeof wb2034Render==="function"&&wb2034LastResult)wb2034Render(wb2034LastResult);
+  if(typeof wb2042RenderMemory==="function")wb2042RenderMemory();
+  if(typeof wb203RenderResult==="function"&&wb203LastResult)wb203RenderResult(wb203LastResult);
+  if(typeof wb2035RefreshLinkedLabel==="function")wb2035RefreshLinkedLabel();
   if(typeof wb20RefreshAppUI==="function")wb20RefreshAppUI();
+  queueMicrotask(()=>wb171TranslateElement(document.body,lang));
+  setTimeout(()=>wb171TranslateElement(document.body,lang),40);
   scheduleCloudSync("wb17_language");
 }
 const wb171Observer=new MutationObserver(mutations=>{

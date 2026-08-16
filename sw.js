@@ -1,4 +1,4 @@
-const WB_CACHE="warboost-v20-4-7-shell-1";
+const WB_CACHE="warboost-v20-4-8-shell-1";
 const WB_SHELL=[
   "/",
   "/index.html",
