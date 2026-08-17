@@ -55,28 +55,61 @@ async function handleUiTranslate(req,res){
 
 
 
-/* ===== V20.5.10 • ALLIANCE API COMPATIBILITY =====
+/* ===== V20.5.11 • VERIFIED ALLIANCE SYNC =====
+   Goal: a WarBoost R5/R4 account can sync only the alliance that LastWar Tools
+   currently reports for that authenticated account's Last War nickname.
+
+   Security model:
+   - The browser never chooses the alliance tag.
+   - WarBoost takes the Last War nickname from authenticated Supabase user metadata.
+   - The server searches that player on the selected server.
+   - The alliance tag is derived from that player record.
+   - WarBoost downloads that alliance roster and confirms the same player is present as R4/R5.
+   - Only then is the roster returned to the browser.
+
+   This prevents normal users from typing another alliance tag and syncing it.
+   It is not cryptographic ownership proof of a Last War account because Last War does
+   not expose an official account-linking OAuth/API to WarBoost.
+
    Reuses /api/player-scan so Vercel Hobby does not gain another Serverless Function.
    LASTWAR_TOOLS_API_KEY stays server-side.
-   Compatibility order:
-   1) current API style: api.lastwar.dev + Authorization: Bearer
-   2) legacy community API: api.lastwar.tools + X-API-Key
+
    Optional overrides:
+   - LASTWAR_TOOLS_PLAYER_SEARCH_URL (exact endpoint / template)
    - LASTWAR_TOOLS_ALLIANCE_MEMBERS_URL (exact endpoint / template)
    - LASTWAR_TOOLS_API_BASE (default https://api.lastwar.dev)
    - LASTWAR_TOOLS_AUTH_MODE = bearer | x-api-key | auto
 */
 const allianceSyncRate=globalThis.__warboostAllianceSyncRate||(globalThis.__warboostAllianceSyncRate=new Map());
+
 function parseUpstreamPower(v){
-  if(v==null)return 0;const raw=String(v).trim().toUpperCase().replace(/\s/g,"").replace(",", ".");
-  if(!raw)return 0;const n=parseFloat(raw);if(!Number.isFinite(n))return 0;
-  if(raw.endsWith("B"))return Math.round(n*1e9);if(raw.endsWith("M"))return Math.round(n*1e6);if(raw.endsWith("K"))return Math.round(n*1e3);return Math.round(n);
+  if(v==null)return 0;
+  const raw=String(v).trim().toUpperCase().replace(/\s/g,"").replace(",", ".");
+  if(!raw)return 0;
+  const n=parseFloat(raw);
+  if(!Number.isFinite(n))return 0;
+  if(raw.endsWith("B"))return Math.round(n*1e9);
+  if(raw.endsWith("M"))return Math.round(n*1e6);
+  if(raw.endsWith("K"))return Math.round(n*1e3);
+  return Math.round(n);
 }
 function normalizeAllianceRank(v){
-  const x=String(v??"").trim().toUpperCase();const m=x.match(/R?([1-5])/);if(m)return `R${m[1]}`;
-  const n=Number(v);return n>=1&&n<=5?`R${n}`:"R3";
+  const x=String(v??"").trim().toUpperCase();
+  const m=x.match(/R?([1-5])/);
+  if(m)return `R${m[1]}`;
+  const n=Number(v);
+  return n>=1&&n<=5?`R${n}`:"R3";
 }
-function firstValue(obj,keys){for(const k of keys){const v=obj?.[k];if(v!==undefined&&v!==null&&v!=="")return v}return null}
+function firstValue(obj,keys){
+  for(const k of keys){
+    const v=obj?.[k];
+    if(v!==undefined&&v!==null&&v!=="")return v;
+  }
+  return null;
+}
+function normalizeName(v){
+  return String(v||"").trim().normalize("NFKC").toLocaleLowerCase();
+}
 function extractAllianceMembers(data){
   const candidates=[
     data?.members,data?.players,data?.items,data?.results,
@@ -101,88 +134,274 @@ function normalizeAllianceMember(m){
     player_id:firstValue(m,["player_id","id","uid","playerId"])||null
   };
 }
-function allianceUrlWithParams(raw,serverId,tag){
-  const templated=String(raw||"").replaceAll("{server_id}",encodeURIComponent(serverId)).replaceAll("{server}",encodeURIComponent(serverId)).replaceAll("{alliance_tag}",encodeURIComponent(tag)).replaceAll("{tag}",encodeURIComponent(tag));
-  if(/\{(?:server_id|server|alliance_tag|tag)\}/.test(String(raw||""))===false && templated!==String(raw||""))return templated;
+function extractPlayerRecord(data){
+  const candidates=[
+    data?.player,data?.result?.player,data?.data?.player,
+    data?.result,data?.data,
+    Array.isArray(data?.players)?data.players[0]:null,
+    Array.isArray(data?.results)?data.results[0]:null,
+    Array.isArray(data?.data?.players)?data.data.players[0]:null,
+    Array.isArray(data?.data?.results)?data.data.results[0]:null
+  ];
+  const p=candidates.find(x=>x&&typeof x==="object"&&!Array.isArray(x));
+  if(!p)return null;
+  const name=String(firstValue(p,["name","player_name","commander_name","username","nickname","display_name"])||"").trim();
+  if(!name)return null;
+  const allianceObj=p?.alliance&&typeof p.alliance==="object"?p.alliance:{};
+  const allianceTag=String(
+    firstValue(p,["alliance_tag","allianceTag","tag"])||
+    firstValue(allianceObj,["tag","alliance_tag","name"])||""
+  ).trim();
+  const server=String(firstValue(p,["server_id","server","serverId","zone_id","kingdom"])||"").trim();
+  const hq=Number(firstValue(p,["hq_level","hq","base_level","headquarters_level","level","hqLevel"]))||null;
+  const roleRaw=firstValue(p,["role","rank","alliance_role","member_role","r_level","allianceRank"]);
+  const allianceId=firstValue(p,["alliance_id","allianceId"])||firstValue(allianceObj,["id","alliance_id","allianceId"])||null;
+  return {
+    name,
+    server_id:server||null,
+    alliance_tag:allianceTag||null,
+    alliance_id:allianceId,
+    rank:roleRaw!=null?normalizeAllianceRank(roleRaw):null,
+    hq_level:hq,
+    player_id:firstValue(p,["player_id","id","uid","playerId"])||null
+  };
+}
+function lastwarAuthModes(family){
+  const forced=String(process.env.LASTWAR_TOOLS_AUTH_MODE||"auto").trim().toLowerCase();
+  if(forced==="bearer")return ["bearer"];
+  if(forced==="x-api-key"||forced==="x_api_key"||forced==="xapikey")return ["x-api-key"];
+  return family==="legacy"?["x-api-key","bearer"]:["bearer","x-api-key"];
+}
+function lastwarHeaders(apiKey,mode){
+  const h={Accept:"application/json","User-Agent":"WarBoost/20.5.11"};
+  if(mode==="bearer")h.Authorization=`Bearer ${apiKey}`;
+  else h["X-API-Key"]=apiKey;
+  return h;
+}
+function publicUpstreamError(status,kind="API"){
+  if(status===401||status===403)return "Clé LastWar Tools refusée. Vérifie LASTWAR_TOOLS_API_KEY dans Vercel.";
+  if(status===404||status===405)return `Le point d’accès ${kind} n’a pas été trouvé.`;
+  if(status===429)return "Quota LastWar Tools atteint. Réessaie plus tard.";
+  return `LastWar Tools indisponible (${status}).`;
+}
+function templateUrl(raw,replacements={}){
+  let out=String(raw||"");
+  for(const [k,v] of Object.entries(replacements))out=out.replaceAll(`{${k}}`,encodeURIComponent(String(v??"")));
+  return out;
+}
+function playerUrlWithParams(raw,serverId,playerName){
+  const templated=templateUrl(raw,{server_id:serverId,server:serverId,name:playerName,player_name:playerName});
   const u=new URL(templated);
-  // Keep both modern and legacy parameter names. Unknown query params are harmless on the community API,
-  // while this makes WarBoost tolerant to the current API migration.
+  if(!u.searchParams.has("name"))u.searchParams.set("name",playerName);
+  if(!u.searchParams.has("server_id"))u.searchParams.set("server_id",serverId);
+  if(u.hostname==="api.lastwar.dev"&&!u.searchParams.has("server"))u.searchParams.set("server",serverId);
+  return u.toString();
+}
+function playerEndpointCandidates(serverId,playerName){
+  const configured=String(process.env.LASTWAR_TOOLS_PLAYER_SEARCH_URL||"").trim();
+  if(configured)return [{url:playerUrlWithParams(configured,serverId,playerName),family:"configured"}];
+  const base=String(process.env.LASTWAR_TOOLS_API_BASE||"https://api.lastwar.dev").replace(/\/+$/,"");
+  const raw=[
+    {url:`${base}/v1/player/search`,family:"modern"},
+    {url:`${base}/world/find-player`,family:"modern"},
+    {url:"https://api.lastwar.tools/world/find-player",family:"legacy"}
+  ];
+  const seen=new Set();
+  return raw.map(x=>({...x,url:playerUrlWithParams(x.url,serverId,playerName)}))
+    .filter(x=>!seen.has(x.url)&&seen.add(x.url));
+}
+function allianceUrlWithParams(raw,serverId,tag,allianceId){
+  const templated=templateUrl(raw,{
+    server_id:serverId,server:serverId,alliance_tag:tag,tag,
+    alliance_id:allianceId||"",id:allianceId||""
+  });
+  const u=new URL(templated);
   if(!u.searchParams.has("server_id"))u.searchParams.set("server_id",serverId);
   if(!u.searchParams.has("alliance_tag"))u.searchParams.set("alliance_tag",tag);
+  if(allianceId&&!u.searchParams.has("alliance_id"))u.searchParams.set("alliance_id",allianceId);
   if(u.hostname==="api.lastwar.dev"){
     if(!u.searchParams.has("server"))u.searchParams.set("server",serverId);
     if(!u.searchParams.has("tag"))u.searchParams.set("tag",tag);
   }
   return u.toString();
 }
-function allianceEndpointCandidates(serverId,tag){
+function allianceEndpointCandidates(serverId,tag,allianceId){
   const configured=String(process.env.LASTWAR_TOOLS_ALLIANCE_MEMBERS_URL||"").trim();
-  if(configured)return [{url:allianceUrlWithParams(configured,serverId,tag),family:"configured"}];
+  if(configured)return [{url:allianceUrlWithParams(configured,serverId,tag,allianceId),family:"configured"}];
   const base=String(process.env.LASTWAR_TOOLS_API_BASE||"https://api.lastwar.dev").replace(/\/+$/,"");
   const raw=[
     {url:`${base}/v1/alliance/members`,family:"modern"},
-    // Some migrations keep the old route while moving the host/authentication.
+    {url:`${base}/v1/alliances/members`,family:"modern"},
+    {url:`${base}/v1/alliance/${encodeURIComponent(tag)}/members`,family:"modern"},
+    {url:`${base}/v1/alliances/${encodeURIComponent(tag)}/members`,family:"modern"},
+    ...(allianceId?[
+      {url:`${base}/v1/alliance/${encodeURIComponent(String(allianceId))}/members`,family:"modern"},
+      {url:`${base}/v1/alliances/${encodeURIComponent(String(allianceId))}/members`,family:"modern"}
+    ]:[]),
     {url:`${base}/world/alliance-members`,family:"modern"},
     {url:"https://api.lastwar.tools/world/alliance-members",family:"legacy"}
   ];
-  const seen=new Set();return raw.map(x=>({...x,url:allianceUrlWithParams(x.url,serverId,tag)})).filter(x=>!seen.has(x.url)&&seen.add(x.url));
+  const seen=new Set();
+  return raw.map(x=>({...x,url:allianceUrlWithParams(x.url,serverId,tag,allianceId)}))
+    .filter(x=>!seen.has(x.url)&&seen.add(x.url));
 }
-function allianceAuthModes(family){
-  const forced=String(process.env.LASTWAR_TOOLS_AUTH_MODE||"auto").trim().toLowerCase();
-  if(forced==="bearer")return ["bearer"];if(forced==="x-api-key"||forced==="x_api_key"||forced==="xapikey")return ["x-api-key"];
-  return family==="legacy"?["x-api-key","bearer"]:["bearer","x-api-key"];
+async function fetchLastWarJson(url,apiKey,authMode,timeoutMs=16000){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const r=await fetch(url,{method:"GET",signal:controller.signal,headers:lastwarHeaders(apiKey,authMode)});
+    const raw=await r.text();
+    let data={};
+    try{data=raw?JSON.parse(raw):{}}catch{data={raw:String(raw||"").slice(0,500)}}
+    return {r,data,raw};
+  }finally{clearTimeout(timer)}
 }
-function allianceHeaders(apiKey,mode){
-  const h={Accept:"application/json","User-Agent":"WarBoost/20.5.10"};
-  if(mode==="bearer")h.Authorization=`Bearer ${apiKey}`;else h["X-API-Key"]=apiKey;
-  return h;
-}
-function alliancePublicUpstreamError(status){
-  if(status===401||status===403)return "Clé LastWar Tools refusée. Vérifie LASTWAR_TOOLS_API_KEY dans Vercel.";
-  if(status===404||status===405)return "Le point d’accès Alliance Members n’a pas été trouvé.";
-  if(status===429)return "Quota LastWar Tools atteint. Réessaie plus tard.";
-  return `LastWar Tools indisponible (${status}).`;
-}
-async function handleAllianceSync(req,res){
-  let user;
-  try{user=await authUser(req);if(!user)return json(res,401,{error:"Connecte ton compte WarBoost pour synchroniser ton alliance."});const sub=await getSubscription(user.id);if(!isPro(sub))return json(res,403,{error:"La synchronisation automatique d’alliance est réservée à WarBoost PRO."})}
-  catch(e){console.error("alliance sync entitlement",e);return json(res,503,{error:"Vérification du compte WarBoost indisponible."})}
-  const now=Date.now(),last=Number(allianceSyncRate.get(user.id)||0);if(now-last<45000)return json(res,429,{error:"Patiente quelques secondes avant une nouvelle synchronisation.",retry_after:Math.ceil((45000-(now-last))/1000)});allianceSyncRate.set(user.id,now);
-  const apiKey=String(process.env.LASTWAR_TOOLS_API_KEY||"").trim();if(!apiKey)return json(res,503,{error:"La connexion LastWar Tools n’est pas encore configurée dans Vercel (LASTWAR_TOOLS_API_KEY)."});
-  const serverId=String(req.body?.server_id||"").trim(),tag=String(req.body?.alliance_tag||"").trim();
-  if(!/^\d{1,6}$/.test(serverId))return json(res,400,{error:"Numéro de serveur invalide."});if(!tag||tag.length>20)return json(res,400,{error:"Tag alliance invalide."});
-  const attempts=[];let lastError="Connexion LastWar Tools impossible.";
-  for(const endpoint of allianceEndpointCandidates(serverId,tag)){
-    for(const authMode of allianceAuthModes(endpoint.family)){
-      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),16000);
+async function findAuthenticatedPlayer(apiKey,serverId,accountName,attempts){
+  let lastError="Profil Last War introuvable.";
+  for(const endpoint of playerEndpointCandidates(serverId,accountName)){
+    for(const authMode of lastwarAuthModes(endpoint.family)){
       try{
-        const r=await fetch(endpoint.url,{method:"GET",signal:controller.signal,headers:allianceHeaders(apiKey,authMode)});
-        const raw=await r.text();let data={};try{data=raw?JSON.parse(raw):{}}catch{data={raw:raw?.slice?.(0,500)||""}}
-        attempts.push({family:endpoint.family,auth:authMode,status:r.status});
+        const {r,data,raw}=await fetchLastWarJson(endpoint.url,apiKey,authMode);
+        attempts.push({kind:"player",family:endpoint.family,auth:authMode,status:r.status});
+        if(r.ok){
+          const player=extractPlayerRecord(data);
+          if(player){
+            if(normalizeName(player.name)!==normalizeName(accountName)){
+              lastError="Le profil retourné ne correspond pas exactement au pseudo de ton compte WarBoost.";
+              continue;
+            }
+            if(player.server_id&&String(player.server_id)!==String(serverId)){
+              lastError="Le profil trouvé appartient à un autre serveur.";
+              continue;
+            }
+            if(!player.alliance_tag){
+              lastError="Ton profil Last War ne semble appartenir à aucune alliance actuellement.";
+              continue;
+            }
+            return {player,api_compat:endpoint.family,auth_compat:authMode};
+          }
+          lastError="LastWar Tools n’a pas retourné de profil joueur exploitable.";
+          break;
+        }
+        lastError=publicUpstreamError(r.status,"Player Search");
+        console.error("LastWar Tools player lookup",{family:endpoint.family,auth:authMode,status:r.status,body:String(raw).slice(0,300)});
+        if(r.status===429)throw Object.assign(new Error(lastError),{status:429});
+        if(r.status===401||r.status===403)continue;
+        break;
+      }catch(e){
+        if(e?.status===429)throw e;
+        attempts.push({kind:"player",family:endpoint.family,auth:authMode,status:e?.name==="AbortError"?504:0});
+        lastError=e?.name==="AbortError"?"LastWar Tools met trop de temps à répondre.":"Connexion LastWar Tools impossible.";
+      }
+    }
+  }
+  throw new Error(lastError);
+}
+async function fetchVerifiedAllianceMembers(apiKey,serverId,player,attempts){
+  const tag=String(player.alliance_tag||"").trim();
+  let lastError="Connexion Alliance Members impossible.";
+  for(const endpoint of allianceEndpointCandidates(serverId,tag,player.alliance_id)){
+    for(const authMode of lastwarAuthModes(endpoint.family)){
+      try{
+        const {r,data,raw}=await fetchLastWarJson(endpoint.url,apiKey,authMode);
+        attempts.push({kind:"alliance",family:endpoint.family,auth:authMode,status:r.status});
         if(r.ok){
           const members=extractAllianceMembers(data).map(normalizeAllianceMember).filter(Boolean).slice(0,100);
           if(members.length){
             const a=data?.alliance||data?.data?.alliance||data?.meta?.alliance||{};
-            const returnedTag=String(firstValue(a,["tag","alliance_tag","name"])||data?.alliance_tag||tag);
+            const returnedTag=String(firstValue(a,["tag","alliance_tag"])||data?.alliance_tag||tag).trim()||tag;
             const returnedServer=String(firstValue(a,["server_id","server"])||data?.server_id||serverId);
-            return json(res,200,{provider:"LastWar Tools",source:"community_api",api_compat:endpoint.family,auth_compat:authMode,synced_at:new Date().toISOString(),alliance:{tag:returnedTag,server_id:returnedServer,name:firstValue(a,["name","alliance_name"])||null},members});
+            if(normalizeName(returnedTag)!==normalizeName(tag)){
+              lastError="L’API a retourné une autre alliance que celle de ton profil Last War.";
+              continue;
+            }
+            const self=members.find(m=>normalizeName(m.name)===normalizeName(player.name));
+            if(!self){
+              lastError="Ton joueur n’apparaît pas dans le roster retourné pour cette alliance.";
+              continue;
+            }
+            if(!["R4","R5"].includes(String(self.rank||"").toUpperCase())){
+              const err=new Error("La synchronisation complète est réservée aux membres R4/R5 de leur propre alliance.");
+              err.status=403;throw err;
+            }
+            return {
+              members,self,
+              alliance:{tag:returnedTag,server_id:returnedServer,name:firstValue(a,["name","alliance_name"])||null},
+              api_compat:endpoint.family,auth_compat:authMode
+            };
           }
-          lastError="La réponse LastWar Tools ne contient aucun membre pour cette alliance.";
-          break; // alternate authentication cannot change a valid but empty payload
+          lastError="La réponse LastWar Tools ne contient aucun membre pour ton alliance.";
+          break;
         }
-        lastError=alliancePublicUpstreamError(r.status);
+        lastError=publicUpstreamError(r.status,"Alliance Members");
         console.error("LastWar Tools alliance sync",{family:endpoint.family,auth:authMode,status:r.status,body:String(raw).slice(0,300)});
-        if(r.status===429)return json(res,429,{error:lastError});
-        if(r.status===401||r.status===403)continue; // only auth errors justify trying the alternate header
-        break; // endpoint/parameter/server errors -> move to the next compatible route without wasting tokens
+        if(r.status===429)throw Object.assign(new Error(lastError),{status:429});
+        if(r.status===401||r.status===403)continue;
+        break;
       }catch(e){
-        attempts.push({family:endpoint.family,auth:authMode,status:e?.name==="AbortError"?504:0});
+        if(e?.status===403||e?.status===429)throw e;
+        attempts.push({kind:"alliance",family:endpoint.family,auth:authMode,status:e?.name==="AbortError"?504:0});
         lastError=e?.name==="AbortError"?"LastWar Tools met trop de temps à répondre.":"Connexion LastWar Tools impossible.";
-        console.error("LastWar Tools sync",endpoint.family,authMode,e);
-      }finally{clearTimeout(timer)}
+      }
     }
   }
-  return json(res,502,{error:`${lastError} WarBoost a essayé automatiquement les formats API actuels et historiques.`,compat_attempts:attempts.map(x=>`${x.family}:${x.auth}:${x.status}`)});
+  throw new Error(lastError);
+}
+async function handleAllianceSync(req,res){
+  let user;
+  try{
+    user=await authUser(req);
+    if(!user)return json(res,401,{error:"Connecte ton compte WarBoost pour synchroniser ton alliance."});
+    const sub=await getSubscription(user.id);
+    if(!isPro(sub))return json(res,403,{error:"La synchronisation automatique d’alliance est réservée à WarBoost PRO."});
+  }catch(e){
+    console.error("alliance sync entitlement",e);
+    return json(res,503,{error:"Vérification du compte WarBoost indisponible."});
+  }
+
+  const now=Date.now(),last=Number(allianceSyncRate.get(user.id)||0);
+  if(now-last<45000)return json(res,429,{error:"Patiente quelques secondes avant une nouvelle synchronisation.",retry_after:Math.ceil((45000-(now-last))/1000)});
+  allianceSyncRate.set(user.id,now);
+
+  const apiKey=String(process.env.LASTWAR_TOOLS_API_KEY||"").trim();
+  if(!apiKey)return json(res,503,{error:"La connexion LastWar Tools n’est pas encore configurée dans Vercel (LASTWAR_TOOLS_API_KEY)."});
+
+  const serverId=String(req.body?.server_id||"").trim();
+  if(!/^\d{1,6}$/.test(serverId))return json(res,400,{error:"Numéro de serveur invalide."});
+
+  // Critical V20.5.11 guard: alliance_tag from the browser is intentionally ignored.
+  const accountName=String(user?.user_metadata?.display_name||"").trim();
+  if(!accountName)return json(res,400,{error:"Ajoute ton pseudo Last War comme nom de ton compte WarBoost avant de synchroniser."});
+
+
+  const attempts=[];
+  try{
+    const identity=await findAuthenticatedPlayer(apiKey,serverId,accountName,attempts);
+    const roster=await fetchVerifiedAllianceMembers(apiKey,serverId,identity.player,attempts);
+    return json(res,200,{
+      provider:"LastWar Tools",
+      source:"community_api",
+      identity_verified:true,
+      synced_at:new Date().toISOString(),
+      verified_player:{
+        name:roster.self.name,
+        rank:roster.self.rank,
+        server_id:String(serverId),
+        alliance_tag:roster.alliance.tag,
+        player_id:roster.self.player_id||identity.player.player_id||null
+      },
+      alliance:roster.alliance,
+      members:roster.members,
+      api_compat:{player:identity.api_compat,alliance:roster.api_compat},
+      auth_compat:{player:identity.auth_compat,alliance:roster.auth_compat}
+    });
+  }catch(e){
+    const status=e?.status===403?403:e?.status===429?429:502;
+    console.error("verified alliance sync",e);
+    return json(res,status,{
+      error:`${e?.message||"Synchronisation vérifiée impossible."} WarBoost ne permet pas de choisir une autre alliance : elle doit être celle trouvée pour ton profil Last War.`,
+      compat_attempts:attempts.map(x=>`${x.kind}:${x.family}:${x.auth}:${x.status}`)
+    });
+  }
 }
 
 export default async function handler(req,res){
