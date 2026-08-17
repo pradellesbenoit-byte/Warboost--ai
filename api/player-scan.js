@@ -55,7 +55,7 @@ async function handleUiTranslate(req,res){
 
 
 
-/* ===== V20.5.14 • VERIFIED ALLIANCE SYNC =====
+/* ===== V20.5.15 • VERIFIED ALLIANCE SYNC =====
    Goal: a WarBoost R5/R4 account can sync only the alliance that LastWar Tools
    currently reports for that authenticated account's Last War nickname.
 
@@ -170,14 +170,14 @@ function lastwarCurrentHeaders(apiKey){
   return {
     Accept:"application/json",
     Authorization:`Bearer ${apiKey}`,
-    "User-Agent":"WarBoost/20.5.14"
+    "User-Agent":"WarBoost/20.5.15"
   };
 }
 function lastwarLegacyHeaders(apiKey){
   return {
     Accept:"application/json",
     "X-API-Key":apiKey,
-    "User-Agent":"WarBoost/20.5.14"
+    "User-Agent":"WarBoost/20.5.15"
   };
 }
 function publicUpstreamError(status,kind="API",provider="current"){
@@ -320,7 +320,7 @@ async function safeAllianceRoster(apiKey,serverId,player){
   if(!self)throw diagnosticError("Ton joueur n’apparaît pas dans le roster retourné pour l’alliance détectée. Import refusé.",{status:403,stage:"self_missing",upstream_status:r.status,token_calls:1});
   if(!["R4","R5"].includes(String(self.rank||"").toUpperCase()))throw diagnosticError("La synchronisation complète est réservée aux membres R4/R5 de leur propre alliance.",{status:403,stage:"rank_check",upstream_status:r.status,token_calls:1});
   return {
-    members,self,
+    members,self,raw:data,
     alliance:{tag:returnedTag,server_id:returnedServer,name:firstValue(a,["name","alliance_name"])||null},
     http_status:r.status,token_calls:1
   };
@@ -417,12 +417,112 @@ async function handleAllianceSync(req,res){
   }
 }
 
+
+
+/* ===== V20.5.15 • VS LIVE INTELLIGENCE =====
+   The community API publicly documents Player Search / Alliance Members, but a weekly
+   VS-matchup endpoint is not currently part of the public feature list. WarBoost therefore:
+   1) verifies the caller's own R4/R5 alliance;
+   2) reads opponent metadata if the provider already includes it in the alliance payload;
+   3) optionally calls LASTWAR_TOOLS_VS_MATCHUP_URL when an exact provider route is configured;
+   4) otherwise accepts one manual opponent tag/server as a fallback, but NEVER imports it
+      as the user's own alliance. It is used only for VS comparison.
+*/
+function allianceSummary(alliance,members=[]){
+  const powers=(members||[]).map(x=>Number(x?.power||0)).filter(x=>x>0).sort((x,y)=>y-x);
+  const total=powers.reduce((x,y)=>x+y,0),avg=powers.length?Math.round(total/powers.length):0,top10=powers.slice(0,10).reduce((x,y)=>x+y,0);
+  return {tag:String(alliance?.tag||""),name:alliance?.name||null,server_id:String(alliance?.server_id||""),members:(members||[]).length,total_power:total,avg_power:avg,top10_power:top10};
+}
+function normalizeOpponentCandidate(v,defaultServer=""){
+  if(!v)return null;
+  if(typeof v==="string")return {tag:v.trim(),server_id:String(defaultServer||"")};
+  if(typeof v!=="object"||Array.isArray(v))return null;
+  const nested=(v.alliance&&typeof v.alliance==="object")?v.alliance:{};
+  const tag=String(firstValue(v,["tag","alliance_tag","opponent_tag","enemy_tag","vs_opponent_tag"])||firstValue(nested,["tag","alliance_tag"])||"").trim();
+  if(!tag)return null;
+  return {tag,server_id:String(firstValue(v,["server_id","server","opponent_server","enemy_server","vs_opponent_server"])||firstValue(nested,["server_id","server"])||defaultServer||""),alliance_id:firstValue(v,["alliance_id","id"])||firstValue(nested,["alliance_id","id"])||null,name:String(firstValue(v,["name","alliance_name","opponent_name"])||firstValue(nested,["name","alliance_name"])||"").trim()||null};
+}
+function extractVsOpponent(data,defaultServer=""){
+  const candidates=[
+    data?.vs_opponent,data?.opponent,data?.enemy,data?.duel_opponent,data?.alliance_duel_opponent,
+    data?.vs?.opponent,data?.duel?.opponent,data?.matchup?.opponent,data?.weekly_vs?.opponent,
+    data?.data?.vs_opponent,data?.data?.opponent,data?.data?.vs?.opponent,data?.data?.duel?.opponent,data?.data?.matchup?.opponent,
+    data?.meta?.vs_opponent,data?.meta?.opponent,data?.meta?.matchup?.opponent
+  ];
+  for(const c of candidates){const n=normalizeOpponentCandidate(c,defaultServer);if(n)return n}
+  return null;
+}
+function vsMatchupUrl(serverId,ownTag,ownAllianceId){
+  const configured=String(process.env.LASTWAR_TOOLS_VS_MATCHUP_URL||"").trim();
+  if(!configured)return null;
+  const u=new URL(templateUrl(configured,{server_id:serverId,server:serverId,alliance_tag:ownTag,tag:ownTag,alliance_id:ownAllianceId||"",id:ownAllianceId||""}));
+  if(!u.searchParams.has("server")&&!u.searchParams.has("server_id"))u.searchParams.set("server",serverId);
+  if(!u.searchParams.has("tag")&&!u.searchParams.has("alliance_tag"))u.searchParams.set("tag",ownTag);
+  return u.toString();
+}
+async function fetchVsOpponentFromConfiguredEndpoint(apiKey,serverId,ownAlliance){
+  const url=vsMatchupUrl(serverId,ownAlliance?.tag,ownAlliance?.alliance_id);
+  if(!url)return {opponent:null,token_calls:0,source:null};
+  let result;
+  try{result=await fetchLastWarSafe(url,allianceHeadersForUrl(url,apiKey),14000)}catch(e){return {opponent:null,token_calls:1,source:"matchup_endpoint",error:e?.name==="AbortError"?"timeout":"network"}}
+  const {r,data}=result;if(!r.ok)return {opponent:null,token_calls:1,source:"matchup_endpoint",http_status:r.status};
+  return {opponent:extractVsOpponent(data,serverId),token_calls:1,source:"matchup_endpoint",http_status:r.status};
+}
+async function safeOpponentRoster(apiKey,serverId,opponent){
+  const tag=String(opponent?.tag||"").trim();
+  if(!tag)throw diagnosticError("Tag de l’alliance adverse manquant.",{status:400,stage:"opponent_input",token_calls:0});
+  const url=safeAllianceMembersUrl(serverId,tag,opponent?.alliance_id||null),headers=allianceHeadersForUrl(url,apiKey);
+  let result;
+  try{result=await fetchLastWarSafe(url,headers,16000)}catch(e){throw diagnosticError(e?.name==="AbortError"?"Le roster adverse met trop de temps à répondre.":"Connexion au roster adverse impossible.",{status:e?.name==="AbortError"?504:502,stage:"opponent_roster",token_calls:1})}
+  const {r,data}=result;
+  if(!r.ok)throw diagnosticError(publicUpstreamError(r.status,"Alliance Members adverse"),{status:r.status===429?429:502,stage:"opponent_roster",upstream_status:r.status,token_calls:1});
+  const members=extractAllianceMembers(data).map(normalizeAllianceMember).filter(Boolean).slice(0,100);
+  if(!members.length)throw diagnosticError("Le roster de l’alliance adverse ne contient aucun membre exploitable.",{status:502,stage:"opponent_empty",upstream_status:r.status,token_calls:1});
+  const aa=data?.alliance||data?.data?.alliance||data?.meta?.alliance||{};
+  const returnedTag=String(firstValue(aa,["tag","alliance_tag"])||data?.alliance_tag||tag).trim()||tag;
+  return {members,alliance:{tag:returnedTag,server_id:String(firstValue(aa,["server_id","server"])||data?.server_id||serverId),name:firstValue(aa,["name","alliance_name"])||opponent?.name||null},raw:data,token_calls:1};
+}
+async function handleVsWeeklySync(req,res){
+  const user=await requireAllianceEntitlement(req,res);if(!user)return;
+  const apiKey=String(process.env.LASTWAR_TOOLS_API_KEY||"").trim();
+  if(!apiKey)return json(res,503,{error:"La connexion LastWar Tools n’est pas configurée dans Vercel.",stage:"configuration",token_calls:0});
+  let identity;try{identity=allianceRequestIdentity(req,user)}catch(e){return json(res,e.status||400,{error:e.message,stage:e.stage||"input",token_calls:0})}
+  let calls=0;const hint=String(req.body?.provider_hint||"").toLowerCase();
+  try{
+    const probe=await smartPlayerProbe(apiKey,identity.serverId,identity.accountName,hint);calls+=Number(probe.token_calls||0);
+    if(probe.fallback_used&&probe.token_calls>=2)return json(res,200,{requires_retry:true,provider_mode:probe.provider,token_calls:calls,message:"Mode API compatible détecté sans dépasser 2 appels. Relance la synchronisation VS pour utiliser directement ce mode."});
+    const ownRoster=await safeAllianceRoster(apiKey,identity.serverId,probe.player);calls+=Number(ownRoster.token_calls||0);
+    const own=allianceSummary(ownRoster.alliance,ownRoster.members);
+    let opponent=extractVsOpponent(ownRoster.raw,identity.serverId),opponentSource=opponent?"alliance_payload":null;
+    if(!opponent){const m=await fetchVsOpponentFromConfiguredEndpoint(apiKey,identity.serverId,{...ownRoster.alliance,alliance_id:probe.player.alliance_id});calls+=Number(m.token_calls||0);opponent=m.opponent;if(opponent)opponentSource=m.source}
+    const manualTag=String(req.body?.manual_opponent_tag||"").trim(),manualServer=String(req.body?.manual_opponent_server||"").trim();
+    if(!opponent&&manualTag){
+      if(!/^\d{1,6}$/.test(manualServer))throw diagnosticError("Serveur de l’alliance adverse invalide.",{status:400,stage:"opponent_input",token_calls:0});
+      opponent={tag:manualTag,server_id:manualServer};opponentSource="manual_fallback";
+    }
+    if(!opponent){
+      return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,source:"community_api",synced_at:new Date().toISOString(),token_calls:calls,requires_opponent:true,own_alliance:own,opponent_alliance:null,opponent_source:null,message:"Ton alliance R4/R5 est vérifiée. Le fournisseur ne publie pas encore l’adversaire VS dans les données disponibles : renseigne uniquement l’adversaire une fois dans le mode secours."});
+    }
+    const oppServer=String(opponent.server_id||"").trim();
+    if(!/^\d{1,6}$/.test(oppServer))return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,synced_at:new Date().toISOString(),token_calls:calls,requires_opponent:true,own_alliance:own,opponent_alliance:null,opponent_source:opponentSource,message:"L’adversaire VS a été détecté, mais son serveur n’est pas fourni. Renseigne son serveur une fois dans le mode secours."});
+    if(normalizeName(opponent.tag)===normalizeName(own.tag)&&String(oppServer)===String(own.server_id))throw diagnosticError("Le matchup retourné correspond à ta propre alliance. Analyse refusée.",{status:409,stage:"opponent_same",token_calls:0});
+    const oppRoster=await safeOpponentRoster(apiKey,oppServer,opponent);calls+=Number(oppRoster.token_calls||0);
+    const opp=allianceSummary(oppRoster.alliance,oppRoster.members);
+    return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,source:"community_api",source_label:opponentSource==="manual_fallback"?"Adversaire renseigné une fois":"Adversaire détecté via API",synced_at:new Date().toISOString(),token_calls:calls,requires_opponent:false,opponent_source:opponentSource,own_alliance:own,opponent_alliance:opp});
+  }catch(e){
+    calls+=Number(e?.token_calls||0);console.error("vs weekly sync",{stage:e?.stage,status:e?.upstream_status,message:e?.message});
+    const status=[400,401,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
+    return json(res,status,{error:e?.message||"Synchronisation VS impossible.",stage:e?.stage||"unknown",http_status:e?.upstream_status||null,token_calls:calls});
+  }
+}
+
 export default async function handler(req,res){
   if(req.method!=="POST")return json(res,405,{error:"Méthode non autorisée."});
 
   // Alliance sync is data infrastructure: no OpenAI call and no WarBoost AI credit.
   if(String(req.body?.mode||"").toLowerCase()==="alliance_api_diagnostic")return handleAllianceApiDiagnostic(req,res);
   if(String(req.body?.mode||"").toLowerCase()==="alliance_sync")return handleAllianceSync(req,res);
+  if(String(req.body?.mode||"").toLowerCase()==="vs_weekly_sync")return handleVsWeeklySync(req,res);
   if(!process.env.OPENAI_API_KEY)return json(res,500,{error:"OPENAI_API_KEY manquante dans Vercel."});
 
   // UI translation is intentionally handled before account/PRO checks.
