@@ -55,7 +55,7 @@ async function handleUiTranslate(req,res){
 
 
 
-/* ===== V20.5.11 • VERIFIED ALLIANCE SYNC =====
+/* ===== V20.5.12 • VERIFIED ALLIANCE SYNC =====
    Goal: a WarBoost R5/R4 account can sync only the alliance that LastWar Tools
    currently reports for that authenticated account's Last War nickname.
 
@@ -173,7 +173,7 @@ function lastwarAuthModes(family){
   return family==="legacy"?["x-api-key","bearer"]:["bearer","x-api-key"];
 }
 function lastwarHeaders(apiKey,mode){
-  const h={Accept:"application/json","User-Agent":"WarBoost/20.5.11"};
+  const h={Accept:"application/json","User-Agent":"WarBoost/20.5.12"};
   if(mode==="bearer")h.Authorization=`Bearer ${apiKey}`;
   else h["X-API-Key"]=apiKey;
   return h;
@@ -368,9 +368,13 @@ async function handleAllianceSync(req,res){
   const serverId=String(req.body?.server_id||"").trim();
   if(!/^\d{1,6}$/.test(serverId))return json(res,400,{error:"Numéro de serveur invalide."});
 
-  // Critical V20.5.11 guard: alliance_tag from the browser is intentionally ignored.
-  const accountName=String(user?.user_metadata?.display_name||"").trim();
-  if(!accountName)return json(res,400,{error:"Ajoute ton pseudo Last War comme nom de ton compte WarBoost avant de synchroniser."});
+  // Critical V20.5.12 guard: alliance_tag from the browser is intentionally ignored.
+  // The user may type a Last War nickname because generic WarBoost display names (e.g. "Joueur") are not usable for player search.
+  // The backend still derives the alliance only from the player record and never trusts a client-provided alliance tag.
+  const requestedName=String(req.body?.player_name||"").trim();
+  const metadataName=String(user?.user_metadata?.display_name||"").trim();
+  const accountName=requestedName||metadataName;
+  if(!accountName || accountName.length<2 || accountName.length>64)return json(res,400,{error:"Indique ton pseudo Last War exact."});
 
 
   const attempts=[];
@@ -398,7 +402,7 @@ async function handleAllianceSync(req,res){
     const status=e?.status===403?403:e?.status===429?429:502;
     console.error("verified alliance sync",e);
     return json(res,status,{
-      error:`${e?.message||"Synchronisation vérifiée impossible."} WarBoost ne permet pas de choisir une autre alliance : elle doit être celle trouvée pour ton profil Last War.`,
+      error:`${e?.message||"Synchronisation vérifiée impossible."} WarBoost ne permet pas de saisir directement une autre alliance : le tag est dérivé du profil Last War correspondant au pseudo fourni.`,
       compat_attempts:attempts.map(x=>`${x.kind}:${x.family}:${x.auth}:${x.status}`)
     });
   }
