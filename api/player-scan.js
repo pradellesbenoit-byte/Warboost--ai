@@ -55,7 +55,7 @@ async function handleUiTranslate(req,res){
 
 
 
-/* ===== V20.5.15 • VERIFIED ALLIANCE SYNC =====
+/* ===== V20.5.16 • VERIFIED ALLIANCE SYNC =====
    Goal: a WarBoost R5/R4 account can sync only the alliance that LastWar Tools
    currently reports for that authenticated account's Last War nickname.
 
@@ -170,14 +170,14 @@ function lastwarCurrentHeaders(apiKey){
   return {
     Accept:"application/json",
     Authorization:`Bearer ${apiKey}`,
-    "User-Agent":"WarBoost/20.5.15"
+    "User-Agent":"WarBoost/20.5.16"
   };
 }
 function lastwarLegacyHeaders(apiKey){
   return {
     Accept:"application/json",
     "X-API-Key":apiKey,
-    "User-Agent":"WarBoost/20.5.15"
+    "User-Agent":"WarBoost/20.5.16"
   };
 }
 function publicUpstreamError(status,kind="API",provider="current"){
@@ -270,7 +270,7 @@ async function safePlayerProbeMode(apiKey,serverId,accountName,provider="current
   if(normalizeName(player.name)!==normalizeName(accountName))throw diagnosticError("Player Search répond, mais le profil retourné ne correspond pas exactement au pseudo saisi.",{status:409,stage:"player_mismatch",upstream_status:r.status,token_calls:1,provider});
   if(player.server_id&&String(player.server_id)!==String(serverId))throw diagnosticError("Player Search répond, mais le profil trouvé appartient à un autre serveur.",{status:409,stage:"server_mismatch",upstream_status:r.status,token_calls:1,provider});
   if(!player.alliance_tag)throw diagnosticError("Player Search fonctionne, mais ce profil n’indique actuellement aucune alliance.",{status:409,stage:"alliance_missing",upstream_status:r.status,token_calls:1,provider});
-  return {player,http_status:r.status,token_calls:1,provider,fallback_used:false};
+  return {player,raw:data,http_status:r.status,token_calls:1,provider,fallback_used:false};
 }
 async function smartPlayerProbe(apiKey,serverId,accountName,providerHint=""){
   const hint=String(providerHint||"").toLowerCase();
@@ -419,7 +419,7 @@ async function handleAllianceSync(req,res){
 
 
 
-/* ===== V20.5.15 • VS LIVE INTELLIGENCE =====
+/* ===== V20.5.16 • VS LIVE INTELLIGENCE =====
    The community API publicly documents Player Search / Alliance Members, but a weekly
    VS-matchup endpoint is not currently part of the public feature list. WarBoost therefore:
    1) verifies the caller's own R4/R5 alliance;
@@ -516,6 +516,127 @@ async function handleVsWeeklySync(req,res){
   }
 }
 
+
+/* ===== V20.5.16 • SEASON LIVE SYNC =====
+   Public LastWar Tools material currently advertises Player Search, Alliance Rankings,
+   Alliance Members and Kingdom Positions, but no public Season Status endpoint is
+   guaranteed. WarBoost therefore never guesses a provider route:
+   - exact player/server verification is reused from Player Search;
+   - season metadata already present in that payload is accepted when available;
+   - an OPTIONAL exact LASTWAR_TOOLS_SEASON_STATUS_URL can be configured in Vercel;
+   - otherwise the client falls back to a clearly-labelled one-time calendar anchor.
+   No extra Serverless Function is created.
+*/
+function parseSeasonNumber(v){
+  if(v==null||v==="")return null;
+  if(typeof v==="number"&&Number.isFinite(v)&&v>=1&&v<=99)return Math.trunc(v);
+  const x=String(v).trim();
+  let m=x.match(/(?:season|saison|seizoen|temporada|s)\s*[#:_-]?\s*(\d{1,2})/i);
+  if(!m&&/^\d{1,2}$/.test(x))m=[x,x];
+  const n=m?Number(m[1]):NaN;return Number.isFinite(n)&&n>=1&&n<=99?n:null;
+}
+function parseSeasonDay(v){
+  if(v==null||v==="")return null;
+  if(typeof v==="number"&&Number.isFinite(v)&&v>=1&&v<=400)return Math.trunc(v);
+  const x=String(v).trim();
+  let m=x.match(/(?:day|jour|tag|día|dia|日|天)\s*[#:_-]?\s*(\d{1,3})/i);
+  if(!m&&/^\d{1,3}$/.test(x))m=[x,x];
+  const n=m?Number(m[1]):NaN;return Number.isFinite(n)&&n>=1&&n<=400?n:null;
+}
+function cleanSeasonText(v,max=120){
+  if(v==null||typeof v==="object")return null;
+  const x=String(v).trim();return x?x.slice(0,max):null;
+}
+function normalizeSeasonCandidate(c,root={},defaultServer=""){
+  if(c==null)return null;
+  if(typeof c!=="object"||Array.isArray(c)){
+    const season_number=parseSeasonNumber(c);
+    if(!season_number)return null;
+    return {season_number,season_name:`Saison ${season_number}`,day:null,phase:null,event:null,server_id:String(defaultServer||"")||null};
+  }
+  const seasonRaw=firstValue(c,["season_number","season_no","seasonNumber","current_season","currentSeason","season","number","name","season_name","seasonName"]);
+  const dayRaw=firstValue(c,["season_day","seasonDay","current_day","currentDay","day_number","dayNumber","day"]);
+  let season_number=parseSeasonNumber(seasonRaw),day=parseSeasonDay(dayRaw);
+  if(!season_number)season_number=parseSeasonNumber(firstValue(root,["season_number","season_no","seasonNumber","current_season","currentSeason"]));
+  if(!day)day=parseSeasonDay(firstValue(root,["season_day","seasonDay","current_day","currentDay","day_number","dayNumber"]));
+  const season_name=cleanSeasonText(firstValue(c,["season_name","seasonName","name","title"])) || (season_number?`Saison ${season_number}`:null);
+  const phase=cleanSeasonText(firstValue(c,["phase","current_phase","currentPhase","stage","season_phase","seasonPhase"]));
+  const event=cleanSeasonText(firstValue(c,["event","current_event","currentEvent","event_name","eventName","season_event","seasonEvent"]));
+  const starts_at=cleanSeasonText(firstValue(c,["starts_at","start_at","start_date","season_start","started_at"]),80);
+  const ends_at=cleanSeasonText(firstValue(c,["ends_at","end_at","end_date","season_end"]),80);
+  const server_id=String(firstValue(c,["server_id","server","serverId","zone_id","kingdom"])||defaultServer||"").trim()||null;
+  if(!season_number&&!day&&!phase&&!event)return null;
+  return {season_number,season_name,day,phase,event,starts_at,ends_at,server_id};
+}
+function extractSeasonSnapshot(data,defaultServer=""){
+  if(!data)return null;
+  const candidates=[
+    data?.season_status,data?.seasonStatus,data?.season_info,data?.seasonInfo,data?.current_season,data?.currentSeason,data?.season,
+    data?.player?.season_status,data?.player?.season_info,data?.player?.current_season,data?.player?.season,
+    data?.server?.season_status,data?.server?.season_info,data?.server?.season,
+    data?.world?.season_status,data?.world?.season_info,data?.world?.season,
+    data?.kingdom?.season_status,data?.kingdom?.season_info,data?.kingdom?.season,
+    data?.data?.season_status,data?.data?.seasonStatus,data?.data?.season_info,data?.data?.seasonInfo,data?.data?.current_season,data?.data?.currentSeason,data?.data?.season,
+    data?.data?.server?.season_status,data?.data?.server?.season_info,data?.data?.server?.season,
+    data?.meta?.season_status,data?.meta?.season_info,data?.meta?.season,
+    data
+  ];
+  for(const c of candidates){const n=normalizeSeasonCandidate(c,data,defaultServer);if(n)return n}
+  return null;
+}
+function seasonStatusUrl(serverId,player){
+  const configured=String(process.env.LASTWAR_TOOLS_SEASON_STATUS_URL||"").trim();
+  if(!configured)return null;
+  const raw=templateUrl(configured,{server_id:serverId,server:serverId,player_id:player?.player_id||"",id:player?.player_id||"",name:player?.name||"",player_name:player?.name||""});
+  const u=new URL(raw);
+  if(!u.searchParams.has("server")&&!u.searchParams.has("server_id"))u.searchParams.set("server",serverId);
+  if(player?.player_id&&!u.searchParams.has("player_id"))u.searchParams.set("player_id",String(player.player_id));
+  return u.toString();
+}
+async function fetchConfiguredSeasonStatus(apiKey,serverId,player){
+  const url=seasonStatusUrl(serverId,player);
+  if(!url)return {snapshot:null,token_calls:0,source:null};
+  let result;
+  try{result=await fetchLastWarSafe(url,allianceHeadersForUrl(url,apiKey),14000)}catch(e){
+    return {snapshot:null,token_calls:1,source:"season_endpoint",error:e?.name==="AbortError"?"timeout":"network"};
+  }
+  const {r,data}=result;
+  if(!r.ok)return {snapshot:null,token_calls:1,source:"season_endpoint",http_status:r.status};
+  return {snapshot:extractSeasonSnapshot(data,serverId),token_calls:1,source:"season_endpoint",http_status:r.status};
+}
+async function requireSeasonEntitlement(req,res){
+  try{
+    const user=await authUser(req);
+    if(!user){json(res,401,{error:"Connecte ton compte WarBoost pour synchroniser la saison."});return null}
+    const sub=await getSubscription(user.id);
+    if(!isPro(sub)){json(res,403,{error:"La synchronisation Saison avec Last War est réservée à WarBoost PRO."});return null}
+    return user;
+  }catch(e){console.error("season sync entitlement",e);json(res,503,{error:"Vérification du compte WarBoost indisponible."});return null}
+}
+async function handleSeasonDailySync(req,res){
+  const user=await requireSeasonEntitlement(req,res);if(!user)return;
+  const apiKey=String(process.env.LASTWAR_TOOLS_API_KEY||"").trim();
+  if(!apiKey)return json(res,503,{error:"La connexion LastWar Tools n’est pas configurée dans Vercel.",stage:"configuration",token_calls:0});
+  let identity;try{identity=allianceRequestIdentity(req,user)}catch(e){return json(res,e.status||400,{error:e.message,stage:e.stage||"input",token_calls:0})}
+  let calls=0;const hint=String(req.body?.provider_hint||"").toLowerCase();
+  try{
+    const probe=await smartPlayerProbe(apiKey,identity.serverId,identity.accountName,hint);calls+=Number(probe.token_calls||0);
+    if(probe.fallback_used&&probe.token_calls>=2)return json(res,200,{requires_retry:true,provider_mode:probe.provider,token_calls:calls,message:"Mode API compatible détecté sans dépasser 2 appels. Relance la synchronisation Saison pour utiliser directement ce mode."});
+    let snapshot=extractSeasonSnapshot(probe.raw,identity.serverId),source=snapshot?"player_payload":null,seasonEndpointStatus=null;
+    if(!snapshot){
+      const ext=await fetchConfiguredSeasonStatus(apiKey,identity.serverId,probe.player);calls+=Number(ext.token_calls||0);snapshot=ext.snapshot;seasonEndpointStatus=ext.http_status||ext.error||null;if(snapshot)source=ext.source;
+    }
+    if(!snapshot){
+      return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,synced_at:new Date().toISOString(),token_calls:calls,requires_calibration:true,snapshot:null,source:null,season_endpoint_status:seasonEndpointStatus,verified_player:{name:probe.player.name,server_id:probe.player.server_id||identity.serverId},message:"Ton joueur et ton serveur sont vérifiés, mais le fournisseur ne transmet pas encore de donnée Saison exploitable. Calibre une seule fois le numéro et le jour visibles dans Last War : WarBoost suivra ensuite l’avancement quotidien sans inventer de donnée API."});
+    }
+    return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,synced_at:new Date().toISOString(),token_calls:calls,requires_calibration:false,snapshot,source,source_label:source==="season_endpoint"?"Season Status via API":"Donnée Saison reçue avec le profil",verified_player:{name:probe.player.name,server_id:probe.player.server_id||identity.serverId}});
+  }catch(e){
+    calls+=Number(e?.token_calls||0);console.error("season daily sync",{stage:e?.stage,status:e?.upstream_status,message:e?.message});
+    const status=[400,401,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
+    return json(res,status,{error:e?.message||"Synchronisation Saison impossible.",stage:e?.stage||"unknown",http_status:e?.upstream_status||null,token_calls:calls});
+  }
+}
+
 export default async function handler(req,res){
   if(req.method!=="POST")return json(res,405,{error:"Méthode non autorisée."});
 
@@ -523,6 +644,7 @@ export default async function handler(req,res){
   if(String(req.body?.mode||"").toLowerCase()==="alliance_api_diagnostic")return handleAllianceApiDiagnostic(req,res);
   if(String(req.body?.mode||"").toLowerCase()==="alliance_sync")return handleAllianceSync(req,res);
   if(String(req.body?.mode||"").toLowerCase()==="vs_weekly_sync")return handleVsWeeklySync(req,res);
+  if(String(req.body?.mode||"").toLowerCase()==="season_daily_sync")return handleSeasonDailySync(req,res);
   if(!process.env.OPENAI_API_KEY)return json(res,500,{error:"OPENAI_API_KEY manquante dans Vercel."});
 
   // UI translation is intentionally handled before account/PRO checks.
