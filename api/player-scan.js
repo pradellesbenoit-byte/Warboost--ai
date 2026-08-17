@@ -49,7 +49,7 @@ export default async function handler(req,res){
   }
 
   const langCode=String(req.body?.language||"fr").toLowerCase();
-  const language=({fr:"français",en:"anglais",es:"espagnol",de:"allemand",ja:"japonais",zh:"chinois"})[langCode]||"français";
+  const language=({fr:"français",en:"anglais britannique","en-us":"anglais américain",es:"espagnol",de:"allemand",ja:"japonais",zh:"chinois simplifié",ar:"arabe"})[langCode]||"français";
   const mode=String(req.body?.mode||"classic");
 
   if(mode==="shop_advisor"){
