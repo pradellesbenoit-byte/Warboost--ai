@@ -55,7 +55,7 @@ async function handleUiTranslate(req,res){
 
 
 
-/* ===== V20.5.16 • VERIFIED ALLIANCE SYNC =====
+/* ===== V20.5.17 • VERIFIED ALLIANCE SYNC =====
    Goal: a WarBoost R5/R4 account can sync only the alliance that LastWar Tools
    currently reports for that authenticated account's Last War nickname.
 
@@ -170,14 +170,14 @@ function lastwarCurrentHeaders(apiKey){
   return {
     Accept:"application/json",
     Authorization:`Bearer ${apiKey}`,
-    "User-Agent":"WarBoost/20.5.16"
+    "User-Agent":"WarBoost/20.5.17"
   };
 }
 function lastwarLegacyHeaders(apiKey){
   return {
     Accept:"application/json",
     "X-API-Key":apiKey,
-    "User-Agent":"WarBoost/20.5.16"
+    "User-Agent":"WarBoost/20.5.17"
   };
 }
 function publicUpstreamError(status,kind="API",provider="current"){
@@ -419,7 +419,7 @@ async function handleAllianceSync(req,res){
 
 
 
-/* ===== V20.5.16 • VS LIVE INTELLIGENCE =====
+/* ===== V20.5.17 • VS LIVE INTELLIGENCE =====
    The community API publicly documents Player Search / Alliance Members, but a weekly
    VS-matchup endpoint is not currently part of the public feature list. WarBoost therefore:
    1) verifies the caller's own R4/R5 alliance;
@@ -517,7 +517,7 @@ async function handleVsWeeklySync(req,res){
 }
 
 
-/* ===== V20.5.16 • SEASON LIVE SYNC =====
+/* ===== V20.5.17 • SEASON LIVE SYNC =====
    Public LastWar Tools material currently advertises Player Search, Alliance Rankings,
    Alliance Members and Kingdom Positions, but no public Season Status endpoint is
    guaranteed. WarBoost therefore never guesses a provider route:
