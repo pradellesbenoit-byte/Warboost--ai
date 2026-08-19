@@ -55,7 +55,7 @@ async function handleUiTranslate(req,res){
 
 
 
-/* ===== V20.5.20 • VERIFIED ALLIANCE SYNC =====
+/* ===== V20.5.21 • VERIFIED ALLIANCE SYNC =====
    Goal: a WarBoost R5/R4 account can sync only the alliance that LastWar Tools
    currently reports for that authenticated account's Last War nickname.
 
@@ -83,8 +83,9 @@ async function handleUiTranslate(req,res){
 const allianceSyncRate=globalThis.__warboostAllianceSyncRate||(globalThis.__warboostAllianceSyncRate=new Map());
 const allianceDiagRate=globalThis.__warboostAllianceDiagRate||(globalThis.__warboostAllianceDiagRate=new Map());
 
-// V20.5.20 — LastWar Tools resilience: keep secrets server-side, tolerate slow community endpoints,
-// and expose only safe timing/status metadata to the client.
+// V20.5.21 — Token Saver + Alliance Cache: keep secrets server-side, cache only a signed
+// player/alliance identity token, stop immediately on token exhaustion, and reserve API calls
+// for Alliance Members whenever a valid cache is available.
 function clampLastWarTimeout(v,fallback,min=5000,max=45000){
   const n=Number(v);return Number.isFinite(n)?Math.max(min,Math.min(max,Math.round(n))):fallback;
 }
@@ -208,17 +209,74 @@ function lastwarCurrentHeaders(apiKey){
   return {
     Accept:"application/json",
     Authorization:`Bearer ${apiKey}`,
-    "User-Agent":"WarBoost/20.5.20"
+    "User-Agent":"WarBoost/20.5.21"
   };
 }
 function lastwarLegacyHeaders(apiKey){
   return {
     Accept:"application/json",
     "X-API-Key":apiKey,
-    "User-Agent":"WarBoost/20.5.20"
+    "User-Agent":"WarBoost/20.5.21"
   };
 }
+function base64UrlEncode(value){
+  return Buffer.from(value).toString("base64url");
+}
+function base64UrlDecode(value){
+  return Buffer.from(String(value||""),"base64url").toString("utf8");
+}
+function lastwarCacheTtlMs(){
+  const hours=Number(process.env.LASTWAR_TOOLS_PLAYER_CACHE_HOURS||168);
+  const safe=Number.isFinite(hours)?Math.max(1,Math.min(720,hours)):168;
+  return Math.round(safe*3600_000);
+}
+function lastwarCacheSignature(apiKey,payloadPart){
+  const crypto=require("crypto");
+  return crypto.createHmac("sha256",`warboost:lastwar:player-cache:v1:${apiKey}`).update(payloadPart).digest("base64url");
+}
+function makeLastWarPlayerCacheToken(apiKey,userId,player,provider){
+  const now=Date.now(),exp=now+lastwarCacheTtlMs();
+  const payload={
+    v:1,uid:String(userId||""),iat:now,exp,
+    provider:String(provider||"current"),
+    player:{
+      name:String(player?.name||""),server_id:String(player?.server_id||""),
+      alliance_tag:String(player?.alliance_tag||""),alliance_id:player?.alliance_id??null,
+      rank:player?.rank||null,hq_level:player?.hq_level||null,player_id:player?.player_id||null
+    }
+  };
+  const part=base64UrlEncode(JSON.stringify(payload));
+  return {token:`${part}.${lastwarCacheSignature(apiKey,part)}`,expires_at:new Date(exp).toISOString()};
+}
+function verifyLastWarPlayerCacheToken(apiKey,userId,identity,token){
+  try{
+    const crypto=require("crypto");
+    const [part,sig,extra]=String(token||"").split(".");
+    if(!part||!sig||extra)return null;
+    const expected=lastwarCacheSignature(apiKey,part);
+    const a=Buffer.from(sig),b=Buffer.from(expected);
+    if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return null;
+    const payload=JSON.parse(base64UrlDecode(part));
+    if(payload?.v!==1||String(payload?.uid||"")!==String(userId||""))return null;
+    if(!Number(payload?.exp)||Date.now()>Number(payload.exp))return null;
+    const player=payload?.player;
+    if(!player?.name||!player?.alliance_tag)return null;
+    if(normalizeName(player.name)!==normalizeName(identity.accountName))return null;
+    if(String(player.server_id||"")!==String(identity.serverId||""))return null;
+    const provider=["legacy","current"].includes(String(payload.provider))?String(payload.provider):"current";
+    return {
+      player:{...player,server_id:String(player.server_id)},provider,cached:true,token_calls:0,
+      http_status:200,elapsed_ms:0,total_elapsed_ms:0,timeout_ms:0,fallback_used:false,
+      cache_expires_at:new Date(Number(payload.exp)).toISOString(),
+      attempts:[{provider,stage:"player_cache",result:"ok",http_status:200,elapsed_ms:0,timeout_ms:0}]
+    };
+  }catch{return null}
+}
+function cachedProbeOrNull(apiKey,user,identity,req){
+  return verifyLastWarPlayerCacheToken(apiKey,user?.id,identity,req?.body?.player_cache_token);
+}
 function publicUpstreamError(status,kind="API",provider="current"){
+  if(status===402)return "Solde de tokens LastWar Tools épuisé (HTTP 402). Attends le prochain reset indiqué sur ton dashboard LastWar Tools ou recharge ton solde.";
   if(status===401||status===403)return provider==="legacy"
     ? "La clé LastWar Tools a été refusée par l’API historique (X-API-Key). Vérifie que Vercel contient la clé complète créée sur LastWar Tools."
     : "La clé LastWar Tools a été refusée par l’API actuelle (Bearer). Vérifie que Vercel contient la clé complète créée sur LastWar Tools.";
@@ -285,7 +343,7 @@ function diagnosticError(message,{status=502,stage="unknown",upstream_status=nul
 }
 function shouldFallbackToLegacy(e){
   const upstream=Number(e?.upstream_status||0),status=Number(e?.status||0);
-  if([401,403,429].includes(upstream)||[401,403,429].includes(status))return false;
+  if([401,402,403,429].includes(upstream)||[401,402,403,429].includes(status))return false;
   return e?.stage==="player_search" || e?.stage==="player_endpoint" || [404,405,500,501,502,503,504].includes(upstream) || [502,503,504].includes(status);
 }
 async function safePlayerProbeMode(apiKey,serverId,accountName,provider="current"){
@@ -307,8 +365,8 @@ async function safePlayerProbeMode(apiKey,serverId,accountName,provider="current
   if(!r.ok){
     console.error("LastWar Tools player diagnostic",{provider,status:r.status,elapsed_ms,body:String(raw).slice(0,300)});
     throw diagnosticError(publicUpstreamError(r.status,"Player Search",provider),{
-      status:r.status===429?429:(r.status===401||r.status===403?401:(r.status>=500?503:502)),
-      stage:r.status===401||r.status===403?"authentication":(r.status===404||r.status===405?"player_endpoint":"player_search"),
+      status:r.status===402?402:(r.status===429?429:(r.status===401||r.status===403?401:(r.status>=500?503:502))),
+      stage:r.status===402?"tokens_exhausted":(r.status===401||r.status===403?"authentication":(r.status===404||r.status===405?"player_endpoint":"player_search")),
       upstream_status:r.status,token_calls:1,provider,elapsed_ms,timeout_ms:timeoutMs,retry_recommended:r.status>=500
     });
   }
@@ -381,6 +439,7 @@ function allianceMemberCandidates(serverId,tag,allianceId,provider="current"){
 }
 function retryAllianceCandidate(err){
   const st=Number(err?.upstream_status||err?.status||0);
+  if(st===402||Number(err?.status||0)===402)return false;
   return err?.name==="AbortError"||[404,405,500,501,502,503,504].includes(st)||[502,503,504].includes(Number(err?.status||0));
 }
 async function fetchAllianceRosterCandidate(apiKey,serverId,player,candidate){
@@ -396,7 +455,7 @@ async function fetchAllianceRosterCandidate(apiKey,serverId,player,candidate){
   if(!r.ok){
     console.error("LastWar Tools alliance diagnostic",{provider:candidate.provider,route:candidate.label,status:r.status,elapsed_ms,body:String(raw).slice(0,300)});
     const msg=r.status===401||r.status===403?"Player Search a accepté la clé, mais Alliance Members refuse cette requête.":publicUpstreamError(r.status,"Alliance Members",candidate.provider);
-    throw diagnosticError(msg,{status:r.status===429?429:(r.status===401||r.status===403?403:(r.status>=500?503:502)),stage:r.status===404||r.status===405?"alliance_endpoint":"alliance_members",upstream_status:r.status,token_calls:1,provider:candidate.provider,elapsed_ms,timeout_ms:timeoutMs,retry_recommended:r.status>=500||r.status===404||r.status===405,attempts:[{provider:candidate.provider,stage:"alliance_members",route:candidate.label,http_status:r.status,result:"error",elapsed_ms,timeout_ms:timeoutMs}]});
+    throw diagnosticError(msg,{status:r.status===402?402:(r.status===429?429:(r.status===401||r.status===403?403:(r.status>=500?503:502))),stage:r.status===402?"tokens_exhausted":(r.status===404||r.status===405?"alliance_endpoint":"alliance_members"),upstream_status:r.status,token_calls:1,provider:candidate.provider,elapsed_ms,timeout_ms:timeoutMs,retry_recommended:r.status!==402&&(r.status>=500||r.status===404||r.status===405),attempts:[{provider:candidate.provider,stage:"alliance_members",route:candidate.label,http_status:r.status,result:"error",elapsed_ms,timeout_ms:timeoutMs}]});
   }
   const members=extractAllianceMembers(data).map(normalizeAllianceMember).filter(Boolean).slice(0,100);
   if(!members.length)throw diagnosticError(`Alliance Members répond via ${candidate.label}, mais aucun membre exploitable n’a été retourné.`,{status:502,stage:"alliance_empty",upstream_status:r.status,token_calls:1,provider:candidate.provider,elapsed_ms,timeout_ms:timeoutMs,attempts:[{provider:candidate.provider,stage:"alliance_members",route:candidate.label,http_status:r.status,result:"empty",elapsed_ms,timeout_ms:timeoutMs}]});
@@ -409,10 +468,11 @@ async function fetchAllianceRosterCandidate(apiKey,serverId,player,candidate){
   if(!["R4","R5"].includes(String(self.rank||"").toUpperCase()))throw diagnosticError("La synchronisation complète est réservée aux membres R4/R5 de leur propre alliance.",{status:403,stage:"rank_check",upstream_status:r.status,token_calls:1,provider:candidate.provider,elapsed_ms,timeout_ms:timeoutMs});
   return {members,self,raw:data,alliance:{tag:returnedTag,server_id:returnedServer,name:firstValue(a,["name","alliance_name"])||null},http_status:r.status,token_calls:1,provider:candidate.provider,route_label:candidate.label,elapsed_ms,timeout_ms:timeoutMs,attempts:[{provider:candidate.provider,stage:"alliance_members",route:candidate.label,http_status:r.status,result:"ok",elapsed_ms,timeout_ms:timeoutMs}]};
 }
-async function safeAllianceRoster(apiKey,serverId,player,provider="current"){
+async function safeAllianceRoster(apiKey,serverId,player,provider="current",maxAttemptsOverride=null){
   const candidates=allianceMemberCandidates(serverId,String(player.alliance_tag||"").trim(),player.alliance_id,provider);
   const attempts=[];let calls=0,lastErr=null;
-  const maxAttempts=Math.max(1,Math.min(3,Number(process.env.LASTWAR_TOOLS_ALLIANCE_MAX_ATTEMPTS||2)||2));
+  const configured=Math.max(1,Math.min(3,Number(process.env.LASTWAR_TOOLS_ALLIANCE_MAX_ATTEMPTS||2)||2));
+  const maxAttempts=Math.max(1,Math.min(configured,Number(maxAttemptsOverride||configured)||configured));
   for(const c of candidates.slice(0,maxAttempts)){
     try{
       const r=await fetchAllianceRosterCandidate(apiKey,serverId,player,c);r.token_calls=calls+1;r.attempts=[...attempts,...(r.attempts||[])];return r;
@@ -456,14 +516,19 @@ async function handleAllianceApiDiagnostic(req,res){
   try{identity=allianceRequestIdentity(req,user)}catch(e){return json(res,e.status||400,{error:e.message,diagnostic:{stage:e.stage||"input",token_calls:0}})}
   const providerHint=String(req.body?.provider_hint||"").toLowerCase();
   try{
-    const probe=await smartPlayerProbe(apiKey,identity.serverId,identity.accountName,providerHint);
+    const cached=cachedProbeOrNull(apiKey,user,identity,req);
+    const probe=cached||await smartPlayerProbe(apiKey,identity.serverId,identity.accountName,providerHint);
+    const signed=makeLastWarPlayerCacheToken(apiKey,user.id,{...probe.player,server_id:probe.player.server_id||identity.serverId},probe.provider);
     return json(res,200,{
-      ok:true,provider:"LastWar Tools",provider_mode:probe.provider,mode:"smart_api_fallback",token_calls:probe.token_calls,
-      diagnostic:{authentication:"ok",player_search:"ok",http_status:probe.http_status,stage:"player_found",provider:probe.provider,fallback_used:!!probe.fallback_used,first_status:probe.first_status||null,token_calls:probe.token_calls,elapsed_ms:probe.total_elapsed_ms||probe.elapsed_ms||null,timeout_ms:probe.timeout_ms||null,attempts:probe.attempts||[]},
+      ok:true,provider:"LastWar Tools",provider_mode:probe.provider,mode:cached?"signed_player_cache":"smart_api_fallback",token_calls:probe.token_calls,
+      player_cache_token:signed.token,player_cache_expires_at:signed.expires_at,cache_used:!!cached,
+      diagnostic:{authentication:"ok",player_search:cached?"cached":"ok",http_status:probe.http_status,stage:cached?"player_cache":"player_found",provider:probe.provider,fallback_used:!!probe.fallback_used,first_status:probe.first_status||null,token_calls:probe.token_calls,elapsed_ms:probe.total_elapsed_ms||probe.elapsed_ms||0,timeout_ms:probe.timeout_ms||null,attempts:probe.attempts||[]},
       player:{name:probe.player.name,server_id:probe.player.server_id||identity.serverId,alliance_tag:probe.player.alliance_tag,rank:probe.player.rank||null,hq_level:probe.player.hq_level||null,player_id:probe.player.player_id||null},
-      message:probe.fallback_used
-        ? "Mode compatible détecté : l’API actuelle était indisponible, mais l’API historique a trouvé ton joueur. WarBoost utilisera ce mode pour la synchronisation."
-        : "Connexion API validée : clé acceptée et joueur trouvé. Tu peux maintenant lancer la synchronisation de ton alliance."
+      message:cached
+        ? "Cache Player Search sécurisé validé : 0 appel LastWar Tools. Les prochains tokens peuvent être réservés au roster Alliance Members."
+        : (probe.fallback_used
+          ? "Mode compatible détecté et mis en cache : l’API historique a trouvé ton joueur. La prochaine synchronisation pourra éviter Player Search."
+          : "Connexion API validée et profil mis en cache. La prochaine synchronisation pourra éviter Player Search.")
     });
   }catch(e){
     return json(res,e.status||502,{error:e.message,diagnostic:{stage:e.stage||"unknown",http_status:e.upstream_status||null,token_calls:e.token_calls||1,provider:e.provider||providerHint||"current",first_status:e.first_status||null,elapsed_ms:e.total_elapsed_ms||e.elapsed_ms||null,timeout_ms:e.timeout_ms||null,attempts:e.attempts||[],retry_recommended:!!e.retry_recommended}});
@@ -483,24 +548,29 @@ async function handleAllianceSync(req,res){
   let tokenCalls=0;
   const providerHint=String(req.body?.provider_hint||"").toLowerCase();
   try{
-    const probe=await smartPlayerProbe(apiKey,identity.serverId,identity.accountName,providerHint);tokenCalls+=probe.token_calls;
+    const cached=cachedProbeOrNull(apiKey,user,identity,req);
+    const probe=cached||await smartPlayerProbe(apiKey,identity.serverId,identity.accountName,providerHint);tokenCalls+=Number(probe.token_calls||0);
+    const signedBeforeRoster=makeLastWarPlayerCacheToken(apiKey,user.id,{...probe.player,server_id:probe.player.server_id||identity.serverId},probe.provider);
 
-    // Protect the user's token balance: if automatic fallback already used two calls,
-    // stop before Alliance Members. The client stores the working provider and the
-    // next sync uses one Player Search + one Alliance Members call (2 max).
-    if(probe.fallback_used && probe.token_calls>=2){
+    // Token Saver: never spend more than two LastWar Tools calls in one user action.
+    // If provider discovery already consumed both calls, persist the signed identity cache
+    // and stop before Alliance Members. The retry will use 0 calls for Player Search.
+    if(!cached && probe.fallback_used && probe.token_calls>=2){
       return json(res,200,{
         provider:"LastWar Tools",provider_mode:probe.provider,source:"community_api",identity_verified:false,requires_retry:true,token_calls:tokenCalls,
+        player_cache_token:signedBeforeRoster.token,player_cache_expires_at:signedBeforeRoster.expires_at,cache_used:false,
         diagnostic:{authentication:"ok",player_search:"ok",alliance_members:"not_called",stage:"provider_selected",provider:probe.provider,fallback_used:true,token_calls:tokenCalls},
         player:{name:probe.player.name,server_id:probe.player.server_id||identity.serverId,alliance_tag:probe.player.alliance_tag,rank:probe.player.rank||null,hq_level:probe.player.hq_level||null,player_id:probe.player.player_id||null},
-        message:"Mode API compatible détecté sans dépasser 2 appels. Relance maintenant la synchronisation : WarBoost utilisera directement ce mode et tentera le roster avec un maximum de 2 appels."
+        message:"Mode API compatible détecté et mis en cache. Relance la synchronisation : Player Search coûtera 0 appel et WarBoost consacrera jusqu’à 2 appels à Alliance Members."
       });
     }
 
-    const roster=await safeAllianceRoster(apiKey,identity.serverId,probe.player,probe.provider);tokenCalls+=roster.token_calls;
+    const rosterBudget=cached?2:Math.max(1,2-tokenCalls);
+    const roster=await safeAllianceRoster(apiKey,identity.serverId,probe.player,probe.provider,rosterBudget);tokenCalls+=roster.token_calls;
     return json(res,200,{
       provider:"LastWar Tools",provider_mode:probe.provider,source:"community_api",identity_verified:true,synced_at:new Date().toISOString(),token_calls:tokenCalls,
-      diagnostic:{authentication:"ok",player_search:"ok",alliance_members:"ok",stage:"complete",provider:probe.provider,roster_provider:roster.provider||probe.provider,roster_route:roster.route_label||null,fallback_used:!!probe.fallback_used,token_calls:tokenCalls,player_elapsed_ms:probe.total_elapsed_ms||probe.elapsed_ms||null,roster_elapsed_ms:roster.elapsed_ms||null,attempts:[...(probe.attempts||[]),...(roster.attempts||[])]},
+      player_cache_token:signedBeforeRoster.token,player_cache_expires_at:signedBeforeRoster.expires_at,cache_used:!!cached,
+      diagnostic:{authentication:"ok",player_search:cached?"cached":"ok",alliance_members:"ok",stage:"complete",provider:probe.provider,roster_provider:roster.provider||probe.provider,roster_route:roster.route_label||null,fallback_used:!!probe.fallback_used,cache_used:!!cached,token_calls:tokenCalls,player_elapsed_ms:probe.total_elapsed_ms||probe.elapsed_ms||0,roster_elapsed_ms:roster.elapsed_ms||null,attempts:[...(probe.attempts||[]),...(roster.attempts||[])]},
       verified_player:{
         name:roster.self.name,rank:roster.self.rank,server_id:String(identity.serverId),alliance_tag:roster.alliance.tag,
         player_id:roster.self.player_id||probe.player.player_id||null
@@ -510,9 +580,10 @@ async function handleAllianceSync(req,res){
   }catch(e){
     tokenCalls+=Number(e?.token_calls||0);
     console.error("smart verified alliance sync",{stage:e?.stage,status:e?.upstream_status,message:e?.message,provider:e?.provider});
-    const status=[400,401,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
+    const status=[400,401,402,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
     return json(res,status,{
       error:e?.message||"Synchronisation vérifiée impossible.",
+      invalidate_player_cache:["self_missing","alliance_mismatch","player_mismatch","server_mismatch"].includes(String(e?.stage||"")),
       diagnostic:{stage:e?.stage||"unknown",http_status:e?.upstream_status||null,token_calls:tokenCalls,provider:e?.provider||providerHint||null,first_status:e?.first_status||null,elapsed_ms:e?.total_elapsed_ms||e?.elapsed_ms||null,timeout_ms:e?.timeout_ms||null,attempts:e?.attempts||[],retry_recommended:!!e?.retry_recommended},
       security:"Le tag alliance est dérivé du profil Last War trouvé ; il n’est jamais accepté depuis le téléphone."
     });
@@ -521,7 +592,7 @@ async function handleAllianceSync(req,res){
 
 
 
-/* ===== V20.5.20 • VS LIVE INTELLIGENCE =====
+/* ===== V20.5.21 • VS LIVE INTELLIGENCE =====
    The community API publicly documents Player Search / Alliance Members, but a weekly
    VS-matchup endpoint is not currently part of the public feature list. WarBoost therefore:
    1) verifies the caller's own R4/R5 alliance;
@@ -613,13 +684,13 @@ async function handleVsWeeklySync(req,res){
     return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,source:"community_api",source_label:opponentSource==="manual_fallback"?"Adversaire renseigné une fois":"Adversaire détecté via API",synced_at:new Date().toISOString(),token_calls:calls,requires_opponent:false,opponent_source:opponentSource,own_alliance:own,opponent_alliance:opp});
   }catch(e){
     calls+=Number(e?.token_calls||0);console.error("vs weekly sync",{stage:e?.stage,status:e?.upstream_status,message:e?.message});
-    const status=[400,401,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
+    const status=[400,401,402,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
     return json(res,status,{error:e?.message||"Synchronisation VS impossible.",stage:e?.stage||"unknown",http_status:e?.upstream_status||null,token_calls:calls});
   }
 }
 
 
-/* ===== V20.5.20 • SEASON LIVE SYNC =====
+/* ===== V20.5.21 • SEASON LIVE SYNC =====
    Public LastWar Tools material currently advertises Player Search, Alliance Rankings,
    Alliance Members and Kingdom Positions, but no public Season Status endpoint is
    guaranteed. WarBoost therefore never guesses a provider route:
@@ -734,7 +805,7 @@ async function handleSeasonDailySync(req,res){
     return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,synced_at:new Date().toISOString(),token_calls:calls,requires_calibration:false,snapshot,source,source_label:source==="season_endpoint"?"Season Status via API":"Donnée Saison reçue avec le profil",verified_player:{name:probe.player.name,server_id:probe.player.server_id||identity.serverId}});
   }catch(e){
     calls+=Number(e?.token_calls||0);console.error("season daily sync",{stage:e?.stage,status:e?.upstream_status,message:e?.message});
-    const status=[400,401,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
+    const status=[400,401,402,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
     return json(res,status,{error:e?.message||"Synchronisation Saison impossible.",stage:e?.stage||"unknown",http_status:e?.upstream_status||null,token_calls:calls});
   }
 }
