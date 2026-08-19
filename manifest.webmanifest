@@ -1,77 +1,29 @@
 {
-  "id": "/",
-  "name": "WarBoost — Last War Copilot",
+  "name": "WarBoost",
   "short_name": "WarBoost",
-  "description": "Copilote IA, alliance R5/R4, roster, VS, Saison, Live Content et War Room pour Last War.",
-  "lang": "fr",
-  "start_url": "/?source=pwa",
+  "description": "Assistant Last War pour joueurs, R4/R5, VS, Saison et alliances.",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": [
-    "window-controls-overlay",
-    "standalone",
-    "minimal-ui"
-  ],
   "background_color": "#07111f",
   "theme_color": "#07111f",
+  "lang": "fr",
   "categories": [
     "games",
     "utilities"
   ],
-  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/warboost-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "/warboost-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/warboost-icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Mon joueur",
-      "short_name": "Joueur",
-      "url": "/?source=pwa&page=player",
-      "icons": [
-        {
-          "src": "/warboost-icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "R5/R4",
-      "short_name": "R5/R4",
-      "url": "/?source=pwa&page=command",
-      "icons": [
-        {
-          "src": "/warboost-icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Saison",
-      "short_name": "Saison",
-      "url": "/?source=pwa&page=season",
-      "icons": [
-        {
-          "src": "/warboost-icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
+      "purpose": "any maskable"
     }
   ]
 }

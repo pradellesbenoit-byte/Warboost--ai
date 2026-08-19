@@ -241,3 +241,15 @@ Le site public LastWar Tools présente Player Search, Alliance Rankings, Allianc
 - Ajoute un fail-safe à 12 s : le splash ne peut plus bloquer l’accès.
 - Conserve la musique 3 Électro Motivante et les salutations vocales multilingues par grade.
 - Rend le Service Worker tolérant aux ressources PWA absentes.
+
+
+## V20.5.34 — Accès & installation simplifiés
+- Adresse officielle mise en avant partout : `https://warboost.fr/`
+- Gros bouton **Installer WarBoost** sur l’accueil
+- Instructions automatiques Android / iPhone / ordinateur
+- QR code intégré vers `warboost.fr`
+- Bouton **Partager WarBoost** (partage natif si disponible, sinon copie du lien)
+- Bouton de partage dans l’en-tête
+- Raccourci flottant d’installation dans le navigateur, masqué une fois l’app installée
+- Métadonnées SEO / partage ajoutées pour faciliter la découverte de WarBoost
+- Toutes les fonctions V20.5.33 sont conservées
