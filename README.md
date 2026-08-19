@@ -1,4 +1,13 @@
-# WarBoost V20.5.24 — Loading Strip + Logo Clean
+# WarBoost V20.5.25 — Guest Lock
+
+## V20.5.25 — Guest Lock
+
+### Correctif sécurité demandé
+- Quand l'application est **déconnectée**, WarBoost passe en **mode protégé**.
+- Les pages et données sensibles sont **masquées** derrière un écran de connexion.
+- Les onglets **Joueur / IA R5-R4 / VS / Saison** sont bloqués tant que le compte cloud n'est pas reconnecté.
+- Au clic sur une section bloquée, WarBoost ouvre directement **Compte cloud**.
+- Les données locales restent conservées sur l'appareil, mais elles ne sont plus visibles en mode déconnecté.
 
 ## V20.5.24 — Loading Strip + Logo Clean
 
