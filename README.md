@@ -260,3 +260,15 @@ Le site public LastWar Tools présente Player Search, Alliance Rankings, Allianc
 - Le bouton sans effet « Retour à l’accueil » est remplacé par « Réessayer la session » : WarBoost tente de restaurer la session cloud, puis ouvre la connexion si nécessaire.
 - Le Service Worker utilise un nouveau cache V20.5.35 pour forcer la diffusion du correctif aux applications déjà installées.
 - Les données locales restent protégées tant que le joueur n’est pas reconnecté.
+
+
+## V20.5.36 — Validation e-mail par code 6 chiffres
+- Ajoute un écran de confirmation e-mail directement dans WarBoost.
+- Après création d’un compte nécessitant une confirmation, le joueur saisit le code à 6 chiffres reçu par e-mail.
+- Si Supabase répond `email_not_confirmed` à la connexion, WarBoost ouvre automatiquement l’écran du code au lieu d’afficher une erreur technique.
+- Ajoute « Renvoyer le code » avec délai anti-spam de 60 secondes et gestion claire des erreurs 429.
+- Le code utilise `supabase.auth.verifyOtp` et la confirmation reste entièrement gérée par Supabase Auth.
+- Aucune validation manuelle d’utilisateur n’est effectuée.
+- Le fichier `SUPABASE_CONFIRM_SIGNUP_TEMPLATE.html` doit être installé une seule fois dans Authentication → Email Templates → Confirm signup pour afficher `{{ .Token }}` dans les e-mails.
+- Le modèle recommandé ne contient volontairement pas de lien cliquable afin d’éviter les pré-ouvertures de liens par certaines messageries.
+- Nouveau cache PWA V20.5.36 pour pousser le correctif aux applications installées.

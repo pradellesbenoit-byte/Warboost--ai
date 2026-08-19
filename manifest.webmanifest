@@ -1,7 +1,7 @@
 {
   "name": "WarBoost",
   "short_name": "WarBoost",
-  "description": "Assistant Last War pour joueurs, R4/R5, VS, Saison et alliances.",
+  "description": "Assistant Last War pour joueurs, R4/R5, VS, Saison et alliances. Connexion cloud avec confirmation e-mail par code 6 chiffres.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
