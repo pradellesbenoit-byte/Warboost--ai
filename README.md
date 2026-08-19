@@ -1,4 +1,14 @@
-# WarBoost V20.5.32 — Smart Cache Last War et économie de tokens
+# WarBoost V20.5.33 — Voix R4 futuriste WarBoost
+
+## V20.5.33 — Signature vocale R4
+
+- Le salut français **« Bonjour, mon Colonel ! »** du grade R4 utilise désormais une voix **futuriste / signature WarBoost** : plus profonde, légèrement métallique et avec un écho court, tout en restant intelligible.
+- Les autres grades et la musique **03 — Électro Motivante** restent inchangés.
+- Dans les autres langues, la synthèse vocale R4 utilise un réglage plus grave et posé afin de conserver le même esprit WarBoost.
+- Le Smart Cache Last War et l’économie de tokens de V20.5.32 sont conservés sans modification fonctionnelle.
+- Service Worker passé à **V20.5.33**. Toujours **4 fichiers** de déploiement.
+
+## Historique — V20.5.32
 
 ## V20.5.32 — Smart Cache partagé Joueur · R5/R4 · VS
 
