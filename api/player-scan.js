@@ -705,10 +705,14 @@ async function handleVsWeeklySync(req,res){
   let identity;try{identity=allianceRequestIdentity(req,user)}catch(e){return json(res,e.status||400,{error:e.message,stage:e.stage||"input",token_calls:0})}
   let calls=0;const hint=String(req.body?.provider_hint||"").toLowerCase();
   try{
-    const probe=await smartPlayerProbe(apiKey,identity.serverId,identity.accountName,hint);calls+=Number(probe.token_calls||0);
-    if(probe.fallback_used&&probe.token_calls>=2)return json(res,200,{requires_retry:true,provider_mode:probe.provider,token_calls:calls,message:"Mode API compatible détecté sans dépasser 2 appels. Relance la synchronisation VS pour utiliser directement ce mode."});
+    const cached=cachedProbeOrNull(apiKey,user,identity,req);
+    const probe=cached||await smartPlayerProbe(apiKey,identity.serverId,identity.accountName,hint);calls+=Number(probe.token_calls||0);
+    const signed=makeLastWarPlayerCacheToken(apiKey,user.id,{...probe.player,server_id:probe.player.server_id||identity.serverId},probe.provider);
+    if(!cached&&probe.fallback_used&&probe.token_calls>=2)return json(res,200,{requires_retry:true,provider_mode:probe.provider,token_calls:calls,player_cache_token:signed.token,player_cache_expires_at:signed.expires_at,player:probe.player,message:"Mode API compatible détecté sans dépasser 2 appels. Relance la synchronisation VS pour utiliser directement ce mode."});
     const ownRoster=await safeAllianceRoster(apiKey,identity.serverId,probe.player,probe.provider);calls+=Number(ownRoster.token_calls||0);
     const own=allianceSummary(ownRoster.alliance,ownRoster.members);
+    const self=ownRoster.self||{};
+    const verifiedPlayer={name:self.name||probe.player.name,rank:self.rank||probe.player.rank||null,server_id:String(identity.serverId),alliance_tag:ownRoster.alliance?.tag||probe.player.alliance_tag||null,hq_level:self.hq_level||probe.player.hq_level||null,power:self.power||probe.player.power||null,power_m:self.power_m||probe.player.power_m||null,player_id:self.player_id||probe.player.player_id||null};
     let opponent=extractVsOpponent(ownRoster.raw,identity.serverId),opponentSource=opponent?"alliance_payload":null;
     if(!opponent){const m=await fetchVsOpponentFromConfiguredEndpoint(apiKey,identity.serverId,{...ownRoster.alliance,alliance_id:probe.player.alliance_id});calls+=Number(m.token_calls||0);opponent=m.opponent;if(opponent)opponentSource=m.source}
     const manualTag=String(req.body?.manual_opponent_tag||"").trim(),manualServer=String(req.body?.manual_opponent_server||"").trim();
@@ -717,14 +721,14 @@ async function handleVsWeeklySync(req,res){
       opponent={tag:manualTag,server_id:manualServer};opponentSource="manual_fallback";
     }
     if(!opponent){
-      return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,source:"community_api",synced_at:new Date().toISOString(),token_calls:calls,requires_opponent:true,own_alliance:own,opponent_alliance:null,opponent_source:null,message:"Ton alliance R4/R5 est vérifiée. Le fournisseur ne publie pas encore l’adversaire VS dans les données disponibles : renseigne uniquement l’adversaire une fois dans le mode secours."});
+      return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,source:"community_api",synced_at:new Date().toISOString(),token_calls:calls,cache_used:!!cached,player_cache_token:signed.token,player_cache_expires_at:signed.expires_at,verified_player:verifiedPlayer,requires_opponent:true,own_alliance:own,opponent_alliance:null,opponent_source:null,message:"Ton alliance R4/R5 est vérifiée. Le fournisseur ne publie pas encore l’adversaire VS dans les données disponibles : renseigne uniquement l’adversaire une fois dans le mode secours."});
     }
     const oppServer=String(opponent.server_id||"").trim();
-    if(!/^\d{1,6}$/.test(oppServer))return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,synced_at:new Date().toISOString(),token_calls:calls,requires_opponent:true,own_alliance:own,opponent_alliance:null,opponent_source:opponentSource,message:"L’adversaire VS a été détecté, mais son serveur n’est pas fourni. Renseigne son serveur une fois dans le mode secours."});
+    if(!/^\d{1,6}$/.test(oppServer))return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,synced_at:new Date().toISOString(),token_calls:calls,cache_used:!!cached,player_cache_token:signed.token,player_cache_expires_at:signed.expires_at,verified_player:verifiedPlayer,requires_opponent:true,own_alliance:own,opponent_alliance:null,opponent_source:opponentSource,message:"L’adversaire VS a été détecté, mais son serveur n’est pas fourni. Renseigne son serveur une fois dans le mode secours."});
     if(normalizeName(opponent.tag)===normalizeName(own.tag)&&String(oppServer)===String(own.server_id))throw diagnosticError("Le matchup retourné correspond à ta propre alliance. Analyse refusée.",{status:409,stage:"opponent_same",token_calls:0});
     const oppRoster=await safeOpponentRoster(apiKey,oppServer,opponent);calls+=Number(oppRoster.token_calls||0);
     const opp=allianceSummary(oppRoster.alliance,oppRoster.members);
-    return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,source:"community_api",source_label:opponentSource==="manual_fallback"?"Adversaire renseigné une fois":"Adversaire détecté via API",synced_at:new Date().toISOString(),token_calls:calls,requires_opponent:false,opponent_source:opponentSource,own_alliance:own,opponent_alliance:opp});
+    return json(res,200,{ok:true,identity_verified:true,provider_mode:probe.provider,source:"community_api",source_label:opponentSource==="manual_fallback"?"Adversaire renseigné une fois":"Adversaire détecté via API",synced_at:new Date().toISOString(),token_calls:calls,cache_used:!!cached,player_cache_token:signed.token,player_cache_expires_at:signed.expires_at,verified_player:verifiedPlayer,requires_opponent:false,opponent_source:opponentSource,own_alliance:own,opponent_alliance:opp});
   }catch(e){
     calls+=Number(e?.token_calls||0);console.error("vs weekly sync",{stage:e?.stage,status:e?.upstream_status,message:e?.message});
     const status=[400,401,402,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
