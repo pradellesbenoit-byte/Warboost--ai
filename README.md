@@ -1,7 +1,7 @@
-# WarBoost V20.5.28 — Électro + salut vocal multilingue
+# WarBoost V20.5.29 — Électro + salut vocal multilingue
 
 
-## V20.5.28 — Salutation vocale multilingue selon le grade
+## V20.5.29 — Salutation vocale multilingue selon le grade
 
 - La musique choisie reste **03 — Électro Motivante**.
 - La salutation vocale suit désormais **la langue sélectionnée par le joueur** dans WarBoost.
@@ -183,3 +183,12 @@ Le site public LastWar Tools présente Player Search, Alliance Rankings, Allianc
 - Détection automatique de l’adversaire si le fournisseur l’inclut dans les données disponibles.
 - Saisie de secours de l’adversaire si aucun matchup n’est exposé.
 - L’adversaire n’est jamais importé comme alliance du joueur.
+
+
+## V20.5.29 — Correctif écran de chargement
+- Corrige le blocage à 0 % causé par les étapes de splash manquantes.
+- Ajoute des étapes de chargement multilingues.
+- Ajoute un bouton « Passer et entrer » après 1,5 s.
+- Ajoute un fail-safe à 12 s : le splash ne peut plus bloquer l’accès.
+- Conserve la musique 3 Électro Motivante et les salutations vocales multilingues par grade.
+- Rend le Service Worker tolérant aux ressources PWA absentes.
