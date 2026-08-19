@@ -55,7 +55,7 @@ async function handleUiTranslate(req,res){
 
 
 
-/* ===== V20.5.25 • VERIFIED ALLIANCE SYNC =====
+/* ===== V20.5.26 • VERIFIED ALLIANCE SYNC =====
    Goal: a WarBoost R5/R4 account can sync only the alliance that LastWar Tools
    currently reports for that authenticated account's Last War nickname.
 
@@ -83,7 +83,7 @@ async function handleUiTranslate(req,res){
 const allianceSyncRate=globalThis.__warboostAllianceSyncRate||(globalThis.__warboostAllianceSyncRate=new Map());
 const allianceDiagRate=globalThis.__warboostAllianceDiagRate||(globalThis.__warboostAllianceDiagRate=new Map());
 
-// V20.5.25 — Token Saver + Alliance Cache: keep secrets server-side, cache only a signed
+// V20.5.26 — Token Saver + Alliance Cache: keep secrets server-side, cache only a signed
 // player/alliance identity token, stop immediately on token exhaustion, and reserve API calls
 // for Alliance Members whenever a valid cache is available.
 function clampLastWarTimeout(v,fallback,min=5000,max=45000){
@@ -209,14 +209,14 @@ function lastwarCurrentHeaders(apiKey){
   return {
     Accept:"application/json",
     Authorization:`Bearer ${apiKey}`,
-    "User-Agent":"WarBoost/20.5.25"
+    "User-Agent":"WarBoost/20.5.26"
   };
 }
 function lastwarLegacyHeaders(apiKey){
   return {
     Accept:"application/json",
     "X-API-Key":apiKey,
-    "User-Agent":"WarBoost/20.5.25"
+    "User-Agent":"WarBoost/20.5.26"
   };
 }
 function base64UrlEncode(value){
@@ -592,7 +592,7 @@ async function handleAllianceSync(req,res){
 
 
 
-/* ===== V20.5.25 • VS LIVE INTELLIGENCE =====
+/* ===== V20.5.26 • VS LIVE INTELLIGENCE =====
    The community API publicly documents Player Search / Alliance Members, but a weekly
    VS-matchup endpoint is not currently part of the public feature list. WarBoost therefore:
    1) verifies the caller's own R4/R5 alliance;
@@ -690,7 +690,7 @@ async function handleVsWeeklySync(req,res){
 }
 
 
-/* ===== V20.5.25 • SEASON LIVE SYNC =====
+/* ===== V20.5.26 • SEASON LIVE SYNC =====
    Public LastWar Tools material currently advertises Player Search, Alliance Rankings,
    Alliance Members and Kingdom Positions, but no public Season Status endpoint is
    guaranteed. WarBoost therefore never guesses a provider route:
