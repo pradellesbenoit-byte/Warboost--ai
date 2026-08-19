@@ -1,4 +1,4 @@
-const WB_CACHE="warboost-v20-5-34-shell-1";
+const WB_CACHE="warboost-v20-5-35-shell-1";
 const WB_SHELL=["/","/index.html","/manifest.webmanifest","/warboost-icon-192.png","/warboost-icon-512.png","/warboost-apple-touch-icon.png"];
 
 self.addEventListener("install",event=>{

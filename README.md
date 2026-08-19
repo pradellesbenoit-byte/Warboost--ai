@@ -243,7 +243,7 @@ Le site public LastWar Tools présente Player Search, Alliance Rankings, Allianc
 - Rend le Service Worker tolérant aux ressources PWA absentes.
 
 
-## V20.5.34 — Accès & installation simplifiés
+## V20.5.35 — Accès & installation simplifiés
 - Adresse officielle mise en avant partout : `https://warboost.fr/`
 - Gros bouton **Installer WarBoost** sur l’accueil
 - Instructions automatiques Android / iPhone / ordinateur
@@ -253,3 +253,10 @@ Le site public LastWar Tools présente Player Search, Alliance Rankings, Allianc
 - Raccourci flottant d’installation dans le navigateur, masqué une fois l’app installée
 - Métadonnées SEO / partage ajoutées pour faciliter la découverte de WarBoost
 - Toutes les fonctions V20.5.33 sont conservées
+
+
+## V20.5.35 — Correctif écran « WarBoost protégé »
+- La fenêtre Compte WarBoost passe désormais au-dessus du verrou invité : le bouton « Se connecter » ne peut plus ouvrir une fenêtre cachée derrière l’écran de protection.
+- Le bouton sans effet « Retour à l’accueil » est remplacé par « Réessayer la session » : WarBoost tente de restaurer la session cloud, puis ouvre la connexion si nécessaire.
+- Le Service Worker utilise un nouveau cache V20.5.35 pour forcer la diffusion du correctif aux applications déjà installées.
+- Les données locales restent protégées tant que le joueur n’est pas reconnecté.
