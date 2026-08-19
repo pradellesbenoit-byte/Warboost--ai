@@ -1,4 +1,21 @@
-# WarBoost V20.5.22 — Final Product Polish
+# WarBoost V20.5.24 — Loading Strip + Logo Clean
+
+## V20.5.24 — Loading Strip + Logo Clean
+
+### Ajustements demandés
+- Suppression du petit numéro de version à côté du logo **WarBoost** dans l'en-tête.
+- Ajout d'une **petite bande de chargement de 10 secondes** à l'ouverture de l'application.
+- La bande affiche une **annonce amusante WarBoost** avec messages qui tournent pendant le chargement.
+- Le badge rond déjà retiré et les champs d'exemple vides du **Copilote IA R5/R4** sont conservés.
+
+## V20.5.23 — Header Cleanup
+
+### Ajustements demandés
+- Suppression du badge version en haut de l'application.
+- Suppression des textes d'exemple dans le formulaire **Copilote IA R5 / R4**.
+- Les champs Alliance, Serveur, Nombre de membres et Question / situation s'ouvrent désormais visuellement vides.
+- Le petit numéro de version à côté du logo WarBoost reste conservé.
+
 Cette version conserve **V20.5.21 Token Saver + Alliance Cache** et finalise l’expérience produit qui ne dépend pas de la disponibilité de LastWar Tools.
 
 ## V20.5.22 — Final Product Polish
