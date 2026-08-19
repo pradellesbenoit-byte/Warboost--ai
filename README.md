@@ -1,4 +1,30 @@
-# WarBoost V20.5.25 — Guest Lock
+# WarBoost V20.5.26 — Mascot Loading + Music + Rank Greetings
+
+## V20.5.26 — Mascot Loading + Music + Rank Greetings
+
+### Identité visuelle WarBoost
+- Nouvel écran plein écran de **chargement animé 10 secondes** inspiré de la mascotte WarBoost : robot WB, drone, diamant, bouclier, potion et café du QG.
+- Progression amusante : héros, troupes, drone, musique, grades et derniers réglages.
+- Fin automatique avec message personnalisé selon le grade.
+
+### Grades personnalisés
+- **R5 → Mon Général**
+- **R4 → Mon Colonel**
+- **R3 → Mon Lieutenant**
+- **R2 → Mon Sergent**
+- **R1 → Soldat**
+- Le formulaire compte cloud permet désormais de sélectionner R1 à R5.
+- Accueil personnalisé selon le grade connecté.
+
+### Musique WarBoost
+- Petite ambiance musicale générée directement dans le navigateur, sans fichier audio externe.
+- Bouton 🎵 / 🔇 dans l’en-tête et préférence mémorisée.
+- Sur mobile, la musique démarre après le premier toucher lorsque le navigateur autorise l’audio.
+
+### Sécurité conservée
+- Le **Guest Lock V20.5.25** reste actif : quand le compte cloud est déconnecté, les pages sensibles restent masquées.
+- Aucun nouveau fichier API : toujours les 4 fichiers de déploiement habituels.
+
 
 ## V20.5.25 — Guest Lock
 
