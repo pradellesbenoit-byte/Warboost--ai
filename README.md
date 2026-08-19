@@ -1,5 +1,14 @@
-# WarBoost V20.5.29 — Électro + salut vocal multilingue
+# WarBoost V20.5.30 — Identité Last War + salut à la première entrée
 
+## V20.5.30 — Pseudo, grade et salut de section
+
+- Le premier badge de l’en-tête affiche maintenant en priorité le **pseudo Last War du joueur connecté** (profil/synchronisation), et non un libellé générique « Joueur ».
+- Le badge **Rôle** affiche le grade réel **R5 / R4 / R3 / R2 / R1** dès qu’il est connu dans le compte, le profil joueur ou la vérification Last War.
+- Quand le joueur ouvre pour la première fois de la session l’onglet **🎮 Joueur**, WarBoost prononce la salutation liée à son grade, par exemple **« Bonjour, mon Colonel ! »** pour un R4.
+- Même comportement à la première entrée de la session dans **🧠 IA R5/R4**. La salutation n’est pas répétée à chaque clic.
+- La salutation reste multilingue et suit la langue choisie dans WarBoost : français, anglais, anglais US, espagnol, allemand, japonais, chinois et arabe.
+- L’accueil conserve **« Bienvenue dans WarBoost ! »** au lancement.
+- La musique **03 — Électro Motivante** et le correctif de chargement V20.5.29 sont conservés.
 
 ## V20.5.29 — Salutation vocale multilingue selon le grade
 
