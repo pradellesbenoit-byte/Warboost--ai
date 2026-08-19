@@ -1,4 +1,32 @@
-# WarBoost V20.5.21 — Token Saver + Alliance Cache
+# WarBoost V20.5.22 — Final Product Polish
+Cette version conserve **V20.5.21 Token Saver + Alliance Cache** et finalise l’expérience produit qui ne dépend pas de la disponibilité de LastWar Tools.
+
+## V20.5.22 — Final Product Polish
+
+### Parcours de démarrage
+- Nouveau **Centre de démarrage WarBoost** sur l’accueil avec progression de configuration.
+- Checklist claire : compte WarBoost, escouade principale, PRO, alliance R4/R5 et installation PWA.
+- **Onboarding guidé** pour les nouveaux utilisateurs, avec accès direct à chaque étape.
+- Le mode FREE reste utilisable ; PRO, alliance et installation PWA sont présentés comme étapes optionnelles lorsqu’elles ne sont pas nécessaires.
+
+### Résilience produit / modes secours
+- WarBoost indique explicitement les modes de secours lorsque LastWar Tools, le cloud ou une autre source externe est indisponible.
+- Les captures, la saisie manuelle, le cache local et les analyses locales restent accessibles quand la fonction le permet.
+- Aucun écran ne doit laisser croire qu’une donnée externe est disponible lorsqu’elle ne l’est pas.
+
+### Aide & diagnostic
+- Nouveau **centre Aide & diagnostic** accessible depuis l’accueil et le pied légal.
+- Diagnostic support volontairement sûr : version, réseau, état cloud, formule, escouade, taille du roster, fournisseur LastWar mémorisé, présence du cache joueur et mode PWA.
+- Le diagnostic **n’inclut jamais la clé LastWar Tools, mot de passe ou données bancaires**.
+- Copie du diagnostic et préparation d’un e-mail support en un clic.
+
+### Finition / commercialisation
+- Version et cache PWA passés à **V20.5.22**.
+- Les fonctions existantes restent inchangées : Smart Scan, Boutique IA, R4/R5, VS, Saison, cloud, Stripe/PRO, CM2C, RGPD et moteur multilingue.
+- Toujours seulement **4 fichiers de déploiement** et aucune nouvelle Serverless Function.
+
+## V20.5.21 — Token Saver + Alliance Cache conservé
+
 Cette version conserve **V20.5.20 Alliance Members Resilience**, **V20.5.19 LastWar API Resilience** et **V20.5.18 CM2C + PRO Ready**, avec un objectif principal : **économiser les tokens LastWar Tools** et éviter de refaire Player Search à chaque synchronisation.
 
 ## V20.5.21 — Token Saver + Alliance Cache
