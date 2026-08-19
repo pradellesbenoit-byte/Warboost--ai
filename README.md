@@ -1,3 +1,34 @@
+# WarBoost V20.5.38 — OTP adaptatif 6/8 chiffres
+
+## V20.5.38 — Confirmation e-mail compatible Supabase 6 à 8 chiffres
+
+- Le champ de confirmation accepte maintenant les codes e-mail de **6 à 8 chiffres** au lieu d’être bloqué à 6.
+- Un code Supabase à **8 chiffres** peut donc être collé et validé entièrement dans WarBoost.
+- La vérification transmet le code complet à `supabase.auth.verifyOtp` sans le tronquer à 6 chiffres.
+- Les textes d’inscription ne promettent plus systématiquement « 6 chiffres » : ils parlent d’un **code de confirmation** ou indiquent **6 à 8 chiffres**.
+- Le changement est appliqué aux **8 langues WarBoost**.
+- Le SMTP Resend / Supabase et la synchronisation du profil Last War restent inchangés.
+- Toutes les fonctions de V20.5.37 sont conservées.
+- Service Worker : cache **V20.5.38**.
+
+---
+
+# WarBoost V20.5.37 — Inscription guidée
+
+## V20.5.37 — E-mail habituel → code → profil Last War
+
+- L’écran « WarBoost protégé » indique désormais clairement qu’un nouveau joueur peut utiliser **son adresse e-mail habituelle** (Gmail, Outlook, Hotmail, Orange, etc.).
+- Aucun joueur n’a besoin de créer une adresse `@warboost.fr` : WarBoost crée seulement un **compte lié à l’adresse existante**.
+- Le bouton invité devient **« Créer mon compte / me connecter »** pour supprimer l’ambiguïté entre nouveaux joueurs et joueurs déjà inscrits.
+- Le formulaire de compte affiche un parcours visuel en 3 étapes : **e-mail habituel → code à 6 chiffres → profil Last War**.
+- Après connexion, le joueur est guidé vers l’onglet **Joueur** pour utiliser la synchronisation de profil Last War déjà présente dans WarBoost.
+- Le message d’erreur de limite d’envoi explique maintenant de ne pas multiplier les demandes de code.
+- Le nouveau parcours est disponible dans les **8 langues WarBoost**.
+- Toutes les fonctions de V20.5.36 restent conservées. Aucun compte n’est validé manuellement.
+- Service Worker : cache **V20.5.37**.
+
+---
+
 # WarBoost V20.5.33 — Voix R4 futuriste WarBoost
 
 ## V20.5.33 — Signature vocale R4

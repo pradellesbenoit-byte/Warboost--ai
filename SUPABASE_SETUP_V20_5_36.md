@@ -1,4 +1,4 @@
-# WarBoost V20.5.36 — Activation du code e-mail 6 chiffres
+# WarBoost V20.5.36 — Activation du code e-mail 6 à 8 chiffres
 
 La V20.5.36 est prête côté application. Pour que Supabase affiche réellement le code dans l’e-mail de confirmation, le modèle **Confirm signup** du projet Warboost doit contenir `{{ .Token }}`.
 
@@ -12,7 +12,7 @@ Important : le modèle fourni n’inclut volontairement **aucun lien de confirma
 
 ## Nouveau parcours
 - Le joueur crée son compte.
-- Supabase lui envoie un code à 6 chiffres.
+- Supabase lui envoie un code de 6 à 8 chiffres.
 - WarBoost affiche automatiquement l’écran de validation.
 - Le joueur saisit le code.
 - WarBoost appelle Supabase `verifyOtp` et ouvre la session si le code est valide.
