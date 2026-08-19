@@ -1,6 +1,18 @@
-# WarBoost V20.5.18 — CM2C + PRO Ready
+# WarBoost V20.5.19 — LastWar API Resilience
 
 Cette version conserve **V20.5.17 Legal + RGPD** et finalise la couche de médiation de la consommation avant commercialisation PRO.
+
+## V20.5.19 — LastWar API Resilience
+
+### Nouveautés API LastWar Tools
+- Player Search actuel : délai contrôlé par défaut (16 s) pour éviter de bloquer inutilement.
+- Fallback historique : délai étendu (32 s) lorsque le service communautaire est ralenti.
+- Toujours 2 appels maximum pour le diagnostic intelligent.
+- Le fournisseur qui fonctionne reste mémorisé sur le téléphone.
+- Diagnostic sûr enrichi : mode testé, timeout, durée et statut sans jamais exposer la clé API.
+- La clé Vercel est normalisée si elle a été collée avec `Bearer`, `Authorization:` ou `X-API-Key:`.
+- Alliance Members utilise maintenant un timeout adaptatif et accepte un override `LASTWAR_TOOLS_LEGACY_ALLIANCE_MEMBERS_URL` si LastWar Tools publie une route historique dédiée.
+- Aucun nouvel endpoint Vercel : toujours une seule fonction partagée `api/player-scan.js`.
 
 ## V20.5.18 — CM2C + PRO Ready
 - **CM2C activé** comme médiateur de la consommation WarBoost, compte valable jusqu’au **19/08/2029**.
