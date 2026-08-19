@@ -1,4 +1,4 @@
-const WB_CACHE="warboost-v20-5-31-shell-1";
+const WB_CACHE="warboost-v20-5-32-shell-1";
 const WB_SHELL=["/","/index.html"];
 
 self.addEventListener("install",event=>{

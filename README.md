@@ -1,4 +1,16 @@
-# WarBoost V20.5.31 — Synchronisation automatique du profil Last War
+# WarBoost V20.5.32 — Smart Cache Last War et économie de tokens
+
+## V20.5.32 — Smart Cache partagé Joueur · R5/R4 · VS
+
+- La synchronisation automatique du profil **ne refait plus un appel à chaque connexion** : les données de moins de **30 minutes** sont réutilisées avec **0 appel LastWar Tools**.
+- Le profil Joueur réutilise les données déjà obtenues par **R5/R4** et **VS** (pseudo, serveur, alliance, rôle, QG, puissance quand disponible).
+- Le cache joueur signé est maintenant partagé avec le VS : quand il est valide, le VS peut éviter un nouvel appel Player Search.
+- Un succès R5/R4 ou VS alimente immédiatement le profil Joueur local sans appel supplémentaire.
+- En cas de **HTTP 402 / tokens épuisés**, WarBoost garde le dernier profil valide, affiche un état **CACHE** et met les relances automatiques en pause pendant 1 heure. Le bouton **Synchroniser maintenant** reste disponible pour forcer une tentative.
+- Les héros, le Drone, les équipements, la technologie et toutes les saisies détaillées restent intacts.
+- Service Worker passé à **V20.5.32**. Toujours **4 fichiers** de déploiement.
+
+## Historique — V20.5.31
 
 ## V20.5.31 — Profil joueur synchronisé à la connexion
 
