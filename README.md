@@ -1,23 +1,30 @@
-# WarBoost V20.5.20 — Alliance Members Resilience
+# WarBoost V20.5.21 — Token Saver + Alliance Cache
+Cette version conserve **V20.5.20 Alliance Members Resilience**, **V20.5.19 LastWar API Resilience** et **V20.5.18 CM2C + PRO Ready**, avec un objectif principal : **économiser les tokens LastWar Tools** et éviter de refaire Player Search à chaque synchronisation.
 
-Cette version conserve **V20.5.19 LastWar API Resilience**, **V20.5.18 CM2C + PRO Ready** et cible le blocage observé sur `alliance_members` après un Player Search historique réussi.
+## V20.5.21 — Token Saver + Alliance Cache
 
-## V20.5.20 — Alliance Members Resilience
+### Économie de tokens LastWar Tools
+- Après un **Player Search réussi**, le serveur WarBoost renvoie un **jeton de cache signé** lié au compte WarBoost, au pseudo Last War, au serveur, à l’alliance détectée et au mode API fonctionnel.
+- Le jeton est stocké sur le téléphone mais **ne contient jamais la clé API LastWar Tools**. Il est signé côté serveur avec un HMAC dérivé du secret déjà présent dans Vercel.
+- Tant que ce cache est valide, **Player Search coûte 0 appel LastWar Tools** : la synchronisation peut consacrer jusqu’à **2 appels à Alliance Members**.
+- Le cache expire par défaut après **7 jours**. L’override facultatif `LASTWAR_TOOLS_PLAYER_CACHE_HOURS` permet de choisir de 1 h à 720 h.
+- Si le roster ne contient plus le joueur ou renvoie une autre alliance, WarBoost invalide le cache et exigera un nouveau Player Search.
+- Le contrôle final reste inchangé : le même joueur doit apparaître dans le roster en **R4 ou R5** avant tout import.
 
-### Correctif LastWar Tools / Alliance Members
-- Quand Player Search fonctionne avec l’API historique `api.lastwar.tools` + `X-API-Key`, WarBoost tente maintenant **Alliance Members sur la même famille historique** en priorité : `/world/alliance-members`.
-- En V20.5.19, le mode historique pouvait encore retomber sur l’URL Alliance Members actuelle par défaut ; V20.5.20 sépare correctement les deux familles d’API.
-- Si la première route roster répond 404/405/5xx ou timeout, WarBoost peut tester une **seconde route compatible** sans exposer la clé.
-- Maximum par défaut : **2 tentatives Alliance Members** (`LASTWAR_TOOLS_ALLIANCE_MAX_ATTEMPTS`, max 3 si nécessaire).
-- Le diagnostic renvoie uniquement des labels de route, statuts HTTP et durées ; jamais la clé API.
-- La sécurité reste identique : le tag alliance est dérivé du profil Player Search et le roster n’est accepté que si le même joueur apparaît en R4/R5.
-- Aucun nouveau fichier `api/` : toujours la fonction partagée `api/player-scan.js`, compatible Vercel Hobby.
+### HTTP 402 / solde de tokens
+- Un **HTTP 402** est maintenant reconnu comme **solde de tokens LastWar Tools épuisé**.
+- WarBoost **n’effectue plus de fallback inutile** après un 402 : un seul appel échoue, puis l’utilisateur est invité à attendre le prochain reset de son dashboard LastWar Tools ou à recharger son solde.
+- Les erreurs 401/403 et 429 continuent également à bloquer le fallback.
 
-### Overrides Vercel optionnels
-- `LASTWAR_TOOLS_LEGACY_ALLIANCE_MEMBERS_URL` : route historique exacte si LastWar Tools en fournit une autre.
-- `LASTWAR_TOOLS_ALLIANCE_MEMBERS_URL` : route actuelle exacte.
-- `LASTWAR_TOOLS_ALLIANCE_MAX_ATTEMPTS` : 1 à 3 (défaut 2).
-- `LASTWAR_TOOLS_LEGACY_ALLIANCE_TIMEOUT_MS` / `LASTWAR_TOOLS_ALLIANCE_TIMEOUT_MS` : délais personnalisés.
+### Budget d’appels
+- Une action de synchronisation ne dépense jamais volontairement plus de **2 appels LastWar Tools**.
+- Si la découverte du fournisseur consomme déjà 2 appels, WarBoost met le profil en cache et s’arrête avant Alliance Members. La relance suivante utilise le cache et réserve les appels au roster.
+- Aucun nouveau fichier `api/` n’est ajouté : la fonction partagée `api/player-scan.js` reste compatible Vercel Hobby.
+
+## V20.5.20 — Alliance Members Resilience conservé
+- Priorité à `/world/alliance-members` lorsque Player Search fonctionne en API historique X-API-Key.
+- Seconde route roster compatible possible sur 404/405/5xx/timeout.
+- Délais adaptatifs et diagnostics sûrs (route, HTTP, durée, jamais la clé).
 
 ## V20.5.18 — CM2C + PRO Ready
 - **CM2C activé** comme médiateur de la consommation WarBoost, compte valable jusqu’au **19/08/2029**.
