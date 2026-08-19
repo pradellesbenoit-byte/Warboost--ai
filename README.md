@@ -1,18 +1,23 @@
-# WarBoost V20.5.19 — LastWar API Resilience
+# WarBoost V20.5.20 — Alliance Members Resilience
 
-Cette version conserve **V20.5.17 Legal + RGPD** et finalise la couche de médiation de la consommation avant commercialisation PRO.
+Cette version conserve **V20.5.19 LastWar API Resilience**, **V20.5.18 CM2C + PRO Ready** et cible le blocage observé sur `alliance_members` après un Player Search historique réussi.
 
-## V20.5.19 — LastWar API Resilience
+## V20.5.20 — Alliance Members Resilience
 
-### Nouveautés API LastWar Tools
-- Player Search actuel : délai contrôlé par défaut (16 s) pour éviter de bloquer inutilement.
-- Fallback historique : délai étendu (32 s) lorsque le service communautaire est ralenti.
-- Toujours 2 appels maximum pour le diagnostic intelligent.
-- Le fournisseur qui fonctionne reste mémorisé sur le téléphone.
-- Diagnostic sûr enrichi : mode testé, timeout, durée et statut sans jamais exposer la clé API.
-- La clé Vercel est normalisée si elle a été collée avec `Bearer`, `Authorization:` ou `X-API-Key:`.
-- Alliance Members utilise maintenant un timeout adaptatif et accepte un override `LASTWAR_TOOLS_LEGACY_ALLIANCE_MEMBERS_URL` si LastWar Tools publie une route historique dédiée.
-- Aucun nouvel endpoint Vercel : toujours une seule fonction partagée `api/player-scan.js`.
+### Correctif LastWar Tools / Alliance Members
+- Quand Player Search fonctionne avec l’API historique `api.lastwar.tools` + `X-API-Key`, WarBoost tente maintenant **Alliance Members sur la même famille historique** en priorité : `/world/alliance-members`.
+- En V20.5.19, le mode historique pouvait encore retomber sur l’URL Alliance Members actuelle par défaut ; V20.5.20 sépare correctement les deux familles d’API.
+- Si la première route roster répond 404/405/5xx ou timeout, WarBoost peut tester une **seconde route compatible** sans exposer la clé.
+- Maximum par défaut : **2 tentatives Alliance Members** (`LASTWAR_TOOLS_ALLIANCE_MAX_ATTEMPTS`, max 3 si nécessaire).
+- Le diagnostic renvoie uniquement des labels de route, statuts HTTP et durées ; jamais la clé API.
+- La sécurité reste identique : le tag alliance est dérivé du profil Player Search et le roster n’est accepté que si le même joueur apparaît en R4/R5.
+- Aucun nouveau fichier `api/` : toujours la fonction partagée `api/player-scan.js`, compatible Vercel Hobby.
+
+### Overrides Vercel optionnels
+- `LASTWAR_TOOLS_LEGACY_ALLIANCE_MEMBERS_URL` : route historique exacte si LastWar Tools en fournit une autre.
+- `LASTWAR_TOOLS_ALLIANCE_MEMBERS_URL` : route actuelle exacte.
+- `LASTWAR_TOOLS_ALLIANCE_MAX_ATTEMPTS` : 1 à 3 (défaut 2).
+- `LASTWAR_TOOLS_LEGACY_ALLIANCE_TIMEOUT_MS` / `LASTWAR_TOOLS_ALLIANCE_TIMEOUT_MS` : délais personnalisés.
 
 ## V20.5.18 — CM2C + PRO Ready
 - **CM2C activé** comme médiateur de la consommation WarBoost, compte valable jusqu’au **19/08/2029**.
