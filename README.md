@@ -1,4 +1,22 @@
-# WarBoost V20.5.30 — Identité Last War + salut à la première entrée
+# WarBoost V20.5.31 — Synchronisation automatique du profil Last War
+
+## V20.5.31 — Profil joueur synchronisé à la connexion
+
+- À chaque nouvelle session WarBoost connectée en **PRO**, WarBoost tente automatiquement de mettre à jour le profil joueur via la même infrastructure **LastWar Tools** utilisée par R5/R4, VS et Saison.
+- Synchronisation des données publiques réellement disponibles : **pseudo, serveur, alliance, rôle R1–R5, niveau QG, puissance totale et coordonnées** lorsqu’elles sont exposées par le fournisseur.
+- Pour récupérer la **puissance** et le **rôle** quand Player Search ne les fournit pas, WarBoost peut consulter Alliance Members puis ne conserve que la fiche du joueur connecté. Aucune permission R4/R5 n’est nécessaire pour cette fiche personnelle ; le verrou R4/R5 reste obligatoire pour importer le roster complet.
+- Le **cache joueur signé** et la limite de **2 appels LastWar Tools maximum par action** sont conservés afin de limiter la consommation de tokens.
+- L’escouade détaillée, les héros, le Drone, les équipements, la technologie et les saisies manuelles **ne sont jamais effacés** si LastWar Tools ne les expose pas.
+- Une carte **Profil Last War** dans l’onglet Joueur affiche la dernière synchronisation et propose **Synchroniser maintenant**.
+- Si LastWar Tools est indisponible, WarBoost conserve le dernier profil et continue avec les captures / saisies enregistrées.
+- Le rôle synchronisé devient prioritaire pour l’en-tête et les salutations vocales.
+- Service Worker passé à **V20.5.31**. Toujours **4 fichiers** de déploiement.
+
+## Limite importante
+
+Il s’agit d’une synchronisation via les données communautaires/publiques accessibles à WarBoost, pas d’une liaison officielle du compte Last War. Les informations non exposées par cette source (par exemple héros, équipement détaillé ou Drone) restent alimentées par Smart Scan et la saisie WarBoost.
+
+## Historique — V20.5.30
 
 ## V20.5.30 — Pseudo, grade et salut de section
 
