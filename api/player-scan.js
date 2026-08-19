@@ -82,6 +82,7 @@ async function handleUiTranslate(req,res){
 */
 const allianceSyncRate=globalThis.__warboostAllianceSyncRate||(globalThis.__warboostAllianceSyncRate=new Map());
 const allianceDiagRate=globalThis.__warboostAllianceDiagRate||(globalThis.__warboostAllianceDiagRate=new Map());
+const playerProfileSyncRate=globalThis.__warboostPlayerProfileSyncRate||(globalThis.__warboostPlayerProfileSyncRate=new Map());
 
 // V20.5.27 — Token Saver + Alliance Cache: keep secrets server-side, cache only a signed
 // player/alliance identity token, stop immediately on token exhaustion, and reserve API calls
@@ -164,9 +165,10 @@ function normalizeAllianceMember(m){
   if(!name)return null;
   const power=parseUpstreamPower(firstValue(m,["power","fight_power","total_power","combat_power","strength","alliance_power"]));
   const hq=Number(firstValue(m,["hq_level","hq","base_level","headquarters_level","level","hqLevel"]))||null;
+  const roleRaw=firstValue(m,["role","rank","alliance_role","member_role","r_level","allianceRank"]);
   return {
     name,
-    rank:normalizeAllianceRank(firstValue(m,["role","rank","alliance_role","member_role","r_level","allianceRank"])),
+    rank:roleRaw!=null?normalizeAllianceRank(roleRaw):null,
     power,
     power_m:power?Math.round(power/100000)/10:null,
     hq_level:hq,
@@ -193,6 +195,9 @@ function extractPlayerRecord(data){
   ).trim();
   const server=String(firstValue(p,["server_id","server","serverId","zone_id","kingdom"])||"").trim();
   const hq=Number(firstValue(p,["hq_level","hq","base_level","headquarters_level","level","hqLevel"]))||null;
+  const power=parseUpstreamPower(firstValue(p,["power","fight_power","total_power","combat_power","strength","player_power"]));
+  const x=Number(firstValue(p,["x","coord_x","position_x"]));
+  const y=Number(firstValue(p,["y","coord_y","position_y"]));
   const roleRaw=firstValue(p,["role","rank","alliance_role","member_role","r_level","allianceRank"]);
   const allianceId=firstValue(p,["alliance_id","allianceId"])||firstValue(allianceObj,["id","alliance_id","allianceId"])||null;
   return {
@@ -202,6 +207,8 @@ function extractPlayerRecord(data){
     alliance_id:allianceId,
     rank:roleRaw!=null?normalizeAllianceRank(roleRaw):null,
     hq_level:hq,
+    power:power||null,power_m:power?Math.round(power/100000)/10:null,
+    coordinates:Number.isFinite(x)&&Number.isFinite(y)?`${x}, ${y}`:null,
     player_id:firstValue(p,["player_id","id","uid","playerId"])||null
   };
 }
@@ -209,14 +216,14 @@ function lastwarCurrentHeaders(apiKey){
   return {
     Accept:"application/json",
     Authorization:`Bearer ${apiKey}`,
-    "User-Agent":"WarBoost/20.5.27"
+    "User-Agent":"WarBoost/20.5.31"
   };
 }
 function lastwarLegacyHeaders(apiKey){
   return {
     Accept:"application/json",
     "X-API-Key":apiKey,
-    "User-Agent":"WarBoost/20.5.27"
+    "User-Agent":"WarBoost/20.5.31"
   };
 }
 function base64UrlEncode(value){
@@ -242,7 +249,7 @@ function makeLastWarPlayerCacheToken(apiKey,userId,player,provider){
     player:{
       name:String(player?.name||""),server_id:String(player?.server_id||""),
       alliance_tag:String(player?.alliance_tag||""),alliance_id:player?.alliance_id??null,
-      rank:player?.rank||null,hq_level:player?.hq_level||null,player_id:player?.player_id||null
+      rank:player?.rank||null,hq_level:player?.hq_level||null,power:player?.power||null,power_m:player?.power_m||null,coordinates:player?.coordinates||null,player_id:player?.player_id||null
     }
   };
   const part=base64UrlEncode(JSON.stringify(payload));
@@ -442,7 +449,7 @@ function retryAllianceCandidate(err){
   if(st===402||Number(err?.status||0)===402)return false;
   return err?.name==="AbortError"||[404,405,500,501,502,503,504].includes(st)||[502,503,504].includes(Number(err?.status||0));
 }
-async function fetchAllianceRosterCandidate(apiKey,serverId,player,candidate){
+async function fetchAllianceRosterCandidate(apiKey,serverId,player,candidate,requireLeader=true){
   const tag=String(player.alliance_tag||"").trim();
   const headers=candidate.provider==="legacy"?lastwarLegacyHeaders(apiKey):lastwarCurrentHeaders(apiKey);
   const timeoutMs=lastwarTimeout(candidate.provider,"alliance");
@@ -465,17 +472,17 @@ async function fetchAllianceRosterCandidate(apiKey,serverId,player,candidate){
   if(normalizeName(returnedTag)!==normalizeName(tag))throw diagnosticError("L’API a retourné une autre alliance que celle détectée sur ton profil. Import refusé.",{status:403,stage:"alliance_mismatch",upstream_status:r.status,token_calls:1,provider:candidate.provider,elapsed_ms,timeout_ms:timeoutMs});
   const self=members.find(m=>normalizeName(m.name)===normalizeName(player.name));
   if(!self)throw diagnosticError("Ton joueur n’apparaît pas dans le roster retourné pour l’alliance détectée. Import refusé.",{status:403,stage:"self_missing",upstream_status:r.status,token_calls:1,provider:candidate.provider,elapsed_ms,timeout_ms:timeoutMs});
-  if(!["R4","R5"].includes(String(self.rank||"").toUpperCase()))throw diagnosticError("La synchronisation complète est réservée aux membres R4/R5 de leur propre alliance.",{status:403,stage:"rank_check",upstream_status:r.status,token_calls:1,provider:candidate.provider,elapsed_ms,timeout_ms:timeoutMs});
+  if(requireLeader&&!["R4","R5"].includes(String(self.rank||"").toUpperCase()))throw diagnosticError("La synchronisation complète est réservée aux membres R4/R5 de leur propre alliance.",{status:403,stage:"rank_check",upstream_status:r.status,token_calls:1,provider:candidate.provider,elapsed_ms,timeout_ms:timeoutMs});
   return {members,self,raw:data,alliance:{tag:returnedTag,server_id:returnedServer,name:firstValue(a,["name","alliance_name"])||null},http_status:r.status,token_calls:1,provider:candidate.provider,route_label:candidate.label,elapsed_ms,timeout_ms:timeoutMs,attempts:[{provider:candidate.provider,stage:"alliance_members",route:candidate.label,http_status:r.status,result:"ok",elapsed_ms,timeout_ms:timeoutMs}]};
 }
-async function safeAllianceRoster(apiKey,serverId,player,provider="current",maxAttemptsOverride=null){
+async function safeAllianceRoster(apiKey,serverId,player,provider="current",maxAttemptsOverride=null,requireLeader=true){
   const candidates=allianceMemberCandidates(serverId,String(player.alliance_tag||"").trim(),player.alliance_id,provider);
   const attempts=[];let calls=0,lastErr=null;
   const configured=Math.max(1,Math.min(3,Number(process.env.LASTWAR_TOOLS_ALLIANCE_MAX_ATTEMPTS||2)||2));
   const maxAttempts=Math.max(1,Math.min(configured,Number(maxAttemptsOverride||configured)||configured));
   for(const c of candidates.slice(0,maxAttempts)){
     try{
-      const r=await fetchAllianceRosterCandidate(apiKey,serverId,player,c);r.token_calls=calls+1;r.attempts=[...attempts,...(r.attempts||[])];return r;
+      const r=await fetchAllianceRosterCandidate(apiKey,serverId,player,c,requireLeader);r.token_calls=calls+1;r.attempts=[...attempts,...(r.attempts||[])];return r;
     }catch(e){
       calls+=Number(e?.token_calls||1);attempts.push(...(e?.attempts||[{provider:c.provider,stage:e?.stage||"alliance_members",route:c.label,http_status:e?.upstream_status||null,result:"error",elapsed_ms:e?.elapsed_ms||null,timeout_ms:e?.timeout_ms||null}]));lastErr=e;
       if(!retryAllianceCandidate(e)||calls>=maxAttempts)break;
@@ -505,6 +512,42 @@ async function requireAllianceEntitlement(req,res){
     json(res,503,{error:"Vérification du compte WarBoost indisponible."});return null;
   }
 }
+async function requirePlayerProfileEntitlement(req,res){
+  try{
+    const user=await authUser(req);if(!user){json(res,401,{error:"Connecte ton compte WarBoost pour synchroniser ton profil."});return null}
+    const sub=await getSubscription(user.id);if(!isPro(sub)){json(res,403,{error:"La synchronisation automatique du profil Last War est réservée à WarBoost PRO."});return null}
+    return user;
+  }catch(e){console.error("player profile sync entitlement",e);json(res,503,{error:"Vérification du compte WarBoost indisponible."});return null}
+}
+async function handlePlayerProfileSync(req,res){
+  const user=await requirePlayerProfileEntitlement(req,res);if(!user)return;
+  const now=Date.now(),last=Number(playerProfileSyncRate.get(user.id)||0);if(now-last<20000)return json(res,429,{error:"Patiente quelques secondes avant une nouvelle synchronisation du profil.",retry_after:Math.ceil((20000-(now-last))/1000)});playerProfileSyncRate.set(user.id,now);
+  const apiKey=normalizeLastWarApiKey(process.env.LASTWAR_TOOLS_API_KEY);if(!apiKey)return json(res,503,{error:"La connexion LastWar Tools n’est pas configurée dans Vercel (LASTWAR_TOOLS_API_KEY)."});
+  let identity;try{identity=allianceRequestIdentity(req,user)}catch(e){return json(res,e.status||400,{error:e.message})}
+  const providerHint=String(req.body?.provider_hint||"").toLowerCase();let calls=0;
+  try{
+    const cached=cachedProbeOrNull(apiKey,user,identity,req);const probe=cached||await smartPlayerProbe(apiKey,identity.serverId,identity.accountName,providerHint);calls+=Number(probe.token_calls||0);
+    const signed=makeLastWarPlayerCacheToken(apiKey,user.id,{...probe.player,server_id:probe.player.server_id||identity.serverId},probe.provider);
+    let self=null,alliance=null,rosterWarning=null;
+    // Reserve the 2-call maximum used elsewhere in WarBoost. Provider discovery can consume both calls on first use.
+    if(probe.player?.alliance_tag&&calls<2){
+      try{const roster=await safeAllianceRoster(apiKey,identity.serverId,probe.player,probe.provider,Math.max(1,2-calls),false);calls+=Number(roster.token_calls||0);self=roster.self;alliance=roster.alliance}
+      catch(e){calls+=Number(e?.token_calls||0);rosterWarning=e?.message||"Alliance Members indisponible."}
+    }
+    const power=Number(self?.power||probe.player?.power||0)||null;const powerM=Number(self?.power_m||probe.player?.power_m||0)||null;
+    const profile={
+      name:self?.name||probe.player.name,server_id:String(identity.serverId),alliance_tag:alliance?.tag||probe.player.alliance_tag||null,
+      rank:self?.rank||probe.player.rank||null,hq_level:self?.hq_level||probe.player.hq_level||null,power,power_m:powerM,coordinates:probe.player.coordinates||null,player_id:self?.player_id||probe.player.player_id||null
+    };
+    const fields=Object.entries({name:profile.name,server_id:profile.server_id,alliance_tag:profile.alliance_tag,rank:profile.rank,hq_level:profile.hq_level,power_m:profile.power_m,coordinates:profile.coordinates}).filter(([,v])=>v!==null&&v!==undefined&&v!=="").map(([k])=>k);
+    const partial=!!rosterWarning||(!profile.rank&&!profile.power_m);
+    return json(res,200,{ok:true,provider:"LastWar Tools",provider_mode:probe.provider,source:"community_api",identity_verified:true,synced_at:new Date().toISOString(),token_calls:calls,cache_used:!!cached,partial,warning:rosterWarning,fields,profile,player_cache_token:signed.token,player_cache_expires_at:signed.expires_at});
+  }catch(e){
+    calls+=Number(e?.token_calls||0);const status=[400,401,402,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
+    return json(res,status,{error:e?.message||"Synchronisation du profil Last War impossible.",invalidate_player_cache:["self_missing","alliance_mismatch","player_mismatch","server_mismatch"].includes(String(e?.stage||"")),stage:e?.stage||"unknown",http_status:e?.upstream_status||null,token_calls:calls});
+  }
+}
+
 async function handleAllianceApiDiagnostic(req,res){
   const user=await requireAllianceEntitlement(req,res);if(!user)return;
   const now=Date.now(),last=Number(allianceDiagRate.get(user.id)||0);
@@ -814,6 +857,7 @@ export default async function handler(req,res){
   if(req.method!=="POST")return json(res,405,{error:"Méthode non autorisée."});
 
   // Alliance sync is data infrastructure: no OpenAI call and no WarBoost AI credit.
+  if(String(req.body?.mode||"").toLowerCase()==="player_profile_sync")return handlePlayerProfileSync(req,res);
   if(String(req.body?.mode||"").toLowerCase()==="alliance_api_diagnostic")return handleAllianceApiDiagnostic(req,res);
   if(String(req.body?.mode||"").toLowerCase()==="alliance_sync")return handleAllianceSync(req,res);
   if(String(req.body?.mode||"").toLowerCase()==="vs_weekly_sync")return handleVsWeeklySync(req,res);
