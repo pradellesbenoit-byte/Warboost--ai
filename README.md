@@ -1,4 +1,28 @@
-# WarBoost V20.5.26 — Mascot Loading + Music + Rank Greetings
+# WarBoost V20.5.28 — Électro + salut vocal multilingue
+
+
+## V20.5.28 — Salutation vocale multilingue selon le grade
+
+- La musique choisie reste **03 — Électro Motivante**.
+- La salutation vocale suit désormais **la langue sélectionnée par le joueur** dans WarBoost.
+- Langues prises en charge : **français, anglais (R.-U.), anglais américain, espagnol, allemand, japonais, chinois et arabe**.
+- Le rôle reste personnalisé : **R5 Général · R4 Colonel · R3 Lieutenant · R2 Sergent · R1 Soldat**, avec l’équivalent naturel dans chaque langue.
+- En français, WarBoost conserve les voix WAV embarquées de V20.5.27. Dans les autres langues, il utilise la synthèse vocale du téléphone/navigateur avec la locale exacte (ex. `en-US`, `ja-JP`, `ar-SA`).
+- Quand le joueur change volontairement de langue après avoir activé l’audio, WarBoost rejoue une fois la salutation dans la nouvelle langue.
+- Le texte de salutation affiché sur l’accueil est synchronisé avec la langue choisie, y compris le sens RTL en arabe.
+- La musique continue de se mettre en pause en arrière-plan et reprend au retour si elle est activée.
+- Aucun nouveau fichier de déploiement : **toujours 4 fichiers**.
+
+## V20.5.27 — Musique 3 + salut vocal + pause arrière-plan
+
+- La musique choisie est **03 — Électro Motivante**. Elle est embarquée directement dans `index.html` pour conserver le déploiement en 4 fichiers.
+- La musique se **met en pause immédiatement** lorsque WarBoost passe en arrière-plan / quand l’utilisateur revient au menu du téléphone.
+- Elle reprend uniquement quand WarBoost revient au premier plan et que la musique est activée.
+- À la fin du chargement, l’écran attend maintenant le bouton **Entrer** : ce geste déverrouille l’audio Android de manière fiable.
+- Salut vocal automatique après entrée selon le rôle connecté : **R5 Bonjour mon Général · R4 Bonjour mon Colonel · R3 Bonjour mon Lieutenant · R2 Bonjour mon Sergent · R1 Bonjour Soldat**.
+- Les salutations sont embarquées et ne dépendent pas d’un service vocal externe.
+- Le bouton 🎵/🔇 reste disponible et mémorise le choix de l’utilisateur.
+
 
 ## V20.5.26 — Mascot Loading + Music + Rank Greetings
 
