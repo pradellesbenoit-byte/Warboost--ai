@@ -56,6 +56,46 @@ async function planInfo(){
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
+
+  // Diagnostic public sûr : ne renvoie jamais les valeurs secrètes.
+  if(req.method==="GET" && String(req.query?.debug||"")==="1"){
+    const key=stripeKey();
+    const pid=priceId();
+    const out={
+      ok:true,
+      env:{
+        has_stripe_secret_key:Boolean(key),
+        stripe_key_mode:key.startsWith("sk_test_")?"test":key.startsWith("sk_live_")?"live":key?"unknown":"missing",
+        has_pro_price_id:Boolean(pid),
+        price_id_format:pid.startsWith("price_")?"price":"invalid"
+      },
+      stripe:{reachable:false,http_status:null,error_code:null,message:null},
+      configured:false
+    };
+    if(!key||!pid){
+      out.stripe.message=!key?"STRIPE_SECRET_KEY absente":"STRIPE_PRO_PRICE_ID absent";
+      return res.status(200).json(out);
+    }
+    try{
+      const r=await fetch(`https://api.stripe.com/v1/prices/${encodeURIComponent(pid)}`,{headers:{Authorization:`Bearer ${key}`}});
+      const j=await r.json().catch(()=>({}));
+      out.stripe.reachable=true;
+      out.stripe.http_status=r.status;
+      if(r.ok){
+        out.configured=true;
+        out.stripe.price_active=j?.active!==false;
+        out.stripe.currency=j?.currency||null;
+        out.stripe.interval=j?.recurring?.interval||null;
+      }else{
+        out.stripe.error_code=j?.error?.code||j?.error?.type||"stripe_error";
+        out.stripe.message=j?.error?.message||`Stripe HTTP ${r.status}`;
+      }
+    }catch(e){
+      out.stripe.message="Connexion Stripe impossible";
+    }
+    return res.status(200).json(out);
+  }
+
   try{
     const user=await requireUser(req);
     const configured=Boolean(stripeKey()&&priceId());
