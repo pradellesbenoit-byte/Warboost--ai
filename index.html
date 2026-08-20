@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V1.2 Global</title>
+  <title>WarBoost V1.2.4 Global PRO</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -56,6 +56,14 @@
     <div class="buttonRow"><button id="scanPlayerBtn" class="secondaryBtn" data-i18n="scan_button">📷 WarBoost Scan</button><button id="syncPlayerBtn" class="secondaryBtn" data-i18n="public_button">🌐 Mise à jour publique</button></div>
     <button id="playerAdviceBtn" class="secondaryBtn wideBtn" data-i18n="ai_priority">Priorité IA PRO</button>
     <div id="playerSyncInfo" class="notice" style="margin-top:10px" data-i18n="player_sync_note">Tes valeurs manuelles restent protégées. Un scan plus récent remplace uniquement les champs qu'il peut lire avec confiance.</div>
+    <section id="proPriorityPanel" class="section proPriorityPanel hidden" style="margin-top:10px">
+      <div class="sectionTitle"><h3 data-i18n="pro_diagnostic">Diagnostic PRO</h3><span id="proConfidence" class="pill">—</span></div>
+      <p id="proPrioritySummary" class="heroText" style="margin:0 0 10px"></p>
+      <div class="proSubTitle" data-i18n="pro_top_actions">Priorités d'action</div>
+      <div id="proPriorityList" class="priorityList"></div>
+      <div class="proSubTitle" data-i18n="pro_squad_compare">Comparaison des escouades</div>
+      <div id="proSquadCompare" class="squadCompare"></div>
+    </section>
   </section>
 
   <section id="allianceDrawer" class="drawer" aria-hidden="true">

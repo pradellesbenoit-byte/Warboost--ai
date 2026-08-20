@@ -1,3 +1,17 @@
+# WarBoost V1.2.4 — PRO Squad Intelligence
+
+- **Priorité IA PRO** compare désormais réellement les escouades enregistrées au lieu de choisir uniquement la plus puissante.
+- Analyse les données visibles des 5 héros : niveaux, étoiles, puissance, arme exclusive et équipement.
+- Classe jusqu'à 4 actions prioritaires et indique **quoi améliorer**, **quoi prendre gratuitement** et **quel type de pack payant éviter/privilégier** selon le goulot détecté.
+- Affiche un niveau de confiance pour éviter de recommander un achat à partir d'un scan incomplet.
+- Compare les 4 escouades avec puissance, qualité des données et rôle (priorité principale / secondaire / à conserver / à scanner).
+- Le Drone est intégré à l'ordre de priorité sans passer devant un écart héros plus important.
+- Si les détails héros ne sont pas assez visibles, WarBoost recommande d'abord un nouveau scan plutôt qu'un achat.
+- Le moteur Vision demande plus explicitement les détails visibles des 5 héros sur les captures d'escouade.
+- Conserve V1.2.3 : chaque scan reste verrouillé sur Escouade 1, 2, 3 ou 4 et ne peut plus écraser une autre escouade.
+- FR, EN-GB, EN-US, ES, DE, JA, ZH et AR conservés. PRO/Stripe, Supabase, galerie Android et Hybrid Sync conservés.
+- Cache PWA incrémenté pour livrer le nouveau moteur PRO aux installations existantes.
+
 # WarBoost V1.2.3 — Squad Slot Guard
 
 - Corrige le bug où un scan d'Escouade 2/3/4 pouvait remplacer l'Escouade 1.
