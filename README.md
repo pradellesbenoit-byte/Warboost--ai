@@ -1,3 +1,29 @@
+# WarBoost V1.2.3 — Squad Slot Guard
+
+- Corrige le bug où un scan d'Escouade 2/3/4 pouvait remplacer l'Escouade 1.
+- Le sélecteur WarBoost Scan propose maintenant explicitement Escouade 1, Escouade 2, Escouade 3 et Escouade 4.
+- Le serveur force le résultat Vision dans l'emplacement choisi : un scan Escouade 2 ne peut modifier que l'Escouade 2.
+- Les autres escouades déjà enregistrées sont conservées.
+- Compatible avec toutes les langues WarBoost ; les noms d'escouade du sélecteur utilisent la langue active.
+- Supabase, Stripe PRO, Hybrid Sync et le correctif galerie Android sont conservés.
+- Cache PWA incrémenté pour forcer le chargement du correctif.
+
+# WarBoost V1.2.2 — Android Gallery Picker Fix
+
+- WarBoost Scan n'impose plus l'ouverture de la caméra Android.
+- Le bouton de capture ouvre désormais le sélecteur de photos/fichiers afin de choisir directement une capture d'écran existante.
+- Formats acceptés : PNG, JPEG et WEBP.
+- Cache PWA incrémenté pour forcer le chargement du correctif après déploiement.
+
+# WarBoost V1.2.1 — Global Translation Completion
+
+- Complete locale coverage for FR, EN-GB, EN-US, ES, DE, JA, ZH and AR.
+- Removes English fallback strings visible inside Japanese/Spanish/German/Chinese/Arabic screens.
+- Keeps Arabic RTL and locale-aware dates, time, numbers and prices.
+- AI rules already return advice in the selected language.
+- Supabase, Stripe PRO and Hybrid Sync preserved.
+- Service-worker cache bumped so the language patch reaches installed PWAs.
+
 # WarBoost V1.2 — Global Hybrid Sync
 
 WarBoost V1.2 repart sur la base propre V1 et conserve la connexion Supabase ainsi que WarBoost PRO/Stripe déjà validés.
