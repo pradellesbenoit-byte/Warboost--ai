@@ -1,2 +1,3 @@
 import {configured} from "../lib/supabase.js";
-export default function handler(req,res){res.setHeader("Cache-Control","no-store");res.status(200).json({ok:true,app:"WarBoost V1 Core",version:"1.0.0",database:configured()?"ready":"local-fallback",lastwar_provider:Boolean(process.env.WARBOOST_LASTWAR_PROVIDER_URL)?"configured":"waiting"})}
+import {providerConfig} from "../lib/provider.js";
+export default function handler(req,res){res.setHeader("Cache-Control","no-store");const providers=providerConfig();res.status(200).json({ok:true,app:"WarBoost",version:"1.2.0",mode:"global-hybrid-sync",database:configured()?"ready":"local-fallback",public_lastwar_source:providers.public?"configured":"optional",trusted_provider:providers.trusted?"configured":"optional",vision:Boolean(process.env.OPENAI_API_KEY||process.env.WARBOOST_VISION_ENDPOINT)?"configured":"optional",languages:["fr","en-GB","en-US","es","de","ja","zh","ar"],serverless_functions:12})}
