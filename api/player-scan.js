@@ -216,14 +216,14 @@ function lastwarCurrentHeaders(apiKey){
   return {
     Accept:"application/json",
     Authorization:`Bearer ${apiKey}`,
-    "User-Agent":"WarBoost/20.5.31"
+    "User-Agent":"WarBoost/20.6.0"
   };
 }
 function lastwarLegacyHeaders(apiKey){
   return {
     Accept:"application/json",
     "X-API-Key":apiKey,
-    "User-Agent":"WarBoost/20.5.31"
+    "User-Agent":"WarBoost/20.6.0"
   };
 }
 function base64UrlEncode(value){
@@ -539,9 +539,22 @@ async function handlePlayerProfileSync(req,res){
       name:self?.name||probe.player.name,server_id:String(identity.serverId),alliance_tag:alliance?.tag||probe.player.alliance_tag||null,
       rank:self?.rank||probe.player.rank||null,hq_level:self?.hq_level||probe.player.hq_level||null,power,power_m:powerM,coordinates:probe.player.coordinates||null,player_id:self?.player_id||probe.player.player_id||null
     };
+    // V20.6.0: provenance field-by-field. This is intentionally explicit so the
+    // scanner / recommendation engine can distinguish API facts from local memory.
+    const rosterUsed=!!self;
+    const field_sources={
+      name:rosterUsed?"alliance_members":"player_search",server_id:"verified_request",
+      alliance_tag:alliance?.tag?"alliance_members":"player_search",rank:self?.rank?"alliance_members":(probe.player?.rank?"player_search":null),
+      hq_level:self?.hq_level?"alliance_members":(probe.player?.hq_level?"player_search":null),
+      power_m:self?.power_m||self?.power?"alliance_members":(probe.player?.power_m||probe.player?.power?"player_search":null),
+      coordinates:probe.player?.coordinates?"player_search":null
+    };
     const fields=Object.entries({name:profile.name,server_id:profile.server_id,alliance_tag:profile.alliance_tag,rank:profile.rank,hq_level:profile.hq_level,power_m:profile.power_m,coordinates:profile.coordinates}).filter(([,v])=>v!==null&&v!==undefined&&v!=="").map(([k])=>k);
-    const partial=!!rosterWarning||(!profile.rank&&!profile.power_m);
-    return json(res,200,{ok:true,provider:"LastWar Tools",provider_mode:probe.provider,source:"community_api",identity_verified:true,synced_at:new Date().toISOString(),token_calls:calls,cache_used:!!cached,partial,warning:rosterWarning,fields,profile,player_cache_token:signed.token,player_cache_expires_at:signed.expires_at});
+    const weights={name:20,server_id:15,alliance_tag:15,rank:15,hq_level:10,power_m:15,coordinates:10};
+    const qualityScore=Math.max(0,Math.min(100,fields.reduce((n,k)=>n+(weights[k]||0),0)));
+    const qualityLevel=qualityScore>=90?"excellent":qualityScore>=70?"bon":qualityScore>=50?"partiel":"minimal";
+    const partial=!!rosterWarning||qualityScore<70;
+    return json(res,200,{ok:true,schema_version:"20.6.0",provider:"LastWar Tools",provider_mode:probe.provider,source:"community_api",identity_verified:true,synced_at:new Date().toISOString(),token_calls:calls,cache_used:!!cached,partial,warning:rosterWarning,fields,field_sources,quality:{score:qualityScore,level:qualityLevel},profile,player_cache_token:signed.token,player_cache_expires_at:signed.expires_at});
   }catch(e){
     calls+=Number(e?.token_calls||0);const status=[400,401,402,403,404,409,429,502,503,504].includes(Number(e?.status))?Number(e.status):502;
     return json(res,status,{error:e?.message||"Synchronisation du profil Last War impossible.",invalidate_player_cache:["self_missing","alliance_mismatch","player_mismatch","server_mismatch"].includes(String(e?.stage||"")),stage:e?.stage||"unknown",http_status:e?.upstream_status||null,token_calls:calls});
