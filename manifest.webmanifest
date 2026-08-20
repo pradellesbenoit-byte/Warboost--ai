@@ -1,7 +1,7 @@
 {
   "name": "WarBoost",
   "short_name": "WarBoost",
-  "description": "WarBoost V1 Core — Joueur, Alliance, VS, Saison et Coach IA",
+  "description": "WarBoost V1.1 Core — Joueur, Alliance, VS, Saison, Coach IA et PRO",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

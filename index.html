@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V1 Core</title>
+  <title>WarBoost V1.1 Core</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -17,7 +17,7 @@
         <img class="logo" src="/assets/warboost-icon-192.png" alt="WarBoost" />
         <div class="brandText">
           <h1>WarBoost</h1>
-          <small>V1 Core · simple devant, puissant derrière</small>
+          <small>V1.1 Core · simple devant, puissant derrière</small>
         </div>
       </div>
       <button id="accountBtn" class="avatarBtn" aria-label="Compte">👤</button>
@@ -78,7 +78,7 @@
     <div id="squadList"></div>
     <div class="buttonRow">
       <button id="syncPlayerBtn" class="secondaryBtn">↻ Mettre à jour</button>
-      <button id="playerAdviceBtn" class="secondaryBtn">🤖 Priorité IA</button>
+      <button id="playerAdviceBtn" class="secondaryBtn">💎 Priorité IA PRO</button>
     </div>
     <div id="playerSyncInfo" class="notice" style="margin-top:10px">WarBoost garde les dernières données fiables et remplace chaque escouade seulement quand une mise à jour plus récente arrive.</div>
   </section>
@@ -97,7 +97,7 @@
       <div class="notice" style="margin-top:9px">Le lien rattache automatiquement le membre à l'alliance WarBoost après sa connexion.</div>
     </div>
     <div class="section">
-      <div class="sectionTitle"><h3>Plan de guerre IA</h3><button id="warPlanBtn" class="smallBtn">Générer</button></div>
+      <div class="sectionTitle"><h3>Plan de guerre IA</h3><button id="warPlanBtn" class="smallBtn">💎 Générer</button></div>
       <p id="warPlanText" class="heroText" style="margin:0">Ajoute des membres pour que WarBoost répartisse attaque, défense, rallys et réserves selon leur puissance réelle.</p>
     </div>
     <div class="section">
@@ -119,7 +119,7 @@
       <div id="vsTimeline" class="timeline"></div>
     </div>
     <div class="section">
-      <div class="sectionTitle"><h3>Plan du jour</h3><button id="vsPlanBtn" class="smallBtn">Actualiser</button></div>
+      <div class="sectionTitle"><h3>Plan du jour</h3><button id="vsPlanBtn" class="smallBtn">💎 Actualiser</button></div>
       <p id="vsPlanText" class="heroText" style="margin:0">WarBoost utilisera le jour réel du serveur et les données VS synchronisées pour proposer l'action prioritaire.</p>
     </div>
   </section>
@@ -138,7 +138,7 @@
       <p id="seasonStatus" class="heroText" style="margin:10px 0 0">La saison sera alimentée par la couche de synchronisation WarBoost.</p>
     </div>
     <div class="section">
-      <div class="sectionTitle"><h3>Conseil de saison</h3><button id="seasonAdviceBtn" class="smallBtn">Actualiser</button></div>
+      <div class="sectionTitle"><h3>Conseil de saison</h3><button id="seasonAdviceBtn" class="smallBtn">💎 Actualiser</button></div>
       <p id="seasonAdviceText" class="heroText" style="margin:0">Le conseil dépendra du jour réel, de la profession et de la progression du joueur.</p>
     </div>
   </section>
@@ -149,14 +149,14 @@
     <div class="section">
       <div class="sectionTitle"><h3>Connexion WarBoost</h3><span id="authPill" class="pill">Local</span></div>
       <div id="authLoggedOut" class="settingsForm">
-        <div class="field"><label>E-mail</label><input id="authEmail" type="email" autocomplete="email" placeholder="ton@email.fr" /></div>
-        <div class="field"><label>Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••" /></div>
+        <div class="field"><label>E-mail</label><input id="authEmail" type="email" autocomplete="email" /></div>
+        <div class="field"><label>Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" /></div>
         <div class="buttonRow"><button id="loginBtn" class="secondaryBtn">Se connecter</button><button id="signupBtn" class="secondaryBtn">Créer un compte</button></div>
         <div id="otpBox" class="hidden">
-          <div class="field" style="margin-top:9px"><label>Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" maxlength="8" placeholder="Code 6 à 8 chiffres" /></div>
+          <div class="field" style="margin-top:9px"><label>Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" maxlength="8" /></div>
           <button id="verifyOtpBtn" class="primaryAction" style="margin-top:9px">Valider le code</button>
         </div>
-        <div id="authMessage" class="notice">Tu peux tester WarBoost localement sans compte. La connexion active la sauvegarde serveur.</div>
+        <div id="authMessage" class="notice hidden"></div>
       </div>
       <div id="authLoggedIn" class="hidden">
         <div id="authIdentity" class="notice"></div>
@@ -165,24 +165,40 @@
     </div>
 
     <div class="section">
-      <div class="sectionTitle"><h3>Identité Last War</h3><span class="pill">V1 Core</span></div>
+      <div class="sectionTitle"><h3>Identité Last War</h3><span class="pill">Compte</span></div>
       <div class="settingsForm">
-        <div class="field"><label>Pseudo Last War</label><input id="fName" placeholder="Ex. Benoit" /></div>
-        <div class="field"><label>Serveur</label><input id="fServer" inputmode="numeric" placeholder="Ex. 884" /></div>
-        <div class="field"><label>QG</label><input id="fHq" inputmode="numeric" placeholder="Ex. 30" /></div>
-        <div class="field"><label>Alliance</label><input id="fAlliance" placeholder="Ex. ALL4" /></div>
-        <div class="field"><label>Rôle</label><input id="fRole" placeholder="R1, R2, R3, R4 ou R5" /></div>
+        <div class="field"><label>Pseudo Last War</label><input id="fName" /></div>
+        <div class="field"><label>Serveur</label><input id="fServer" inputmode="numeric" /></div>
+        <div class="field"><label>QG</label><input id="fHq" inputmode="numeric" /></div>
+        <div class="field"><label>Alliance</label><input id="fAlliance" /></div>
+        <div class="field"><label>Rôle</label><input id="fRole" /></div>
         <button id="saveProfileBtn" class="primaryAction">Enregistrer</button>
       </div>
     </div>
-    <div class="section">
-      <div class="sectionTitle"><h3>Synchronisation Last War</h3><span id="providerPill" class="pill">Source indépendante</span></div>
-      <div id="providerStatus" class="notice warn">Le noyau WarBoost est prêt pour une source Last War automatique. Tant qu'aucune source compatible n'est branchée, WarBoost conserve les données locales et les mises à jour reçues.</div>
-      <button id="syncAllBtn" class="secondaryBtn" style="width:100%;margin-top:9px">↻ Synchroniser maintenant</button>
+
+    <div id="proSection" class="section proSection">
+      <div class="sectionTitle"><h3>💎 WarBoost PRO</h3><span id="proPill" class="pill proPill">FREE</span></div>
+      <div class="proHero">
+        <div>
+          <b id="proTitle">Passe au niveau supérieur</b>
+          <small id="proPrice">Tarif chargé depuis Stripe</small>
+        </div>
+        <span class="proDiamond">💎</span>
+      </div>
+      <div class="proFeatures">
+        <div>✓ Priorités IA détaillées pour tes escouades</div>
+        <div>✓ Plans de guerre IA pour R5/R4</div>
+        <div>✓ Plans VS adaptés au jour réel</div>
+        <div>✓ Conseils Saison avancés</div>
+      </div>
+      <div id="proMessage" class="notice hidden"></div>
+      <button id="proActionBtn" class="primaryAction proAction" type="button">Passer PRO</button>
     </div>
+
     <div class="section">
-      <div class="sectionTitle"><h3>Test de l'interface</h3></div>
-      <button id="loadDemoBtn" class="secondaryBtn" style="width:100%">Charger des données de démonstration</button>
+      <div class="sectionTitle"><h3>Synchronisation Last War</h3><span id="providerPill" class="pill">Non connectée</span></div>
+      <div id="providerStatus" class="notice warn">Aucune source Last War automatique n'est connectée.</div>
+      <button id="syncAllBtn" class="secondaryBtn" style="width:100%;margin-top:9px">↻ Synchroniser maintenant</button>
     </div>
   </section>
 

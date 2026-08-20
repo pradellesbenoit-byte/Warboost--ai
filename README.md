@@ -1,4 +1,28 @@
-# WarBoost V1 — Core
+# WarBoost V1.1 — Core + PRO
+
+## Nouveautés V1.1
+
+- Interface Compte nettoyée : suppression des exemples/suggestions dans les champs et du bloc de démonstration.
+- Correction définitive de l’ouverture des fenêtres (`openDrawer`).
+- Nouvelle section **WarBoost PRO** intégrée au compte.
+- Une seule fonction serveur supplémentaire : `/api/pro` (11 fonctions au total, compatible Vercel Hobby).
+- Stripe est appelé uniquement côté serveur : aucune clé secrète n’est envoyée au navigateur.
+- Le prix PRO affiché dans l’application vient directement du Price Stripe configuré.
+- Checkout Stripe et portail de gestion d’abonnement.
+- Le statut PRO est vérifié directement auprès de Stripe à la connexion, sans webhook supplémentaire.
+- Les fonctions IA avancées Joueur / R5-R4 / VS / Saison sont marquées PRO.
+
+### Variables Vercel pour PRO
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PRO_PRICE_ID` (accepte aussi `STRIPE_PRICE_ID_PRO` ou `STRIPE_PRICE_ID`)
+- optionnel : `WARBOOST_APP_URL=https://warboost.fr`
+
+La V1.1 ne demande pas de webhook Stripe pour reconnaître un abonnement : le serveur retrouve le client Stripe par l’e-mail du compte WarBoost et vérifie directement ses abonnements.
+
+---
+
+# Historique — WarBoost V1.0 Core
 
 Nouvelle base propre, indépendante des anciennes interfaces V20.x.
 
