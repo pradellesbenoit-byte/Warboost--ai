@@ -1,7 +1,7 @@
 {
   "name": "WarBoost",
   "short_name": "WarBoost",
-  "description": "Assistant Last War pour joueurs, R4/R5, VS, Saison et alliances. V20.6.2 ajoute le scanner multi-captures automatique des héros, étoiles, armes, équipements et Drone, avec fusion vers la Boutique IA.",
+  "description": "Assistant Last War pour joueurs, R4/R5, VS, Saison et alliances. V20.7.0 ajoute Full Account Sync : un profil unifié qui consolide automatiquement identité, QG, puissance, héros, Drone, alliance, VS, Saison, technologie et Vision Sync.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

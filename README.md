@@ -1,3 +1,21 @@
+# WarBoost V20.7.0 — Full Account Sync
+
+## V20.7.0 — un compte WarBoost consolidé comme un tableau Last War
+
+- Nouveau **Full Account Sync** en haut de l’onglet Joueur : un seul profil rassemble identité, serveur, QG, puissance, coordonnées, escouade, héros, Drone, alliance, VS, Saison et technologie.
+- À la connexion WarBoost, une **synchronisation intelligente** se lance une seule fois par session : profil joueur puis modules Last War seulement quand leurs données sont anciennes.
+- Les fréquences sont protégées : profil/alliance 30 min, VS/Saison 6 h ; les caches existants sont réutilisés.
+- En cas de panne 500/502/503/504, 429 ou quota épuisé, Full Account Sync **arrête les appels supplémentaires** et conserve les dernières valeurs fiables.
+- **Auto Sync + Vision Sync** fusionnent les données API disponibles avec les héros, armes, équipements, Drone et technologie mémorisés par le scanner/saisie.
+- Nouvelle **couverture par module** et couverture globale pour montrer ce qui est synchronisé et ce qui reste inaccessible au fournisseur.
+- Le profil unifié `wb2070_full_account_v1` est ajouté à la synchronisation cloud WarBoost pour être réutilisé sur les appareils connectés.
+- Nouveau pont interne `WB2070_getFullAccount()` destiné au Coach IA, à la Boutique IA et aux futurs modules de recommandations.
+- WarBoost ne demande jamais le mot de passe Last War et n’invente pas les champs que le fournisseur ne rend pas accessibles.
+- Toutes les fonctions V20.6.2 sont conservées : scanner multi-captures, Boutique IA, OTP 6–8 chiffres, anti-panne et cache.
+- Service Worker : cache **V20.7.0**.
+
+---
+
 # WarBoost V20.6.2 — Scanner automatique multi-captures
 
 ## V20.6.2 — Héros + étoiles + armes + équipements + Drone
