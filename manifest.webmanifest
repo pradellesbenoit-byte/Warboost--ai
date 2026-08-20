@@ -1,7 +1,7 @@
 {
   "name": "WarBoost",
   "short_name": "WarBoost",
-  "description": "Assistant Last War pour joueurs, R4/R5, VS, Saison et alliances. V20.6.0 ajoute un hub de fiabilité pour la synchronisation du profil, la provenance des champs et la préparation scanner + Boutique IA.",
+  "description": "Assistant Last War pour joueurs, R4/R5, VS, Saison et alliances. V20.6.1 stoppe les appels multiples pendant les pannes API et conserve les dernières données fiables.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

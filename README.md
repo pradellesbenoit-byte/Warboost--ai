@@ -1,4 +1,17 @@
-# WarBoost V20.6.0 — Profil Last War fiable + pont Scanner/Boutique IA
+# WarBoost V20.6.1 — Anti-panne Last War + conservation fiable
+
+## V20.6.1 — 1 appel maximum pendant une panne
+
+- Les erreurs **500 / 502 / 503 / 504** et les timeouts arrêtent maintenant immédiatement la tentative : **aucun second provider/endpoint n’est appelé dans la même panne**.
+- Le fallback vers une seconde route reste autorisé uniquement pour une vraie incompatibilité d’endpoint **404 / 405**.
+- Le profil Last War, l’alliance et le roster déjà vérifiés restent affichés et conservés si l’API communautaire tombe.
+- WarBoost applique un **délai de 5 minutes** aux relances automatiques après une panne temporaire. Le joueur peut toujours relancer manuellement plus tard.
+- Les écrans R5/R4 indiquent clairement : **API temporairement indisponible — données conservées — 1 appel seulement**.
+- Le cache signé Player Search reste prioritaire : s’il est valide, **0 appel Player Search**.
+- Préserve toutes les fonctions V20.6.0, l’OTP e-mail 6–8 chiffres et le pont Scanner/Boutique IA.
+- Service Worker : cache **V20.6.1**.
+
+---
 
 ## V20.6.0 — Reliability Hub
 
