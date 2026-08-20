@@ -1,3 +1,20 @@
+# WarBoost V20.6.0 — Profil Last War fiable + pont Scanner/Boutique IA
+
+## V20.6.0 — Reliability Hub
+
+- Nouvelle **qualité de synchronisation de 0 à 100 %** selon les champs réellement disponibles : pseudo, serveur, alliance, rôle, QG, puissance et coordonnées.
+- WarBoost conserve désormais les **dernières valeurs fiables** lorsqu’une réponse LastWar Tools revient partielle, au lieu de perdre un champ déjà connu.
+- Ajout de la **provenance champ par champ** (`player_search`, `alliance_members`, requête vérifiée) pour préparer les futures recommandations IA sans mélanger donnée API et donnée locale.
+- Ajout d’un **délai automatique de 5 minutes** après une panne 502/503/504 et respect du `retry_after` en cas de 429, afin de protéger les tokens.
+- Le profil conserve aussi les **coordonnées** dans la mémoire d’escouade.
+- Historique local des **10 dernières synchronisations** pour diagnostic et comparaison.
+- Nouveau pont interne `WB2060_getPlayerContext()` qui rassemble profil Last War, santé de synchronisation et escouade sauvegardée : base technique pour le futur **scanner automatique + Boutique IA**.
+- Le cache partagé Joueur · R5/R4 · VS et le cache signé restent actifs.
+- Le flux e-mail/OTP 6 à 8 chiffres de V20.5.38 est conservé.
+- Service Worker : cache **V20.6.0**.
+
+---
+
 # WarBoost V20.5.38 — OTP adaptatif 6/8 chiffres
 
 ## V20.5.38 — Confirmation e-mail compatible Supabase 6 à 8 chiffres
