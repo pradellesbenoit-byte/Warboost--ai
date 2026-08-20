@@ -1,0 +1,109 @@
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const STORE_KEY="warboost_v1_core_state";
+const CLIENT_KEY="warboost_v1_client_id";
+
+function uid(){return crypto.randomUUID?.()||`wb-${Date.now()}-${Math.random().toString(16).slice(2)}`}
+function clientId(){let id=localStorage.getItem(CLIENT_KEY);if(!id){id=uid();localStorage.setItem(CLIENT_KEY,id)}return id}
+function emptyHero(i){return {name:`Héros ${i}`,level:null,stars:null,power:null,exclusive:null,gear:null}}
+function emptySquad(i){return {id:i,name:`Escouade ${i}`,power:null,updated_at:null,heroes:[1,2,3,4,5].map(emptyHero)}}
+function initialState(){return {
+  version:"1.0.0",player_id:clientId(),updated_at:null,
+  player:{name:"",server_id:"",hq_level:null,power_m:null,coordinates:null,role:"R1"},
+  squads:[1,2,3,4].map(emptySquad),
+  alliance:{id:null,tag:"",name:"",role:"R1",invite_code:"",members:[],updated_at:null},
+  vs:{week:null,day:null,our_alliance:"",opponent:"",our_score:null,their_score:null,updated_at:null},
+  season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:0,resistance:null,updated_at:null},
+  sync:{provider:"local",status:"local",last_sync:null,last_error:null,auto_ready:false}
+}}
+let state=loadState();
+let serverNow=new Date();
+let pushTimer=null;
+let suppressPush=false;
+let cloud=null;
+let cloudSession=null;
+function authHeaders(extra={}){return {...extra,...(cloudSession?.access_token?{authorization:`Bearer ${cloudSession.access_token}`}:{})}}
+
+function loadState(){try{const raw=localStorage.getItem(STORE_KEY);return raw?mergeState(initialState(),JSON.parse(raw)):initialState()}catch{return initialState()}}
+function mergeState(base,incoming){if(!incoming||typeof incoming!=="object")return base;const out={...base,...incoming};out.player={...base.player,...incoming.player};out.alliance={...base.alliance,...incoming.alliance};out.vs={...base.vs,...incoming.vs};out.season={...base.season,...incoming.season};out.sync={...base.sync,...incoming.sync};out.squads=Array.from({length:4},(_,i)=>({...base.squads[i],...(incoming.squads?.[i]||{}),heroes:Array.from({length:5},(_,j)=>({...base.squads[i].heroes[j],...(incoming.squads?.[i]?.heroes?.[j]||{})}))}));return out}
+function saveState(){state.updated_at=new Date().toISOString();localStorage.setItem(STORE_KEY,JSON.stringify(state));render();if(!suppressPush)scheduleServerSave()}
+function fmtPower(v){if(v===null||v===undefined||v==="")return "—";const n=Number(v);if(!Number.isFinite(n))return String(v);return `${n.toLocaleString("fr-FR",{maximumFractionDigits:2})} M`}
+function fmtAgo(iso){if(!iso)return "Jamais";const d=Math.max(0,Date.now()-new Date(iso).getTime());if(d<60e3)return "À l'instant";if(d<3600e3)return `${Math.floor(d/60e3)} min`;if(d<86400e3)return `${Math.floor(d/3600e3)} h`;return `${Math.floor(d/86400e3)} j`}
+function isoWeek(d){const x=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));x.setUTCDate(x.getUTCDate()+4-(x.getUTCDay()||7));const y=new Date(Date.UTC(x.getUTCFullYear(),0,1));return Math.ceil((((x-y)/86400000)+1)/7)}
+function vsDayFromServer(d){const day=d.getUTCDay();return day===0?6:day}
+
+
+
+async function initCloudAuth(){
+  try{const r=await fetch("/api/cloud-config",{cache:"no-store"});const cfg=await r.json();if(!r.ok||!cfg.configured||!window.supabase?.createClient)throw new Error();cloud=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data}=await cloud.auth.getSession();await applySession(data?.session||null);cloud.auth.onAuthStateChange((_event,session)=>{applySession(session||null)})}catch{renderAuth()}
+}
+async function applySession(session){cloudSession=session||null;if(cloudSession?.user?.id){const oldId=state.player_id;state.player_id=cloudSession.user.id;if(oldId!==state.player_id)localStorage.setItem(STORE_KEY,JSON.stringify(state));await pullServerState()}renderAuth()}
+function renderAuth(){const logged=Boolean(cloudSession?.user);$("#authLoggedOut")?.classList.toggle("hidden",logged);$("#authLoggedIn")?.classList.toggle("hidden",!logged);if($("#authPill"))$("#authPill").textContent=logged?"Connecté":(cloud?"Prêt":"Local");if(logged&&$("#authIdentity"))$("#authIdentity").textContent=`Compte WarBoost connecté · ${cloudSession.user.email||"utilisateur"}`;}
+async function authMessage(text,ok=false){const el=$("#authMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
+
+function scheduleServerSave(){clearTimeout(pushTimer);pushTimer=setTimeout(pushServerState,900)}
+async function pushServerState(){
+  if(!cloudSession?.access_token)return;
+  try{const r=await fetch("/api/state",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state})});if(!r.ok)return;const j=await r.json().catch(()=>({}));if(j?.updated_at){state.sync.last_sync=state.sync.last_sync||j.updated_at;localStorage.setItem(STORE_KEY,JSON.stringify(state))}}catch{}
+}
+async function pullServerState(){
+  if(!cloudSession?.access_token)return;
+  try{const r=await fetch(`/api/state`,{cache:"no-store",headers:authHeaders()});if(!r.ok)return;const j=await r.json();if(j?.state){suppressPush=true;state=mergeState(state,j.state);localStorage.setItem(STORE_KEY,JSON.stringify(state));render();suppressPush=false}}catch{}
+}
+
+async function refreshServerTime(){
+  try{const r=await fetch("/api/time",{cache:"no-store"});if(!r.ok)throw new Error();const j=await r.json();serverNow=new Date(j.now);state.vs.week=state.vs.week||j.iso_week;state.vs.day=j.vs_day;$("#syncPill").className="syncState good";$("#syncPill").textContent="Serveur OK"}
+  catch{serverNow=new Date();state.vs.week=state.vs.week||isoWeek(serverNow);state.vs.day=vsDayFromServer(serverNow);$("#syncPill").className="syncState";$("#syncPill").textContent="Heure locale"}
+  renderClock();render();
+}
+function renderClock(){const d=serverNow;$("#serverClock").textContent=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",second:"2-digit"});$("#serverDay").textContent=`${d.toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"short"})} · S${isoWeek(d)}`}
+setInterval(()=>{serverNow=new Date(serverNow.getTime()+1000);renderClock()},1000);
+setInterval(refreshServerTime,5*60*1000);
+
+function render(){
+  const p=state.player,a=state.alliance,v=state.vs,s=state.season;
+  $("#playerMeta").textContent=p.name?(p.hq_level?`QG ${p.hq_level}`:"Connecté"):"À connecter";
+  $("#allianceMeta").textContent=a.tag||"—";$("#vsMeta").textContent=`Semaine ${v.week||isoWeek(serverNow)}`;$("#seasonMeta").textContent=s.name||(s.number?`S${s.number}`:"À renseigner");
+  $("#pName").textContent=p.name||"—";$("#pHq").textContent=p.hq_level?`QG ${p.hq_level}`:"—";$("#pPower").textContent=fmtPower(p.power_m);
+  renderSquads();
+  $("#aTag").textContent=a.tag||"—";$("#aCount").textContent=String(a.members?.length||0);$("#aRole").textContent=a.role||p.role||"R1";$("#inviteCode").textContent=ensureInviteCode();$("#rosterFresh").textContent=a.updated_at?`MAJ ${fmtAgo(a.updated_at)}`:"À synchroniser";renderMembers();
+  $("#vsWeekTitle").textContent=`Semaine VS ${v.week||isoWeek(serverNow)}`;$("#vsDayPill").textContent=`Jour ${v.day||vsDayFromServer(serverNow)}`;$("#vsUs").textContent=v.our_alliance||a.tag||"Ton alliance";$("#vsThem").textContent=v.opponent||"Adversaire inconnu";$("#vsUsScore").textContent=v.our_score??"—";$("#vsThemScore").textContent=v.their_score??"—";renderVsTimeline();
+  $("#sName").textContent=s.name||(s.number?`Saison ${s.number}`:"—");$("#sDay").textContent=s.day||"—";$("#sProfession").textContent=s.profession||"—";const pct=Math.max(0,Math.min(100,Number(s.progress_pct||0)));$("#seasonProgressBar").style.width=`${pct}%`;$("#seasonProgressLabel").textContent=`${pct}%`;$("#seasonStatus").textContent=s.updated_at?`Dernière mise à jour : ${fmtAgo(s.updated_at)} · Résistance ${s.resistance??"—"}`:"La saison sera alimentée par la couche de synchronisation WarBoost.";
+  renderAdvice();renderAccountFields();renderProvider();
+}
+function renderSquads(){const box=$("#squadList");box.innerHTML="";state.squads.forEach((sq,i)=>{const el=document.createElement("div");el.className="squad";el.innerHTML=`<button class="squadHead"><span class="squadNo">${i+1}</span><span class="squadName"><b>${esc(sq.name||`Escouade ${i+1}`)}</b><small>${sq.updated_at?`MAJ ${fmtAgo(sq.updated_at)}`:"Pas encore synchronisée"}</small></span><span class="squadPower">${fmtPower(sq.power)}</span><span class="chev">⌄</span></button><div class="squadBody">${(sq.heroes||[]).map((h,j)=>`<div class="heroRow"><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(h.name||`Héros ${j+1}`)}</b><small>${h.level?`Nv.${h.level}`:"Nv.—"} · ${h.stars?`${h.stars}★`:"★—"}${h.exclusive?` · EX ${esc(h.exclusive)}`:""}${h.gear?` · ${esc(h.gear)}`:""}</small></div><div class="heroPwr">${fmtPower(h.power)}</div></div>`).join("")}</div>`;el.querySelector(".squadHead").addEventListener("click",()=>el.classList.toggle("open"));box.appendChild(el)})}
+function renderMembers(){const box=$("#memberList"),members=state.alliance.members||[];box.innerHTML=members.length?members.map(m=>`<div class="member"><div><b>${esc(m.name||"Joueur")}</b><small>QG ${m.hq_level??"—"} · ${fmtPower(m.power_m)} · ${m.role||"R1"}</small></div><div class="delta">${m.delta_m?`${m.delta_m>0?"+":""}${m.delta_m} M`:"—"}</div></div>`).join(""):`<div class="notice">Aucun membre encore rattaché. Partage le lien WarBoost à ton alliance.</div>`}
+function renderVsTimeline(){const names=["Lun","Mar","Mer","Jeu","Ven","Sam"],active=Number(state.vs.day||1);$("#vsTimeline").innerHTML=names.map((n,i)=>`<div class="day ${active===i+1?"active":""}">${n}<br>J${i+1}</div>`).join("")}
+function renderAdvice(){const p=state.player;if(!p.name){$("#adviceTitle").textContent="Configure ton profil";$("#adviceText").textContent="WarBoost analysera ensuite tes escouades, ton alliance, ton VS et ta saison pour te donner une priorité claire.";$("#adviceAction").textContent="Configurer WarBoost";return}const populated=state.squads.filter(x=>Number(x.power)>0);if(!populated.length){$("#adviceTitle").textContent=`Bonjour ${p.name}`;$("#adviceText").textContent="Ta première priorité est de synchroniser tes 4 escouades. Ensuite le Coach pourra comparer les gains possibles.";$("#adviceAction").textContent="Ouvrir Joueur";return}const strongest=[...populated].sort((x,y)=>(Number(y.power)||0)-(Number(x.power)||0))[0];$("#adviceTitle").textContent=`Priorité : ${strongest.name}`;$("#adviceText").textContent=`${fmtPower(strongest.power)} actuellement. WarBoost gardera son historique et signalera automatiquement les meilleurs axes d'amélioration à chaque nouvelle donnée.`;$("#adviceAction").textContent="Voir mes escouades"}
+function renderAccountFields(){const p=state.player;$("#fName").value=p.name||"";$("#fServer").value=p.server_id||"";$("#fHq").value=p.hq_level||"";$("#fAlliance").value=state.alliance.tag||"";$("#fRole").value=state.alliance.role||p.role||"R1"}
+function renderProvider(){const s=state.sync;const pill=$("#providerPill"),box=$("#providerStatus");if(s.status==="ok"){pill.textContent=s.provider||"Connectée";box.className="notice";box.textContent=`Synchronisation active · dernière mise à jour ${fmtAgo(s.last_sync)}`;return}pill.textContent=s.auto_ready?"Prête":"Source à connecter";box.className="notice warn";box.textContent=s.last_error||"Le noyau WarBoost est prêt pour une source Last War automatique. Tant qu'aucune source compatible n'est branchée, WarBoost conserve les données locales et les mises à jour reçues."}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
+function ensureInviteCode(){if(!state.alliance.invite_code){const base=(state.alliance.tag||"WB").replace(/[^A-Z0-9]/gi,"").toUpperCase().slice(0,4)||"WB";state.alliance.invite_code=`${base}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;localStorage.setItem(STORE_KEY,JSON.stringify(state))}return state.alliance.invite_code}
+function openDrawer(name){closeDrawers();$("#backdrop").classList.add("open");const d=$("#${name}Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false")}}
+function closeDrawers(){$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")})}
+$$('[data-open]').forEach(b=>b.addEventListener("click",()=>openDrawer(b.dataset.open)));$$('[data-close]').forEach(b=>b.addEventListener("click",closeDrawers));$("#backdrop").addEventListener("click",closeDrawers);$("#accountBtn").addEventListener("click",()=>openDrawer("account"));
+$("#adviceAction").addEventListener("click",()=>openDrawer(state.player.name?"player":"account"));
+$("#saveProfileBtn").addEventListener("click",async()=>{state.player.name=$("#fName").value.trim();state.player.server_id=$("#fServer").value.trim();state.player.hq_level=Number($("#fHq").value)||null;state.player.role=($("#fRole").value.trim().toUpperCase()||"R1");state.alliance.tag=$("#fAlliance").value.trim().toUpperCase();state.alliance.role=state.player.role;state.vs.our_alliance=state.alliance.tag;saveState();await joinPendingAlliance();closeDrawers()});
+$("#loadDemoBtn").addEventListener("click",()=>{const now=new Date().toISOString();state=mergeState(initialState(),{player_id:clientId(),player:{name:"Commandant",server_id:"884",hq_level:31,power_m:184.6,role:"R4"},squads:[65.2,42.1,31.8,25.4].map((p,i)=>({id:i+1,name:`Escouade ${i+1}`,power:p,updated_at:now,heroes:["DVA","Morrison","Lucius","Schuyler","Carlie"].map((n,j)=>({name:i===0?n:`Héros ${j+1}`,level:i===0?150:null,stars:i===0?5:null,power:i===0?Number((p/5+(j*.12)).toFixed(2)):null,exclusive:i===0&&j<2?"20":null,gear:i===0?"Légendaire":null}))})),alliance:{tag:"ALL4",role:"R4",members:[{name:"Alpha",hq_level:31,power_m:181.2,role:"R5",delta_m:3.4},{name:"Bravo",hq_level:31,power_m:176.9,role:"R4",delta_m:2.1},{name:"Charlie",hq_level:30,power_m:142.4,role:"R3",delta_m:.8}],updated_at:now},vs:{week:isoWeek(serverNow),day:vsDayFromServer(serverNow),our_alliance:"ALL4",opponent:"RIVAL",our_score:"3,2 Md",their_score:"2,9 Md",updated_at:now},season:{name:"Saison active",day:18,total_days:35,profession:"Ingénieur",progress_pct:51,resistance:11500,updated_at:now},sync:{provider:"demo",status:"ok",last_sync:now,auto_ready:false}});saveState();closeDrawers()});
+
+async function syncAll(){const btns=[$("#syncAllBtn"),$("#syncPlayerBtn")].filter(Boolean);btns.forEach(b=>{b.disabled=true;b.textContent="Synchronisation…"});try{const r=await fetch("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state})});const j=await r.json().catch(()=>({}));if(r.ok&&j.state){state=mergeState(state,j.state);state.sync={...state.sync,status:"ok",provider:j.provider||"warboost",last_sync:j.synced_at||new Date().toISOString(),last_error:null};saveState()}else{state.sync.last_error=j.message||j.error||"Aucune source Last War automatique n'est encore connectée au serveur WarBoost.";state.sync.status="waiting";saveState()}}catch{state.sync.last_error="Serveur WarBoost indisponible. Tes données locales sont conservées.";state.sync.status="offline";saveState()}finally{btns.forEach((b,i)=>{b.disabled=false;b.textContent=i===0?"↻ Synchroniser maintenant":"↻ Mettre à jour"})}}
+$("#syncAllBtn").addEventListener("click",syncAll);$("#syncPlayerBtn").addEventListener("click",syncAll);
+$("#playerAdviceBtn").addEventListener("click",async()=>{const text=await getAdvice("player");$("#playerSyncInfo").textContent=text});
+$("#warPlanBtn").addEventListener("click",async()=>{$("#warPlanText").textContent=await getAdvice("alliance")});
+$("#vsPlanBtn").addEventListener("click",async()=>{$("#vsPlanText").textContent=await getAdvice("vs")});
+$("#seasonAdviceBtn").addEventListener("click",async()=>{$("#seasonAdviceText").textContent=await getAdvice("season")});
+async function getAdvice(scope){try{const r=await fetch("/api/advice",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({scope,state})});const j=await r.json();if(r.ok&&j.advice)return j.advice}catch{}return localAdvice(scope)}
+function localAdvice(scope){if(scope==="player"){const qs=state.squads.filter(s=>Number(s.power)>0).sort((a,b)=>Number(b.power)-Number(a.power));return qs.length?`Concentre tes ressources sur ${qs[0].name} (${fmtPower(qs[0].power)}) avant de disperser tes améliorations. WarBoost affinera ce conseil quand les héros et équipements seront complets.`:"Synchronise au moins une escouade pour obtenir une priorité."}if(scope==="alliance")return state.alliance.members.length?`Crée un noyau de rally de ${Math.min(5,state.alliance.members.length)} joueurs les plus puissants, puis garde un groupe de défense et un groupe mobile. Le plan détaillé sera recalculé avec le roster complet.`:"Fais rejoindre les membres avec le lien d'invitation avant de générer un plan de guerre.";if(scope==="vs")return state.vs.opponent?`Jour ${state.vs.day}: concentre les dépenses uniquement sur les actions qui marquent aujourd'hui et garde le reste pour les jours suivants. Adversaire actuel : ${state.vs.opponent}.`:"L'adversaire VS n'est pas encore synchronisé. WarBoost utilisera la semaine et le jour du serveur dès que la donnée arrive.";return state.season.day?`Jour ${state.season.day}: priorise les ressources saisonnières qui débloquent ta prochaine étape avant les dépenses secondaires. Profession : ${state.season.profession||"non renseignée"}.`:"Synchronise la saison pour obtenir un conseil adapté au jour réel."}
+$("#shareInviteBtn").addEventListener("click",async()=>{let code=ensureInviteCode();try{const rr=await fetch("/api/invite",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({tag:state.alliance.tag||"WB",name:state.alliance.name||state.alliance.tag||"WarBoost",invite_code:code})});const jj=await rr.json().catch(()=>({}));if(rr.ok&&jj.invite_code){code=jj.invite_code;state.alliance.invite_code=code;saveState()}}catch{}const url=`${location.origin}${location.pathname}?join=${encodeURIComponent(code)}`,text=`Rejoins mon alliance sur WarBoost : ${code}`;try{if(navigator.share)await navigator.share({title:"WarBoost Alliance",text,url});else{await navigator.clipboard.writeText(`${text}\n${url}`);$("#shareInviteBtn").textContent="Copié ✓";setTimeout(()=>$("#shareInviteBtn").textContent="Partager",1400)}}catch{}});
+
+async function joinPendingAlliance(){const code=String(state.alliance.invite_code||"").trim();if(!code||!state.player.name)return;try{const r=await fetch("/api/join",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({invite_code:code})});const j=await r.json().catch(()=>({}));if(r.ok&&j.alliance){state.alliance.id=j.alliance.id||state.alliance.id;state.alliance.tag=j.alliance.tag||state.alliance.tag;state.alliance.name=j.alliance.name||state.alliance.name;state.vs.our_alliance=state.alliance.tag;saveState()}}catch{}}
+
+function handleJoinLink(){const code=new URLSearchParams(location.search).get("join");if(!code)return;state.alliance.invite_code=code.toUpperCase();localStorage.setItem(STORE_KEY,JSON.stringify(state));setTimeout(()=>openDrawer("account"),500)}
+
+$("#loginBtn")?.addEventListener("click",async()=>{if(!cloud)return authMessage("Le cloud WarBoost n'est pas configuré sur ce serveur.");const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value;const {error}=await cloud.auth.signInWithPassword({email,password});if(error)return authMessage(error.message);authMessage("Connexion réussie.",true)});
+$("#signupBtn")?.addEventListener("click",async()=>{if(!cloud)return authMessage("Le cloud WarBoost n'est pas configuré sur ce serveur.");const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value;if(!email||password.length<6)return authMessage("Entre un e-mail valide et un mot de passe d'au moins 6 caractères.");const {error}=await cloud.auth.signUp({email,password});if(error)return authMessage(error.message);localStorage.setItem("warboost_v1_pending_email",email);$("#otpBox").classList.remove("hidden");authMessage("Compte créé. Entre le code reçu par e-mail pour confirmer.",true)});
+$("#verifyOtpBtn")?.addEventListener("click",async()=>{if(!cloud)return;const email=localStorage.getItem("warboost_v1_pending_email")||$("#authEmail").value.trim().toLowerCase(),token=$("#authOtp").value.replace(/\D/g,"");if(token.length<6||token.length>8)return authMessage("Entre le code complet reçu par e-mail.");const {error}=await cloud.auth.verifyOtp({email,token,type:"email"});if(error)return authMessage(error.message);localStorage.removeItem("warboost_v1_pending_email");authMessage("E-mail confirmé. WarBoost est connecté.",true)});
+$("#logoutBtn")?.addEventListener("click",async()=>{if(cloud)await cloud.auth.signOut();cloudSession=null;state.player_id=clientId();renderAuth()});
+
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
+handleJoinLink();refreshServerTime();pullServerState();initCloudAuth();render();renderAuth();

@@ -1,39 +1,5 @@
-const WB_CACHE="warboost-v20-8-0-simple-shell-1";
-const WB_SHELL=["/","/index.html","/manifest.webmanifest","/warboost-icon-192.png","/warboost-icon-512.png","/warboost-apple-touch-icon.png"];
-
-self.addEventListener("install",event=>{
-  event.waitUntil((async()=>{
-    const cache=await caches.open(WB_CACHE);
-    await Promise.allSettled(WB_SHELL.map(async url=>{
-      try{const response=await fetch(new Request(url,{cache:"reload"}));if(response&&response.ok)await cache.put(url,response.clone())}catch{}
-    }));
-    await self.skipWaiting();
-  })());
-});
-
-self.addEventListener("activate",event=>{
-  event.waitUntil((async()=>{
-    const keys=await caches.keys();
-    await Promise.all(keys.filter(k=>k.startsWith("warboost-")&&k!==WB_CACHE).map(k=>caches.delete(k)));
-    await self.clients.claim();
-  })());
-});
-
-self.addEventListener("message",event=>{if(event.data?.type==="SKIP_WAITING")self.skipWaiting()});
-
-self.addEventListener("fetch",event=>{
-  const req=event.request;if(req.method!=="GET")return;
-  const url=new URL(req.url);if(url.origin!==self.location.origin)return;
-  if(url.pathname.startsWith("/api/")){event.respondWith(fetch(req));return;}
-  if(req.mode==="navigate"){
-    event.respondWith((async()=>{
-      try{const response=await fetch(req);if(response&&response.ok){const copy=response.clone();caches.open(WB_CACHE).then(c=>c.put("/index.html",copy));return response}}catch{}
-      return (await caches.match("/index.html")) || new Response("WarBoost indisponible hors connexion.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8"}});
-    })());
-    return;
-  }
-  event.respondWith((async()=>{
-    try{const response=await fetch(req);if(response&&response.ok)return response}catch{}
-    return (await caches.match(req)) || new Response("",{status:504});
-  })());
-});
+const CACHE="warboost-v1-core-shell-1";
+const SHELL=["/","/index.html","/styles.css","/app.js","/manifest.webmanifest","/assets/warboost-icon-192.png","/assets/warboost-icon-512.png","/assets/warboost-apple-touch-icon.png"];
+self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
+self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener("fetch",e=>{const u=new URL(e.request.url);if(e.request.method!=="GET"||u.pathname.startsWith("/api/"))return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match("/index.html"))))});
