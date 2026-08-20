@@ -216,14 +216,14 @@ function lastwarCurrentHeaders(apiKey){
   return {
     Accept:"application/json",
     Authorization:`Bearer ${apiKey}`,
-    "User-Agent":"WarBoost/20.6.2"
+    "User-Agent":"WarBoost/20.7.0"
   };
 }
 function lastwarLegacyHeaders(apiKey){
   return {
     Accept:"application/json",
     "X-API-Key":apiKey,
-    "User-Agent":"WarBoost/20.6.2"
+    "User-Agent":"WarBoost/20.7.0"
   };
 }
 function base64UrlEncode(value){
