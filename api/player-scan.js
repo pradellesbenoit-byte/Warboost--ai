@@ -216,14 +216,14 @@ function lastwarCurrentHeaders(apiKey){
   return {
     Accept:"application/json",
     Authorization:`Bearer ${apiKey}`,
-    "User-Agent":"WarBoost/20.6.1"
+    "User-Agent":"WarBoost/20.6.2"
   };
 }
 function lastwarLegacyHeaders(apiKey){
   return {
     Accept:"application/json",
     "X-API-Key":apiKey,
-    "User-Agent":"WarBoost/20.6.1"
+    "User-Agent":"WarBoost/20.6.2"
   };
 }
 function base64UrlEncode(value){
@@ -1117,6 +1117,14 @@ SORTIE
     text:`Analyse ces captures de Last War: Survival comme le Smart Player Scan WarBoost V20.4.2.
 
 ORDRE D’ANALYSE OBLIGATOIRE : héros → équipements → puissance de formation → Drone → Suzerain. N’évalue les priorités et la Boutique qu’après avoir terminé cette extraction.
+
+FUSION MULTI-CAPTURES V20.6.2:
+- si plusieurs images sont fournies, considère-les comme des vues complémentaires du MÊME compte et de la MÊME escouade principale;
+- fusionne les informations concordantes entre les images sans dupliquer les héros;
+- une capture peut montrer la formation, une autre les détails héros/équipements, une autre le Drone;
+- préfère la valeur la plus clairement lisible lorsqu’un même champ apparaît plusieurs fois;
+- si deux valeurs se contredisent et qu’aucune n’est clairement plus fiable, mets null et signale le doute dans missing_information;
+- l’objectif prioritaire est de récupérer : 5 héros, leurs niveaux, étoiles, armes exclusives, jusqu’à 4 équipements par héros, ainsi que le niveau/puissance Drone lorsqu’ils sont visibles.
 
 OBJECTIF:
 1. extraire uniquement les informations réellement visibles;
