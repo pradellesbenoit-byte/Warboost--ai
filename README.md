@@ -1,3 +1,19 @@
+# WarBoost V20.8.0 — Simple Command Center
+
+- Navigation principale réduite à **Accueil, Joueur, Alliance, VS, Saison**.
+- Accueil “Aujourd’hui” : une priorité + quatre résumés utiles.
+- Joueur : **Mettre à jour / Mes priorités / Boutique IA**.
+- Alliance R5/R4 : **Roster / Brief du jour / Organisation**.
+- VS : **Plan du jour / Adversaire / Détails VS**.
+- Saison : **Conseil du jour / Mettre à jour / Outils Saison**.
+- Tous les anciens outils sont conservés derrière **Afficher tous les outils**.
+- **Aucun appel Last War externe automatique à la connexion** : les données WarBoost enregistrées et Vision Sync sont prioritaires.
+- Les synchronisations externes existantes restent disponibles manuellement en mode avancé.
+- PRO reste accessible depuis l’Accueil sans encombrer la barre principale.
+- Cache PWA : **V20.8.0**.
+
+---
+
 # WarBoost V20.7.0 — Full Account Sync
 
 ## V20.7.0 — un compte WarBoost consolidé comme un tableau Last War
