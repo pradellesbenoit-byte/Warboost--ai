@@ -1,3 +1,19 @@
+# WarBoost V20.6.2 — Scanner automatique multi-captures
+
+## V20.6.2 — Héros + étoiles + armes + équipements + Drone
+
+- Le scanner Joueur accepte désormais **1 à 3 captures complémentaires** en une seule analyse.
+- WarBoost fusionne automatiquement une capture de **formation**, une vue **détails héros/équipements** et une vue **Drone** quand elles sont fournies.
+- Détection recherchée : **5 héros**, niveaux, **étoiles (max 5)**, **armes exclusives**, jusqu’à **4 équipements par héros**, Drone et puissance de formation.
+- Nouvelle **couverture de scan** affichée en pourcentage avec compteurs Héros / Niveaux / Étoiles / Armes / Équipements / Drone.
+- Si une donnée n’est pas lisible, WarBoost la laisse vide et indique la **prochaine capture utile** au lieu de l’inventer.
+- Les résultats détectés sont enregistrés dans la mémoire d’escouade et alimentent immédiatement les **priorités** et la **Boutique IA**.
+- Les captures restent compressées côté téléphone et seules les données structurées détectées sont conservées.
+- Préserve V20.6.1 : **1 seul appel Last War pendant une panne 500/502/503/504**, cache fiable et OTP e-mail 6–8 chiffres.
+- Service Worker : cache **V20.6.2**.
+
+---
+
 # WarBoost V20.6.1 — Anti-panne Last War + conservation fiable
 
 ## V20.6.1 — 1 appel maximum pendant une panne
