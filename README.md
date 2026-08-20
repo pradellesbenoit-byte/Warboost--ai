@@ -1,142 +1,161 @@
-# WarBoost V1.1 — Core + PRO
+# WarBoost V1.2 — Global Hybrid Sync
 
-## Nouveautés V1.1
+WarBoost V1.2 repart sur la base propre V1 et conserve la connexion Supabase ainsi que WarBoost PRO/Stripe déjà validés.
 
-- Interface Compte nettoyée : suppression des exemples/suggestions dans les champs et du bloc de démonstration.
-- Correction définitive de l’ouverture des fenêtres (`openDrawer`).
-- Nouvelle section **WarBoost PRO** intégrée au compte.
-- Une seule fonction serveur supplémentaire : `/api/pro` (11 fonctions au total, compatible Vercel Hobby).
-- Stripe est appelé uniquement côté serveur : aucune clé secrète n’est envoyée au navigateur.
-- Le prix PRO affiché dans l’application vient directement du Price Stripe configuré.
-- Checkout Stripe et portail de gestion d’abonnement.
-- Le statut PRO est vérifié directement auprès de Stripe à la connexion, sans webhook supplémentaire.
-- Les fonctions IA avancées Joueur / R5-R4 / VS / Saison sont marquées PRO.
+## 1. International par défaut
 
-### Variables Vercel pour PRO
+WarBoost détecte automatiquement la langue du téléphone/navigateur et propose aussi un sélecteur manuel.
+
+Langues intégrées :
+
+- Français
+- Anglais UK
+- Anglais US
+- Espagnol
+- Allemand
+- Japonais
+- Chinois simplifié
+- Arabe avec interface RTL
+
+Une langue non reconnue bascule automatiquement sur l'anglais. Dates, heures, nombres et prix utilisent le format local.
+
+## 2. WarBoost Hybrid Sync — sans token joueur
+
+La synchronisation ne demande aucun token Last War au joueur.
+
+Elle combine trois couches :
+
+1. **Données publiques** : via `WARBOOST_PUBLIC_LASTWAR_URL` si une source publique compatible est branchée côté serveur.
+2. **WarBoost Scan** : captures Last War analysées côté serveur pour les données privées (QG, 4 escouades, héros, Drone, VS, Saison, etc.).
+3. **Cloud alliance** : les membres qui rejoignent l'alliance WarBoost remontent automatiquement dans le roster R5/R4 avec leur dernière progression enregistrée.
+
+Le bouton de synchronisation reste fonctionnel même lorsqu'aucune source publique externe n'est configurée : le cloud WarBoost et le roster alliance continuent de fonctionner.
+
+## 3. WarBoost Scan
+
+Nouvelle fenêtre mobile :
+
+- Profil / QG
+- Escouades / Héros
+- Drone
+- VS
+- Saison
+
+La capture est redimensionnée dans le navigateur avant l'envoi.
+
+### Option A — OpenAI Vision côté serveur
+
+Ajouter dans Vercel :
+
+- `OPENAI_API_KEY`
+- optionnel : `WARBOOST_VISION_MODEL` (défaut : `gpt-5.6-luna`)
+
+La clé reste exclusivement côté serveur.
+
+### Option B — moteur Vision externe WarBoost
+
+- `WARBOOST_VISION_ENDPOINT`
+- optionnel : `WARBOOST_VISION_SECRET`
+
+Le moteur doit renvoyer un JSON partiel compatible avec l'état WarBoost.
+
+Si aucun moteur Vision n'est configuré, WarBoost ne modifie aucune donnée et indique simplement que l'analyse automatique doit être activée côté serveur.
+
+## 4. Joueur
+
+- 4 escouades ouvrables/fermables.
+- 5 héros par escouade.
+- puissance, niveau, étoiles, arme exclusive, équipement.
+- Drone : niveau + puissance.
+- historique conservé.
+- valeurs manuelles préservées lorsqu'un scan ne lit pas un champ.
+- Coach IA PRO localisé.
+
+## 5. R5 / R4
+
+- invitation WarBoost partageable.
+- le propriétaire de l'alliance est automatiquement ajouté au roster.
+- les membres rejoignent via le lien/code.
+- le serveur reconstruit le roster depuis les profils WarBoost enregistrés.
+- QG, puissance, rôle et évolution visibles.
+- plan de guerre IA PRO.
+
+## 6. VS
+
+- semaine et jour calculés avec l'horloge serveur WarBoost.
+- adversaire / scores récupérables via source publique ou scan.
+- plan du jour PRO.
+
+## 7. Saison
+
+- saison, jour, profession, résistance et progression.
+- mise à jour via source publique ou scan.
+- conseil PRO localisé.
+
+## 8. PRO conservé
+
+WarBoost V1.2 conserve le fonctionnement validé de V1.1.4 :
+
+- Stripe Checkout
+- abonnement 4,99 €/mois (selon le Price configuré)
+- portail de gestion
+- statut FREE / PRO
+- prise en charge `SUPABASE_PUBLISHABLE_KEY`
+
+Variables déjà utilisées :
 
 - `STRIPE_SECRET_KEY`
-- `STRIPE_PRO_PRICE_ID` (accepte aussi `STRIPE_PRICE_ID_PRO` ou `STRIPE_PRICE_ID`)
-- optionnel : `WARBOOST_APP_URL=https://warboost.fr`
-
-La V1.1 ne demande pas de webhook Stripe pour reconnaître un abonnement : le serveur retrouve le client Stripe par l’e-mail du compte WarBoost et vérifie directement ses abonnements.
-
----
-
-# Historique — WarBoost V1.0 Core
-
-Nouvelle base propre, indépendante des anciennes interfaces V20.x.
-
-## Principe produit
-
-L'accueil ne montre que :
-
-- 👤 Joueur
-- 🛡️ Alliance
-- ⚔️ VS
-- 🌍 Saison
-- 🤖 Coach IA
-
-Chaque module s'ouvre dans une grande fenêtre mobile et se referme en un toucher.
-
-## Joueur
-
-- 4 escouades fixes.
-- Chaque escouade s'ouvre/se ferme comme un accordéon.
-- 5 héros par escouade.
-- Puissance, niveau, étoiles, arme exclusive et équipement.
-- Une escouade n'est remplacée que par une donnée plus récente.
-- Historique serveur via `wb1_snapshots`.
-- Coach WarBoost donnant une priorité de progression.
-
-## R5 / R4
-
-- Code et lien d'invitation partageables.
-- Le membre rejoint l'alliance WarBoost après connexion.
-- Roster compact avec QG, puissance, rôle et progression.
-- Générateur de plan de guerre basé sur le roster disponible.
-
-## VS
-
-- Semaine calculée avec l'horloge serveur WarBoost.
-- Jour VS calculé côté serveur.
-- Alliance adverse et scores stockés dans le profil synchronisé.
-- Plan du jour généré à partir des données disponibles.
-
-## Saison
-
-- Saison, jour, profession, résistance, progression.
-- Conseil adapté au jour et à la progression.
-
-## Serveur temps réel
-
-`/api/time` fournit une heure UTC autoritaire, la semaine ISO et le jour VS. Le téléphone n'est pas la référence principale lorsque le serveur est accessible.
-
-## Synchronisation Last War
-
-Le noyau ne dépend pas de LastWar Tools et n'affiche aucun token au joueur.
-
-Deux mécanismes sont prévus :
-
-1. **Pull** : `WARBOOST_LASTWAR_PROVIDER_URL` — WarBoost interroge une source compatible.
-2. **Push** : `/api/ingest` — une source de confiance pousse les mises à jour au serveur WarBoost.
-
-`/api/cron-sync` permet ensuite une mise à jour planifiée de tous les profils.
-
-> Important : WarBoost V1 Core contient le moteur de synchronisation, la persistance et le contrat de données. La mise à jour automatique réelle depuis Last War nécessite encore de brancher une source qui a effectivement accès aux données Last War. Le noyau ne prétend pas contourner cette limite.
-
-Voir `LASTWAR_PROVIDER_CONTRACT.md`.
-
-## Authentification
-
-La page supporte Supabase Auth si ces variables Vercel sont définies :
-
+- `STRIPE_PRO_PRICE_ID`
 - `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
+- `SUPABASE_PUBLISHABLE_KEY` ou `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-L'inscription supporte le code e-mail 6 à 8 chiffres utilisé par WarBoost.
+## 9. Source publique Last War optionnelle
 
-Sans cloud configuré, l'application reste testable en mode local.
+Pour brancher une source publique compatible :
 
-## Base de données
+- `WARBOOST_PUBLIC_LASTWAR_URL`
 
-Exécuter `supabase/schema.sql`.
+WarBoost envoie uniquement identité WarBoost + pseudo/serveur connus. Aucun token joueur.
 
-Tables :
-
-- `wb1_profiles`
-- `wb1_snapshots`
-- `wb1_alliances`
-- `wb1_alliance_members`
-
-Les tables V1 ont leur propre préfixe afin de ne pas casser les anciennes versions.
-
-## Variables serveur optionnelles
+L'ancien connecteur de confiance reste également compatible :
 
 - `WARBOOST_LASTWAR_PROVIDER_URL`
 - `WARBOOST_PROVIDER_SECRET`
-- `WARBOOST_INGEST_SECRET`
-- `CRON_SECRET`
 
-Aucune de ces valeurs ne doit être exposée dans le navigateur.
+Voir `LASTWAR_PROVIDER_CONTRACT.md`.
 
-## Routes
+## 10. Vercel Hobby
 
-- `GET /api/time`
-- `GET|POST /api/state`
-- `POST /api/sync`
-- `POST /api/ingest`
-- `POST /api/advice`
-- `POST /api/invite`
-- `POST /api/join`
-- `POST /api/cron-sync`
-- `GET /api/health`
-- `GET /api/cloud-config`
+La V1.2 contient exactement **12 fonctions Serverless**, soit la limite utilisée pour ce projet Hobby :
 
-## Test interface
+- advice
+- cloud-config
+- cron-sync
+- health
+- ingest
+- invite
+- join
+- pro
+- scan
+- state
+- sync
+- time
 
-Le bouton **Charger des données de démonstration** remplit uniquement l'interface locale pour vérifier rapidement les 4 escouades, l'alliance, le VS et la saison.
+Ne rajoute pas un nouveau fichier `.js` dans `api/` sans fusionner une fonction existante.
 
-## Version
+## Déploiement conseillé
 
-WarBoost V1.0.0 — Core
+Pour remplacer V1.1 : uploader le contenu de ce ZIP à la racine GitHub en conservant les dossiers `api`, `lib`, `assets`, `supabase`.
+
+Après le déploiement, vérifier :
+
+- `/api/health`
+- connexion WarBoost
+- PRO
+- changement de langue
+- ouverture des 4 escouades
+- WarBoost Scan
+- invitation alliance
+
+Version : **WarBoost V1.2.0 — Global Hybrid Sync**

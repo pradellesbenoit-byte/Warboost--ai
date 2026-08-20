@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V1.1 Core</title>
+  <title>WarBoost V1.2 Global</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -15,191 +15,93 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/assets/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText">
-          <h1>WarBoost</h1>
-          <small>V1.1 Core · simple devant, puissant derrière</small>
-        </div>
+        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V1.2 Global · Sync hybride · sans token joueur</small></div>
       </div>
-      <button id="accountBtn" class="avatarBtn" aria-label="Compte">👤</button>
+      <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
+      <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
     </header>
 
     <section class="serverStrip" aria-live="polite">
-      <div class="serverTime">🕐 <b id="serverClock">--:--:--</b> · <span id="serverDay">Serveur WarBoost</span></div>
+      <div class="serverTime">🕐 <b id="serverClock">--:--:--</b> · <span id="serverDay">WarBoost</span></div>
       <div id="syncPill" class="syncState">Local</div>
     </section>
 
     <section class="heroCard">
-      <div class="eyebrow">🤖 Coach IA</div>
-      <h2 id="adviceTitle" class="heroTitle">Configure ton profil</h2>
-      <p id="adviceText" class="heroText">WarBoost analysera ensuite tes escouades, ton alliance, ton VS et ta saison pour te donner une priorité claire.</p>
-      <button id="adviceAction" class="primaryAction">Configurer WarBoost</button>
+      <div class="eyebrow">🤖 <span data-i18n="coach">Coach IA</span></div>
+      <h2 id="adviceTitle" class="heroTitle" data-i18n="configure_profile">Configure ton profil</h2>
+      <p id="adviceText" class="heroText" data-i18n="configure_text">WarBoost combine données publiques, scans intelligents et cloud alliance pour te donner une priorité claire.</p>
+      <button id="adviceAction" class="primaryAction" data-i18n="configure">Configurer WarBoost</button>
     </section>
 
     <section class="moduleGrid">
-      <button class="moduleCard" data-open="player">
-        <span class="moduleMeta" id="playerMeta">À connecter</span>
-        <span class="moduleIcon">👤</span>
-        <h2>Joueur</h2>
-        <p>4 escouades, progression et priorités.</p>
-      </button>
-      <button class="moduleCard" data-open="alliance">
-        <span class="moduleMeta" id="allianceMeta">—</span>
-        <span class="moduleIcon">🛡️</span>
-        <h2>Alliance</h2>
-        <p>Membres, R5/R4 et plans de guerre.</p>
-      </button>
-      <button class="moduleCard" data-open="vs">
-        <span class="moduleMeta" id="vsMeta">Semaine —</span>
-        <span class="moduleIcon">⚔️</span>
-        <h2>VS</h2>
-        <p>Adversaire, jour actuel et plan du jour.</p>
-      </button>
-      <button class="moduleCard" data-open="season">
-        <span class="moduleMeta" id="seasonMeta">À renseigner</span>
-        <span class="moduleIcon">🌍</span>
-        <h2>Saison</h2>
-        <p>Progression, profession et objectifs.</p>
-      </button>
+      <button class="moduleCard" data-open="player"><span class="moduleMeta" id="playerMeta">—</span><span class="moduleIcon">👤</span><h2 data-i18n="player">Joueur</h2><p data-i18n="player_desc">4 escouades, Drone, progression et priorités.</p></button>
+      <button class="moduleCard" data-open="alliance"><span class="moduleMeta" id="allianceMeta">—</span><span class="moduleIcon">🛡️</span><h2 data-i18n="alliance">Alliance</h2><p data-i18n="alliance_desc">Membres, R5/R4 et plans de guerre.</p></button>
+      <button class="moduleCard" data-open="vs"><span class="moduleMeta" id="vsMeta">—</span><span class="moduleIcon">⚔️</span><h2 data-i18n="vs">VS</h2><p data-i18n="vs_desc">Adversaire de la semaine, jour actuel et plan.</p></button>
+      <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
     </section>
-
-    <div class="footerNote">Les données Last War sont centralisées par le serveur WarBoost. Aucun token joueur n'est affiché.</div>
+    <div class="footerNote" data-i18n="footer">Sync hybride : données publiques + WarBoost Scan + cloud alliance. Aucun token API joueur n'est nécessaire.</div>
   </main>
 
   <div id="backdrop" class="drawerBackdrop"></div>
 
   <section id="playerDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div>
-    <div class="drawerHeader"><h2>👤 Joueur</h2><button class="closeBtn" data-close>×</button></div>
-    <div class="summaryBar">
-      <div class="stat"><span>Pseudo</span><b id="pName">—</b></div>
-      <div class="stat"><span>QG</span><b id="pHq">—</b></div>
-      <div class="stat"><span>Puissance</span><b id="pPower">—</b></div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>👤 <span data-i18n="player">Joueur</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div class="summaryBar four">
+      <div class="stat"><span data-i18n="nickname">Pseudo Last War</span><b id="pName">—</b></div>
+      <div class="stat"><span data-i18n="hq">QG</span><b id="pHq">—</b></div>
+      <div class="stat"><span data-i18n="power">Puissance</span><b id="pPower">—</b></div>
+      <div class="stat"><span data-i18n="drone">Drone</span><b id="pDrone">—</b></div>
     </div>
     <div id="squadList"></div>
-    <div class="buttonRow">
-      <button id="syncPlayerBtn" class="secondaryBtn">↻ Mettre à jour</button>
-      <button id="playerAdviceBtn" class="secondaryBtn">💎 Priorité IA PRO</button>
-    </div>
-    <div id="playerSyncInfo" class="notice" style="margin-top:10px">WarBoost garde les dernières données fiables et remplace chaque escouade seulement quand une mise à jour plus récente arrive.</div>
+    <div class="buttonRow"><button id="scanPlayerBtn" class="secondaryBtn" data-i18n="scan_button">📷 WarBoost Scan</button><button id="syncPlayerBtn" class="secondaryBtn" data-i18n="public_button">🌐 Mise à jour publique</button></div>
+    <button id="playerAdviceBtn" class="secondaryBtn wideBtn" data-i18n="ai_priority">Priorité IA PRO</button>
+    <div id="playerSyncInfo" class="notice" style="margin-top:10px" data-i18n="player_sync_note">Tes valeurs manuelles restent protégées. Un scan plus récent remplace uniquement les champs qu'il peut lire avec confiance.</div>
   </section>
 
   <section id="allianceDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div>
-    <div class="drawerHeader"><h2>🛡️ Alliance R5/R4</h2><button class="closeBtn" data-close>×</button></div>
-    <div class="summaryBar">
-      <div class="stat"><span>Alliance</span><b id="aTag">—</b></div>
-      <div class="stat"><span>Membres</span><b id="aCount">0</b></div>
-      <div class="stat"><span>Rôle</span><b id="aRole">Joueur</b></div>
-    </div>
-    <div class="section">
-      <div class="sectionTitle"><h3>Faire venir les membres</h3><span class="pill">1 toucher</span></div>
-      <div class="inviteBox"><div id="inviteCode" class="inviteCode">—</div><button id="shareInviteBtn" class="smallBtn">Partager</button></div>
-      <div class="notice" style="margin-top:9px">Le lien rattache automatiquement le membre à l'alliance WarBoost après sa connexion.</div>
-    </div>
-    <div class="section">
-      <div class="sectionTitle"><h3>Plan de guerre IA</h3><button id="warPlanBtn" class="smallBtn">💎 Générer</button></div>
-      <p id="warPlanText" class="heroText" style="margin:0">Ajoute des membres pour que WarBoost répartisse attaque, défense, rallys et réserves selon leur puissance réelle.</p>
-    </div>
-    <div class="section">
-      <div class="sectionTitle"><h3>Membres</h3><span id="rosterFresh" class="pill">—</span></div>
-      <div id="memberList" class="list"></div>
-    </div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>🛡️ <span data-i18n="alliance_r5r4">Alliance R5/R4</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div class="summaryBar"><div class="stat"><span data-i18n="alliance">Alliance</span><b id="aTag">—</b></div><div class="stat"><span data-i18n="members">Membres</span><b id="aCount">0</b></div><div class="stat"><span data-i18n="role">Rôle</span><b id="aRole">R1</b></div></div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="invite_members">Faire venir les membres</h3><span class="pill" data-i18n="one_tap">1 toucher</span></div><div class="inviteBox"><div id="inviteCode" class="inviteCode">—</div><button id="shareInviteBtn" class="smallBtn" data-i18n="share">Partager</button></div><div class="notice" style="margin-top:9px" data-i18n="invite_note">Les membres rejoignent l'alliance WarBoost après connexion. Leur progression enregistrée remonte ensuite automatiquement dans le roster R5/R4.</div></div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="war_plan">Plan de guerre IA</h3><button id="warPlanBtn" class="smallBtn">💎 <span data-i18n="generate">Générer</span></button></div><p id="warPlanText" class="heroText" style="margin:0" data-i18n="war_plan_empty">Invite les membres pour que WarBoost répartisse rally, défense, groupe mobile et réserves à partir de leur progression enregistrée.</p></div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="members">Membres</h3><span id="rosterFresh" class="pill">—</span></div><div id="memberList" class="list"></div></div>
   </section>
 
   <section id="vsDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div>
-    <div class="drawerHeader"><h2>⚔️ VS</h2><button class="closeBtn" data-close>×</button></div>
-    <div class="section">
-      <div class="sectionTitle"><h3 id="vsWeekTitle">Semaine VS</h3><span id="vsDayPill" class="pill">Jour —</span></div>
-      <div class="vsScore">
-        <div class="team"><strong id="vsUs">—</strong><small id="vsUsScore">—</small></div>
-        <div class="versus">VS</div>
-        <div class="team"><strong id="vsThem">Adversaire inconnu</strong><small id="vsThemScore">—</small></div>
-      </div>
-      <div id="vsTimeline" class="timeline"></div>
-    </div>
-    <div class="section">
-      <div class="sectionTitle"><h3>Plan du jour</h3><button id="vsPlanBtn" class="smallBtn">💎 Actualiser</button></div>
-      <p id="vsPlanText" class="heroText" style="margin:0">WarBoost utilisera le jour réel du serveur et les données VS synchronisées pour proposer l'action prioritaire.</p>
-    </div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>⚔️ VS</h2><button class="closeBtn" data-close>×</button></div>
+    <div class="section"><div class="sectionTitle"><h3 id="vsWeekTitle">VS</h3><span id="vsDayPill" class="pill">—</span></div><div class="vsScore"><div class="team"><strong id="vsUs">—</strong><small id="vsUsScore">—</small></div><div class="versus">VS</div><div class="team"><strong id="vsThem">—</strong><small id="vsThemScore">—</small></div></div><div id="vsTimeline" class="timeline"></div></div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="day_plan">Plan du jour</h3><button id="vsPlanBtn" class="smallBtn">💎 <span data-i18n="refresh">Actualiser</span></button></div><p id="vsPlanText" class="heroText" style="margin:0" data-i18n="vs_empty">WarBoost utilise le jour serveur et les données VS synchronisées lorsqu'elles sont disponibles.</p></div>
   </section>
 
   <section id="seasonDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div>
-    <div class="drawerHeader"><h2>🌍 Saison</h2><button class="closeBtn" data-close>×</button></div>
-    <div class="summaryBar">
-      <div class="stat"><span>Saison</span><b id="sName">—</b></div>
-      <div class="stat"><span>Jour</span><b id="sDay">—</b></div>
-      <div class="stat"><span>Profession</span><b id="sProfession">—</b></div>
-    </div>
-    <div class="section">
-      <div class="sectionTitle"><h3>Progression</h3><span id="seasonProgressLabel" class="pill">0%</span></div>
-      <div class="progress"><i id="seasonProgressBar" style="width:0%"></i></div>
-      <p id="seasonStatus" class="heroText" style="margin:10px 0 0">La saison sera alimentée par la couche de synchronisation WarBoost.</p>
-    </div>
-    <div class="section">
-      <div class="sectionTitle"><h3>Conseil de saison</h3><button id="seasonAdviceBtn" class="smallBtn">💎 Actualiser</button></div>
-      <p id="seasonAdviceText" class="heroText" style="margin:0">Le conseil dépendra du jour réel, de la profession et de la progression du joueur.</p>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>🌍 <span data-i18n="season">Saison</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div class="summaryBar"><div class="stat"><span data-i18n="season">Saison</span><b id="sName">—</b></div><div class="stat"><span data-i18n="day_label">Jour</span><b id="sDay">—</b></div><div class="stat"><span data-i18n="profession">Profession</span><b id="sProfession">—</b></div></div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="season_progress">Progression</h3><span id="seasonProgressLabel" class="pill">0%</span></div><div class="progress"><i id="seasonProgressBar" style="width:0%"></i></div><p id="seasonStatus" class="heroText" style="margin:10px 0 0" data-i18n="season_wait">WarBoost conserve l'état de la saison et le met à jour via la synchro publique ou les scans.</p></div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="season_advice">Conseil de saison</h3><button id="seasonAdviceBtn" class="smallBtn">💎 <span data-i18n="refresh">Actualiser</span></button></div><p id="seasonAdviceText" class="heroText" style="margin:0" data-i18n="season_empty">Le conseil utilise le jour réel, la profession et la progression enregistrée dans WarBoost.</p></div>
+  </section>
+
+  <section id="scanDrawer" class="drawer" aria-hidden="true">
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>📷 <span data-i18n="scan_title">WarBoost Scan</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div class="section"><p class="heroText" data-i18n="scan_intro">Fais une capture Last War. WarBoost Vision lit uniquement les données de jeu utiles et les fusionne avec ton profil enregistré.</p>
+      <div class="settingsForm">
+        <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile" data-i18n="scan_profile">Profil / QG</option><option value="squads" data-i18n="scan_squads">Escouades / Héros</option><option value="drone" data-i18n="scan_drone">Drone</option><option value="vs" data-i18n="scan_vs">VS</option><option value="season" data-i18n="scan_season">Saison</option></select></div>
+        <label class="captureButton" for="scanFile"><span>📸</span><b data-i18n="choose_capture">Prendre ou choisir une capture</b></label><input id="scanFile" class="hidden" type="file" accept="image/*" capture="environment" />
+        <img id="scanPreview" class="scanPreview hidden" alt="Screenshot preview" />
+        <button id="analyzeScanBtn" class="primaryAction" data-i18n="analyze">Analyser la capture</button>
+        <div id="scanStatus" class="notice" data-i18n="scan_wait">Choisis d'abord une capture.</div>
+        <div class="privacyText" data-i18n="privacy_scan">La capture est redimensionnée avant l'envoi et n'est pas conservée par le navigateur après l'analyse.</div>
+      </div>
     </div>
   </section>
 
   <section id="accountDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div>
-    <div class="drawerHeader"><h2>Compte WarBoost</h2><button class="closeBtn" data-close>×</button></div>
-    <div class="section">
-      <div class="sectionTitle"><h3>Connexion WarBoost</h3><span id="authPill" class="pill">Local</span></div>
-      <div id="authLoggedOut" class="settingsForm">
-        <div class="field"><label>E-mail</label><input id="authEmail" type="email" autocomplete="email" /></div>
-        <div class="field"><label>Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" /></div>
-        <div class="buttonRow"><button id="loginBtn" class="secondaryBtn">Se connecter</button><button id="signupBtn" class="secondaryBtn">Créer un compte</button></div>
-        <div id="otpBox" class="hidden">
-          <div class="field" style="margin-top:9px"><label>Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" maxlength="8" /></div>
-          <button id="verifyOtpBtn" class="primaryAction" style="margin-top:9px">Valider le code</button>
-        </div>
-        <div id="authMessage" class="notice hidden"></div>
-      </div>
-      <div id="authLoggedIn" class="hidden">
-        <div id="authIdentity" class="notice"></div>
-        <button id="logoutBtn" class="dangerBtn" style="width:100%;margin-top:9px">Se déconnecter</button>
-      </div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2 data-i18n="warboost_account">Compte WarBoost</h2><button class="closeBtn" data-close>×</button></div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="warboost_login">Connexion WarBoost</h3><span id="authPill" class="pill">Local</span></div>
+      <div id="authLoggedOut" class="settingsForm"><div class="field"><label data-i18n="email">E-mail</label><input id="authEmail" type="email" autocomplete="email" /></div><div class="field"><label data-i18n="password">Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" /></div><div class="buttonRow"><button id="loginBtn" class="secondaryBtn" data-i18n="login">Se connecter</button><button id="signupBtn" class="secondaryBtn" data-i18n="create_account">Créer un compte</button></div><div id="otpBox" class="hidden"><div class="field" style="margin-top:9px"><label data-i18n="email_code">Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" maxlength="8" /></div><button id="verifyOtpBtn" class="primaryAction" style="margin-top:9px" data-i18n="validate_code">Valider le code</button></div><div id="authMessage" class="notice hidden"></div></div>
+      <div id="authLoggedIn" class="hidden"><div id="authIdentity" class="notice"></div><button id="logoutBtn" class="dangerBtn" style="width:100%;margin-top:9px" data-i18n="logout">Se déconnecter</button></div>
     </div>
-
-    <div class="section">
-      <div class="sectionTitle"><h3>Identité Last War</h3><span class="pill">Compte</span></div>
-      <div class="settingsForm">
-        <div class="field"><label>Pseudo Last War</label><input id="fName" /></div>
-        <div class="field"><label>Serveur</label><input id="fServer" inputmode="numeric" /></div>
-        <div class="field"><label>QG</label><input id="fHq" inputmode="numeric" /></div>
-        <div class="field"><label>Alliance</label><input id="fAlliance" /></div>
-        <div class="field"><label>Rôle</label><input id="fRole" /></div>
-        <button id="saveProfileBtn" class="primaryAction">Enregistrer</button>
-      </div>
-    </div>
-
-    <div id="proSection" class="section proSection">
-      <div class="sectionTitle"><h3>💎 WarBoost PRO</h3><span id="proPill" class="pill proPill">FREE</span></div>
-      <div class="proHero">
-        <div>
-          <b id="proTitle">Passe au niveau supérieur</b>
-          <small id="proPrice">Tarif chargé depuis Stripe</small>
-        </div>
-        <span class="proDiamond">💎</span>
-      </div>
-      <div class="proFeatures">
-        <div>✓ Priorités IA détaillées pour tes escouades</div>
-        <div>✓ Plans de guerre IA pour R5/R4</div>
-        <div>✓ Plans VS adaptés au jour réel</div>
-        <div>✓ Conseils Saison avancés</div>
-      </div>
-      <div id="proMessage" class="notice hidden"></div>
-      <button id="proActionBtn" class="primaryAction proAction" type="button">Passer PRO</button>
-    </div>
-
-    <div class="section">
-      <div class="sectionTitle"><h3>Synchronisation Last War</h3><span id="providerPill" class="pill">Non connectée</span></div>
-      <div id="providerStatus" class="notice warn">Aucune source Last War automatique n'est connectée.</div>
-      <button id="syncAllBtn" class="secondaryBtn" style="width:100%;margin-top:9px">↻ Synchroniser maintenant</button>
-    </div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="lastwar_identity">Identité Last War</h3><span class="pill" data-i18n="account">Compte</span></div><div class="settingsForm"><div class="field"><label data-i18n="nickname">Pseudo Last War</label><input id="fName" /></div><div class="field"><label data-i18n="server">Serveur</label><input id="fServer" inputmode="numeric" /></div><div class="field"><label data-i18n="hq">QG</label><input id="fHq" inputmode="numeric" /></div><div class="field"><label data-i18n="alliance">Alliance</label><input id="fAlliance" /></div><div class="field"><label data-i18n="role">Rôle</label><input id="fRole" /></div><button id="saveProfileBtn" class="primaryAction" data-i18n="save">Enregistrer</button></div></div>
+    <div id="proSection" class="section proSection"><div class="sectionTitle"><h3>💎 <span data-i18n="pro">WarBoost PRO</span></h3><span id="proPill" class="pill proPill">FREE</span></div><div class="proHero"><div><b id="proTitle">WarBoost PRO</b><small id="proPrice">—</small></div><span class="proDiamond">💎</span></div><div class="proFeatures"><div data-i18n="pro_feature1">✓ Priorités IA détaillées pour tes escouades</div><div data-i18n="pro_feature2">✓ Plans de guerre IA pour R5/R4</div><div data-i18n="pro_feature3">✓ Plans VS adaptés au jour réel</div><div data-i18n="pro_feature4">✓ Conseils Saison avancés</div></div><div id="proMessage" class="notice hidden"></div><button id="proActionBtn" class="primaryAction proAction" type="button" data-i18n="go_pro">Passer PRO</button></div>
+    <div class="section hybridSection"><div class="sectionTitle"><h3 data-i18n="hybrid_sync">Synchronisation hybride WarBoost</h3><span id="providerPill" class="pill">—</span></div><div class="sourceGrid"><div class="sourceCard"><span>🌐</span><b data-i18n="public_source">Source publique</b><small id="publicSourceState">—</small></div><div class="sourceCard"><span>📷</span><b data-i18n="scan_source">WarBoost Scan</b><small id="scanSourceState">—</small></div><div class="sourceCard"><span>🛡️</span><b data-i18n="alliance_cloud">Cloud alliance</b><small id="allianceCloudState">—</small></div></div><div id="providerStatus" class="notice warn"></div><div class="buttonRow"><button id="openScanBtn" class="secondaryBtn" data-i18n="scan_account">Scanner mon compte</button><button id="syncAllBtn" class="secondaryBtn" data-i18n="public_refresh">Actualiser les données publiques</button></div><div class="privacyText" data-i18n="hybrid_note">Fonctionne sans token joueur. Les données publiques sont actualisées si une source compatible est disponible ; les données privées d'escouade viennent de WarBoost Scan.</div></div>
   </section>
 
   <script type="module" src="/app.js"></script>

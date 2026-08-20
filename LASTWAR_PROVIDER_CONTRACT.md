@@ -1,12 +1,12 @@
-# WarBoost V1 — Contrat de synchronisation Last War
+# WarBoost V1.2 — Contrat Hybrid Sync Last War
 
-WarBoost V1 ne dépend pas de LastWar Tools. Le noyau attend une source capable de renvoyer des données normalisées.
+WarBoost ne demande pas de token Last War au joueur.
 
-## Mode pull automatique
+## Source publique optionnelle
 
-Variable serveur : `WARBOOST_LASTWAR_PROVIDER_URL`
+Variable : `WARBOOST_PUBLIC_LASTWAR_URL`
 
-WarBoost envoie :
+WarBoost envoie en POST :
 
 ```json
 {
@@ -16,47 +16,45 @@ WarBoost envoie :
 }
 ```
 
-La source répond :
+Réponse recommandée :
 
 ```json
 {
-  "provider": "nom-de-la-source",
+  "provider": "public-source",
   "state": {
     "player": {"name":"Pseudo","server_id":"884","hq_level":31,"power_m":184.6},
-    "squads": [
-      {
-        "id": 1,
-        "name": "Escouade 1",
-        "power": 65.2,
-        "updated_at": "2026-08-20T09:30:00Z",
-        "heroes": [
-          {"name":"DVA","level":150,"stars":5,"power":13.2,"exclusive":"20","gear":"Légendaire"}
-        ]
-      }
-    ],
-    "alliance": {"tag":"ALL4","role":"R4","members":[]},
-    "vs": {"week":34,"day":4,"our_alliance":"ALL4","opponent":"RIVAL"},
-    "season": {"number":7,"day":18,"profession":"Ingénieur","progress_pct":51}
+    "drone": {"level":157,"power_m":8.2,"updated_at":"2026-08-20T20:30:00Z"},
+    "squads": [],
+    "alliance": {"tag":"ALL4"},
+    "vs": {"week":34,"day":4,"opponent":"RIVAL"},
+    "season": {"number":7,"day":18,"profession":"Engineer","progress_pct":51}
   }
 }
 ```
 
-## Mode push automatique
+La source publique ne reçoit aucune clé Last War appartenant au joueur.
 
-Une source de confiance peut pousser les données vers `POST /api/ingest` avec :
+## WarBoost Scan
 
-`Authorization: Bearer <WARBOOST_INGEST_SECRET>`
+`POST /api/scan` est réservé à un utilisateur WarBoost authentifié.
 
-Le secret est un secret interne WarBoost, jamais un token Last War demandé au joueur.
+Le navigateur envoie une image redimensionnée. L'analyse est effectuée par :
 
-## Mise à jour planifiée
+1. `WARBOOST_VISION_ENDPOINT`, ou
+2. `OPENAI_API_KEY` côté serveur.
 
-`GET/POST /api/cron-sync` peut être appelé par un planificateur serveur avec :
+La sortie est un état partiel. Les champs absents ne remplacent pas les données existantes.
 
-`Authorization: Bearer <CRON_SECRET>`
+## Cloud alliance
 
-Le serveur parcourt les profils connus et met à jour ceux dont le pseudo et le serveur sont connus.
+Les membres sont liés à `wb1_alliance_members`. Lors d'une synchronisation, WarBoost recharge leur dernier profil depuis `wb1_profiles` et reconstruit le roster R5/R4.
 
-## Règle importante
+## Règle de fusion
 
-Le serveur conserve les dernières données fiables. Une escouade n'est remplacée que si la source fournit une `updated_at` plus récente. Chaque mise à jour est aussi enregistrée dans `wb1_snapshots` pour suivre la progression.
+- Les escouades et le Drone utilisent `updated_at` pour éviter qu'une donnée plus ancienne écrase une donnée récente.
+- Les scans n'inventent pas les champs non visibles.
+- Les données locales sont conservées si une source publique est indisponible.
+
+## Push de confiance
+
+`POST /api/ingest` reste disponible avec `WARBOOST_INGEST_SECRET` pour une source serveur de confiance.
