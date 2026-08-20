@@ -1,0 +1,2 @@
+function isoWeek(d){const x=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));x.setUTCDate(x.getUTCDate()+4-(x.getUTCDay()||7));const y=new Date(Date.UTC(x.getUTCFullYear(),0,1));return Math.ceil((((x-y)/86400000)+1)/7)}
+export default function handler(req,res){const now=new Date();const dow=now.getUTCDay();res.setHeader("Cache-Control","no-store");res.status(200).json({ok:true,now:now.toISOString(),unix_ms:now.getTime(),timezone:"UTC",iso_week:isoWeek(now),vs_day:dow===0?6:dow,weekday_utc:dow})}
