@@ -1,20 +1,23 @@
-# WarBoost V1.3.2 — PRO Shop Advisor
+# WarBoost V1.3.3 — Conseiller Boutique Adaptatif PRO
 
-## Nouveauté V1.3.2
+## Nouveautés V1.3.3
 
-- **Priorité IA PRO** combine maintenant les escouades scannées, les 5 héros confirmés, étoiles, armes exclusives, équipements et Drone pour déterminer les vrais goulots de progression.
-- Nouveau **Conseiller Boutique Last War** dans Joueur : il propose quoi prendre, quoi garder pour plus tard et quoi éviter.
-- Nouveau type **Boutique Last War** dans WarBoost Scan. Le scan lit uniquement les offres réellement visibles : nom de la boutique, objet, quantité, prix, monnaie, limite et remise lorsqu'ils sont affichés.
-- Les offres visibles sont classées selon les besoins réels du compte. Une offre payante n'est jamais classée comme « achat indispensable » uniquement à cause d'une remise : elle doit correspondre à un goulot détecté.
-- Règles de rareté renforcées : plans d'équipement légendaires/mythiques, fragments d'arme exclusive, composants Drone, coffres Campagne UR, endurance VIP, accélérateurs, boucliers et téléporteurs sont différenciés.
-- La **Boutique Honneur** protège en priorité les plans d'équipement rares ; les objets secondaires y sont pénalisés pour éviter de gaspiller une monnaie difficile à récupérer.
-- La **Boutique Diamants** pénalise les ressources génériques et privilégie l'usage VIP/urgence plutôt que les achats remplaçables.
-- Les recommandations s'adaptent aux étoiles : si les héros principaux sont déjà 5★, WarBoost baisse fortement la priorité des fragments héros et reporte la valeur vers armes exclusives, équipements, Drone et ressources rares.
-- Les prix et rotations changent selon serveur/saison : **un scan de la boutique visible est prioritaire sur les règles génériques** afin d'éviter des conseils périmés.
+- Chaque offre scannée reçoit maintenant un **score adaptatif /100** au lieu d'un classement fixe.
+- Le score combine : escouade principale, héros confirmés, étoiles, niveaux d'armes exclusives, équipement, Drone, type de boutique, prix/remise visibles, jour VS, saison et budget diamants quand le solde est visible.
+- Le scan Boutique peut désormais lire, lorsqu'ils sont réellement visibles : **solde de monnaie**, **niveau VIP** et **jours VIP restants**. Ces valeurs ne sont jamais inventées.
+- **Protection budget diamants** : WarBoost réserve par défaut 10 000 diamants pour le VIP 30 jours. Une offre qui ferait passer le solde sous cette réserve est fortement pénalisée, sauf si le joueur achète précisément l'activation VIP.
+- Si le solde diamants n'est pas lisible, WarBoost conserve le score de valeur mais affiche une prudence budget et baisse légèrement la confiance globale.
+- **Contexte VS** : petits bonus de priorité sur les objets correspondant au jour visible (Drone, construction, recherche, héros, accélérateurs, boucliers/téléporteurs/soins) sans remplacer la valeur long terme du compte.
+- **Contexte Saison** : l'endurance et le Drone peuvent gagner légèrement en priorité lorsqu'une saison active est connue.
+- Les héros déjà **5★** font baisser fortement les fragments héros génériques ; les armes exclusives en retard remontent automatiquement.
+- Les achats en argent réel sont volontairement plafonnés : une remise ne suffit jamais à produire « À prendre » si le pack ne résout pas un goulot ciblé.
+- La Boutique Honneur continue de protéger les plans d'équipement rares ; les ressources génériques et coffres de ressources restent faibles face aux matériaux rares.
+- Correction de précision importante : une ligne comme **« 4 équipements niv.40 »** est maintenant comprise comme équipement **niveau 40**, et non comme niveau 4.
+- Le résultat Boutique affiche maintenant **Priorité XX/100**, **À prendre / Si surplus / À éviter**, la raison, le prix et la cible quand elle est identifiable.
 
-### Base de données de référence au 21/08/2026
+### Références moteur — 21/08/2026
 
-Le moteur s'appuie sur des règles croisées provenant de guides de boutiques récents et du consensus de joueurs expérimentés, notamment : Game8 (guide boutiques mis à jour le 18/06/2026), Last War Survival Stores Guide, Last War Tutorial Stores et discussions LastWarMobileGame. Ces références servent uniquement de base de rareté ; WarBoost privilégie toujours les données scannées du compte et de la boutique.
+Les règles de base ont été recroisées avec des sources 2026 récentes sur les boutiques, les plans d'équipement et le calendrier Alliance Duel/VS, notamment Last War Vault, LastWarSurvival.com et des retours communautaires récents. Ces références servent de garde-fous de rareté et de timing ; **les données scannées du compte et de la boutique restent prioritaires**. WarBoost n'est pas affilié officiellement à Last War.
 
 ---
 

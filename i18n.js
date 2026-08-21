@@ -47,49 +47,49 @@ Object.assign(ZH,{player_desc:"最多4支队伍、无人机、进度与优先级
 Object.assign(AR,{player_desc:"حتى 4 فرق، الدرون، التقدم والأولويات.",sync_four:"حدّث كل الفرق المتاحة في حسابك (3 أو 4) والدرون، ثم سيقارن المدرب تقدمك.",optional_squad4:"اختياري · فريق يمكن فتحه في Last War"});
 
 Object.assign(EN,{
-  tagline:"V1.3.2 Global · PRO Shop Advisor",
+  tagline:"V1.3.3 Global · Adaptive PRO Shop Advisor",
   player_desc:"Up to 4 squads, Drone, exclusive weapons, progress and priorities.",
   scan_exclusive:"Exclusive weapon",exclusive_weapons:"Exclusive weapons",exclusive_weapon:"Exclusive weapon",
   exclusive_empty:"Scan an exclusive weapon to add it to your Player profile.",scan_exclusive_button:"📷 Scan an exclusive weapon",
   exclusive_power:"Power",exclusive_skill_cap:"Max skill level",exclusive_hp:"Hero HP",exclusive_atk:"Hero ATK",exclusive_def:"Hero DEF",exclusive_resistance:"All-damage resistance",exclusive_short:"EX"
 });
 Object.assign(FR,{
-  tagline:"V1.3.2 Global · Conseiller Boutique PRO",
+  tagline:"V1.3.3 Global · Conseiller Boutique Adaptatif PRO",
   player_desc:"Jusqu’à 4 escouades, Drone, armes exclusives, progression et priorités.",
   scan_exclusive:"Arme exclusive",exclusive_weapons:"Armes exclusives",exclusive_weapon:"Arme exclusive",
   exclusive_empty:"Scanne une arme exclusive pour l’ajouter à ton profil Joueur.",scan_exclusive_button:"📷 Scanner une arme exclusive",
   exclusive_power:"Puissance",exclusive_skill_cap:"Compétence max",exclusive_hp:"PV Héros",exclusive_atk:"ATQ Héros",exclusive_def:"Défense Héros",exclusive_resistance:"Résistance tous dégâts",exclusive_short:"EX"
 });
 Object.assign(ES,{
-  tagline:"V1.3.2 Global · Asesor de Tienda PRO",
+  tagline:"V1.3.3 Global · Asesor Adaptativo PRO",
   player_desc:"Hasta 4 escuadrones, Dron, armas exclusivas, progreso y prioridades.",
   scan_exclusive:"Arma exclusiva",exclusive_weapons:"Armas exclusivas",exclusive_weapon:"Arma exclusiva",
   exclusive_empty:"Escanea un arma exclusiva para añadirla a tu perfil de Jugador.",scan_exclusive_button:"📷 Escanear un arma exclusiva",
   exclusive_power:"Potencia",exclusive_skill_cap:"Nivel máx. de habilidad",exclusive_hp:"PV del héroe",exclusive_atk:"ATQ del héroe",exclusive_def:"DEF del héroe",exclusive_resistance:"Resistencia a todos los daños",exclusive_short:"EX"
 });
 Object.assign(DE,{
-  tagline:"V1.3.2 Global · PRO-Shop-Berater",
+  tagline:"V1.3.3 Global · Adaptiver PRO-Shop-Berater",
   player_desc:"Bis zu 4 Trupps, Drohne, exklusive Waffen, Fortschritt und Prioritäten.",
   scan_exclusive:"Exklusive Waffe",exclusive_weapons:"Exklusive Waffen",exclusive_weapon:"Exklusive Waffe",
   exclusive_empty:"Scanne eine exklusive Waffe, um sie deinem Spielerprofil hinzuzufügen.",scan_exclusive_button:"📷 Exklusive Waffe scannen",
   exclusive_power:"Kraft",exclusive_skill_cap:"Max. Fähigkeitsstufe",exclusive_hp:"Helden-HP",exclusive_atk:"Helden-ANG",exclusive_def:"Helden-VER",exclusive_resistance:"Resistenz gegen alle Schäden",exclusive_short:"EX"
 });
 Object.assign(JA,{
-  tagline:"V1.3.2 Global · PROショップアドバイザー",
+  tagline:"V1.3.3 Global · 適応型PROショップアドバイザー",
   player_desc:"最大4部隊、ドローン、専用武器、進行状況、優先順位。",
   scan_exclusive:"専用武器",exclusive_weapons:"専用武器",exclusive_weapon:"専用武器",
   exclusive_empty:"専用武器をスキャンしてプレイヤープロフィールに追加します。",scan_exclusive_button:"📷 専用武器をスキャン",
   exclusive_power:"戦力",exclusive_skill_cap:"最大スキルLv.",exclusive_hp:"英雄HP",exclusive_atk:"英雄攻撃",exclusive_def:"英雄防御",exclusive_resistance:"全ダメージ耐性",exclusive_short:"EX"
 });
 Object.assign(ZH,{
-  tagline:"V1.3.2 Global · PRO 商店顾问",
+  tagline:"V1.3.3 Global · 自适应 PRO 商店顾问",
   player_desc:"最多4支队伍、无人机、专属武器、进度与优先级。",
   scan_exclusive:"专属武器",exclusive_weapons:"专属武器",exclusive_weapon:"专属武器",
   exclusive_empty:"扫描专属武器并将其添加到玩家资料。",scan_exclusive_button:"📷 扫描专属武器",
   exclusive_power:"战力",exclusive_skill_cap:"最高技能等级",exclusive_hp:"英雄生命",exclusive_atk:"英雄攻击",exclusive_def:"英雄防御",exclusive_resistance:"全伤害抗性",exclusive_short:"EX"
 });
 Object.assign(AR,{
-  tagline:"V1.3.2 عالمي · مستشار متجر PRO",
+  tagline:"V1.3.3 عالمي · مستشار متجر PRO تكيفي",
   player_desc:"حتى 4 فرق، الدرون، الأسلحة الحصرية، التقدم والأولويات.",
   scan_exclusive:"سلاح حصري",exclusive_weapons:"الأسلحة الحصرية",exclusive_weapon:"سلاح حصري",
   exclusive_empty:"امسح سلاحاً حصرياً لإضافته إلى ملف اللاعب.",scan_exclusive_button:"📷 مسح سلاح حصري",
@@ -106,13 +106,13 @@ Object.assign(ZH,{hero_choose:"选择英雄…",hero_confirm_title:"队伍{squad
 Object.assign(AR,{hero_choose:"اختر البطل…",hero_confirm_title:"الفريق {squad} · هوية الأبطال",hero_confirm_badge:"تأكيد",hero_confirm_help:"قد تكون الصور وحدها ملتبسة. تحقق من أسماء الأبطال الخمسة قبل الحفظ.",hero_confirm_needed:"تمت قراءة بيانات الفريق. أكد أسماء الأبطال الخمسة قبل حفظ الهوية.",hero_save:"حفظ الأسماء",hero_skip:"حفظ بدون أسماء",hero_confirm_saved:"تم تأكيد أسماء الأبطال وحفظها.",hero_confirm_skipped:"تم حفظ الفريق بدون أسماء أبطال متوقعة.",hero_duplicate:"لا يمكن اختيار البطل نفسه مرتين في الفريق."});
 
 
-Object.assign(EN,{tagline:"V1.3.2 Global · PRO Shop Advisor",scan_shop:"Last War shop",pro_shop_title:"Last War Shop · AI Advisor",shop_summary_default:"WarBoost adapts purchases to your heroes, exclusive weapons, gear and Drone.",scan_shop_button:"📷 Scan a Last War shop",shop_no_recommendations:"Scan a shop or update your squads to get precise purchase recommendations.",shop_ai_button:"🛒 PRO Shop Advisor"});
-Object.assign(FR,{tagline:"V1.3.2 Global · Conseiller Boutique PRO",scan_shop:"Boutique Last War",pro_shop_title:"Boutique Last War · Conseiller IA",shop_summary_default:"WarBoost adapte les achats à tes héros, armes exclusives, équipements et Drone.",scan_shop_button:"📷 Scanner une boutique Last War",shop_no_recommendations:"Scanne une boutique ou mets à jour tes escouades pour obtenir des achats précis.",shop_ai_button:"🛒 Boutique IA PRO"});
-Object.assign(ES,{tagline:"V1.3.2 Global · Asesor de Tienda PRO",scan_shop:"Tienda Last War",pro_shop_title:"Tienda Last War · Asesor IA",shop_summary_default:"WarBoost adapta las compras a tus héroes, armas exclusivas, equipo y Dron.",scan_shop_button:"📷 Escanear una tienda Last War",shop_no_recommendations:"Escanea una tienda o actualiza tus escuadrones para obtener recomendaciones precisas.",shop_ai_button:"🛒 Asesor de Tienda PRO"});
-Object.assign(DE,{tagline:"V1.3.2 Global · PRO-Shop-Berater",scan_shop:"Last War Shop",pro_shop_title:"Last War Shop · KI-Berater",shop_summary_default:"WarBoost passt Käufe an Helden, exklusive Waffen, Ausrüstung und Drohne an.",scan_shop_button:"📷 Last War Shop scannen",shop_no_recommendations:"Scanne einen Shop oder aktualisiere deine Trupps für präzise Kaufempfehlungen.",shop_ai_button:"🛒 PRO-Shop-Berater"});
-Object.assign(JA,{tagline:"V1.3.2 Global · PROショップアドバイザー",scan_shop:"Last Warショップ",pro_shop_title:"Last Warショップ · AIアドバイザー",shop_summary_default:"WarBoostが英雄、専用武器、装備、ドローンに合わせて購入を最適化します。",scan_shop_button:"📷 Last Warショップをスキャン",shop_no_recommendations:"ショップをスキャンするか部隊を更新すると、より正確な購入提案が得られます。",shop_ai_button:"🛒 PROショップアドバイザー"});
-Object.assign(ZH,{tagline:"V1.3.2 Global · PRO 商店顾问",scan_shop:"Last War 商店",pro_shop_title:"Last War 商店 · AI 顾问",shop_summary_default:"WarBoost 会根据英雄、专属武器、装备和无人机调整购买建议。",scan_shop_button:"📷 扫描 Last War 商店",shop_no_recommendations:"扫描商店或更新队伍后可获得更精准的购买建议。",shop_ai_button:"🛒 PRO 商店顾问"});
-Object.assign(AR,{tagline:"V1.3.2 عالمي · مستشار متجر PRO",scan_shop:"متجر Last War",pro_shop_title:"متجر Last War · مستشار الذكاء الاصطناعي",shop_summary_default:"يكيّف WarBoost المشتريات حسب الأبطال والأسلحة الحصرية والمعدات والدرون.",scan_shop_button:"📷 مسح متجر Last War",shop_no_recommendations:"امسح المتجر أو حدّث فرقك للحصول على توصيات شراء أدق.",shop_ai_button:"🛒 مستشار متجر PRO"});
+Object.assign(EN,{tagline:"V1.3.3 Global · Adaptive PRO Shop Advisor",scan_shop:"Last War shop",pro_shop_title:"Last War Shop · AI Advisor",shop_summary_default:"WarBoost scores visible offers against your heroes, exclusive weapons, gear, Drone, VS context and diamond budget.",scan_shop_button:"📷 Scan a Last War shop",shop_no_recommendations:"Scan a shop or update your squads to get precise purchase recommendations.",shop_ai_button:"🛒 Adaptive PRO Shop Advisor"});
+Object.assign(FR,{tagline:"V1.3.3 Global · Conseiller Boutique Adaptatif PRO",scan_shop:"Boutique Last War",pro_shop_title:"Boutique Last War · Conseiller IA",shop_summary_default:"WarBoost note les offres visibles selon tes héros, armes exclusives, équipements, Drone, contexte VS et budget diamants.",scan_shop_button:"📷 Scanner une boutique Last War",shop_no_recommendations:"Scanne une boutique ou mets à jour tes escouades pour obtenir des achats précis.",shop_ai_button:"🛒 Boutique IA PRO"});
+Object.assign(ES,{tagline:"V1.3.3 Global · Asesor Adaptativo PRO",scan_shop:"Tienda Last War",pro_shop_title:"Tienda Last War · Asesor IA",shop_summary_default:"WarBoost puntúa las ofertas según héroes, armas exclusivas, equipo, Dron, contexto VS y presupuesto de diamantes.",scan_shop_button:"📷 Escanear una tienda Last War",shop_no_recommendations:"Escanea una tienda o actualiza tus escuadrones para obtener recomendaciones precisas.",shop_ai_button:"🛒 Asesor de Tienda PRO"});
+Object.assign(DE,{tagline:"V1.3.3 Global · Adaptiver PRO-Shop-Berater",scan_shop:"Last War Shop",pro_shop_title:"Last War Shop · KI-Berater",shop_summary_default:"WarBoost bewertet Angebote nach Helden, Exklusivwaffen, Ausrüstung, Drohne, VS-Kontext und Diamantenbudget.",scan_shop_button:"📷 Last War Shop scannen",shop_no_recommendations:"Scanne einen Shop oder aktualisiere deine Trupps für präzise Kaufempfehlungen.",shop_ai_button:"🛒 PRO-Shop-Berater"});
+Object.assign(JA,{tagline:"V1.3.3 Global · 適応型PROショップアドバイザー",scan_shop:"Last Warショップ",pro_shop_title:"Last Warショップ · AIアドバイザー",shop_summary_default:"WarBoostが英雄、専用武器、装備、ドローン、VS状況、ダイヤ予算から表示商品を採点します。",scan_shop_button:"📷 Last Warショップをスキャン",shop_no_recommendations:"ショップをスキャンするか部隊を更新すると、より正確な購入提案が得られます。",shop_ai_button:"🛒 PROショップアドバイザー"});
+Object.assign(ZH,{tagline:"V1.3.3 Global · 自适应 PRO 商店顾问",scan_shop:"Last War 商店",pro_shop_title:"Last War 商店 · AI 顾问",shop_summary_default:"WarBoost 会根据英雄、专属武器、装备、无人机、VS 情境和钻石预算为可见商品评分。",scan_shop_button:"📷 扫描 Last War 商店",shop_no_recommendations:"扫描商店或更新队伍后可获得更精准的购买建议。",shop_ai_button:"🛒 PRO 商店顾问"});
+Object.assign(AR,{tagline:"V1.3.3 عالمي · مستشار متجر PRO تكيفي",scan_shop:"متجر Last War",pro_shop_title:"متجر Last War · مستشار الذكاء الاصطناعي",shop_summary_default:"يقيّم WarBoost العروض حسب الأبطال والأسلحة الحصرية والمعدات والدرون وسياق VS وميزانية الألماس.",scan_shop_button:"📷 مسح متجر Last War",shop_no_recommendations:"امسح المتجر أو حدّث فرقك للحصول على توصيات شراء أدق.",shop_ai_button:"🛒 مستشار متجر PRO"});
 
 const EN_GB={...EN,configure_text:"WarBoost combines public data, smart scans and your alliance cloud to give you one clear priority.",priority_text:"{power} now. WarBoost keeps the history and compares every new scan.",player_sync_note:"Your manual values stay protected. A newer scan replaces only the fields it can read confidently."};
 const EN_US={...EN};
