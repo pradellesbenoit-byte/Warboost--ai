@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V1.2.4 Global PRO</title>
+  <title>WarBoost V1.2.5 Global PRO</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -53,6 +53,11 @@
       <div class="stat"><span data-i18n="drone">Drone</span><b id="pDrone">—</b></div>
     </div>
     <div id="squadList"></div>
+    <div class="section exclusiveSection">
+      <div class="sectionTitle"><h3>⚔️ <span data-i18n="exclusive_weapons">Armes exclusives</span></h3><span id="exclusiveWeaponCount" class="pill">0</span></div>
+      <div id="exclusiveWeaponList" class="exclusiveList"><div class="exclusiveEmpty" data-i18n="exclusive_empty">Scanne une arme exclusive pour l’ajouter à ton profil Joueur.</div></div>
+      <button id="scanExclusiveBtn" class="secondaryBtn wideBtn" data-i18n="scan_exclusive_button">📷 Scanner une arme exclusive</button>
+    </div>
     <div class="buttonRow"><button id="scanPlayerBtn" class="secondaryBtn" data-i18n="scan_button">📷 WarBoost Scan</button><button id="syncPlayerBtn" class="secondaryBtn" data-i18n="public_button">🌐 Mise à jour publique</button></div>
     <button id="playerAdviceBtn" class="secondaryBtn wideBtn" data-i18n="ai_priority">Priorité IA PRO</button>
     <div id="playerSyncInfo" class="notice" style="margin-top:10px" data-i18n="player_sync_note">Tes valeurs manuelles restent protégées. Un scan plus récent remplace uniquement les champs qu'il peut lire avec confiance.</div>
@@ -91,7 +96,7 @@
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>📷 <span data-i18n="scan_title">WarBoost Scan</span></h2><button class="closeBtn" data-close>×</button></div>
     <div class="section"><p class="heroText" data-i18n="scan_intro">Fais une capture Last War. WarBoost Vision lit uniquement les données de jeu utiles et les fusionne avec ton profil enregistré.</p>
       <div class="settingsForm">
-        <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="drone">Drone</option><option value="vs">VS</option><option value="season">Saison</option></select></div>
+        <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="exclusive">Arme exclusive</option><option value="drone">Drone</option><option value="vs">VS</option><option value="season">Saison</option></select></div>
         <label class="captureButton" for="scanFile"><span>🖼️</span><b data-i18n="choose_capture">Prendre ou choisir une capture</b></label><input id="scanFile" class="hidden" type="file" accept="image/png,image/jpeg,image/webp" />
         <img id="scanPreview" class="scanPreview hidden" alt="Screenshot preview" />
         <button id="analyzeScanBtn" class="primaryAction" data-i18n="analyze">Analyser la capture</button>

@@ -1,7 +1,7 @@
 {
   "name": "WarBoost",
   "short_name": "WarBoost",
-  "description": "WarBoost V1.2.4 Global — PRO Squad Intelligence, 4 independent squad scans, Android gallery, multilingual UI, Hybrid Sync, R5/R4, VS and Season",
+  "description": "WarBoost V1.2.6 Global — exclusive weapon scanning and Player profile, optional Squad 4, PRO Squad Intelligence, Android gallery, multilingual UI, Hybrid Sync, R5/R4, VS and Season",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

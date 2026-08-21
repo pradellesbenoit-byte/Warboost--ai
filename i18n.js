@@ -38,6 +38,64 @@ Object.assign(DE,{pro_diagnostic:"PRO-Diagnose",pro_top_actions:"Aktionspriorit�
 Object.assign(JA,{pro_diagnostic:"PRO診断",pro_top_actions:"行動優先度",pro_squad_compare:"部隊比較",pro_data_quality:"データ",pro_analyzing:"PRO分析中…"});
 Object.assign(ZH,{pro_diagnostic:"PRO 诊断",pro_top_actions:"行动优先级",pro_squad_compare:"队伍比较",pro_data_quality:"数据",pro_analyzing:"PRO 分析中…"});
 Object.assign(AR,{pro_diagnostic:"تشخيص PRO",pro_top_actions:"أولويات العمل",pro_squad_compare:"مقارنة الفرق",pro_data_quality:"البيانات",pro_analyzing:"تحليل PRO…"});
+Object.assign(EN,{player_desc:"Up to 4 squads, Drone, progress and priorities.",sync_four:"Update every squad available on your account (3 or 4) and your Drone. The Coach will then compare your progression.",optional_squad4:"Optional · unlockable squad in Last War"});
+Object.assign(FR,{player_desc:"Jusqu’à 4 escouades, Drone, progression et priorités.",sync_four:"Mets à jour toutes les escouades disponibles sur ton compte (3 ou 4) et ton Drone. Le Coach pourra ensuite comparer ta progression.",optional_squad4:"Optionnelle · escouade à débloquer dans Last War"});
+Object.assign(ES,{player_desc:"Hasta 4 escuadrones, Dron, progreso y prioridades.",sync_four:"Actualiza todos los escuadrones disponibles en tu cuenta (3 o 4) y el Dron. Después, el Coach comparará tu progreso.",optional_squad4:"Opcional · escuadrón desbloqueable en Last War"});
+Object.assign(DE,{player_desc:"Bis zu 4 Trupps, Drohne, Fortschritt und Prioritäten.",sync_four:"Aktualisiere alle auf deinem Konto verfügbaren Trupps (3 oder 4) und die Drohne. Danach vergleicht der Coach deinen Fortschritt.",optional_squad4:"Optional · in Last War freischaltbarer Trupp"});
+Object.assign(JA,{player_desc:"最大4部隊、ドローン、進行状況、優先順位。",sync_four:"アカウントで利用できる部隊（3または4）とドローンを更新してください。その後AIコーチが進行状況を比較します。",optional_squad4:"任意 · Last Warで解放できる部隊"});
+Object.assign(ZH,{player_desc:"最多4支队伍、无人机、进度与优先级。",sync_four:"更新你账号中可用的全部队伍（3或4支）和无人机。之后 AI 教练会比较你的进度。",optional_squad4:"可选 · 可在 Last War 中解锁的队伍"});
+Object.assign(AR,{player_desc:"حتى 4 فرق، الدرون، التقدم والأولويات.",sync_four:"حدّث كل الفرق المتاحة في حسابك (3 أو 4) والدرون، ثم سيقارن المدرب تقدمك.",optional_squad4:"اختياري · فريق يمكن فتحه في Last War"});
+
+Object.assign(EN,{
+  tagline:"V1.2.6 Global · Hybrid Sync · Exclusive Weapons",
+  player_desc:"Up to 4 squads, Drone, exclusive weapons, progress and priorities.",
+  scan_exclusive:"Exclusive weapon",exclusive_weapons:"Exclusive weapons",exclusive_weapon:"Exclusive weapon",
+  exclusive_empty:"Scan an exclusive weapon to add it to your Player profile.",scan_exclusive_button:"📷 Scan an exclusive weapon",
+  exclusive_power:"Power",exclusive_skill_cap:"Max skill level",exclusive_hp:"Hero HP",exclusive_atk:"Hero ATK",exclusive_def:"Hero DEF",exclusive_resistance:"All-damage resistance",exclusive_short:"EX"
+});
+Object.assign(FR,{
+  tagline:"V1.2.6 Global · Sync hybride · Armes exclusives",
+  player_desc:"Jusqu’à 4 escouades, Drone, armes exclusives, progression et priorités.",
+  scan_exclusive:"Arme exclusive",exclusive_weapons:"Armes exclusives",exclusive_weapon:"Arme exclusive",
+  exclusive_empty:"Scanne une arme exclusive pour l’ajouter à ton profil Joueur.",scan_exclusive_button:"📷 Scanner une arme exclusive",
+  exclusive_power:"Puissance",exclusive_skill_cap:"Compétence max",exclusive_hp:"PV Héros",exclusive_atk:"ATQ Héros",exclusive_def:"Défense Héros",exclusive_resistance:"Résistance tous dégâts",exclusive_short:"EX"
+});
+Object.assign(ES,{
+  tagline:"V1.2.6 Global · Sincronización híbrida · Armas exclusivas",
+  player_desc:"Hasta 4 escuadrones, Dron, armas exclusivas, progreso y prioridades.",
+  scan_exclusive:"Arma exclusiva",exclusive_weapons:"Armas exclusivas",exclusive_weapon:"Arma exclusiva",
+  exclusive_empty:"Escanea un arma exclusiva para añadirla a tu perfil de Jugador.",scan_exclusive_button:"📷 Escanear un arma exclusiva",
+  exclusive_power:"Potencia",exclusive_skill_cap:"Nivel máx. de habilidad",exclusive_hp:"PV del héroe",exclusive_atk:"ATQ del héroe",exclusive_def:"DEF del héroe",exclusive_resistance:"Resistencia a todos los daños",exclusive_short:"EX"
+});
+Object.assign(DE,{
+  tagline:"V1.2.6 Global · Hybrid-Sync · Exklusive Waffen",
+  player_desc:"Bis zu 4 Trupps, Drohne, exklusive Waffen, Fortschritt und Prioritäten.",
+  scan_exclusive:"Exklusive Waffe",exclusive_weapons:"Exklusive Waffen",exclusive_weapon:"Exklusive Waffe",
+  exclusive_empty:"Scanne eine exklusive Waffe, um sie deinem Spielerprofil hinzuzufügen.",scan_exclusive_button:"📷 Exklusive Waffe scannen",
+  exclusive_power:"Kraft",exclusive_skill_cap:"Max. Fähigkeitsstufe",exclusive_hp:"Helden-HP",exclusive_atk:"Helden-ANG",exclusive_def:"Helden-VER",exclusive_resistance:"Resistenz gegen alle Schäden",exclusive_short:"EX"
+});
+Object.assign(JA,{
+  tagline:"V1.2.6 Global · ハイブリッド同期 · 専用武器",
+  player_desc:"最大4部隊、ドローン、専用武器、進行状況、優先順位。",
+  scan_exclusive:"専用武器",exclusive_weapons:"専用武器",exclusive_weapon:"専用武器",
+  exclusive_empty:"専用武器をスキャンしてプレイヤープロフィールに追加します。",scan_exclusive_button:"📷 専用武器をスキャン",
+  exclusive_power:"戦力",exclusive_skill_cap:"最大スキルLv.",exclusive_hp:"英雄HP",exclusive_atk:"英雄攻撃",exclusive_def:"英雄防御",exclusive_resistance:"全ダメージ耐性",exclusive_short:"EX"
+});
+Object.assign(ZH,{
+  tagline:"V1.2.6 Global · 混合同步 · 专属武器",
+  player_desc:"最多4支队伍、无人机、专属武器、进度与优先级。",
+  scan_exclusive:"专属武器",exclusive_weapons:"专属武器",exclusive_weapon:"专属武器",
+  exclusive_empty:"扫描专属武器并将其添加到玩家资料。",scan_exclusive_button:"📷 扫描专属武器",
+  exclusive_power:"战力",exclusive_skill_cap:"最高技能等级",exclusive_hp:"英雄生命",exclusive_atk:"英雄攻击",exclusive_def:"英雄防御",exclusive_resistance:"全伤害抗性",exclusive_short:"EX"
+});
+Object.assign(AR,{
+  tagline:"V1.2.6 عالمي · مزامنة هجينة · الأسلحة الحصرية",
+  player_desc:"حتى 4 فرق، الدرون، الأسلحة الحصرية، التقدم والأولويات.",
+  scan_exclusive:"سلاح حصري",exclusive_weapons:"الأسلحة الحصرية",exclusive_weapon:"سلاح حصري",
+  exclusive_empty:"امسح سلاحاً حصرياً لإضافته إلى ملف اللاعب.",scan_exclusive_button:"📷 مسح سلاح حصري",
+  exclusive_power:"القوة",exclusive_skill_cap:"أقصى مستوى للمهارة",exclusive_hp:"صحة البطل",exclusive_atk:"هجوم البطل",exclusive_def:"دفاع البطل",exclusive_resistance:"مقاومة كل الأضرار",exclusive_short:"EX"
+});
+
 const EN_GB={...EN,configure_text:"WarBoost combines public data, smart scans and your alliance cloud to give you one clear priority.",priority_text:"{power} now. WarBoost keeps the history and compares every new scan.",player_sync_note:"Your manual values stay protected. A newer scan replaces only the fields it can read confidently."};
 const EN_US={...EN};
 const packs={fr:FR,"en-GB":EN_GB,"en-US":EN_US,es:ES,de:DE,ja:JA,zh:ZH,ar:AR};

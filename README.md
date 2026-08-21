@@ -1,4 +1,23 @@
-# WarBoost V1.2.4 — PRO Squad Intelligence
+# WarBoost V1.2.6 — Exclusive Weapons
+
+## Nouveauté Joueur
+- Nouvelle section **Armes exclusives** dans **Joueur**.
+- Nouveau type de scan **Arme exclusive** dans WarBoost Scan.
+- Vision peut lire, quand ils sont visibles : héros, nom de l’arme, niveau, puissance, bonus PV/ATQ/Défense, résistance à tous les dégâts et niveau de compétence max.
+- Plusieurs armes exclusives peuvent être enregistrées sans écraser les escouades.
+- Lorsqu’un héros scanné correspond à une arme exclusive enregistrée, son niveau EX est réutilisé dans l’affichage et le diagnostic PRO.
+- Conservation de la V1.2.5 : Escouade 4 optionnelle, scans d’escouades indépendants, PRO, Stripe, Supabase, Android Gallery, 8 langues et Sync hybride.
+
+# WarBoost V1.2.5 — Optional Squad 4
+
+## Correctif V1.2.5
+- Escouade 4 désormais **optionnelle** : son absence ne réduit plus la confiance PRO et ne déclenche plus « Compléter les données ».
+- Les joueurs ayant débloqué/acheté l'Escouade 4 peuvent toujours la scanner ; elle est alors intégrée automatiquement à la comparaison.
+- L'interface affiche « optionnelle / à débloquer dans Last War » quand aucun scan Escouade 4 n'existe.
+- La confiance PRO se calcule sur les escouades réellement disponibles (3 ou 4) + le Drone.
+- Traductions mises à jour dans les 8 langues.
+
+# Historique V1.2.4 — PRO Squad Intelligence
 
 - **Priorité IA PRO** compare désormais réellement les escouades enregistrées au lieu de choisir uniquement la plus puissante.
 - Analyse les données visibles des 5 héros : niveaux, étoiles, puissance, arme exclusive et équipement.
