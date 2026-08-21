@@ -1,4 +1,22 @@
-# WarBoost V1.2.8 — Hero Portrait Recognition
+# WarBoost V1.2.9 — Identité héros vérifiée
+
+## Correctif V1.2.9
+
+Cette version corrige les noms de héros inventés ou mal associés lors d’un scan d’escouade.
+
+- Le premier passage Vision ne peut plus attribuer un nom à partir du portrait seul.
+- Les noms lisibles à l’écran sont acceptés uniquement avec une confiance élevée.
+- Les portraits passent par une reconnaissance stricte puis une seconde vérification indépendante.
+- Un portrait n’est accepté qu’avec une confiance très élevée et au moins deux indices visuels.
+- Le type de héros (Tank / Aircraft / Missile) est contrôlé pour bloquer les incohérences.
+- Les anciens noms non fiables sont effacés lors du prochain scan de l’escouade au lieu d’être conservés.
+- WarBoost préfère afficher « Héros 1 » plutôt que d’inventer un mauvais nom.
+- Correction du catalogue : `Blaz` remplace l’ancienne faute `Braz`.
+
+Les niveaux, étoiles, équipements, armes exclusives, Drone, PRO, internationalisation et verrouillage Escouade 1/2/3/4 sont conservés.
+
+---
+
 
 Cette version corrige le cas où une escouade était bien analysée (niveau, étoiles, équipements, puissance) mais restait affichée comme `Héros 1`, `Héros 2`, etc.
 
@@ -29,7 +47,7 @@ Après déploiement, re-scanner chaque escouade une fois. Les anciens libellés 
 - Les garde-fous V1.2.3 sur les emplacements Escouade 1/2/3/4, l’Escouade 4 optionnelle V1.2.5, PRO, Stripe, Supabase, galerie Android, langues et Sync hybride sont conservés.
 
 ### Important après mise à jour
-Les anciens scans qui avaient enregistré `Héros 1`, `Héros 2`, etc. ne peuvent pas être renommés de manière sûre sans nouvelle lecture de l’image. Re-scanner chaque escouade une fois avec V1.2.8 permet à WarBoost Vision de tenter de récupérer les vrais noms.
+Les anciens scans qui avaient enregistré `Héros 1`, `Héros 2`, etc. ne peuvent pas être renommés de manière sûre sans nouvelle lecture de l’image. Re-scanner chaque escouade une fois avec V1.2.9 efface les anciennes identités douteuses puis ne conserve que les noms vérifiés.
 
 ---
 
