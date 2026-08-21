@@ -47,54 +47,63 @@ Object.assign(ZH,{player_desc:"最多4支队伍、无人机、进度与优先级
 Object.assign(AR,{player_desc:"حتى 4 فرق، الدرون، التقدم والأولويات.",sync_four:"حدّث كل الفرق المتاحة في حسابك (3 أو 4) والدرون، ثم سيقارن المدرب تقدمك.",optional_squad4:"اختياري · فريق يمكن فتحه في Last War"});
 
 Object.assign(EN,{
-  tagline:"V1.2.9 Global · Hybrid Sync · Exclusive Weapons",
+  tagline:"V1.3.0 Global · Hybrid Sync · Exclusive Weapons",
   player_desc:"Up to 4 squads, Drone, exclusive weapons, progress and priorities.",
   scan_exclusive:"Exclusive weapon",exclusive_weapons:"Exclusive weapons",exclusive_weapon:"Exclusive weapon",
   exclusive_empty:"Scan an exclusive weapon to add it to your Player profile.",scan_exclusive_button:"📷 Scan an exclusive weapon",
   exclusive_power:"Power",exclusive_skill_cap:"Max skill level",exclusive_hp:"Hero HP",exclusive_atk:"Hero ATK",exclusive_def:"Hero DEF",exclusive_resistance:"All-damage resistance",exclusive_short:"EX"
 });
 Object.assign(FR,{
-  tagline:"V1.2.9 Global · Sync hybride · Armes exclusives",
+  tagline:"V1.3.0 Global · Sync hybride · Armes exclusives",
   player_desc:"Jusqu’à 4 escouades, Drone, armes exclusives, progression et priorités.",
   scan_exclusive:"Arme exclusive",exclusive_weapons:"Armes exclusives",exclusive_weapon:"Arme exclusive",
   exclusive_empty:"Scanne une arme exclusive pour l’ajouter à ton profil Joueur.",scan_exclusive_button:"📷 Scanner une arme exclusive",
   exclusive_power:"Puissance",exclusive_skill_cap:"Compétence max",exclusive_hp:"PV Héros",exclusive_atk:"ATQ Héros",exclusive_def:"Défense Héros",exclusive_resistance:"Résistance tous dégâts",exclusive_short:"EX"
 });
 Object.assign(ES,{
-  tagline:"V1.2.9 Global · Sincronización híbrida · Armas exclusivas",
+  tagline:"V1.3.0 Global · Sincronización híbrida · Armas exclusivas",
   player_desc:"Hasta 4 escuadrones, Dron, armas exclusivas, progreso y prioridades.",
   scan_exclusive:"Arma exclusiva",exclusive_weapons:"Armas exclusivas",exclusive_weapon:"Arma exclusiva",
   exclusive_empty:"Escanea un arma exclusiva para añadirla a tu perfil de Jugador.",scan_exclusive_button:"📷 Escanear un arma exclusiva",
   exclusive_power:"Potencia",exclusive_skill_cap:"Nivel máx. de habilidad",exclusive_hp:"PV del héroe",exclusive_atk:"ATQ del héroe",exclusive_def:"DEF del héroe",exclusive_resistance:"Resistencia a todos los daños",exclusive_short:"EX"
 });
 Object.assign(DE,{
-  tagline:"V1.2.9 Global · Hybrid-Sync · Exklusive Waffen",
+  tagline:"V1.3.0 Global · Hybrid-Sync · Exklusive Waffen",
   player_desc:"Bis zu 4 Trupps, Drohne, exklusive Waffen, Fortschritt und Prioritäten.",
   scan_exclusive:"Exklusive Waffe",exclusive_weapons:"Exklusive Waffen",exclusive_weapon:"Exklusive Waffe",
   exclusive_empty:"Scanne eine exklusive Waffe, um sie deinem Spielerprofil hinzuzufügen.",scan_exclusive_button:"📷 Exklusive Waffe scannen",
   exclusive_power:"Kraft",exclusive_skill_cap:"Max. Fähigkeitsstufe",exclusive_hp:"Helden-HP",exclusive_atk:"Helden-ANG",exclusive_def:"Helden-VER",exclusive_resistance:"Resistenz gegen alle Schäden",exclusive_short:"EX"
 });
 Object.assign(JA,{
-  tagline:"V1.2.9 Global · ハイブリッド同期 · 専用武器",
+  tagline:"V1.3.0 Global · ハイブリッド同期 · 専用武器",
   player_desc:"最大4部隊、ドローン、専用武器、進行状況、優先順位。",
   scan_exclusive:"専用武器",exclusive_weapons:"専用武器",exclusive_weapon:"専用武器",
   exclusive_empty:"専用武器をスキャンしてプレイヤープロフィールに追加します。",scan_exclusive_button:"📷 専用武器をスキャン",
   exclusive_power:"戦力",exclusive_skill_cap:"最大スキルLv.",exclusive_hp:"英雄HP",exclusive_atk:"英雄攻撃",exclusive_def:"英雄防御",exclusive_resistance:"全ダメージ耐性",exclusive_short:"EX"
 });
 Object.assign(ZH,{
-  tagline:"V1.2.9 Global · 混合同步 · 专属武器",
+  tagline:"V1.3.0 Global · 混合同步 · 专属武器",
   player_desc:"最多4支队伍、无人机、专属武器、进度与优先级。",
   scan_exclusive:"专属武器",exclusive_weapons:"专属武器",exclusive_weapon:"专属武器",
   exclusive_empty:"扫描专属武器并将其添加到玩家资料。",scan_exclusive_button:"📷 扫描专属武器",
   exclusive_power:"战力",exclusive_skill_cap:"最高技能等级",exclusive_hp:"英雄生命",exclusive_atk:"英雄攻击",exclusive_def:"英雄防御",exclusive_resistance:"全伤害抗性",exclusive_short:"EX"
 });
 Object.assign(AR,{
-  tagline:"V1.2.9 عالمي · مزامنة هجينة · الأسلحة الحصرية",
+  tagline:"V1.3.0 عالمي · مزامنة هجينة · الأسلحة الحصرية",
   player_desc:"حتى 4 فرق، الدرون، الأسلحة الحصرية، التقدم والأولويات.",
   scan_exclusive:"سلاح حصري",exclusive_weapons:"الأسلحة الحصرية",exclusive_weapon:"سلاح حصري",
   exclusive_empty:"امسح سلاحاً حصرياً لإضافته إلى ملف اللاعب.",scan_exclusive_button:"📷 مسح سلاح حصري",
   exclusive_power:"القوة",exclusive_skill_cap:"أقصى مستوى للمهارة",exclusive_hp:"صحة البطل",exclusive_atk:"هجوم البطل",exclusive_def:"دفاع البطل",exclusive_resistance:"مقاومة كل الأضرار",exclusive_short:"EX"
 });
+
+
+Object.assign(EN,{hero_choose:"Choose hero…",hero_confirm_title:"Squad {squad} · Hero identities",hero_confirm_badge:"Confirm",hero_confirm_help:"Portraits alone can be ambiguous. Check the five names before WarBoost saves them.",hero_confirm_needed:"Squad data read. Confirm the five hero names below before saving their identities.",hero_save:"Save names",hero_skip:"Keep without names",hero_confirm_saved:"Hero names confirmed and saved.",hero_confirm_skipped:"Squad saved without guessed hero names.",hero_duplicate:"The same hero cannot be selected twice in one squad."});
+Object.assign(FR,{hero_choose:"Choisir le héros…",hero_confirm_title:"Escouade {squad} · Identité des héros",hero_confirm_badge:"À confirmer",hero_confirm_help:"Les portraits seuls peuvent être ambigus. Vérifie les 5 noms avant que WarBoost les enregistre.",hero_confirm_needed:"Données de l'escouade lues. Confirme maintenant les 5 noms ci-dessous avant d'enregistrer leur identité.",hero_save:"Enregistrer les noms",hero_skip:"Garder sans noms",hero_confirm_saved:"Noms des héros confirmés et enregistrés.",hero_confirm_skipped:"Escouade enregistrée sans noms de héros devinés.",hero_duplicate:"Un même héros ne peut pas être sélectionné deux fois dans la même escouade."});
+Object.assign(ES,{hero_choose:"Elegir héroe…",hero_confirm_title:"Escuadrón {squad} · Identidad de héroes",hero_confirm_badge:"Confirmar",hero_confirm_help:"Los retratos por sí solos pueden ser ambiguos. Comprueba los cinco nombres antes de guardarlos.",hero_confirm_needed:"Datos del escuadrón leídos. Confirma los cinco nombres antes de guardar sus identidades.",hero_save:"Guardar nombres",hero_skip:"Guardar sin nombres",hero_confirm_saved:"Nombres confirmados y guardados.",hero_confirm_skipped:"Escuadrón guardado sin nombres adivinados.",hero_duplicate:"No se puede seleccionar el mismo héroe dos veces."});
+Object.assign(DE,{hero_choose:"Held wählen…",hero_confirm_title:"Trupp {squad} · Heldenidentität",hero_confirm_badge:"Bestätigen",hero_confirm_help:"Porträts allein können mehrdeutig sein. Prüfe die fünf Namen vor dem Speichern.",hero_confirm_needed:"Truppdaten gelesen. Bestätige jetzt die fünf Heldennamen.",hero_save:"Namen speichern",hero_skip:"Ohne Namen behalten",hero_confirm_saved:"Heldennamen bestätigt und gespeichert.",hero_confirm_skipped:"Trupp ohne geratene Heldennamen gespeichert.",hero_duplicate:"Derselbe Held kann nicht zweimal gewählt werden."});
+Object.assign(JA,{hero_choose:"英雄を選択…",hero_confirm_title:"部隊{squad}・英雄確認",hero_confirm_badge:"確認",hero_confirm_help:"肖像だけでは判別が曖昧な場合があります。保存前に5人の名前を確認してください。",hero_confirm_needed:"部隊データを読み取りました。5人の英雄名を確認してください。",hero_save:"名前を保存",hero_skip:"名前なしで保存",hero_confirm_saved:"英雄名を確認して保存しました。",hero_confirm_skipped:"推測した英雄名を使わずに保存しました。",hero_duplicate:"同じ英雄を2回選択できません。"});
+Object.assign(ZH,{hero_choose:"选择英雄…",hero_confirm_title:"队伍{squad} · 英雄身份",hero_confirm_badge:"确认",hero_confirm_help:"仅凭头像可能会有歧义。保存前请确认5名英雄。",hero_confirm_needed:"已读取队伍数据。请确认下面5名英雄后再保存身份。",hero_save:"保存名称",hero_skip:"不保存名称",hero_confirm_saved:"英雄名称已确认并保存。",hero_confirm_skipped:"已保存队伍，未使用猜测的英雄名称。",hero_duplicate:"同一队伍不能重复选择同一英雄。"});
+Object.assign(AR,{hero_choose:"اختر البطل…",hero_confirm_title:"الفريق {squad} · هوية الأبطال",hero_confirm_badge:"تأكيد",hero_confirm_help:"قد تكون الصور وحدها ملتبسة. تحقق من أسماء الأبطال الخمسة قبل الحفظ.",hero_confirm_needed:"تمت قراءة بيانات الفريق. أكد أسماء الأبطال الخمسة قبل حفظ الهوية.",hero_save:"حفظ الأسماء",hero_skip:"حفظ بدون أسماء",hero_confirm_saved:"تم تأكيد أسماء الأبطال وحفظها.",hero_confirm_skipped:"تم حفظ الفريق بدون أسماء أبطال متوقعة.",hero_duplicate:"لا يمكن اختيار البطل نفسه مرتين في الفريق."});
 
 const EN_GB={...EN,configure_text:"WarBoost combines public data, smart scans and your alliance cloud to give you one clear priority.",priority_text:"{power} now. WarBoost keeps the history and compares every new scan.",player_sync_note:"Your manual values stay protected. A newer scan replaces only the fields it can read confidently."};
 const EN_US={...EN};

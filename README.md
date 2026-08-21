@@ -1,6 +1,10 @@
-# WarBoost V1.2.9 — Identité héros vérifiée
+# WarBoost V1.3.0 — Hero Identity Confirmation
 
-## Correctif V1.2.9
+Les noms de héros ne sont plus devinés à partir des portraits seuls. Après un scan d’escouade, le joueur confirme les 5 noms avant enregistrement.
+
+# WarBoost V1.3.0 — Identité héros vérifiée
+
+## Correctif V1.3.0
 
 Cette version corrige les noms de héros inventés ou mal associés lors d’un scan d’escouade.
 
@@ -47,7 +51,7 @@ Après déploiement, re-scanner chaque escouade une fois. Les anciens libellés 
 - Les garde-fous V1.2.3 sur les emplacements Escouade 1/2/3/4, l’Escouade 4 optionnelle V1.2.5, PRO, Stripe, Supabase, galerie Android, langues et Sync hybride sont conservés.
 
 ### Important après mise à jour
-Les anciens scans qui avaient enregistré `Héros 1`, `Héros 2`, etc. ne peuvent pas être renommés de manière sûre sans nouvelle lecture de l’image. Re-scanner chaque escouade une fois avec V1.2.9 efface les anciennes identités douteuses puis ne conserve que les noms vérifiés.
+Les anciens scans qui avaient enregistré `Héros 1`, `Héros 2`, etc. ne peuvent pas être renommés de manière sûre sans nouvelle lecture de l’image. Re-scanner chaque escouade une fois avec V1.3.0 efface les anciennes identités douteuses puis ne conserve que les noms vérifiés.
 
 ---
 

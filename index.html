@@ -96,6 +96,13 @@
         <img id="scanPreview" class="scanPreview hidden" alt="Screenshot preview" />
         <button id="analyzeScanBtn" class="primaryAction" data-i18n="analyze">Analyser la capture</button>
         <div id="scanStatus" class="notice" data-i18n="scan_wait">Choisis d'abord une capture.</div>
+        <div id="heroConfirmPanel" class="heroConfirmPanel hidden">
+          <div class="sectionTitle"><h3 id="heroConfirmTitle">Identité des héros</h3><span class="pill" data-i18n="hero_confirm_badge">À confirmer</span></div>
+          <p class="privacyText" data-i18n="hero_confirm_help">Les portraits seuls peuvent être ambigus. Vérifie les 5 noms avant que WarBoost les enregistre.</p>
+          <div id="heroConfirmRows" class="heroConfirmRows"></div>
+          <div class="buttonRow"><button id="skipHeroNamesBtn" class="secondaryBtn" data-i18n="hero_skip">Garder sans noms</button><button id="saveHeroNamesBtn" class="primaryAction" data-i18n="hero_save">Enregistrer les noms</button></div>
+        </div>
+
         <div class="privacyText" data-i18n="privacy_scan">La capture est redimensionnée avant l'envoi et n'est pas conservée par le navigateur après l'analyse.</div>
       </div>
     </div>
