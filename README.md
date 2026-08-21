@@ -1,4 +1,21 @@
-# WarBoost V1.2.7 — Hero Names + Inline Exclusive Weapons
+# WarBoost V1.2.8 — Hero Portrait Recognition
+
+Cette version corrige le cas où une escouade était bien analysée (niveau, étoiles, équipements, puissance) mais restait affichée comme `Héros 1`, `Héros 2`, etc.
+
+## Améliorations V1.2.8
+
+- image envoyée à WarBoost Vision en résolution supérieure (jusqu’à 2048 px) pour mieux lire les portraits et petits textes ;
+- catalogue contrôlé des héros Last War pour canonicaliser les vrais noms (DVA, Lucius, Carlie, Morrison, Schuyler, etc.) ;
+- seconde passe Vision ciblée uniquement sur les portraits si le premier scan n’a pas reconnu tous les noms ;
+- aucun remplissage basé uniquement sur une composition “probable” : WarBoost exige une preuve visuelle suffisante ;
+- conservation de toutes les fonctions V1.2.7 : 4 emplacements d’escouade séparés, Escouade 4 optionnelle, armes exclusives intégrées aux héros, PRO, Stripe, Supabase, traduction mondiale et Sync hybride.
+
+## Test recommandé
+
+Après déploiement, re-scanner chaque escouade une fois. Les anciens libellés génériques ne sont remplacés que lorsqu’un nom réel est reconnu avec suffisamment de confiance.
+
+---
+
 
 ## Corrections demandées
 
@@ -12,7 +29,7 @@
 - Les garde-fous V1.2.3 sur les emplacements Escouade 1/2/3/4, l’Escouade 4 optionnelle V1.2.5, PRO, Stripe, Supabase, galerie Android, langues et Sync hybride sont conservés.
 
 ### Important après mise à jour
-Les anciens scans qui avaient enregistré `Héros 1`, `Héros 2`, etc. ne peuvent pas être renommés de manière sûre sans nouvelle lecture de l’image. Re-scanner chaque escouade une fois avec V1.2.7 permet à WarBoost Vision de tenter de récupérer les vrais noms.
+Les anciens scans qui avaient enregistré `Héros 1`, `Héros 2`, etc. ne peuvent pas être renommés de manière sûre sans nouvelle lecture de l’image. Re-scanner chaque escouade une fois avec V1.2.8 permet à WarBoost Vision de tenter de récupérer les vrais noms.
 
 ---
 

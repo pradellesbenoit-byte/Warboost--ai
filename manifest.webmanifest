@@ -1,7 +1,7 @@
 {
   "name": "WarBoost",
   "short_name": "WarBoost",
-  "description": "WarBoost V1.2.7 Global — real hero names, inline exclusive weapons, unified WarBoost Scan, optional Squad 4, PRO Squad Intelligence, multilingual UI and Hybrid Sync",
+  "description": "WarBoost V1.2.8 Global — enhanced hero portrait recognition, inline exclusive weapons, unified WarBoost Scan, optional Squad 4, PRO Squad Intelligence, multilingual UI and Hybrid Sync",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
