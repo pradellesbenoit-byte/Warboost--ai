@@ -8,8 +8,14 @@ function metric(v){
 function gearMetric(v){
   if(v===null||v===undefined||v==="")return null;
   if(typeof v==="number")return Number.isFinite(v)?v:null;
-  const matches=String(v).replaceAll(",",".").match(/-?\d+(?:\.\d+)?/g)||[];
-  const vals=matches.map(Number).filter(Number.isFinite);return vals.length?Math.min(...vals):null;
+  const text=String(v).replaceAll(",",".");
+  // Prefer an explicit gear-level token ("Lv.40", "niv.40", etc.).
+  // The previous engine could accidentally read the equipment count (e.g. the "4" in "4 équipements niv.40") as the gear level.
+  const level=text.match(/(?:lv|niv|level|niveau|stufe|レベル|等级)\s*[.:#-]?\s*(\d+(?:\.\d+)?)/i);
+  if(level)return Number(level[1]);
+  const matches=text.match(/-?\d+(?:\.\d+)?/g)||[];
+  const vals=matches.map(Number).filter(Number.isFinite).filter(x=>x>=10);
+  return vals.length?Math.max(...vals):null;
 }
 function fmt(v,locale){const n=Number(v);return Number.isFinite(n)?`${n.toLocaleString(locale,{maximumFractionDigits:2})} M`:"—"}
 function cleanName(v){return String(v||"").trim()}
@@ -158,10 +164,10 @@ function buildPlayerAnalysis(state,locale){
     return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional};
   });
   const conf=dataConfidence(squads,state?.drone||{}),gapText=dedup[0]?.reason||"";
-  return {summary:p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",gapText),confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,engine:"warboost-pro-shop-v1.3.2"};
+  return {summary:p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",gapText),confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,engine:"warboost-pro-shop-v1.3.3"};
 }
 
-// ===== V1.3.2 · Last War Shop Advisor =====
+// ===== V1.3.3 · Last War Shop Advisor =====
 const SHOP_TEXT={
   fr:{buy:"À prendre",consider:"Si surplus",skip:"À éviter",scanSummary:(store,n)=>`Boutique scannée : ${store}. WarBoost a classé ${n} offre${n>1?"s":""} visible${n>1?"s":""} selon les besoins réels de ton compte.`,rulesSummary:"Conseils calculés depuis tes escouades. Scanne une boutique Last War pour classer les offres visibles et leurs prix.",honorBp:"Plan d’équipement légendaire",campaignEx:"Fragments universels d’arme exclusive",allianceHero:"Fragments UR / héros prioritaire",allianceDrone:"Pièces et composants de Drone",vipStamina:"Endurance de la boutique VIP",speed:"Accélérateurs recherche/construction",shield:"Bouclier avant combat / VS",paidExclusive:"Pack d’arme exclusive ciblé",paidGear:"Pack plans / équipement ciblé",paidDrone:"Pack Drone ciblé",resources:"Packs de ressources génériques",reasonBlueprint:"Ressource rare et durable pour la progression des équipements : priorité élevée dans la Boutique Honneur.",reasonExclusive:t=>`Ton plus gros écart visible est l’arme exclusive. Concentre les fragments sur ${t||"le héros prioritaire"} au lieu de les disperser.`,reasonHero:t=>`À privilégier seulement si ${t||"un héros de l’escouade principale"} n’est pas encore au palier d’étoiles visé.`,reasonDrone:"Bon achat après les principaux écarts héros / arme exclusive / équipement.",reasonStamina:"Bon rendement hebdomadaire pour événements, campagne et progression ; n’achète pas au détriment d’un goulot rare.",reasonSpeed:"Utile quand un objectif recherche/construction est actif ou pour marquer des points au bon jour VS.",reasonShield:"Achat situationnel : utile avant une journée combat/VS, inutile à stocker en excès.",reasonPaid:t=>`Si tu dépenses, prends uniquement un pack qui résout directement le goulot ${t}. Évite les packs génériques.`,reasonResource:"Les ressources génériques sont généralement remplaçables par le jeu : faible priorité face aux objets rares.",reasonVisible:"Offre visible classée selon ton profil WarBoost et le type d’objet détecté.",target:"Cible"},
   en:{buy:"Buy",consider:"If surplus",skip:"Skip",scanSummary:(store,n)=>`Scanned shop: ${store}. WarBoost ranked ${n} visible offer${n===1?"":"s"} against your real account needs.`,rulesSummary:"Advice is calculated from your squads. Scan a Last War shop to rank the visible offers and prices.",honorBp:"Legendary Gear Blueprint",campaignEx:"Universal Exclusive Weapon Shards",allianceHero:"UR / priority-hero shards",allianceDrone:"Drone Parts & Components",vipStamina:"VIP Store Stamina",speed:"Research / construction speed-ups",shield:"Shield before combat / VS",paidExclusive:"Targeted exclusive-weapon pack",paidGear:"Targeted gear / blueprint pack",paidDrone:"Targeted Drone pack",resources:"Generic resource packs",reasonBlueprint:"Rare, durable gear progression resource: very high priority in the Honor Shop.",reasonExclusive:t=>`Your largest visible gap is exclusive weapons. Focus shards on ${t||"the priority hero"} instead of spreading them.`,reasonHero:t=>`Prioritize only if ${t||"a main-squad hero"} still needs the next star step.`,reasonDrone:"Good after the main hero / exclusive-weapon / gear gaps.",reasonStamina:"Strong weekly value for events, campaign and progression; do not sacrifice a rarer bottleneck for it.",reasonSpeed:"Useful when a research/build objective is active or to score on the right VS day.",reasonShield:"Situational: useful before combat/VS, not worth excessive stockpiling.",reasonPaid:t=>`If you spend, buy only a pack that directly solves the ${t} bottleneck. Avoid generic bundles.`,reasonResource:"Generic resources are usually replaceable through play, so they rank below scarce progression items.",reasonVisible:"Visible offer ranked from your WarBoost profile and the detected item type.",target:"Target"},
@@ -178,103 +184,140 @@ function heroNeedSnapshot(state){
   const squads=Array.from({length:4},(_,i)=>state?.squads?.[i]||{heroes:[]});
   const powered=squads.map((s,i)=>({s,i,p:num(s?.power)})).filter(x=>x.p!==null).sort((a,b)=>b.p-a.p);
   const main=powered[0]||squads.map((s,i)=>({s,i,p:num(s?.power)})).find(x=>squadConfigured(x.s));
-  const sq=main?.s||{heroes:[]};const weapons=Array.isArray(state?.exclusive_weapons)?state.exclusive_weapons:[];
+  const sq=main?.s||{heroes:[]},weapons=Array.isArray(state?.exclusive_weapons)?state.exclusive_weapons:[];
   const weaponLevel=n=>num(weapons.find(w=>cleanName(w?.hero_name).toLowerCase()===cleanName(n).toLowerCase())?.level);
   const heroes=(sq.heroes||[]).filter(heroConfigured).map((h,i)=>({name:cleanName(h?.name)||`Hero ${i+1}`,stars:num(h?.stars),level:num(h?.level),exclusive:weaponLevel(h?.name)??metric(h?.exclusive),gear:gearMetric(h?.gear),gear_text:cleanName(h?.gear)}));
   const starTargets=heroes.filter(h=>h.stars!==null&&h.stars<5).sort((a,b)=>a.stars-b.stars);
-  const exKnown=heroes.filter(h=>h.exclusive!==null),typeCounts={aircraft:0,tank:0,missile:0};for(const h of heroes){const t=HERO_TYPES[h.name];if(t)typeCounts[t]++}const squadType=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1])[0]?.[1]>=3?Object.entries(typeCounts).sort((a,b)=>b[1]-a[1])[0][0]:null;
+  const exKnown=heroes.filter(h=>h.exclusive!==null),typeCounts={aircraft:0,tank:0,missile:0};
+  for(const h of heroes){const t=HERO_TYPES[h.name];if(t)typeCounts[t]++}
+  const typeRows=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]),squadType=typeRows[0]?.[1]>=3?typeRows[0][0]:null;
   const under20=exKnown.filter(h=>h.exclusive<20).sort((a,b)=>ewPriorityWeight(b.name,squadType,20)-ewPriorityWeight(a.name,squadType,20)||(a.exclusive-b.exclusive));
   const under30=exKnown.filter(h=>h.exclusive>=20&&h.exclusive<30).sort((a,b)=>ewPriorityWeight(b.name,squadType,30)-ewPriorityWeight(a.name,squadType,30)||(a.exclusive-b.exclusive));
   const exTargets=under20.length?under20:under30;
   const gearKnown=heroes.filter(h=>h.gear!==null),gearMax=gearKnown.length?Math.max(...gearKnown.map(h=>h.gear)):null;
-  const gearTargets=gearKnown.filter(h=>gearMax!==null&&gearMax-h.gear>=3);
+  const gearTargets=gearKnown.filter(h=>h.gear<40||(gearMax!==null&&gearMax-h.gear>=3)).sort((a,b)=>a.gear-b.gear);
   const levelKnown=heroes.filter(h=>h.level!==null),levelMax=levelKnown.length?Math.max(...levelKnown.map(h=>h.level)):null;
   const levelTargets=levelKnown.filter(h=>levelMax!==null&&levelMax-h.level>=3);
-  return {main_squad:(main?.i??0)+1,heroes,starTargets,exTargets,gearTargets,levelTargets,needExclusive:exTargets.length>0,needStars:starTargets.length>0,needGear:gearTargets.length>0,needLevel:levelTargets.length>0,droneKnown:num(state?.drone?.level)!==null||num(state?.drone?.power_m)!==null,droneLevel:num(state?.drone?.level)};
+  const lowestEx=exKnown.length?Math.min(...exKnown.map(h=>h.exclusive)):null;
+  const exclusiveUrgency=lowestEx===null?.35:lowestEx<10?1:lowestEx<20?.92:lowestEx<30?.68:.35;
+  const starsUrgency=starTargets.length?Math.min(1,.72+starTargets.length*.07):.12;
+  const at40=gearKnown.filter(h=>h.gear>=40).length;
+  const gearUrgency=gearTargets.length?Math.min(1,.7+gearTargets.length*.06):(at40>=3?.58:gearKnown.length?.42:.3);
+  const droneLevel=num(state?.drone?.level),droneKnown=droneLevel!==null||num(state?.drone?.power_m)!==null;
+  const droneUrgency=!droneKnown?.38:droneLevel===null?.55:droneLevel<100?.9:droneLevel<150?.76:droneLevel<200?.64:.52;
+  return {main_squad:(main?.i??0)+1,heroes,squadType,starTargets,exTargets,gearTargets,levelTargets,needExclusive:exTargets.length>0,needStars:starTargets.length>0,needGear:gearTargets.length>0,needLevel:levelTargets.length>0,exclusiveUrgency,starsUrgency,gearUrgency,droneUrgency,droneKnown,droneLevel,gearKnownCount:gearKnown.length,exclusiveKnownCount:exKnown.length};
 }
 function normItem(v){return cleanName(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
-function itemCategory(name){const s=normItem(name);
+function itemCategory(name,explicitCategory=""){const s=normItem(`${name||""} ${explicitCategory||""}`);
   if(/vip.*(30|day|jour|dia|tag|日)|30.*vip|vip.*time|vip.*temps|vip.*zeit/.test(s))return "vip_time";
-  if(/mythic.*blueprint|mythical.*blueprint|legendary.*blueprint|blueprint|plan.*equip|equip.*plan|equip.*blueprint|m[ée]moire.*equip|装備.*レシピ|装备.*蓝图/.test(s))return "blueprint";
+  if(/mythic.*blueprint|mythical.*blueprint|legendary.*blueprint|blueprint|plan.*equip|equip.*plan|equip.*blueprint|memoire.*equip|装備.*レシピ|装备.*蓝图/.test(s))return "blueprint";
   if(/exclusive.*weapon|weapon.*shard|arme.*exclusive|fragment.*arme|专属武器|専用武器/.test(s))return "exclusive";
   if(/universal.*(legendary|ur).*shard|ur.*shard|golden.*shard|fragment.*ur|hero.*shard|英雄.*碎片/.test(s))return "hero";
-  if(/drone.*(chip|component|part|gear)|component.*drone|part.*drone|drone|drohne|dron|无人机|ドローン|درون/.test(s))return "drone";
-  if(/stamina|endurance|ap|energie|energy|体力|طاقة/.test(s))return "stamina";
+  if(/drone.*(chip|component|part|gear)|component.*drone|part.*drone|piece.*drone|drone|drohne|dron|无人机|ドローン|درون/.test(s))return "drone";
+  if(/stamina|endurance|\bap\b|energie|energy|体力|طاقة/.test(s))return "stamina";
   if(/armament|兵装|overlord|bond badge|badge.*bond|连携|連携/.test(s))return "armament";
   if(/skill.*chip|chip.*skill|skill.*medal|medaille.*compet|技能.*芯片|スキル.*チップ/.test(s))return "skill";
+  if(/healing.*speed|heal.*speed|soin.*acceler|加速.*治疗/.test(s))return "speed_heal";
+  if(/research.*speed|science.*speed|recherche.*acceler|forsch.*beschleun|研究.*加速/.test(s))return "speed_research";
+  if(/construct.*speed|build.*speed|construction.*acceler|bau.*beschleun|建造.*加速/.test(s))return "speed_build";
+  if(/train.*speed|training.*speed|entrain.*acceler|ausbild.*beschleun|训练.*加速/.test(s))return "speed_train";
   if(/speed|acceler|beschleun|加速|تسريع/.test(s))return "speed";
   if(/shield|bouclier|schild|护盾|シールド|درع/.test(s))return "shield";
   if(/teleport|teleporteur|teleporter|迁城|テレポート/.test(s))return "teleport";
   if(/campaign.*chest|coffre.*campagne|expedition.*chest|远征.*宝箱|遠征.*宝箱/.test(s))return "campaign_chest";
-  if(/resource|ressource|gold|iron|food|资源|資源|موارد/.test(s))return "resource";
+  if(/resource|ressource|gold|iron|fer|food|nourriture|coin|pieces|资源|資源|موارد/.test(s))return "resource";
   if(/decor|skin|cosmetic|decoration|装饰|スキン/.test(s))return "cosmetic";
   if(/chest|coffre|宝箱|ボックス/.test(s))return "chest";
-  return "other"}
-function storeKind(v){const s=normItem(v);if(/honor|honneur|ehre|荣誉|名誉|الشرف/.test(s))return "honor";if(/campaign|campagne|战役|キャンペーン|الحملة/.test(s))return "campaign";if(/alliance|allianz|联盟|同盟|التحالف/.test(s))return "alliance";if(/vip/.test(s))return "vip";if(/diamond|diamant|diamante|钻石|ダイヤ|ألماس/.test(s))return "diamond";if(/season|saison|temporada|赛季|シーズン|الموسم/.test(s))return "season";return "other"}
-function scoreVisibleOffer(o,needs){const cat=itemCategory(o?.item_name),store=storeKind(o?.store_type||o?.store||""),discount=Math.max(0,Math.min(5,(num(o?.discount_pct)||0)/10));let score=50;
-  if(cat==="vip_time")score=94;
-  else if(cat==="blueprint")score=96;
-  else if(cat==="exclusive")score=needs.needExclusive?98:78;
-  else if(cat==="hero")score=needs.needStars?94:54;
-  else if(cat==="drone")score=needs.droneKnown?82:72;
-  else if(cat==="stamina")score=82;
-  else if(cat==="armament")score=80;
-  else if(cat==="skill")score=78;
-  else if(cat==="campaign_chest")score=88;
-  else if(cat==="speed")score=69;
-  else if(cat==="shield")score=62;
-  else if(cat==="teleport")score=58;
-  else if(cat==="chest")score=60;
-  else if(cat==="resource")score=20;
-  else if(cat==="cosmetic")score=18;
-  if(store==="honor"){
-    if(cat==="blueprint")score=100;
-    else if(cat==="hero"&&!needs.needStars)score=Math.min(score,38);
-    else if(cat!=="blueprint")score-=8;
-  }
-  if(store==="campaign"){
-    if(cat==="exclusive"&&needs.needExclusive)score=100;
-    if(cat==="campaign_chest")score=Math.max(score,90);
-    if(cat==="drone")score=Math.max(score,86);
-  }
-  if(store==="alliance"){
-    if(cat==="hero"&&needs.needStars)score=Math.max(score,96);
-    if(cat==="drone")score=Math.max(score,88);
-  }
-  if(store==="vip"){
-    if(cat==="stamina")score=Math.max(score,88);
-    if(cat==="hero"&&needs.needStars)score=Math.max(score,95);
-    if(cat==="teleport")score=Math.max(score,75);
-  }
-  if(store==="diamond"){
-    if(cat==="resource"||cat==="hero"||cat==="chest")score=Math.min(score,30);
-    if(cat==="teleport")score=Math.max(score,60);
-  }
-  score=Math.max(0,Math.min(100,Math.round(score+discount)));
-  const money=normItem(o?.currency);if(/eur|usd|gbp|euro|dollar|pound/.test(money)||/[€$£]/.test(String(o?.currency||"")))score=Math.min(score,84);
-  return score}
-function verdict(score,p){return score>=85?{key:"buy_now",label:p.buy}:score>=58?{key:"consider",label:p.consider}:{key:"skip",label:p.skip}}
-function offerReason(cat,needs,p){const exTarget=needs.exTargets.slice(0,2).map(x=>x.name).join(" / "),starTarget=needs.starTargets.slice(0,2).map(x=>x.name).join(" / ");if(cat==="blueprint")return p.reasonBlueprint;if(cat==="exclusive")return p.reasonExclusive(exTarget);if(cat==="hero")return p.reasonHero(starTarget);if(cat==="drone")return p.reasonDrone;if(cat==="stamina")return p.reasonStamina;if(cat==="speed")return p.reasonSpeed;if(cat==="shield")return p.reasonShield;if(cat==="resource"||cat==="cosmetic")return p.reasonResource;return p.reasonVisible}
-function priceLabel(o,locale){const price=num(o?.price),currency=cleanName(o?.currency);if(price===null)return currency||"";return `${price.toLocaleString(String(locale||"en-GB"),{maximumFractionDigits:2})}${currency?` ${currency}`:""}`}
-function genericShopRecommendations(state,locale,needs){const p=shopText(locale),st=shopStores(locale),out=[];const add=(item,store,score,reason,target="")=>{const v=verdict(score,p);out.push({item,store,score,reason,target,verdict:v.label,verdict_key:v.key,source:"rules"})};
-  add(p.honorBp,st.honor,100,p.reasonBlueprint,"Main squad gear");
-  if(needs.needExclusive){const t=needs.exTargets.slice(0,3).map(x=>`${x.name} EX${x.exclusive}`).join(" → ");add(p.campaignEx,st.campaign,98,p.reasonExclusive(t),t);add(p.paidExclusive,st.paid,82,p.reasonPaid(`EX: ${t}`),t)}
-  if(needs.needStars){const t=needs.starTargets.slice(0,3).map(x=>x.name).join(" / ");add(p.allianceHero,st.allianceCampaign,95,p.reasonHero(t),t)}
-  add(p.allianceDrone,st.allianceCampaign,needs.needExclusive||needs.needStars?76:84,p.reasonDrone,needs.droneLevel?`Drone Lv.${needs.droneLevel}`:"Drone");
-  add(p.vipStamina,st.vip,80,p.reasonStamina);
-  add(p.speed,st.vipAlliance,68,p.reasonSpeed);
-  add(p.shield,st.allianceDiamond,62,p.reasonShield);
-  if(!needs.needExclusive&&needs.needGear)add(p.paidGear,st.paid,82,p.reasonPaid("gear / blueprints"),"Main squad gear");
-  else if(!needs.needExclusive&&!needs.needStars&&!needs.needGear&&needs.droneKnown)add(p.paidDrone,st.paid,76,p.reasonPaid("Drone"),"Drone");
-  add(p.resources,st.diamondPaid,20,p.reasonResource);
-  return out.sort((a,b)=>b.score-a.score).slice(0,7).map((x,i)=>({...x,rank:i+1}));
+  return "other";
 }
-function shopProfileConfidence(needs){const hs=Array.isArray(needs?.heroes)?needs.heroes:[];if(!hs.length)return 0;const ratio=fn=>hs.filter(fn).length/Math.max(5,hs.length);let score=0;score+=Math.min(20,hs.length/5*20);score+=ratio(h=>cleanName(h.name)&&!/^Hero\s+\d+$/i.test(h.name))*10;score+=ratio(h=>h.level!==null)*15;score+=ratio(h=>h.stars!==null)*15;score+=ratio(h=>h.exclusive!==null)*25;score+=ratio(h=>h.gear!==null)*10;if(needs.droneKnown)score+=5;return Math.max(0,Math.min(100,Math.round(score)))}
-function buildShopAdvice(state,locale,analysis){const p=shopText(locale),needs=heroNeedSnapshot(state),shop=state?.shop||{},offers=Array.isArray(shop?.offers)?shop.offers:[],store=cleanName(shop?.store_type)||"Last War Shop",profileConfidence=shopProfileConfidence(needs);let recommendations=[],confidence=Math.min(90,profileConfidence);
-  if(offers.length){recommendations=offers.map(o=>{const score=scoreVisibleOffer({...o,store_type:store},needs),cat=itemCategory(o?.item_name),v=verdict(score,p),target=cat==="exclusive"?needs.exTargets.slice(0,3).map(x=>x.name).join(" / "):cat==="hero"?needs.starTargets.slice(0,3).map(x=>x.name).join(" / "):cat==="drone"?(needs.droneLevel?`Drone Lv.${needs.droneLevel}`:"Drone"):"";return {item:cleanName(o?.item_name)||"—",store,score,reason:offerReason(cat,needs,p),target,verdict:v.label,verdict_key:v.key,price_label:priceLabel(o,locale),source:"scan"}}).sort((a,b)=>b.score-a.score).slice(0,8).map((x,i)=>({...x,rank:i+1}));const quality=(cleanName(shop?.store_type)?10:0)+Math.min(20,offers.length*3);confidence=Math.min(97,Math.max(confidence,Math.round(profileConfidence*.72+(68+quality)*.28)));}
+function storeKind(v){const s=normItem(v);if(/honor|honneur|ehre|荣誉|名誉|الشرف/.test(s))return "honor";if(/campaign|campagne|战役|キャンペーン|الحملة/.test(s))return "campaign";if(/alliance|allianz|联盟|同盟|التحالف/.test(s))return "alliance";if(/vip/.test(s))return "vip";if(/diamond|diamant|diamante|钻石|ダイヤ|ألماس/.test(s))return "diamond";if(/season|saison|temporada|赛季|シーズン|الموسم/.test(s))return "season";return "other";}
+const ADAPTIVE_TEXT={
+  fr:{score:n=>`Priorité ${n}/100`,reserve:n=>`Réserve conseillée : garde ${n.toLocaleString("fr-FR")} diamants pour le VIP 30 jours.`,lowBudget:"Cet achat ferait passer tes diamants sous la réserve conseillée.",unknownBudget:"Solde de diamants non lu : WarBoost ne pénalise pas le score, mais recommande de garder la réserve VIP.",vs:d=>`Contexte VS jour ${d} pris en compte.`,allStars:"Tes héros principaux visibles sont déjà à 5★ : les fragments héros génériques perdent fortement en priorité.",exFirst:t=>`Armes exclusives encore en retrait${t?` (${t})`:""} : évite de disperser les ressources rares.`,notAffordable:"Solde visible insuffisant pour cette offre.",realMoney:"Achat en argent réel : WarBoost limite volontairement la recommandation tant que le gain n'est pas ciblé.",budgetOk:"Le solde visible reste au-dessus de la réserve diamants après achat."},
+  en:{score:n=>`Priority ${n}/100`,reserve:n=>`Suggested reserve: keep ${n.toLocaleString("en-GB")} diamonds for 30-day VIP.`,lowBudget:"This purchase would take your diamonds below the suggested reserve.",unknownBudget:"Diamond balance was not read: the score is not penalized, but WarBoost recommends keeping the VIP reserve.",vs:d=>`VS Day ${d} context included.`,allStars:"Your visible main heroes are already 5★, so generic hero shards lose a lot of priority.",exFirst:t=>`Exclusive weapons still lag${t?` (${t})`:""}; avoid spreading rare resources.`,notAffordable:"Visible balance is insufficient for this offer.",realMoney:"Real-money purchase: WarBoost deliberately caps the recommendation unless the gain is targeted.",budgetOk:"Visible balance remains above the diamond reserve after purchase."},
+  es:{score:n=>`Prioridad ${n}/100`,reserve:n=>`Reserva recomendada: guarda ${n.toLocaleString("es-ES")} diamantes para 30 días VIP.`,lowBudget:"Esta compra dejaría tus diamantes por debajo de la reserva recomendada.",unknownBudget:"No se leyó el saldo de diamantes; WarBoost no penaliza la puntuación, pero recomienda guardar la reserva VIP.",vs:d=>`Contexto VS día ${d} incluido.`,allStars:"Tus héroes principales visibles ya están en 5★: los fragmentos genéricos pierden prioridad.",exFirst:t=>`Las armas exclusivas siguen atrasadas${t?` (${t})`:""}; evita dispersar recursos raros.`,notAffordable:"El saldo visible no alcanza para esta oferta.",realMoney:"Compra con dinero real: WarBoost limita la recomendación si la mejora no es específica.",budgetOk:"El saldo visible queda por encima de la reserva de diamantes."},
+  de:{score:n=>`Priorität ${n}/100`,reserve:n=>`Empfohlene Reserve: ${n.toLocaleString("de-DE")} Diamanten für 30 Tage VIP behalten.`,lowBudget:"Dieser Kauf würde die Diamanten unter die empfohlene Reserve drücken.",unknownBudget:"Diamantenstand nicht gelesen; der Score wird nicht bestraft, aber die VIP-Reserve bleibt empfohlen.",vs:d=>`VS-Tag ${d} berücksichtigt.`,allStars:"Die sichtbaren Haupthelden sind bereits 5★; allgemeine Heldensplitter verlieren Priorität.",exFirst:t=>`Exklusivwaffen liegen noch zurück${t?` (${t})`:""}; seltene Ressourcen nicht verteilen.`,notAffordable:"Der sichtbare Bestand reicht für dieses Angebot nicht aus.",realMoney:"Echtgeldkauf: WarBoost begrenzt die Empfehlung ohne klar gezielten Fortschritt.",budgetOk:"Der sichtbare Bestand bleibt nach dem Kauf über der Diamantenreserve."},
+  ja:{score:n=>`優先度 ${n}/100`,reserve:n=>`推奨予備：30日VIP用にダイヤ${n.toLocaleString("ja-JP")}を残す。`,lowBudget:"購入後のダイヤが推奨予備を下回ります。",unknownBudget:"ダイヤ残高を読み取れませんでした。スコアは減点しませんがVIP予備を推奨します。",vs:d=>`VS ${d}日目の状況を反映。`,allStars:"主力の表示英雄はすでに5★のため、汎用英雄欠片の優先度は大きく下がります。",exFirst:t=>`専用武器がまだ不足${t?` (${t})`:""}。希少素材を分散しないでください。`,notAffordable:"表示残高では購入できません。",realMoney:"課金商品は、明確なボトルネック解消でない限り評価を上限設定します。",budgetOk:"購入後もダイヤ予備を維持できます。"},
+  zh:{score:n=>`优先度 ${n}/100`,reserve:n=>`建议预留：保留 ${n.toLocaleString("zh-CN")} 钻石用于30天VIP。`,lowBudget:"购买后钻石会低于建议预留。",unknownBudget:"未读取钻石余额；分数不扣减，但仍建议保留VIP预留。",vs:d=>`已纳入VS第${d}天情境。`,allStars:"可见主力英雄均已5★，通用英雄碎片优先度大幅下降。",exFirst:t=>`专属武器仍落后${t?`（${t}）`:""}；不要分散稀缺资源。`,notAffordable:"可见余额不足以购买该商品。",realMoney:"真钱购买：若不能直接解决瓶颈，WarBoost会限制推荐等级。",budgetOk:"购买后可见余额仍高于钻石预留。"},
+  ar:{score:n=>`الأولوية ${n}/100`,reserve:n=>`احتياطي مقترح: احتفظ بـ ${n.toLocaleString("ar")} ألماسة لـ VIP لمدة 30 يوماً.`,lowBudget:"سيخفض هذا الشراء الألماس تحت الاحتياطي المقترح.",unknownBudget:"لم تتم قراءة رصيد الألماس؛ لا تُخفض النتيجة لكن يُنصح باحتياطي VIP.",vs:d=>`تم احتساب سياق يوم VS ${d}.`,allStars:"الأبطال الرئيسيون الظاهرون عند 5★؛ شظايا الأبطال العامة أقل أولوية.",exFirst:t=>`الأسلحة الحصرية ما زالت متأخرة${t?` (${t})`:""}؛ لا تشتت الموارد النادرة.`,notAffordable:"الرصيد الظاهر غير كافٍ لهذا العرض.",realMoney:"شراء بأموال حقيقية: يحد WarBoost التوصية ما لم يكن التقدم مستهدفاً مباشرة.",budgetOk:"يبقى الرصيد الظاهر فوق احتياطي الألماس بعد الشراء."}
+};
+function adaptiveText(locale){return ADAPTIVE_TEXT[localePack(locale)]||ADAPTIVE_TEXT.en;}
+function isDiamondCurrency(v){return /diamond|diamant|diamante|gem|gems|钻石|ダイヤ|ألماس|💎/.test(normItem(v));}
+function isCashCurrency(v){const raw=String(v||"");return /eur|usd|gbp|euro|dollar|pound/.test(normItem(v))||/[€$£]/.test(raw);}
+function vsContextBoost(cat,name,day){const d=Number(day),s=normItem(name);if(!Number.isInteger(d)||d<1||d>6)return 0;
+  if(d===1&&cat==="drone")return 5;
+  if(d===2&&(cat==="speed_build"||(/construct|build|construction/.test(s)&&cat==="speed")))return 8;
+  if(d===3&&(cat==="speed_research"||(/research|science|recherche|forsch/.test(s)&&cat==="speed")))return 8;
+  if(d===3&&cat==="drone")return 3;
+  if(d===4&&cat==="hero")return 7;
+  if(d===5&&["speed","speed_build","speed_research","speed_train"].includes(cat))return 8;
+  if(d===6&&cat==="shield")return 16;
+  if(d===6&&cat==="teleport")return 12;
+  if(d===6&&cat==="speed_heal")return 10;
+  return 0;
+}
+function baseOfferScore(cat,needs){
+  if(cat==="vip_time")return 94;
+  if(cat==="blueprint")return 84+needs.gearUrgency*14;
+  if(cat==="exclusive")return 62+needs.exclusiveUrgency*36;
+  if(cat==="hero")return needs.needStars?86+needs.starsUrgency*10:44;
+  if(cat==="drone")return 70+needs.droneUrgency*20-(needs.exclusiveUrgency>.85?4:0);
+  if(cat==="stamina")return 84;
+  if(cat==="armament")return 78;
+  if(cat==="skill")return 75;
+  if(cat==="campaign_chest")return 84;
+  if(["speed","speed_build","speed_research","speed_train","speed_heal"].includes(cat))return 65;
+  if(cat==="shield")return 58;
+  if(cat==="teleport")return 56;
+  if(cat==="chest")return 48;
+  if(cat==="resource")return 18;
+  if(cat==="cosmetic")return 16;
+  return 45;
+}
+function scoreVisibleOffer(o,needs,state){const cat=itemCategory(o?.item_name,o?.category),store=storeKind(o?.store_type||o?.store||""),shop=state?.shop||{},a=adaptiveText(state?._locale),factors=[];let score=baseOfferScore(cat,needs);
+  if(store==="honor"){if(cat==="blueprint")score=Math.max(score,99);else if(cat==="hero"&&!needs.needStars)score=Math.min(score,34);else if(cat!=="blueprint")score-=6;}
+  if(store==="campaign"){if(cat==="exclusive"&&needs.needExclusive)score=Math.max(score,98);if(cat==="campaign_chest")score=Math.max(score,88);if(cat==="drone")score=Math.max(score,82);}
+  if(store==="alliance"){if(cat==="hero"&&needs.needStars)score=Math.max(score,94);if(cat==="drone")score=Math.max(score,84);}
+  if(store==="vip"){if(cat==="stamina")score=Math.max(score,86);if(cat==="hero"&&needs.needStars)score=Math.max(score,92);if(cat==="teleport")score=Math.max(score,63);}
+  if(store==="diamond"){if(cat==="resource"||cat==="hero"||cat==="chest")score=Math.min(score,28);}
+  const vsBoost=vsContextBoost(cat,o?.item_name,state?.vs?.day);if(vsBoost){score+=vsBoost;factors.push(a.vs(state.vs.day));}
+  if(num(state?.season?.day)!==null){if(cat==="stamina")score+=3;if(cat==="drone")score+=2;}
+  const discount=Math.max(0,Math.min(4,(num(o?.discount_pct)||0)/20));score+=discount;
+  const currency=cleanName(o?.currency)||cleanName(shop?.currency),price=num(o?.price),balance=num(shop?.currency_balance),reserve=10000;
+  const diamond=isDiamondCurrency(currency)||((store==="vip"||store==="diamond")&&!isCashCurrency(currency));
+  if(diamond&&price!==null){
+    if(balance!==null){
+      if(balance<price){score=0;factors.push(a.notAffordable);}
+      else if(cat!=="vip_time"&&balance-price<reserve){score-=26;factors.push(a.lowBudget);}
+      else {const discretionary=Math.max(0,balance-reserve);if(cat!=="vip_time"&&discretionary>0&&price>discretionary*.25)score-=6;factors.push(a.budgetOk);}
+    }else factors.push(a.unknownBudget);
+  }
+  if(isCashCurrency(currency)){score=Math.min(score,82);factors.push(a.realMoney);}
+  if(cat==="hero"&&!needs.needStars)factors.push(a.allStars);
+  if(needs.needExclusive&&["drone","stamina","speed","speed_build","speed_research","speed_train","speed_heal","hero"].includes(cat)){const t=needs.exTargets.slice(0,2).map(x=>`${x.name} EX${x.exclusive}`).join(" / ");factors.push(a.exFirst(t));}
+  score=Math.max(0,Math.min(100,Math.round(score)));
+  return {score,cat,factors,budget:{currency,price,balance,reserve,diamond}};
+}
+function verdict(score,p){return score>=85?{key:"buy_now",label:p.buy}:score>=55?{key:"consider",label:p.consider}:{key:"skip",label:p.skip};}
+function offerReason(cat,needs,p){const exTarget=needs.exTargets.slice(0,2).map(x=>x.name).join(" / "),starTarget=needs.starTargets.slice(0,2).map(x=>x.name).join(" / ");if(cat==="blueprint")return p.reasonBlueprint;if(cat==="exclusive")return p.reasonExclusive(exTarget);if(cat==="hero")return p.reasonHero(starTarget);if(cat==="drone")return p.reasonDrone;if(cat==="stamina")return p.reasonStamina;if(["speed","speed_build","speed_research","speed_train","speed_heal"].includes(cat))return p.reasonSpeed;if(cat==="shield")return p.reasonShield;if(cat==="resource"||cat==="cosmetic")return p.reasonResource;return p.reasonVisible;}
+function priceLabel(o,locale){const price=num(o?.price),currency=cleanName(o?.currency);if(price===null)return currency||"";return `${price.toLocaleString(String(locale||"en-GB"),{maximumFractionDigits:2})}${currency?` ${currency}`:""}`;}
+function genericShopRecommendations(state,locale,needs){const p=shopText(locale),st=shopStores(locale),a=adaptiveText(locale),out=[];const add=(item,store,cat,score,reason,target="")=>{const v=verdict(score,p);out.push({item,store,score,score_label:a.score(score),reason,target,verdict:v.label,verdict_key:v.key,source:"rules"});};
+  add(p.honorBp,st.honor,"blueprint",Math.round(84+needs.gearUrgency*14),p.reasonBlueprint,"Main squad gear");
+  if(needs.needExclusive){const t=needs.exTargets.slice(0,3).map(x=>`${x.name} EX${x.exclusive}`).join(" → ");add(p.campaignEx,st.campaign,"exclusive",98,p.reasonExclusive(t),t);add(p.paidExclusive,st.paid,"exclusive",82,p.reasonPaid(`EX: ${t}`),t);}
+  if(needs.needStars){const t=needs.starTargets.slice(0,3).map(x=>x.name).join(" / ");add(p.allianceHero,st.allianceCampaign,"hero",94,p.reasonHero(t),t);}
+  const droneScore=Math.round(70+needs.droneUrgency*20-(needs.exclusiveUrgency>.85?4:0));add(p.allianceDrone,st.allianceCampaign,"drone",droneScore,p.reasonDrone,needs.droneLevel?`Drone Lv.${needs.droneLevel}`:"Drone");
+  add(p.vipStamina,st.vip,"stamina",86,p.reasonStamina);add(p.speed,st.vipAlliance,"speed",65,p.reasonSpeed);add(p.shield,st.allianceDiamond,"shield",58,p.reasonShield);
+  if(!needs.needExclusive&&needs.needGear)add(p.paidGear,st.paid,"blueprint",80,p.reasonPaid("gear / blueprints"),"Main squad gear");else if(!needs.needExclusive&&!needs.needStars&&!needs.needGear&&needs.droneKnown)add(p.paidDrone,st.paid,"drone",76,p.reasonPaid("Drone"),"Drone");
+  add(p.resources,st.diamondPaid,"resource",18,p.reasonResource);
+  return out.sort((x,y)=>y.score-x.score).slice(0,8).map((x,i)=>({...x,rank:i+1}));
+}
+function shopProfileConfidence(needs){const hs=Array.isArray(needs?.heroes)?needs.heroes:[];if(!hs.length)return 0;const ratio=fn=>hs.filter(fn).length/Math.max(5,hs.length);let score=0;score+=Math.min(20,hs.length/5*20);score+=ratio(h=>cleanName(h.name)&&!/^Hero\s+\d+$/i.test(h.name))*10;score+=ratio(h=>h.level!==null)*15;score+=ratio(h=>h.stars!==null)*15;score+=ratio(h=>h.exclusive!==null)*25;score+=ratio(h=>h.gear!==null)*10;if(needs.droneKnown)score+=5;return Math.max(0,Math.min(100,Math.round(score)));}
+function buildShopAdvice(state,locale,analysis){const p=shopText(locale),a=adaptiveText(locale),needs=heroNeedSnapshot(state),shop=state?.shop||{},offers=Array.isArray(shop?.offers)?shop.offers:[],store=cleanName(shop?.store_type)||"Last War Shop",profileConfidence=shopProfileConfidence(needs),stateCtx={...state,_locale:locale};let recommendations=[],confidence=Math.min(90,profileConfidence);
+  if(offers.length){recommendations=offers.map(o=>{const scored=scoreVisibleOffer({...o,store_type:store},needs,stateCtx),{score,cat,factors,budget}=scored,v=verdict(score,p),target=cat==="exclusive"?needs.exTargets.slice(0,3).map(x=>`${x.name} EX${x.exclusive}`).join(" / "):cat==="hero"?needs.starTargets.slice(0,3).map(x=>x.name).join(" / "):cat==="drone"?(needs.droneLevel?`Drone Lv.${needs.droneLevel}`:"Drone"):"";const reason=[offerReason(cat,needs,p),...factors].filter(Boolean).join(" ");return {item:cleanName(o?.item_name)||"—",store,score,score_label:a.score(score),reason,target,verdict:v.label,verdict_key:v.key,price_label:priceLabel(o,locale),source:"scan",category:cat,budget};}).sort((x,y)=>y.score-x.score).slice(0,10).map((x,i)=>({...x,rank:i+1}));const quality=(cleanName(shop?.store_type)?10:0)+Math.min(18,offers.length*2)+(num(shop?.currency_balance)!==null?6:0);confidence=Math.min(98,Math.max(confidence,Math.round(profileConfidence*.68+(68+quality)*.32)));if((storeKind(store)==="vip"||storeKind(store)==="diamond")&&num(shop?.currency_balance)===null)confidence=Math.max(0,confidence-4);}
   else recommendations=genericShopRecommendations(state,locale,needs);
-  const summary=offers.length?p.scanSummary(store,offers.length):p.rulesSummary;return {summary,confidence,confidence_label:`${T[localePack(locale)]?.confidence?T[localePack(locale)].confidence(confidence):`Confidence ${confidence}%`}`,scan_based:offers.length>0,store_type:store,updated_at:shop?.updated_at||null,recommendations,knowledge_date:"2026-08-21",method:"account-rules + visible-shop-scan",sources:["Game8 Last War Store Guide (updated 2026-06-18)","Last War Survival Stores Guide","Last War Tutorial Stores","LastWarMobileGame community store consensus"]};}
-
+  const balance=num(shop?.currency_balance),currency=cleanName(shop?.currency),budgetSummary=(balance!==null&&isDiamondCurrency(currency||store))?` ${a.reserve(10000)}`:"";
+  const summary=(offers.length?p.scanSummary(store,offers.length):p.rulesSummary)+budgetSummary;
+  return {summary,confidence,confidence_label:`${T[localePack(locale)]?.confidence?T[localePack(locale)].confidence(confidence):`Confidence ${confidence}%`}`,scan_based:offers.length>0,store_type:store,updated_at:shop?.updated_at||null,recommendations,knowledge_date:"2026-08-21",method:"adaptive-account-rules + visible-shop-scan + diamond-reserve + VS/season-context",budget:{currency:currency||null,balance,reserve_diamonds:10000},needs:{exclusive_urgency:Math.round(needs.exclusiveUrgency*100),stars_urgency:Math.round(needs.starsUrgency*100),gear_urgency:Math.round(needs.gearUrgency*100),drone_urgency:Math.round(needs.droneUrgency*100)},sources:["Last War Vault Honor Shop Guide (2026-04-26)","Last War Vault VS Guide (2026)","LastWarSurvival.com Stores / Gear Guide (2026)","Last War community VIP diamond-spend consensus (2026-07)"]};
+}
 const BASIC={
  fr:{alliance:n=>n?`Utilise les ${Math.min(5,n)} joueurs les plus puissants comme noyau de rally. Répartis ensuite défense, groupe mobile et réserves selon la progression du roster.`:"Fais rejoindre les membres avec l'invitation WarBoost pour créer un plan fiable.",vs:s=>s.opponent?`Jour ${s.day||"—"} contre ${s.opponent} : concentre les ressources sur les actions qui marquent aujourd'hui et conserve le reste pour les jours suivants.`:"WarBoost connaît le jour serveur mais attend encore l'adversaire VS.",season:s=>s.day?`Jour ${s.day} : sécurise d'abord les améliorations saisonnières qui débloquent la prochaine étape. Profession : ${s.profession||"—"}.`:"Scanne ou synchronise la saison pour recevoir un conseil adapté."},
  en:{alliance:n=>n?`Use the ${Math.min(5,n)} strongest players as the rally core, then split defense, mobile group and reserves from the roster progression.`:"Invite members with WarBoost before generating a reliable war plan.",vs:s=>s.opponent?`Day ${s.day||"—"} vs ${s.opponent}: spend only on actions that score today and keep the rest for later days.`:"WarBoost knows the server day but is still waiting for the VS opponent.",season:s=>s.day?`Day ${s.day}: secure the season upgrades that unlock your next step first. Profession: ${s.profession||"—"}.`:"Scan or synchronize the season for day-specific advice."},
@@ -291,10 +334,10 @@ export default function handler(req,res){
   if(scope==="player"){
     const analysis=buildPlayerAnalysis(s,loc);
     analysis.shop=buildShopAdvice(s,loc,analysis);
-    analysis.engine="warboost-pro-shop-v1.3.2";
+    analysis.engine="warboost-pro-shop-v1.3.3";
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }
   const p=basicPack(loc);let advice;
   if(scope==="alliance")advice=p.alliance((s.alliance?.members||[]).length);else if(scope==="vs")advice=p.vs(s.vs||{});else advice=p.season(s.season||{});
-  return res.status(200).json({ok:true,engine:"warboost-rules-v1.3.2",advice});
+  return res.status(200).json({ok:true,engine:"warboost-rules-v1.3.3",advice});
 }
