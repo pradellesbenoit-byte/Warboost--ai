@@ -47,49 +47,49 @@ Object.assign(ZH,{player_desc:"最多4支队伍、无人机、进度与优先级
 Object.assign(AR,{player_desc:"حتى 4 فرق، الدرون، التقدم والأولويات.",sync_four:"حدّث كل الفرق المتاحة في حسابك (3 أو 4) والدرون، ثم سيقارن المدرب تقدمك.",optional_squad4:"اختياري · فريق يمكن فتحه في Last War"});
 
 Object.assign(EN,{
-  tagline:"V1.3.0 Global · Hybrid Sync · Exclusive Weapons",
+  tagline:"V1.3.1 Global · Hybrid Sync · Exclusive Weapons",
   player_desc:"Up to 4 squads, Drone, exclusive weapons, progress and priorities.",
   scan_exclusive:"Exclusive weapon",exclusive_weapons:"Exclusive weapons",exclusive_weapon:"Exclusive weapon",
   exclusive_empty:"Scan an exclusive weapon to add it to your Player profile.",scan_exclusive_button:"📷 Scan an exclusive weapon",
   exclusive_power:"Power",exclusive_skill_cap:"Max skill level",exclusive_hp:"Hero HP",exclusive_atk:"Hero ATK",exclusive_def:"Hero DEF",exclusive_resistance:"All-damage resistance",exclusive_short:"EX"
 });
 Object.assign(FR,{
-  tagline:"V1.3.0 Global · Sync hybride · Armes exclusives",
+  tagline:"V1.3.1 Global · Sync hybride · Armes exclusives",
   player_desc:"Jusqu’à 4 escouades, Drone, armes exclusives, progression et priorités.",
   scan_exclusive:"Arme exclusive",exclusive_weapons:"Armes exclusives",exclusive_weapon:"Arme exclusive",
   exclusive_empty:"Scanne une arme exclusive pour l’ajouter à ton profil Joueur.",scan_exclusive_button:"📷 Scanner une arme exclusive",
   exclusive_power:"Puissance",exclusive_skill_cap:"Compétence max",exclusive_hp:"PV Héros",exclusive_atk:"ATQ Héros",exclusive_def:"Défense Héros",exclusive_resistance:"Résistance tous dégâts",exclusive_short:"EX"
 });
 Object.assign(ES,{
-  tagline:"V1.3.0 Global · Sincronización híbrida · Armas exclusivas",
+  tagline:"V1.3.1 Global · Sincronización híbrida · Armas exclusivas",
   player_desc:"Hasta 4 escuadrones, Dron, armas exclusivas, progreso y prioridades.",
   scan_exclusive:"Arma exclusiva",exclusive_weapons:"Armas exclusivas",exclusive_weapon:"Arma exclusiva",
   exclusive_empty:"Escanea un arma exclusiva para añadirla a tu perfil de Jugador.",scan_exclusive_button:"📷 Escanear un arma exclusiva",
   exclusive_power:"Potencia",exclusive_skill_cap:"Nivel máx. de habilidad",exclusive_hp:"PV del héroe",exclusive_atk:"ATQ del héroe",exclusive_def:"DEF del héroe",exclusive_resistance:"Resistencia a todos los daños",exclusive_short:"EX"
 });
 Object.assign(DE,{
-  tagline:"V1.3.0 Global · Hybrid-Sync · Exklusive Waffen",
+  tagline:"V1.3.1 Global · Hybrid-Sync · Exklusive Waffen",
   player_desc:"Bis zu 4 Trupps, Drohne, exklusive Waffen, Fortschritt und Prioritäten.",
   scan_exclusive:"Exklusive Waffe",exclusive_weapons:"Exklusive Waffen",exclusive_weapon:"Exklusive Waffe",
   exclusive_empty:"Scanne eine exklusive Waffe, um sie deinem Spielerprofil hinzuzufügen.",scan_exclusive_button:"📷 Exklusive Waffe scannen",
   exclusive_power:"Kraft",exclusive_skill_cap:"Max. Fähigkeitsstufe",exclusive_hp:"Helden-HP",exclusive_atk:"Helden-ANG",exclusive_def:"Helden-VER",exclusive_resistance:"Resistenz gegen alle Schäden",exclusive_short:"EX"
 });
 Object.assign(JA,{
-  tagline:"V1.3.0 Global · ハイブリッド同期 · 専用武器",
+  tagline:"V1.3.1 Global · ハイブリッド同期 · 専用武器",
   player_desc:"最大4部隊、ドローン、専用武器、進行状況、優先順位。",
   scan_exclusive:"専用武器",exclusive_weapons:"専用武器",exclusive_weapon:"専用武器",
   exclusive_empty:"専用武器をスキャンしてプレイヤープロフィールに追加します。",scan_exclusive_button:"📷 専用武器をスキャン",
   exclusive_power:"戦力",exclusive_skill_cap:"最大スキルLv.",exclusive_hp:"英雄HP",exclusive_atk:"英雄攻撃",exclusive_def:"英雄防御",exclusive_resistance:"全ダメージ耐性",exclusive_short:"EX"
 });
 Object.assign(ZH,{
-  tagline:"V1.3.0 Global · 混合同步 · 专属武器",
+  tagline:"V1.3.1 Global · 混合同步 · 专属武器",
   player_desc:"最多4支队伍、无人机、专属武器、进度与优先级。",
   scan_exclusive:"专属武器",exclusive_weapons:"专属武器",exclusive_weapon:"专属武器",
   exclusive_empty:"扫描专属武器并将其添加到玩家资料。",scan_exclusive_button:"📷 扫描专属武器",
   exclusive_power:"战力",exclusive_skill_cap:"最高技能等级",exclusive_hp:"英雄生命",exclusive_atk:"英雄攻击",exclusive_def:"英雄防御",exclusive_resistance:"全伤害抗性",exclusive_short:"EX"
 });
 Object.assign(AR,{
-  tagline:"V1.3.0 عالمي · مزامنة هجينة · الأسلحة الحصرية",
+  tagline:"V1.3.1 عالمي · مزامنة هجينة · الأسلحة الحصرية",
   player_desc:"حتى 4 فرق، الدرون، الأسلحة الحصرية، التقدم والأولويات.",
   scan_exclusive:"سلاح حصري",exclusive_weapons:"الأسلحة الحصرية",exclusive_weapon:"سلاح حصري",
   exclusive_empty:"امسح سلاحاً حصرياً لإضافته إلى ملف اللاعب.",scan_exclusive_button:"📷 مسح سلاح حصري",

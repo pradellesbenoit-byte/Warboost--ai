@@ -1,3 +1,15 @@
+# WarBoost V1.3.1 — Libellés escouades + Skyler
+
+## Correctifs V1.3.1
+
+- Les cartes Joueur affichent toujours **Escouade 1 / Escouade 2 / Escouade 3 / Escouade 4** (traduits selon la langue). Un texte lu dans une capture, comme `Formation Actuelle`, ne peut plus remplacer le nom de l’emplacement.
+- Le serveur de scan force également le nom interne `Squad 1..4`, afin d’éviter que ce libellé erroné revienne après une synchronisation.
+- Le nom **Skyler / Shuyler** est désormais canonicalisé et affiché comme **Skyler** dans WarBoost, y compris pour les anciennes données déjà enregistrées.
+- Les armes exclusives associées à cet ancien nom sont migrées automatiquement vers **Skyler**.
+- La confirmation des 5 héros, les niveaux, étoiles, équipements, armes exclusives, PRO, Stripe, Supabase, Sync hybride et les langues restent inchangés.
+
+---
+
 # WarBoost V1.3.0 — Hero Identity Confirmation
 
 Les noms de héros ne sont plus devinés à partir des portraits seuls. Après un scan d’escouade, le joueur confirme les 5 noms avant enregistrement.
@@ -27,7 +39,7 @@ Cette version corrige le cas où une escouade était bien analysée (niveau, ét
 ## Améliorations V1.2.8
 
 - image envoyée à WarBoost Vision en résolution supérieure (jusqu’à 2048 px) pour mieux lire les portraits et petits textes ;
-- catalogue contrôlé des héros Last War pour canonicaliser les vrais noms (DVA, Lucius, Carlie, Morrison, Schuyler, etc.) ;
+- catalogue contrôlé des héros Last War pour canonicaliser les vrais noms (DVA, Lucius, Carlie, Morrison, Skyler, etc.) ;
 - seconde passe Vision ciblée uniquement sur les portraits si le premier scan n’a pas reconnu tous les noms ;
 - aucun remplissage basé uniquement sur une composition “probable” : WarBoost exige une preuve visuelle suffisante ;
 - conservation de toutes les fonctions V1.2.7 : 4 emplacements d’escouade séparés, Escouade 4 optionnelle, armes exclusives intégrées aux héros, PRO, Stripe, Supabase, traduction mondiale et Sync hybride.

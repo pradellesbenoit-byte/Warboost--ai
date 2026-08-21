@@ -1,8 +1,8 @@
 {
   "name": "warboost-v1-global",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "private": true,
-  "description": "WarBoost V1.3.0 Global - strict double-verified hero identity + troop-type validation + stale-name cleanup + inline exclusive weapons + unified WarBoost Scan",
+  "description": "WarBoost V1.3.1 Global - fixed Squad 1/2/3/4 labels + Skyler canonical display name + hero confirmation + inline exclusive weapons",
   "type": "module",
   "scripts": {
     "check": "node --check app.js && node --check i18n.js && node --check sw.js && node --check api/time.js && node --check api/state.js && node --check api/sync.js && node --check api/scan.js && node --check api/advice.js && node --check api/invite.js && node --check api/join.js && node --check api/ingest.js && node --check api/health.js && node --check api/cloud-config.js && node --check api/cron-sync.js && node --check api/pro.js && node --check lib/supabase.js && node --check lib/normalize.js && node --check lib/provider.js && node --check lib/auth.js",
