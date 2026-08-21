@@ -1,4 +1,21 @@
-# WarBoost V1.2.6 — Exclusive Weapons
+# WarBoost V1.2.7 — Hero Names + Inline Exclusive Weapons
+
+## Corrections demandées
+
+- Les escouades affichent maintenant les vrais noms de héros lorsqu’ils sont lus/reconnus par WarBoost Vision (DVA, Lucius, etc.).
+- WarBoost Vision ne renvoie plus volontairement des placeholders `Hero 1`, `Héros 1`, etc. ; il lit le texte du nom et peut reconnaître un portrait uniquement avec forte confiance.
+- Le scan **Arme exclusive** reste directement dans le sélecteur principal **WarBoost Scan**, au même endroit que Profil/QG, Escouades, Drone, VS et Saison.
+- La section/bouton séparé « Scanner une arme exclusive » a été retiré de Joueur pour éviter le doublon.
+- Lorsqu’une arme exclusive est associée à un héros connu, son résultat est affiché directement à la suite de son niveau et de ses étoiles : par exemple `Nv.150 · 5★ · Lame de Frappe Nv.23 · Puissance 7 237 471`.
+- Les bonus détaillés de l’arme (PV, ATQ, Défense, résistance, compétence max) sont affichés juste sous la ligne du héros.
+- Correction du format de puissance d’arme exclusive : une valeur comme `7 237 471` reste un entier complet et n’est plus traitée comme une puissance en millions.
+- Les garde-fous V1.2.3 sur les emplacements Escouade 1/2/3/4, l’Escouade 4 optionnelle V1.2.5, PRO, Stripe, Supabase, galerie Android, langues et Sync hybride sont conservés.
+
+### Important après mise à jour
+Les anciens scans qui avaient enregistré `Héros 1`, `Héros 2`, etc. ne peuvent pas être renommés de manière sûre sans nouvelle lecture de l’image. Re-scanner chaque escouade une fois avec V1.2.7 permet à WarBoost Vision de tenter de récupérer les vrais noms.
+
+---
+
 
 ## Nouveauté Joueur
 - Nouvelle section **Armes exclusives** dans **Joueur**.
