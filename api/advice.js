@@ -136,7 +136,7 @@ function buildPlayerAnalysis(state,locale){
     return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional};
   });
   const conf=dataConfidence(squads,state?.drone||{}),gapText=dedup[0]?.reason||"";
-  return {summary:p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",gapText),confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,engine:"warboost-pro-rules-v1.2.6"};
+  return {summary:p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",gapText),confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,engine:"warboost-pro-rules-v1.2.7"};
 }
 const BASIC={
  fr:{alliance:n=>n?`Utilise les ${Math.min(5,n)} joueurs les plus puissants comme noyau de rally. Répartis ensuite défense, groupe mobile et réserves selon la progression du roster.`:"Fais rejoindre les membres avec l'invitation WarBoost pour créer un plan fiable.",vs:s=>s.opponent?`Jour ${s.day||"—"} contre ${s.opponent} : concentre les ressources sur les actions qui marquent aujourd'hui et conserve le reste pour les jours suivants.`:"WarBoost connaît le jour serveur mais attend encore l'adversaire VS.",season:s=>s.day?`Jour ${s.day} : sécurise d'abord les améliorations saisonnières qui débloquent la prochaine étape. Profession : ${s.profession||"—"}.`:"Scanne ou synchronise la saison pour recevoir un conseil adapté."},
@@ -153,9 +153,9 @@ export default function handler(req,res){
   const scope=String(req.body?.scope||"player"),s=req.body?.state||{},loc=String(req.body?.locale||"en-GB");
   if(scope==="player"){
     const analysis=buildPlayerAnalysis(s,loc);
-    return res.status(200).json({ok:true,engine:analysis.engine||"warboost-pro-rules-v1.2.6",advice:analysis.summary,analysis});
+    return res.status(200).json({ok:true,engine:analysis.engine||"warboost-pro-rules-v1.2.7",advice:analysis.summary,analysis});
   }
   const p=basicPack(loc);let advice;
   if(scope==="alliance")advice=p.alliance((s.alliance?.members||[]).length);else if(scope==="vs")advice=p.vs(s.vs||{});else advice=p.season(s.season||{});
-  return res.status(200).json({ok:true,engine:"warboost-rules-v1.2.6",advice});
+  return res.status(200).json({ok:true,engine:"warboost-rules-v1.2.7",advice});
 }
