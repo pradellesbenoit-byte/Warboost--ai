@@ -1,3 +1,23 @@
+# WarBoost V1.3.2 — PRO Shop Advisor
+
+## Nouveauté V1.3.2
+
+- **Priorité IA PRO** combine maintenant les escouades scannées, les 5 héros confirmés, étoiles, armes exclusives, équipements et Drone pour déterminer les vrais goulots de progression.
+- Nouveau **Conseiller Boutique Last War** dans Joueur : il propose quoi prendre, quoi garder pour plus tard et quoi éviter.
+- Nouveau type **Boutique Last War** dans WarBoost Scan. Le scan lit uniquement les offres réellement visibles : nom de la boutique, objet, quantité, prix, monnaie, limite et remise lorsqu'ils sont affichés.
+- Les offres visibles sont classées selon les besoins réels du compte. Une offre payante n'est jamais classée comme « achat indispensable » uniquement à cause d'une remise : elle doit correspondre à un goulot détecté.
+- Règles de rareté renforcées : plans d'équipement légendaires/mythiques, fragments d'arme exclusive, composants Drone, coffres Campagne UR, endurance VIP, accélérateurs, boucliers et téléporteurs sont différenciés.
+- La **Boutique Honneur** protège en priorité les plans d'équipement rares ; les objets secondaires y sont pénalisés pour éviter de gaspiller une monnaie difficile à récupérer.
+- La **Boutique Diamants** pénalise les ressources génériques et privilégie l'usage VIP/urgence plutôt que les achats remplaçables.
+- Les recommandations s'adaptent aux étoiles : si les héros principaux sont déjà 5★, WarBoost baisse fortement la priorité des fragments héros et reporte la valeur vers armes exclusives, équipements, Drone et ressources rares.
+- Les prix et rotations changent selon serveur/saison : **un scan de la boutique visible est prioritaire sur les règles génériques** afin d'éviter des conseils périmés.
+
+### Base de données de référence au 21/08/2026
+
+Le moteur s'appuie sur des règles croisées provenant de guides de boutiques récents et du consensus de joueurs expérimentés, notamment : Game8 (guide boutiques mis à jour le 18/06/2026), Last War Survival Stores Guide, Last War Tutorial Stores et discussions LastWarMobileGame. Ces références servent uniquement de base de rareté ; WarBoost privilégie toujours les données scannées du compte et de la boutique.
+
+---
+
 # WarBoost V1.3.1 — Libellés escouades + Skyler
 
 ## Correctifs V1.3.1

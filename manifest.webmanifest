@@ -1,7 +1,7 @@
 {
   "name": "WarBoost",
   "short_name": "WarBoost",
-  "description": "WarBoost V1.3.1 Global — fixed canonical Squad 1/2/3/4 labels, Skyler canonical display name, hero confirmation, inline exclusive weapons, multilingual UI and Hybrid Sync",
+  "description": "WarBoost V1.3.2 Global — PRO Shop Advisor, visible Last War shop scan ranking, precise squad and exclusive-weapon priorities, multilingual Hybrid Sync",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
