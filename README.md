@@ -1,4 +1,4 @@
-# WarBoost V1.4.4 — API-ready / Approval-first
+# WarBoost V1.4.5 — Demo-safe / API-ready / Approval-first
 
 ## Nouveautés V1.4
 
@@ -337,3 +337,13 @@ Version : **WarBoost V1.2.0 — Global Hybrid Sync**
 - Les captures d'escouade déclenchent un second passage strict d'identification des portraits, puis une vérification indépendante.
 - Les noms proposés restent soumis à confirmation du joueur avant validation définitive.
 - Un scan incomplet ne doit pas effacer un nom de héros déjà confirmé.
+
+
+## V1.4.5 — Demo-safe confirmation flow
+
+- Scan values are saved without committing AI-proposed portrait identities.
+- Hero identities are staged and require explicit player confirmation before being written.
+- Existing confirmed hero names are preserved when a new screenshot cannot identify them.
+- A squad with missing identities exposes a direct “confirm hero names” action.
+- Gear summaries are rendered in the selected WarBoost language; provider prose no longer leaks into the player UI for the supported canonical gear format.
+- The official Last War connector remains disabled until authorization.
