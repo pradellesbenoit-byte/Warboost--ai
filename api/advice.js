@@ -96,10 +96,10 @@ function heroDetailCoverage(sq){
 }
 function optionalSquadStatus(lang){return ({fr:"Optionnelle · à débloquer dans Last War",en:"Optional · unlockable in Last War",es:"Opcional · desbloqueable en Last War",de:"Optional · in Last War freischaltbar",ja:"任意 · Last Warで解放可能",zh:"可选 · 可在 Last War 中解锁",ar:"اختياري · يمكن فتحه في Last War"})[lang]||"Optional · unlockable in Last War"}
 
-const HERO_TYPES={Kimberly:"tank",Williams:"tank",Murphy:"tank",Marshall:"tank",Monica:"tank",Stetmann:"tank",Mason:"tank",Violet:"tank",Scarlett:"tank",Richard:"tank",Gump:"tank",Loki:"tank",DVA:"aircraft",Skyler:"aircraft",Morrison:"aircraft",Lucius:"aircraft",Carlie:"aircraft",Sarah:"aircraft",Maxwell:"aircraft",Cage:"aircraft",Ambolt:"aircraft",Tesla:"missile",Swift:"missile",Fiona:"missile",Adam:"missile",McGregor:"missile",Venom:"missile",Elsa:"missile",Blaz:"missile",Kane:"missile"};
+const HERO_TYPES={Kimberly:"tank",Williams:"tank",Murphy:"tank",Marshall:"tank",Monica:"tank",Stetmann:"tank",Mason:"tank",Violet:"tank",Scarlett:"tank",Richard:"tank",Gump:"tank",Loki:"tank",DVA:"aircraft",Skyler:"aircraft",Morrisson:"aircraft",Lucius:"aircraft",Carlie:"aircraft",Sarah:"aircraft",Maxwell:"aircraft",Cage:"aircraft",Ambolt:"aircraft",Tesla:"missile",Swift:"missile",Fiona:"missile",Adam:"missile",McGregor:"missile",Venom:"missile",Elsa:"missile",Blaz:"missile",Kane:"missile"};
 function squadTypeFromHeroes(heroes){const c={aircraft:0,tank:0,missile:0};for(const x of heroes){const t=HERO_TYPES[cleanName(x?.h?.name||x?.name)];if(t)c[t]++}return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[1]>=3?Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0]:null}
-const AIR_EW_TO20={DVA:100,Lucius:97,Skyler:95,Morrison:93,Carlie:80};
-const AIR_EW_TO30={DVA:100,Lucius:96,Morrison:91,Skyler:89,Carlie:76};
+const AIR_EW_TO20={DVA:100,Lucius:97,Skyler:95,Morrisson:93,Carlie:80};
+const AIR_EW_TO30={DVA:100,Lucius:96,Morrisson:91,Skyler:89,Carlie:76};
 function ewPriorityWeight(name,type,target){if(type==="aircraft")return (target===20?AIR_EW_TO20:AIR_EW_TO30)[name]||75;if(type==="tank")return ({Kimberly:100,Murphy:95,Marshall:88}[name]||78);if(type==="missile")return ({Tesla:100,Fiona:94,McGregor:88,Adam:84,Swift:80}[name]||78);return 80}
 const EW_TEXT={
 fr:(h,c,t)=>`${h} est à EX${c}. Le prochain palier efficace est EX${t} ; WarBoost privilégie les paliers 10/20/30 plutôt qu'un simple égalisage de niveaux.`,
