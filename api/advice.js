@@ -164,7 +164,7 @@ function buildPlayerAnalysis(state,locale){
     return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional};
   });
   const conf=dataConfidence(squads,state?.drone||{}),gapText=dedup[0]?.reason||"";
-  return {summary:p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",gapText),confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,engine:"warboost-pro-shop-v1.4.0"};
+  return {summary:p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",gapText),confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,engine:"warboost-pro-shop-v1.4.3"};
 }
 
 // ===== V1.4 · Last War Shop Advisor =====
@@ -334,10 +334,10 @@ export default function handler(req,res){
   if(scope==="player"){
     const analysis=buildPlayerAnalysis(s,loc);
     analysis.shop=buildShopAdvice(s,loc,analysis);
-    analysis.engine="warboost-pro-shop-v1.4.0";
+    analysis.engine="warboost-pro-shop-v1.4.3";
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }
   const p=basicPack(loc);let advice;
   if(scope==="alliance")advice=p.alliance((s.alliance?.members||[]).length);else if(scope==="vs")advice=p.vs(s.vs||{});else advice=p.season(s.season||{});
-  return res.status(200).json({ok:true,engine:"warboost-rules-v1.4.0",advice});
+  return res.status(200).json({ok:true,engine:"warboost-rules-v1.4.3",advice});
 }
