@@ -1,4 +1,4 @@
-# WarBoost V1.4 — API-ready / Approval-first
+# WarBoost V1.4.3 — API-ready / Approval-first
 
 ## Nouveautés V1.4
 
