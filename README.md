@@ -1,4 +1,4 @@
-# WarBoost V1.4.3 — API-ready / Approval-first
+# WarBoost V1.4.4 — API-ready / Approval-first
 
 ## Nouveautés V1.4
 
@@ -329,3 +329,11 @@ Après le déploiement, vérifier :
 - invitation alliance
 
 Version : **WarBoost V1.2.0 — Global Hybrid Sync**
+
+
+## V1.4.4 — Presentation Ready safeguards
+- Aucun placeholder `Hero 1`, `Hero 2`, etc. n'est persisté comme identité réelle.
+- Les données lisibles (puissance, niveau, étoiles, équipement) sont conservées même si le nom du héros reste inconnu.
+- Les captures d'escouade déclenchent un second passage strict d'identification des portraits, puis une vérification indépendante.
+- Les noms proposés restent soumis à confirmation du joueur avant validation définitive.
+- Un scan incomplet ne doit pas effacer un nom de héros déjà confirmé.
