@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V1.3.3 Global PRO</title>
+  <title>WarBoost V1.4 API-ready PRO</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -15,7 +15,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/assets/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V1.2 Global · Sync hybride · sans token joueur</small></div>
+        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V1.4 · API-ready · accès officiel en attente</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -29,7 +29,7 @@
     <section class="heroCard">
       <div class="eyebrow">🤖 <span data-i18n="coach">Coach IA</span></div>
       <h2 id="adviceTitle" class="heroTitle" data-i18n="configure_profile">Configure ton profil</h2>
-      <p id="adviceText" class="heroText" data-i18n="configure_text">WarBoost combine données publiques, scans intelligents et cloud alliance pour te donner une priorité claire.</p>
+      <p id="adviceText" class="heroText" data-i18n="configure_text">WarBoost combine tes scans, le cloud alliance et, dès autorisation, les données officielles Last War.</p>
       <button id="adviceAction" class="primaryAction" data-i18n="configure">Configurer WarBoost</button>
     </section>
 
@@ -39,7 +39,7 @@
       <button class="moduleCard" data-open="vs"><span class="moduleMeta" id="vsMeta">—</span><span class="moduleIcon">⚔️</span><h2 data-i18n="vs">VS</h2><p data-i18n="vs_desc">Adversaire de la semaine, jour actuel et plan.</p></button>
       <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
     </section>
-    <div class="footerNote" data-i18n="footer">Sync hybride : données publiques + WarBoost Scan + cloud alliance. Aucun token API joueur n'est nécessaire.</div>
+    <div class="footerNote" data-i18n="footer">WarBoost Scan + cloud alliance aujourd’hui ; intégration officielle Last War prête à être branchée après autorisation.</div>
   </main>
 
   <div id="backdrop" class="drawerBackdrop"></div>
@@ -53,7 +53,7 @@
       <div class="stat"><span data-i18n="drone">Drone</span><b id="pDrone">—</b></div>
     </div>
     <div id="squadList"></div>
-    <div class="buttonRow"><button id="scanPlayerBtn" class="secondaryBtn" data-i18n="scan_button">📷 WarBoost Scan</button><button id="syncPlayerBtn" class="secondaryBtn" data-i18n="public_button">🌐 Mise à jour publique</button></div>
+    <div class="buttonRow"><button id="scanPlayerBtn" class="secondaryBtn" data-i18n="scan_button">📷 WarBoost Scan</button><button id="syncPlayerBtn" class="secondaryBtn" data-i18n="public_button">🌐 Synchroniser WarBoost</button></div>
     <button id="playerAdviceBtn" class="secondaryBtn wideBtn" data-i18n="ai_priority">Priorité IA PRO</button>
     <div id="playerSyncInfo" class="notice" style="margin-top:10px" data-i18n="player_sync_note">Tes valeurs manuelles restent protégées. Un scan plus récent remplace uniquement les champs qu'il peut lire avec confiance.</div>
     <section id="proPriorityPanel" class="section proPriorityPanel hidden" style="margin-top:10px">
@@ -119,7 +119,7 @@
     </div>
     <div class="section"><div class="sectionTitle"><h3 data-i18n="lastwar_identity">Identité Last War</h3><span class="pill" data-i18n="account">Compte</span></div><div class="settingsForm"><div class="field"><label data-i18n="nickname">Pseudo Last War</label><input id="fName" /></div><div class="field"><label data-i18n="server">Serveur</label><input id="fServer" inputmode="numeric" /></div><div class="field"><label data-i18n="hq">QG</label><input id="fHq" inputmode="numeric" /></div><div class="field"><label data-i18n="alliance">Alliance</label><input id="fAlliance" /></div><div class="field"><label data-i18n="role">Rôle</label><input id="fRole" /></div><button id="saveProfileBtn" class="primaryAction" data-i18n="save">Enregistrer</button></div></div>
     <div id="proSection" class="section proSection"><div class="sectionTitle"><h3>💎 <span data-i18n="pro">WarBoost PRO</span></h3><span id="proPill" class="pill proPill">FREE</span></div><div class="proHero"><div><b id="proTitle">WarBoost PRO</b><small id="proPrice">—</small></div><span class="proDiamond">💎</span></div><div class="proFeatures"><div data-i18n="pro_feature1">✓ Priorités IA détaillées pour tes escouades</div><div data-i18n="pro_feature2">✓ Plans de guerre IA pour R5/R4</div><div data-i18n="pro_feature3">✓ Plans VS adaptés au jour réel</div><div data-i18n="pro_feature4">✓ Conseils Saison avancés</div></div><div id="proMessage" class="notice hidden"></div><button id="proActionBtn" class="primaryAction proAction" type="button" data-i18n="go_pro">Passer PRO</button></div>
-    <div class="section hybridSection"><div class="sectionTitle"><h3 data-i18n="hybrid_sync">Synchronisation hybride WarBoost</h3><span id="providerPill" class="pill">—</span></div><div class="sourceGrid"><div class="sourceCard"><span>🌐</span><b data-i18n="public_source">Source publique</b><small id="publicSourceState">—</small></div><div class="sourceCard"><span>📷</span><b data-i18n="scan_source">WarBoost Scan</b><small id="scanSourceState">—</small></div><div class="sourceCard"><span>🛡️</span><b data-i18n="alliance_cloud">Cloud alliance</b><small id="allianceCloudState">—</small></div></div><div id="providerStatus" class="notice warn"></div><div class="buttonRow"><button id="openScanBtn" class="secondaryBtn" data-i18n="scan_account">Scanner mon compte</button><button id="syncAllBtn" class="secondaryBtn" data-i18n="public_refresh">Actualiser les données publiques</button></div><div class="privacyText" data-i18n="hybrid_note">Fonctionne sans token joueur. Les données publiques sont actualisées si une source compatible est disponible ; les données privées d'escouade viennent de WarBoost Scan.</div></div>
+    <div class="section hybridSection"><div class="sectionTitle"><h3 data-i18n="hybrid_sync">Synchronisation hybride WarBoost</h3><span id="providerPill" class="pill">—</span></div><div class="sourceGrid"><div class="sourceCard"><span>🌐</span><b data-i18n="public_source">Accès officiel Last War</b><small id="publicSourceState">—</small></div><div class="sourceCard"><span>📷</span><b data-i18n="scan_source">WarBoost Scan</b><small id="scanSourceState">—</small></div><div class="sourceCard"><span>🛡️</span><b data-i18n="alliance_cloud">Cloud alliance</b><small id="allianceCloudState">—</small></div></div><div id="providerStatus" class="notice warn"></div><div class="buttonRow"><button id="openScanBtn" class="secondaryBtn" data-i18n="scan_account">Scanner mon compte</button><button id="syncAllBtn" class="secondaryBtn" data-i18n="public_refresh">Synchroniser WarBoost</button></div><div class="privacyText" data-i18n="hybrid_note">WarBoost n’utilise aucun accès Last War non autorisé. Tant que l’autorisation officielle est en attente, Scan et cloud restent actifs.</div></div>
   </section>
 
   <script type="module" src="/app.js"></script>

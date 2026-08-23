@@ -1,3 +1,23 @@
+# WarBoost V1.4 — API-ready / Approval-first
+
+## Nouveautés V1.4
+
+- Couche d’intégration Last War préparée pour un futur accès officiel en lecture seule.
+- Aucune source Last War non autorisée n’est activée par défaut.
+- Nouveau chemin prioritaire `WARBOOST_LASTWAR_OFFICIAL_URL`.
+- Consentement explicite et périmètre `read_only_account_analysis` envoyés au fournisseur officiel.
+- Suivi de provenance : type de fournisseur, statut d’accès, capacités et date de dernière synchronisation officielle.
+- WarBoost Scan et cloud alliance restent pleinement fonctionnels pendant l’attente de l’autorisation.
+- Ancienne source publique conservée uniquement en compatibilité, désactivée tant que `WARBOOST_ALLOW_LEGACY_PROVIDER=true` n’est pas explicitement défini.
+- Interface multilingue mise à jour pour afficher clairement « autorisation officielle en attente ».
+- Conseiller Boutique PRO, armes exclusives, escouades et logique V1.3.3 conservés.
+
+## Stratégie
+
+Cette version peut être développée et testée sans dépendre d’une API Last War. Si Last War / FirstFun fournit ensuite une API, un SDK ou un endpoint partenaire, il suffira de brancher l’adaptateur officiel prévu, sans refaire le reste de l’application.
+
+---
+
 # WarBoost V1.3.3 — Conseiller Boutique Adaptatif PRO
 
 ## Nouveautés V1.3.3

@@ -1,18 +1,39 @@
-# WarBoost V1.2 — Contrat Hybrid Sync Last War
+# WarBoost V1.4 — Contrat d'intégration Last War « approval-first »
 
-WarBoost ne demande pas de token Last War au joueur.
+WarBoost V1.4 est préparé pour une future intégration officielle **en lecture seule**, mais n'active aucun accès Last War non autorisé.
 
-## Source publique optionnelle
+## Principe
 
-Variable : `WARBOOST_PUBLIC_LASTWAR_URL`
+1. Le joueur se connecte à WarBoost.
+2. Il déclenche volontairement une synchronisation.
+3. WarBoost transmet uniquement une demande de lecture à une source officiellement autorisée.
+4. Les données reçues sont normalisées puis fusionnées avec le profil WarBoost.
+5. WarBoost analyse et conseille ; il n'exécute aucune action dans le jeu.
 
-WarBoost envoie en POST :
+## Source officielle prioritaire
+
+Variable serveur : `WARBOOST_LASTWAR_OFFICIAL_URL`
+
+Jeton serveur optionnel : `WARBOOST_LASTWAR_OFFICIAL_TOKEN`
+
+Ces variables ne doivent être configurées **qu'après accord de Last War / FirstFun** ou selon leurs instructions techniques.
+
+WarBoost envoie notamment :
 
 ```json
 {
   "player_id": "warboost-user-id",
   "identity": {"name":"Pseudo","server_id":"884","hq_level":31},
-  "alliance": "ALL4"
+  "alliance": "ALL4",
+  "consent": {
+    "granted": true,
+    "scope": "read_only_account_analysis",
+    "source": "warboost_authenticated_user"
+  },
+  "requested_fields": [
+    "player", "squads", "heroes", "exclusive_weapons", "gear",
+    "drone", "technology", "profession", "season", "vs", "alliance"
+  ]
 }
 ```
 
@@ -20,10 +41,11 @@ Réponse recommandée :
 
 ```json
 {
-  "provider": "public-source",
+  "provider": "lastwar-official",
+  "capabilities": ["player", "squads", "drone", "season"],
   "state": {
     "player": {"name":"Pseudo","server_id":"884","hq_level":31,"power_m":184.6},
-    "drone": {"level":157,"power_m":8.2,"updated_at":"2026-08-20T20:30:00Z"},
+    "drone": {"level":157,"power_m":8.2,"updated_at":"2026-08-23T09:00:00Z"},
     "squads": [],
     "alliance": {"tag":"ALL4"},
     "vs": {"week":34,"day":4,"opponent":"RIVAL"},
@@ -32,29 +54,49 @@ Réponse recommandée :
 }
 ```
 
-La source publique ne reçoit aucune clé Last War appartenant au joueur.
+## Connecteur partenaire approuvé
+
+Variable : `WARBOOST_LASTWAR_PROVIDER_URL`
+
+Secret serveur optionnel : `WARBOOST_PROVIDER_SECRET`
+
+Ce chemin est réservé à un connecteur explicitement approuvé ou fourni dans le cadre d'un partenariat.
+
+## Ancienne source publique
+
+`WARBOOST_PUBLIC_LASTWAR_URL` est conservée uniquement pour compatibilité technique et reste **désactivée par défaut**.
+
+Elle ne peut être utilisée que si `WARBOOST_ALLOW_LEGACY_PROVIDER=true` est explicitement défini et si WarBoost dispose d'un cadre d'utilisation autorisé.
 
 ## WarBoost Scan
 
-`POST /api/scan` est réservé à un utilisateur WarBoost authentifié.
+`POST /api/scan` reste la source principale tant que l'accès officiel n'est pas disponible.
 
-Le navigateur envoie une image redimensionnée. L'analyse est effectuée par :
+- utilisateur WarBoost authentifié ;
+- image redimensionnée avant analyse ;
+- extraction des seuls champs visibles ;
+- les champs absents ne remplacent pas les données existantes ;
+- confirmation manuelle des identités de héros lorsque la reconnaissance est ambiguë.
 
-1. `WARBOOST_VISION_ENDPOINT`, ou
-2. `OPENAI_API_KEY` côté serveur.
+## Fusion et provenance
 
-La sortie est un état partiel. Les champs absents ne remplacent pas les données existantes.
+La V1.4 conserve dans `sync` :
 
-## Cloud alliance
+- `provider` ;
+- `provider_kind` ;
+- `access_status` ;
+- `capabilities` ;
+- `official_last_sync` ;
+- les sources `official`, `public`, `scan`, `alliance`.
 
-Les membres sont liés à `wb1_alliance_members`. Lors d'une synchronisation, WarBoost recharge leur dernier profil depuis `wb1_profiles` et reconstruit le roster R5/R4.
+Les escouades, le Drone et la boutique utilisent les dates `updated_at` afin qu'une information plus ancienne n'écrase pas une donnée plus récente.
 
-## Règle de fusion
+## Limites intentionnelles
 
-- Les escouades et le Drone utilisent `updated_at` pour éviter qu'une donnée plus ancienne écrase une donnée récente.
-- Les scans n'inventent pas les champs non visibles.
-- Les données locales sont conservées si une source publique est indisponible.
+WarBoost V1.4 :
 
-## Push de confiance
-
-`POST /api/ingest` reste disponible avec `WARBOOST_INGEST_SECRET` pour une source serveur de confiance.
+- ne demande pas les identifiants Last War du joueur ;
+- ne stocke pas de mot de passe Last War ;
+- n'automatise pas le gameplay ;
+- ne modifie pas le client du jeu ;
+- n'active pas une source non autorisée par défaut.
