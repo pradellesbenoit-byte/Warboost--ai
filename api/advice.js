@@ -121,6 +121,11 @@ function dataConfidence(squads,drone){
   return max?Math.max(0,Math.min(100,Math.round(score/max*100))):0;
 }
 function priority(kind,title,reason,action,buyFree,buyPaid,severity,target){return {kind,title,reason,action,buy_free:buyFree,buy_paid:buyPaid,severity:Math.round(severity),target}}
+function impactLabel(score,lang){const x=Math.round(score);const pack={fr:["Modéré","Élevé","Très élevé"],en:["Moderate","High","Very high"],es:["Moderado","Alto","Muy alto"],de:["Mittel","Hoch","Sehr hoch"],ja:["中","高","非常に高い"],zh:["中","高","很高"],ar:["متوسط","مرتفع","مرتفع جداً"]}[lang]||["Moderate","High","Very high"];return x>=88?pack[2]:x>=74?pack[1]:pack[0]}
+function roiLabel(score,lang){const x=Math.round(score);const pack={fr:["Moyen","Bon","Excellent"],en:["Average","Good","Excellent"],es:["Medio","Bueno","Excelente"],de:["Mittel","Gut","Sehr gut"],ja:["普通","良い","非常に良い"],zh:["一般","良好","优秀"],ar:["متوسط","جيد","ممتاز"]}[lang]||["Average","Good","Excellent"];return x>=86?pack[2]:x>=72?pack[1]:pack[0]}
+function timingAdjustment(kind,state){const day=Number(state?.vs?.day);let x=0;if(day===4&&["level","stars","exclusive"].includes(kind))x+=7;if(day===1&&kind==="drone")x+=7;if(day===2&&kind==="gear")x+=3;const sd=num(state?.season?.day),st=num(state?.season?.total_days);if(sd!==null&&st!==null&&st>0&&sd/st>=.8)x-=kind==="scan"?0:2;return x}
+function heroImportance(h,heroes,type){const p=num(h?.power),known=heroes.map(x=>num(x.h?.power)).filter(x=>x!==null);let w=1;if(p!==null&&known.length){const mx=Math.max(...known),mn=Math.min(...known);w+=mx===mn?.06:((p-mn)/(mx-mn))*.12}const n=cleanName(h?.name);if(type&&HERO_TYPES[n]===type)w+=.05;return w}
+function candidate(kind,title,reason,action,buyFree,buyPaid,target,impact,cost,state,lang,meta={}){const timing=timingAdjustment(kind,state),roi=Math.max(1,Math.min(100,Math.round((impact/(Math.max(.35,cost)))*.78+timing))),score=Math.max(1,Math.min(100,Math.round(impact*.66+roi*.34+timing)));return {kind,title,reason,action,buy_free:buyFree,buy_paid:buyPaid,target,severity:score,impact_score:Math.round(impact),impact_label:impactLabel(impact,lang),roi_score:roi,roi_label:roiLabel(roi,lang),timing_adjustment:timing,...meta}}
 function buildPlayerAnalysis(state,locale){
   const lang=localePack(locale),p=T[lang],loc=String(locale||"en-GB");
   const squads=Array.from({length:4},(_,i)=>state?.squads?.[i]||{id:i+1,heroes:[]});
@@ -132,40 +137,29 @@ function buildPlayerAnalysis(state,locale){
   const weaponByHero=name=>weaponList.find(w=>cleanName(w?.hero_name).toLowerCase()===cleanName(name).toLowerCase());
   const enhancedHeroes=(main.s.heroes||[]).map(h=>{const w=weaponByHero(h?.name);return w&&num(w.level)!==null?{...h,exclusive:String(w.level)}:h});
   const heroes=enhancedHeroes.map((h,i)=>({h,i})).filter(x=>heroConfigured(x.h));
-  const ps=[];
   const coverage=heroDetailCoverage({...main.s,heroes:enhancedHeroes});
-  if(heroes.length<3||coverage<30){
-    ps.push(priority("scan",p.titles.scan,p.needHeroes(mainName),p.actionScan,p.freeNone,p.paidNone,100,mainName));
-  }else{
-    const levels=heroes.map(x=>num(x.h.level)).filter(x=>x!==null), levelTarget=levels.length?Math.max(...levels):null;
-    if(levelTarget!==null){
-      heroes.forEach(({h,i})=>{const v=num(h.level);if(v!==null&&levelTarget-v>=3){const gap=levelTarget-v,hn=heroName(h,i,lang);ps.push(priority("level",p.titles.level,p.level(hn,gap,levelTarget),p.actionLevel(hn),p.freeLevel,p.paidLevel,82+Math.min(15,gap*1.5),hn))}})
-    }
-    heroes.forEach(({h,i})=>{const v=num(h.stars);if(v!==null&&v<5){const gap=Math.max(1,Math.round((5-v)*10)/10),hn=heroName(h,i,lang);ps.push(priority("stars",p.titles.stars,p.stars(hn,gap),p.actionStars(hn),p.freeHero,p.paidHero,92+Math.min(7,gap*3),hn))}})
+  const candidates=[];
+  if(heroes.length<3||coverage<30){candidates.push(candidate("scan",p.titles.scan,p.needHeroes(mainName),p.actionScan,p.freeNone,p.paidNone,mainName,99,.55,state,lang));}
+  else{
     const squadType=squadTypeFromHeroes(heroes);
-    const exRows=heroes.map(({h,i})=>{const v=metric(h.exclusive),name=heroName(h,i,lang),target=nextKnownExBreakpoint(v);return {h,i,v,name,target}}).filter(x=>x.v!==null&&x.v>=0&&x.target!==null);
-    if(exRows.length){
-      exRows.sort((a,b)=>exPriorityScore(b.name,squadType,b.v,b.target)-exPriorityScore(a.name,squadType,a.v,a.target)||(a.v-b.v));
-      for(const x of exRows.slice(0,3)){const score=exPriorityScore(x.name,squadType,x.v,x.target),sev=Math.min(99,70+score*.24);ps.push(priority("exclusive",p.titles.exclusive,ewReason(locale,x.name,x.v,x.target),p.actionExclusive(x.name),p.freeExclusive,p.paidExclusive,sev,x.name))}
-    }
+    const levels=heroes.map(x=>num(x.h.level)).filter(x=>x!==null), levelTarget=levels.length?Math.max(...levels):null;
     const gears=heroes.map(({h})=>gearMetric(h.gear)).filter(x=>x!==null), gearTarget=gears.length?Math.max(...gears):null;
-    if(gearTarget!==null&&gearTarget>0){heroes.forEach(({h,i})=>{const v=gearMetric(h.gear);if(v!==null&&gearTarget-v>=3){const gap=Math.round((gearTarget-v)*10)/10,hn=heroName(h,i,lang);ps.push(priority("gear",p.titles.gear,p.gear(hn,gap,gearTarget),p.actionGear(hn),p.freeGear,p.paidGear,75+Math.min(15,gap),hn))}})}
+    for(const {h,i} of heroes){
+      const hn=heroName(h,i,lang),importance=heroImportance(h,heroes,squadType);
+      const lv=num(h.level);if(lv!==null&&levelTarget!==null&&levelTarget-lv>=3){const gap=levelTarget-lv,impact=Math.min(92,(67+gap*2.2)*importance),cost=.72+gap/18;candidates.push(candidate("level",p.titles.level,p.level(hn,gap,levelTarget),p.actionLevel(hn),p.freeLevel,p.paidLevel,hn,impact,cost,state,lang,{hero:hn,next_target:`Lv.${levelTarget}`}));}
+      const st=num(h.stars);if(st!==null&&st<5){const gap=Math.max(.1,Math.round((5-st)*10)/10),impact=Math.min(99,(82+gap*5)*importance),cost=.9+gap*.42;candidates.push(candidate("stars",p.titles.stars,p.stars(hn,gap),p.actionStars(hn),p.freeHero,p.paidHero,hn,impact,cost,state,lang,{hero:hn,next_target:`${Math.min(5,Math.ceil((st+.1)*2)/2)}★`}));}
+      const ex=metric(h.exclusive),exTarget=nextKnownExBreakpoint(ex);if(ex!==null&&exTarget!==null){const raw=exPriorityScore(hn,squadType,ex,exTarget),gap=exTarget-ex,impact=Math.min(99,(64+raw*.28)*importance),cost=.75+gap/12;candidates.push(candidate("exclusive",p.titles.exclusive,ewReason(locale,hn,ex,exTarget),p.actionExclusive(hn),p.freeExclusive,p.paidExclusive,hn,impact,cost,state,lang,{hero:hn,current:ex,next_target:`EX${exTarget}`,breakpoint:exTarget}));}
+      const gr=gearMetric(h.gear);if(gr!==null&&gearTarget!==null&&gearTarget-gr>=3){const gap=gearTarget-gr,impact=Math.min(94,(65+gap*1.7)*importance),cost=.68+gap/16;candidates.push(candidate("gear",p.titles.gear,p.gear(hn,Math.round(gap*10)/10,gearTarget),p.actionGear(hn),p.freeGear,p.paidGear,hn,impact,cost,state,lang,{hero:hn,next_target:String(gearTarget)}));}
+    }
+    const dLevel=num(state?.drone?.level),dPower=num(state?.drone?.power_m);if(dLevel!==null||dPower!==null){const impact=dLevel===null?62:dLevel<100?84:dLevel<150?75:dLevel<200?66:58;candidates.push(candidate("drone",p.titles.drone,p.drone(dLevel,dPower!==null?fmt(dPower,loc):null),p.actionDrone,p.freeDrone,p.paidDrone,"Drone",impact,1.15,state,lang));}
   }
-  const dLevel=num(state?.drone?.level),dPower=num(state?.drone?.power_m);
-  if(dLevel!==null||dPower!==null)ps.push(priority("drone",p.titles.drone,p.drone(dLevel,dPower!==null?fmt(dPower,loc):null),p.actionDrone,p.freeDrone,p.paidDrone,45,"Drone"));
-  const missing=squads.map((s,i)=>i<3&&!squadConfigured(s)?squadName(s,i,lang):null).filter(Boolean);
-  if(missing.length)ps.push(priority("scan",p.titles.scan,p.scanMissing(missing.join(", ")),p.actionScan,p.freeNone,p.paidNone,42,missing.join(", ")));
-  if(powered.length>1){const secondary=powered.slice(1).map(x=>squadName(x.s,x.i,lang)).join(", ");ps.push(priority("focus",p.titles.focus,p.focusHold(secondary),p.focusHold(secondary),p.freeNone,p.paidNone,55,mainName))}
-  ps.sort((a,b)=>b.severity-a.severity);
-  const dedup=[],seen=new Set();for(const x of ps){const key=`${x.kind}:${x.target}`;if(!seen.has(key)){seen.add(key);dedup.push(x)}if(dedup.length>=4)break}
-  dedup.forEach((x,i)=>x.rank=i+1);
-  const comparison=squads.map((s,i)=>{
-    const power=num(s.power),configuredHere=squadConfigured(s),optional=i===3&&!configuredHere,isMain=i===main.i,ratio=mainPower&&power!==null?power/mainPower:null,dataQ=Math.round((configuredHere?20:0)+(power!==null?20:0)+heroDetailCoverage(s)*.6);
-    let status=optional?optionalSquadStatus(lang):p.squadStatusMissing;if(configuredHere)status=isMain?p.squadStatusMain:(ratio!==null&&ratio>=.75?p.squadStatusReady:p.squadStatusLow);
-    return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional};
-  });
-  const conf=dataConfidence(squads,state?.drone||{}),gapText=dedup[0]?.reason||"";
-  return {summary:p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",gapText),confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,engine:"warboost-pro-shop-v1.5.0"};
+  const missing=squads.map((s,i)=>i<3&&!squadConfigured(s)?squadName(s,i,lang):null).filter(Boolean);if(missing.length)candidates.push(candidate("scan",p.titles.scan,p.scanMissing(missing.join(", ")),p.actionScan,p.freeNone,p.paidNone,missing.join(", "),70,.3,state,lang));
+  candidates.sort((a,b)=>b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
+  const dedup=[],seen=new Set();for(const x of candidates){const key=`${x.kind}:${x.target}`;if(!seen.has(key)){seen.add(key);dedup.push(x)}if(dedup.length>=3)break}dedup.forEach((x,i)=>x.rank=i+1);
+  const comparison=squads.map((s,i)=>{const power=num(s.power),configuredHere=squadConfigured(s),optional=i===3&&!configuredHere,isMain=i===main.i,ratio=mainPower&&power!==null?power/mainPower:null,dataQ=Math.round((configuredHere?20:0)+(power!==null?20:0)+heroDetailCoverage(s)*.6);let status=optional?optionalSquadStatus(lang):p.squadStatusMissing;if(configuredHere)status=isMain?p.squadStatusMain:(ratio!==null&&ratio>=.75?p.squadStatusReady:p.squadStatusLow);return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional};});
+  let conf=dataConfidence(squads,state?.drone||{});if(coverage<60)conf=Math.min(conf,82);if(weaponList.length)conf=Math.min(96,conf+3);
+  const top=dedup[0],summary=top?p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",top.reason):p.main(mainName,mainPower!==null?fmt(mainPower,loc):"—");
+  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,candidates_evaluated:candidates.length,decision_model:"all-heroes marginal ROI + VS/Season timing",engine:"warboost-ai-roi-v1.6.2"};
 }
 
 // ===== V1.4 · Last War Shop Advisor =====
@@ -411,7 +405,7 @@ function buildVsAdvice(state,locale){
   let confidence=45+(v.opponent?15:0)+(us!==null&&them!==null?15:0)+(state?.updated_at||state?.sync?.last_sync?10:0);
   confidence=Math.max(25,Math.min(92,confidence));
   const advice=[pack.day(day),task,scoreLine,pack.hold,pt?pack.player(pt):"",pack.confidence(confidence)].filter(Boolean).join(" ");
-  return {advice,confidence,priorities:priorities.slice(0,4),day,opponent:v.opponent||null,score_gap:us!==null&&them!==null?us-them:null,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-vs-ai-v1.6.1"};
+  return {advice,confidence,priorities:priorities.slice(0,4),day,opponent:v.opponent||null,score_gap:us!==null&&them!==null?us-them:null,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-vs-ai-v1.6.2"};
 }
 function buildSeasonAdvice(state,locale){
   const s=state?.season||{},pack=contextPack(locale).season,day=num(s.day),total=num(s.total_days),progress=num(s.progress_pct),resistance=num(s.resistance);
@@ -423,7 +417,7 @@ function buildSeasonAdvice(state,locale){
   let confidence=35+(day!==null?15:0)+(total!==null?10:0)+(s.profession?10:0)+(progress!==null?10:0)+(resistance!==null?10:0);
   confidence=Math.max(25,Math.min(92,confidence));
   const advice=[pack.head(day,total),progress!==null?pack.progress(progress):"",s.profession?pack.profession(s.profession):"",resistance!==null?pack.resistance(resistance):"",pack.unlock,resistance!==null?pack.resist:"",late?pack.late:"",pt?pack.player(pt):"",pack.confidence(confidence)].filter(Boolean).join(" ");
-  return {advice,confidence,priorities:priorities.slice(0,4),day,total_days:total,progress_pct:progress,profession:s.profession||null,resistance,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-season-ai-v1.6.1"};
+  return {advice,confidence,priorities:priorities.slice(0,4),day,total_days:total,progress_pct:progress,profession:s.profession||null,resistance,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-season-ai-v1.6.2"};
 }
 function buildCrossDomain(state,locale,player){
   const vs=buildVsAdvice(state,locale),season=buildSeasonAdvice(state,locale),top=player?.priorities?.[0]||null;
@@ -437,10 +431,10 @@ export default function handler(req,res){
     const analysis=buildPlayerAnalysis(s,loc);
     analysis.shop=buildShopAdvice(s,loc,analysis);
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
-    analysis.engine="warboost-ai-core-v1.6.1";
+    analysis.engine="warboost-ai-core-v1.6.2";
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }
-  if(scope==="alliance"){const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:"warboost-alliance-ai-v1.6.1",...a});}
+  if(scope==="alliance"){const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:"warboost-alliance-ai-v1.6.2",...a});}
   if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
   if(scope==="season")return res.status(200).json({ok:true,...buildSeasonAdvice(s,loc)});
   return res.status(400).json({error:"unknown_scope"});
