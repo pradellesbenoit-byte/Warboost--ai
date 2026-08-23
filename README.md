@@ -1,4 +1,4 @@
-# WarBoost V1.4.8 — Demo-safe / API-ready / Approval-first
+# WarBoost V1.4.9 — Demo-safe / API-ready / Approval-first
 
 ## Nouveautés V1.4
 
@@ -82,7 +82,7 @@ Cette version corrige le cas où une escouade était bien analysée (niveau, ét
 ## Améliorations V1.2.8
 
 - image envoyée à WarBoost Vision en résolution supérieure (jusqu’à 2048 px) pour mieux lire les portraits et petits textes ;
-- catalogue contrôlé des héros Last War pour canonicaliser les vrais noms (DVA, Lucius, Carlie, Morrison, Skyler, etc.) ;
+- catalogue contrôlé des héros Last War pour canonicaliser les vrais noms (DVA, Lucius, Carlie, Morrisson, Skyler, etc.) ;
 - seconde passe Vision ciblée uniquement sur les portraits si le premier scan n’a pas reconnu tous les noms ;
 - aucun remplissage basé uniquement sur une composition “probable” : WarBoost exige une preuve visuelle suffisante ;
 - conservation de toutes les fonctions V1.2.7 : 4 emplacements d’escouade séparés, Escouade 4 optionnelle, armes exclusives intégrées aux héros, PRO, Stripe, Supabase, traduction mondiale et Sync hybride.
@@ -339,7 +339,7 @@ Version : **WarBoost V1.2.0 — Global Hybrid Sync**
 - Un scan incomplet ne doit pas effacer un nom de héros déjà confirmé.
 
 
-## V1.4.8 — Demo-safe confirmation flow
+## V1.4.9 — Demo-safe confirmation flow
 
 - Scan values are saved without committing AI-proposed portrait identities.
 - Hero identities are staged and require explicit player confirmation before being written.

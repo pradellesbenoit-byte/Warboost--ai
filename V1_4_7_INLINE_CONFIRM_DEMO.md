@@ -1,4 +1,4 @@
-# WarBoost V1.4.8 — Inline Confirmation Demo
+# WarBoost V1.4.7 — Inline Confirmation Demo
 
 ## Goal
 Remove the fragile Player → Scan drawer transition for unresolved hero identities.
@@ -10,7 +10,7 @@ Remove the fragile Player → Scan drawer transition for unresolved hero identit
 - Duplicate hero selection is rejected.
 - Existing power, level, stars and gear remain unchanged while names are confirmed.
 - The scan-time confirmation panel remains available after a fresh scan.
-- Version markers and PWA cache are aligned to V1.4.8.
+- Version markers and PWA cache are aligned to V1.4.7.
 - Multilingual confirmation copy is present in FR, EN-GB, EN-US, ES, DE, JA, ZH and AR.
 
 ## Demo safeguard
