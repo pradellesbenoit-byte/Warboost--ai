@@ -330,26 +330,118 @@ function buildShopAdvice(state,locale,analysis){const p=shopText(locale),a=adapt
   return {summary,confidence,confidence_label:`${T[localePack(locale)]?.confidence?T[localePack(locale)].confidence(confidence):`Confidence ${confidence}%`}`,scan_based:offers.length>0,catalog_status:officialCatalog?"official":"partial",catalog_complete:officialCatalog,catalog_label:officialCatalog?safe.officialLabel:safe.partialLabel,store_type:store,updated_at:shop?.updated_at||null,recommendations,knowledge_date:"2026-08-23",method:officialCatalog?"official-shop-catalog + adaptive-account-rules + diamond-reserve + VS/season-context":offers.length?"visible-shop-scan(partial) + adaptive-account-rules + diamond-reserve + VS/season-context":"strategic-categories(partial) + adaptive-account-rules + diamond-reserve + VS/season-context",budget:{currency:currency||null,balance,reserve_diamonds:10000},needs:{exclusive_urgency:Math.round(needs.exclusiveUrgency*100),stars_urgency:Math.round(needs.starsUrgency*100),gear_urgency:Math.round(needs.gearUrgency*100),drone_urgency:Math.round(needs.droneUrgency*100)},limitations:officialCatalog?[]:["Full Last War shop catalogue unavailable without approved official access","Only scanned visible offers are treated as currently observed","Unknown item types receive no purchase recommendation"],sources:[officialCatalog?"Official Last War read-only catalogue":"User-provided Last War shop scans","WarBoost saved account state"]};
 }
 
-const BASIC={
- fr:{alliance:n=>n?`Utilise les ${Math.min(5,n)} joueurs les plus puissants comme noyau de rally. Répartis ensuite défense, groupe mobile et réserves selon la progression du roster.`:"Fais rejoindre les membres avec l'invitation WarBoost pour créer un plan fiable.",vs:s=>s.opponent?`Jour ${s.day||"—"} contre ${s.opponent} : concentre les ressources sur les actions qui marquent aujourd'hui et conserve le reste pour les jours suivants.`:"WarBoost connaît le jour serveur mais attend encore l'adversaire VS.",season:s=>s.day?`Jour ${s.day} : sécurise d'abord les améliorations saisonnières qui débloquent la prochaine étape. Profession : ${s.profession||"—"}.`:"Scanne ou synchronise la saison pour recevoir un conseil adapté."},
- en:{alliance:n=>n?`Use the ${Math.min(5,n)} strongest players as the rally core, then split defense, mobile group and reserves from the roster progression.`:"Invite members with WarBoost before generating a reliable war plan.",vs:s=>s.opponent?`Day ${s.day||"—"} vs ${s.opponent}: spend only on actions that score today and keep the rest for later days.`:"WarBoost knows the server day but is still waiting for the VS opponent.",season:s=>s.day?`Day ${s.day}: secure the season upgrades that unlock your next step first. Profession: ${s.profession||"—"}.`:"Scan or synchronize the season for day-specific advice."},
- es:{alliance:n=>n?`Usa a los ${Math.min(5,n)} jugadores más fuertes como núcleo de rally y separa defensa, grupo móvil y reservas.`:"Invita miembros con WarBoost antes de generar un plan fiable.",vs:s=>s.opponent?`Día ${s.day||"—"} contra ${s.opponent}: gasta solo en acciones que puntúan hoy.`:"WarBoost conoce el día del servidor pero aún espera el rival VS.",season:s=>s.day?`Día ${s.day}: prioriza las mejoras de temporada que desbloquean tu siguiente paso.`:"Escanea o sincroniza la temporada para recibir un consejo adaptado."},
- de:{alliance:n=>n?`Nutze die ${Math.min(5,n)} stärksten Spieler als Rally-Kern und teile danach Verteidigung, mobile Gruppe und Reserve.`:"Lade Mitglieder über WarBoost ein, bevor du einen Kriegsplan erstellst.",vs:s=>s.opponent?`Tag ${s.day||"—"} gegen ${s.opponent}: Ressourcen nur für heutige Punkte ausgeben.`:"WarBoost kennt den Servertag, wartet aber noch auf den VS-Gegner.",season:s=>s.day?`Tag ${s.day}: priorisiere Saison-Upgrades, die den nächsten Schritt freischalten.`:"Scanne oder synchronisiere die Saison für passende Ratschläge."},
- ja:{alliance:n=>n?`上位${Math.min(5,n)}人をラリー中核にし、防衛・機動・予備に分けます。`:"WarBoost招待でメンバーを参加させてください。",vs:s=>s.opponent?`${s.opponent}との${s.day||"—"}日目：今日得点できる行動に資源を集中。`:"VS相手の同期を待っています。",season:s=>s.day?`${s.day}日目：次の段階を解放するシーズン強化を優先。`:"シーズンをスキャンまたは同期してください。"},
- zh:{alliance:n=>n?`将最强的${Math.min(5,n)}名玩家作为集结核心，再分配防守、机动与预备组。`:"先通过 WarBoost 邀请成员加入。",vs:s=>s.opponent?`第${s.day||"—"}天对阵 ${s.opponent}：只把资源投入今天能得分的项目。`:"WarBoost 已知道服务器日期，但仍在等待 VS 对手。",season:s=>s.day?`第${s.day}天：优先完成能解锁下一阶段的赛季强化。`:"扫描或同步赛季以获得对应建议。"},
- ar:{alliance:n=>n?`استخدم أقوى ${Math.min(5,n)} لاعبين كنواة للرالي، ثم وزّع الدفاع والمجموعة المتحركة والاحتياط.`:"ادعُ الأعضاء عبر WarBoost قبل إنشاء خطة حرب موثوقة.",vs:s=>s.opponent?`اليوم ${s.day||"—"} ضد ${s.opponent}: أنفق فقط على الأنشطة التي تسجل نقاطاً اليوم.`:"WarBoost يعرف يوم الخادم لكنه ينتظر خصم VS.",season:s=>s.day?`اليوم ${s.day}: أعطِ الأولوية لترقيات الموسم التي تفتح الخطوة التالية.`:"امسح أو زامن الموسم للحصول على نصيحة مناسبة."}
+
+function allianceActivityScore(m){
+  const ts=Date.parse(m?.last_active_at||m?.updated_at||"");
+  const ageH=Number.isFinite(ts)?Math.max(0,(Date.now()-ts)/36e5):null;
+  let score=0,signals=0;
+  if(ageH!==null){signals++;score+=ageH<=24?55:ageH<=72?42:ageH<=168?24:8}
+  const delta=num(m?.delta_m);if(delta!==null){signals++;score+=delta>0?25:delta===0?8:4}
+  const vs=num(m?.vs_points);if(vs!==null){signals++;score+=vs>0?12:2}
+  const season=num(m?.season_points);if(season!==null){signals++;score+=season>0?8:1}
+  if(!signals)return null;
+  return Math.max(0,Math.min(100,Math.round(score)));
+}
+const ALLIANCE_AI={
+ fr:{empty:"Fais rejoindre les membres et synchronise leur progression avant de générer un plan fiable.",line:(a,w,i,u)=>`${a} actifs · ${w} à surveiller · ${i} inactifs estimés${u?` · ${u} sans données suffisantes`:""}.`,core:n=>`Noyau conseillé : ${n}.`,action:"Priorité R4/R5 : contacte d'abord les membres faibles/inactifs avant toute exclusion, puis place les membres actifs les plus puissants sur les rôles critiques."},
+ en:{empty:"Invite members and synchronize their progression before generating a reliable plan.",line:(a,w,i,u)=>`${a} active · ${w} to watch · ${i} estimated inactive${u?` · ${u} with insufficient data`:""}.`,core:n=>`Suggested core: ${n}.`,action:"R4/R5 priority: contact low/inactive members before any removal, then assign the strongest active members to critical roles."},
+ es:{empty:"Invita miembros y sincroniza su progresión antes de generar un plan fiable.",line:(a,w,i,u)=>`${a} activos · ${w} a vigilar · ${i} inactivos estimados${u?` · ${u} sin datos suficientes`:""}.`,core:n=>`Núcleo recomendado: ${n}.`,action:"Prioridad R4/R5: contacta primero a los miembros con baja actividad antes de expulsar y asigna a los activos más fuertes a los roles críticos."},
+ de:{empty:"Lade Mitglieder ein und synchronisiere ihren Fortschritt, bevor du einen verlässlichen Plan erstellst.",line:(a,w,i,u)=>`${a} aktiv · ${w} beobachten · ${i} geschätzt inaktiv${u?` · ${u} mit zu wenig Daten`:""}.`,core:n=>`Empfohlener Kern: ${n}.`,action:"R4/R5-Priorität: Mitglieder mit geringer Aktivität zuerst kontaktieren und erst danach die stärksten aktiven Mitglieder auf kritische Rollen setzen."},
+ ja:{empty:"信頼できる計画を作る前に、メンバーを招待して進捗を同期してください。",line:(a,w,i,u)=>`アクティブ ${a} · 要確認 ${w} · 非アクティブ推定 ${i}${u?` · データ不足 ${u}`:""}。`,core:n=>`推奨中核：${n}。`,action:"R4/R5優先：低活動メンバーは除名前に連絡し、最も強いアクティブメンバーを重要役割へ配置します。"},
+ zh:{empty:"先邀请成员并同步进度，再生成可靠计划。",line:(a,w,i,u)=>`活跃 ${a} · 需关注 ${w} · 估算不活跃 ${i}${u?` · 数据不足 ${u}`:""}。`,core:n=>`建议核心：${n}。`,action:"R4/R5 优先：在移除前先联系低活跃成员，再把最强的活跃成员安排到关键岗位。"},
+ ar:{empty:"ادعُ الأعضاء وزامن تقدمهم قبل إنشاء خطة موثوقة.",line:(a,w,i,u)=>`${a} نشط · ${w} للمراقبة · ${i} غير نشط تقديرياً${u?` · ${u} ببيانات غير كافية`:""}.`,core:n=>`النواة المقترحة: ${n}.`,action:"أولوية R4/R5: تواصل مع الأعضاء منخفضي النشاط قبل الاستبعاد، ثم ضع أقوى الأعضاء النشطين في الأدوار الحرجة."}
 };
-function basicPack(locale){return BASIC[localePack(locale)]||BASIC.en}
+function buildAllianceAdvice(state,locale){
+  const pack=ALLIANCE_AI[localePack(locale)]||ALLIANCE_AI.en,members=Array.isArray(state?.alliance?.members)?state.alliance.members:[];
+  if(!members.length)return {advice:pack.empty,confidence:20,activity:{active:0,watch:0,inactive:0,unknown:0}};
+  const rows=members.map(m=>({...m,_activity:allianceActivityScore(m)}));
+  const counts={active:0,watch:0,inactive:0,unknown:0};
+  rows.forEach(m=>{const x=m._activity;if(x===null)counts.unknown++;else if(x>=52)counts.active++;else if(x>=28)counts.watch++;else counts.inactive++});
+  const core=rows.filter(m=>m._activity===null||m._activity>=52).sort((a,b)=>(num(b.power_m)||0)-(num(a.power_m)||0)).slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
+  const known=members.length-counts.unknown,confidence=Math.max(25,Math.min(95,Math.round((known/members.length)*75+20)));
+  return {advice:[pack.line(counts.active,counts.watch,counts.inactive,counts.unknown),core.length?pack.core(core.join(" / ")):"",pack.action].filter(Boolean).join(" "),confidence,activity:counts,core};
+}
+
+const CONTEXT_AI={
+ fr:{
+  vs:{missing:"Synchronise le VS pour obtenir un plan fiable.",day:d=>`VS · Jour ${d}`,lead:n=>`Avance de ${n}.`,trail:n=>`Retard de ${n}.`,even:"Scores proches.",hold:"Économise les ressources qui ne marquent pas aujourd’hui.",player:t=>`Compte joueur : ${t}`,confidence:n=>`Confiance ${n}%`,days:{1:"Priorité : actions et ressources Drone/Radar si elles correspondent aux tâches affichées aujourd’hui.",2:"Priorité : construction et accélérateurs de bâtiment si ce sont les tâches du jour.",3:"Priorité : recherche/technologie et accélérateurs de science si ce sont les tâches du jour.",4:"Priorité : héros, recrutement et améliorations héros uniquement si elles marquent aujourd’hui.",5:"Priorité : entraînement/unités et accélérateurs associés uniquement sur les tâches actives.",6:"Priorité : combat VS. Protège les ressources de progression qui ne donnent pas de points de combat."}},
+  season:{missing:"Scanne ou synchronise la Saison pour obtenir un diagnostic fiable.",head:(d,t)=>`Saison · Jour ${d||"—"}${t?`/${t}`:""}`,progress:p=>`Progression ${p}%.`,profession:p=>`Profession : ${p}.`,resistance:r=>`Résistance : ${r}.`,unlock:"Priorité : débloque d’abord le prochain palier saisonnier qui augmente ta progression globale.",resist:"La résistance semble être un signal critique : évite de disperser les ressources saisonnières avant d’avoir sécurisé le prochain palier utile.",late:"Fin de saison proche : privilégie les améliorations à retour immédiat et évite les investissements qui ne seront rentables qu’après la saison.",player:t=>`Compte joueur : ${t}`,confidence:n=>`Confiance ${n}%`}
+ },
+ en:{
+  vs:{missing:"Synchronize VS to get a reliable plan.",day:d=>`VS · Day ${d}`,lead:n=>`Lead by ${n}.`,trail:n=>`Behind by ${n}.`,even:"Scores are close.",hold:"Save resources that do not score today.",player:t=>`Player account: ${t}`,confidence:n=>`Confidence ${n}%`,days:{1:"Priority: Drone/Radar actions and resources only when they match today’s displayed tasks.",2:"Priority: construction and building speed-ups when they are today’s tasks.",3:"Priority: research/technology and science speed-ups when they are today’s tasks.",4:"Priority: heroes, recruitment and hero upgrades only when they score today.",5:"Priority: troop training/units and related speed-ups only for active tasks.",6:"Priority: VS combat. Protect progression resources that do not generate combat points."}},
+  season:{missing:"Scan or synchronize the Season to get a reliable diagnosis.",head:(d,t)=>`Season · Day ${d||"—"}${t?`/${t}`:""}`,progress:p=>`Progress ${p}%.`,profession:p=>`Profession: ${p}.`,resistance:r=>`Resistance: ${r}.`,unlock:"Priority: unlock the next season milestone that improves overall progression first.",resist:"Resistance appears to be a critical signal: avoid spreading season resources before securing the next useful threshold.",late:"Late season: favor upgrades with immediate return and avoid investments that only pay off after the season.",player:t=>`Player account: ${t}`,confidence:n=>`Confidence ${n}%`}
+ },
+ es:{
+  vs:{missing:"Sincroniza VS para obtener un plan fiable.",day:d=>`VS · Día ${d}`,lead:n=>`Ventaja de ${n}.`,trail:n=>`Desventaja de ${n}.`,even:"Marcadores ajustados.",hold:"Guarda los recursos que no puntúan hoy.",player:t=>`Cuenta jugador: ${t}`,confidence:n=>`Confianza ${n}%`,days:{1:"Prioridad: Drone/Radar solo si coincide con las tareas visibles de hoy.",2:"Prioridad: construcción y aceleradores de edificio si son las tareas del día.",3:"Prioridad: investigación/tecnología y aceleradores de ciencia si puntúan hoy.",4:"Prioridad: héroes, reclutamiento y mejoras de héroe solo si puntúan hoy.",5:"Prioridad: entrenamiento/tropas y aceleradores asociados solo en tareas activas.",6:"Prioridad: combate VS. Protege recursos de progresión que no dan puntos de combate."}},
+  season:{missing:"Escanea o sincroniza la Temporada para obtener un diagnóstico fiable.",head:(d,t)=>`Temporada · Día ${d||"—"}${t?`/${t}`:""}`,progress:p=>`Progreso ${p}%.`,profession:p=>`Profesión: ${p}.`,resistance:r=>`Resistencia: ${r}.`,unlock:"Prioridad: desbloquea primero el siguiente hito de temporada que mejore tu progresión global.",resist:"La resistencia parece crítica: no disperses recursos de temporada antes de asegurar el siguiente umbral útil.",late:"Final de temporada: prioriza mejoras con retorno inmediato.",player:t=>`Cuenta jugador: ${t}`,confidence:n=>`Confianza ${n}%`}
+ },
+ de:{
+  vs:{missing:"Synchronisiere VS für einen verlässlichen Plan.",day:d=>`VS · Tag ${d}`,lead:n=>`Vorsprung ${n}.`,trail:n=>`Rückstand ${n}.`,even:"Punktestand knapp.",hold:"Spare Ressourcen, die heute keine Punkte bringen.",player:t=>`Spielerkonto: ${t}`,confidence:n=>`Konfidenz ${n}%`,days:{1:"Priorität: Drohne/Radar nur, wenn es den heutigen Aufgaben entspricht.",2:"Priorität: Bau und Bau-Beschleuniger, wenn dies heute zählt.",3:"Priorität: Forschung/Technologie und Forschungs-Beschleuniger, wenn dies heute zählt.",4:"Priorität: Helden, Rekrutierung und Helden-Upgrades nur bei heutiger Wertung.",5:"Priorität: Truppentraining und passende Beschleuniger nur für aktive Aufgaben.",6:"Priorität: VS-Kampf. Schütze Fortschrittsressourcen ohne Kampfpunkte."}},
+  season:{missing:"Scanne oder synchronisiere die Saison für eine verlässliche Diagnose.",head:(d,t)=>`Saison · Tag ${d||"—"}${t?`/${t}`:""}`,progress:p=>`Fortschritt ${p}%.`,profession:p=>`Beruf: ${p}.`,resistance:r=>`Resistenz: ${r}.`,unlock:"Priorität: zuerst den nächsten Saison-Meilenstein freischalten, der den Gesamtfortschritt erhöht.",resist:"Resistenz wirkt kritisch: Saisonressourcen nicht verteilen, bevor der nächste sinnvolle Schwellenwert gesichert ist.",late:"Späte Saison: Upgrades mit sofortigem Nutzen priorisieren.",player:t=>`Spielerkonto: ${t}`,confidence:n=>`Konfidenz ${n}%`}
+ },
+ ja:{
+  vs:{missing:"VSを同期すると信頼できる計画を作成できます。",day:d=>`VS・${d}日目`,lead:n=>`${n}リード。`,trail:n=>`${n}ビハインド。`,even:"スコアは接近中。",hold:"今日得点にならない資源は保存。",player:t=>`プレイヤー：${t}`,confidence:n=>`信頼度 ${n}%`,days:{1:"優先：本日の表示タスクに一致する場合のみドローン/レーダー関連。",2:"優先：本日の対象なら建造と建造加速。",3:"優先：本日の対象なら研究/技術と研究加速。",4:"優先：本日得点する場合のみ英雄・募集・英雄強化。",5:"優先：有効タスクの訓練/部隊と関連加速。",6:"優先：VS戦闘。戦闘点にならない育成資源は温存。"}},
+  season:{missing:"シーズンをスキャンまたは同期してください。",head:(d,t)=>`シーズン・${d||"—"}日目${t?`/${t}`:""}`,progress:p=>`進捗 ${p}%`,profession:p=>`職業：${p}。`,resistance:r=>`耐性：${r}。`,unlock:"優先：全体進行を伸ばす次のシーズン段階を先に解放。",resist:"耐性が重要な可能性があります。次の有効閾値まで季節資源を分散しないでください。",late:"終盤：即効性の高い強化を優先。",player:t=>`プレイヤー：${t}`,confidence:n=>`信頼度 ${n}%`}
+ },
+ zh:{
+  vs:{missing:"同步 VS 后可生成可靠计划。",day:d=>`VS · 第${d}天`,lead:n=>`领先 ${n}。`,trail:n=>`落后 ${n}。`,even:"比分接近。",hold:"保存今天不能得分的资源。",player:t=>`玩家账号：${t}`,confidence:n=>`置信度 ${n}%`,days:{1:"优先：仅当与今日显示任务一致时使用无人机/雷达相关资源。",2:"优先：若为今日任务，投入建造和建造加速。",3:"优先：若为今日任务，投入研究/科技和科研加速。",4:"优先：仅在今日得分时进行英雄、招募和英雄升级。",5:"优先：仅针对当前任务进行训练/部队及相关加速。",6:"优先：VS战斗。保留不能产生战斗积分的养成资源。"}},
+  season:{missing:"扫描或同步赛季后可获得可靠诊断。",head:(d,t)=>`赛季 · 第${d||"—"}天${t?`/${t}`:""}`,progress:p=>`进度 ${p}%。`,profession:p=>`职业：${p}。`,resistance:r=>`抗性：${r}。`,unlock:"优先：先解锁能提升整体进度的下一个赛季节点。",resist:"抗性可能是关键瓶颈：先确保下一个有效阈值，再分配赛季资源。",late:"赛季后期：优先即时回报升级。",player:t=>`玩家账号：${t}`,confidence:n=>`置信度 ${n}%`}
+ },
+ ar:{
+  vs:{missing:"زامن VS للحصول على خطة موثوقة.",day:d=>`VS · اليوم ${d}`,lead:n=>`تقدم ${n}.`,trail:n=>`تأخر ${n}.`,even:"النتيجة متقاربة.",hold:"احتفظ بالموارد التي لا تسجل نقاطاً اليوم.",player:t=>`حساب اللاعب: ${t}`,confidence:n=>`الثقة ${n}%`,days:{1:"الأولوية: موارد الدرون/الرادار فقط إذا طابقت مهام اليوم الظاهرة.",2:"الأولوية: البناء وتسريعاته إذا كانت ضمن مهام اليوم.",3:"الأولوية: البحث/التقنية وتسريعات العلم إذا كانت تسجل اليوم.",4:"الأولوية: الأبطال والتجنيد وترقياتهم فقط إذا كانت تسجل اليوم.",5:"الأولوية: تدريب القوات وتسريعاته للمهام النشطة فقط.",6:"الأولوية: قتال VS مع حماية موارد التقدم التي لا تعطي نقاط قتال."}},
+  season:{missing:"امسح أو زامن الموسم للحصول على تشخيص موثوق.",head:(d,t)=>`الموسم · اليوم ${d||"—"}${t?`/${t}`:""}`,progress:p=>`التقدم ${p}%.`,profession:p=>`المهنة: ${p}.`,resistance:r=>`المقاومة: ${r}.`,unlock:"الأولوية: افتح أولاً العتبة الموسمية التالية التي تزيد التقدم العام.",resist:"المقاومة تبدو إشارة حرجة: لا تشتت موارد الموسم قبل تأمين العتبة المفيدة التالية.",late:"نهاية الموسم: أعط الأولوية للترقيات ذات العائد الفوري.",player:t=>`حساب اللاعب: ${t}`,confidence:n=>`الثقة ${n}%`}
+ }
+};
+function contextPack(locale){return CONTEXT_AI[localePack(locale)]||CONTEXT_AI.en}
+function playerTopLine(state,locale){
+  const a=buildPlayerAnalysis(state,locale),p=a?.priorities?.[0];
+  return p?`${p.title}: ${p.target||p.reason||""}`.trim():a?.summary||"";
+}
+function buildVsAdvice(state,locale){
+  const v=state?.vs||{},pack=contextPack(locale).vs,day=Number(v.day);
+  if(!Number.isInteger(day)||day<1||day>6)return {advice:pack.missing,confidence:25,priorities:[],data_quality:"low"};
+  const priorities=[];
+  const task=pack.days[day]||pack.hold;
+  priorities.push({rank:1,kind:"vs_today",text:task});
+  priorities.push({rank:2,kind:"hold",text:pack.hold});
+  const us=num(v.our_score),them=num(v.their_score);
+  let scoreLine="";
+  if(us!==null&&them!==null){const gap=Math.round(Math.abs(us-them)*100)/100;scoreLine=us>them?pack.lead(gap):us<them?pack.trail(gap):pack.even;priorities.push({rank:3,kind:"score",text:scoreLine});}
+  const pt=playerTopLine(state,locale);if(pt)priorities.push({rank:priorities.length+1,kind:"player",text:pack.player(pt)});
+  let confidence=45+(v.opponent?15:0)+(us!==null&&them!==null?15:0)+(state?.updated_at||state?.sync?.last_sync?10:0);
+  confidence=Math.max(25,Math.min(92,confidence));
+  const advice=[pack.day(day),task,scoreLine,pack.hold,pt?pack.player(pt):"",pack.confidence(confidence)].filter(Boolean).join(" ");
+  return {advice,confidence,priorities:priorities.slice(0,4),day,opponent:v.opponent||null,score_gap:us!==null&&them!==null?us-them:null,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-vs-ai-v1.6.1"};
+}
+function buildSeasonAdvice(state,locale){
+  const s=state?.season||{},pack=contextPack(locale).season,day=num(s.day),total=num(s.total_days),progress=num(s.progress_pct),resistance=num(s.resistance);
+  if(day===null&&!s.name&&!s.number&&!s.profession)return {advice:pack.missing,confidence:25,priorities:[],data_quality:"low"};
+  const priorities=[{rank:1,kind:"unlock",text:pack.unlock}];
+  if(resistance!==null)priorities.push({rank:2,kind:"resistance",text:pack.resist});
+  const late=day!==null&&total!==null&&total>0&&day/total>=.8;if(late)priorities.push({rank:priorities.length+1,kind:"late",text:pack.late});
+  const pt=playerTopLine(state,locale);if(pt)priorities.push({rank:priorities.length+1,kind:"player",text:pack.player(pt)});
+  let confidence=35+(day!==null?15:0)+(total!==null?10:0)+(s.profession?10:0)+(progress!==null?10:0)+(resistance!==null?10:0);
+  confidence=Math.max(25,Math.min(92,confidence));
+  const advice=[pack.head(day,total),progress!==null?pack.progress(progress):"",s.profession?pack.profession(s.profession):"",resistance!==null?pack.resistance(resistance):"",pack.unlock,resistance!==null?pack.resist:"",late?pack.late:"",pt?pack.player(pt):"",pack.confidence(confidence)].filter(Boolean).join(" ");
+  return {advice,confidence,priorities:priorities.slice(0,4),day,total_days:total,progress_pct:progress,profession:s.profession||null,resistance,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-season-ai-v1.6.1"};
+}
+function buildCrossDomain(state,locale,player){
+  const vs=buildVsAdvice(state,locale),season=buildSeasonAdvice(state,locale),top=player?.priorities?.[0]||null;
+  const conflict=top&&vs?.day&&[2,3,4,5,6].includes(vs.day)?"timing_check":null;
+  return {player_top:top?{kind:top.kind,target:top.target||null,title:top.title,reason:top.reason}:null,vs:{confidence:vs.confidence,top:vs.priorities?.[0]?.text||vs.advice},season:{confidence:season.confidence,top:season.priorities?.[0]?.text||season.advice},conflict,rule:"Do not spend a scarce resource solely for power if VS or Season timing gives materially better value."};
+}
 export default function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   const scope=String(req.body?.scope||"player"),s=req.body?.state||{},loc=String(req.body?.locale||"en-GB");
   if(scope==="player"){
     const analysis=buildPlayerAnalysis(s,loc);
     analysis.shop=buildShopAdvice(s,loc,analysis);
-    analysis.engine="warboost-pro-shop-v1.5.0";
+    analysis.cross_context=buildCrossDomain(s,loc,analysis);
+    analysis.engine="warboost-ai-core-v1.6.1";
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }
-  const p=basicPack(loc);let advice;
-  if(scope==="alliance")advice=p.alliance((s.alliance?.members||[]).length);else if(scope==="vs")advice=p.vs(s.vs||{});else advice=p.season(s.season||{});
-  return res.status(200).json({ok:true,engine:"warboost-rules-v1.5.0",advice});
+  if(scope==="alliance"){const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:"warboost-alliance-ai-v1.6.1",...a});}
+  if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
+  if(scope==="season")return res.status(200).json({ok:true,...buildSeasonAdvice(s,loc)});
+  return res.status(400).json({error:"unknown_scope"});
 }
