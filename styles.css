@@ -42,3 +42,11 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
 
 /* V1.4.9 — inline hero identity confirmation (mobile-safe) */
 .inlineHeroConfirm{margin-top:12px;padding:12px;border:1px solid #315078;background:#0a1424;border-radius:16px}.inlineHeroConfirmHead{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;margin-bottom:10px}.inlineHeroConfirmHead>div{min-width:0}.inlineHeroConfirmHead b{display:block;font-size:13px}.inlineHeroConfirmHead small{display:block;margin-top:4px;color:var(--muted);font-size:10px;line-height:1.35}.inlineHeroConfirmRows{display:grid;gap:8px}.inlineHeroConfirmRow{display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center}.inlineHeroSlot{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#16243c;font-weight:900}.inlineHeroSelect{padding:10px}.inlineHeroConfirm .notice{margin-top:9px}.inlineHeroSaveBtn{margin-top:10px}html[dir="rtl"] .inlineHeroConfirmHead{flex-direction:row-reverse}html[dir="rtl"] .inlineHeroConfirmRow{direction:rtl}
+
+/* V1.5.0 — publisher-safe shop catalogue status */
+.shopPills{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.catalogPartialPill{background:#3a2b0d!important;color:#ffe2a1!important;border-color:#785d1f!important}
+.catalogOfficialPill{background:#0b3024!important;color:#aef5d0!important;border-color:#1c6b4d!important}
+.shopAvailability{display:block;margin-top:5px;font-size:12px;color:var(--muted)}
+.shopCard.unknown{opacity:.82}
+.shopCard.strategy .shopVerdict{background:#172c43;color:#b9ddff;border-color:#315c84}

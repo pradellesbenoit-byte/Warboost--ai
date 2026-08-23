@@ -1,5 +1,13 @@
-# WarBoost V1.4.9 — Demo-safe / API-ready / Approval-first
+# WarBoost V1.5.0 — Publisher-safe Coach + Shop / API-ready / Approval-first
 
+## V1.5.0 — Publisher-safe Coach + Shop
+
+- Exclusive-weapon advice now uses the next confirmed efficiency breakpoint per hero: EX0–9 → EX10, EX10–19 → EX20, EX20–29 → EX30. WarBoost does not invent a breakpoint above EX30 without confirmed game data.
+- Shop Advisor explicitly distinguishes a **partial catalogue** from an official synchronized catalogue.
+- Without an approved Last War shop API, WarBoost ranks only offers visible in a user scan. When no shop is scanned, it shows **strategic categories to look for**, never pretending those items are currently available.
+- Unknown/unclassified visible offers are marked **Not analysed** rather than receiving a purchase recommendation.
+- Recommendations expose availability confidence: visible in scan, not verified, or officially synchronized.
+- This design is intended for a publisher demonstration: useful today, while clearly showing the added value of approved read-only API access.
 ## Nouveautés V1.4
 
 - Couche d’intégration Last War préparée pour un futur accès officiel en lecture seule.
@@ -339,7 +347,7 @@ Version : **WarBoost V1.2.0 — Global Hybrid Sync**
 - Un scan incomplet ne doit pas effacer un nom de héros déjà confirmé.
 
 
-## V1.4.9 — Demo-safe confirmation flow
+## V1.5.0 — Demo-safe confirmation flow
 
 - Scan values are saved without committing AI-proposed portrait identities.
 - Hero identities are staged and require explicit player confirmation before being written.

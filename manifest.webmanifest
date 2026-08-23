@@ -1,7 +1,7 @@
 {
   "name": "WarBoost",
   "short_name": "WarBoost",
-  "description": "WarBoost V1.4.9 — API-ready approval-first Last War companion, Adaptive PRO Shop Advisor, intelligent scans and multilingual alliance cloud",
+  "description": "WarBoost V1.5.0 — publisher-safe API-ready Last War companion with safe AI priorities, partial shop-catalog disclosure, intelligent scans and multilingual alliance cloud",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
