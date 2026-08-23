@@ -1,4 +1,4 @@
-# WarBoost V1.5.0 — Publisher-safe Coach + Shop / API-ready / Approval-first
+# WarBoost V1.6.1 — Publisher-safe Coach + Shop / API-ready / Approval-first
 
 ## V1.5.0 — Publisher-safe Coach + Shop
 
@@ -355,3 +355,11 @@ Version : **WarBoost V1.2.0 — Global Hybrid Sync**
 - A squad with missing identities exposes a direct “confirm hero names” action.
 - Gear summaries are rendered in the selected WarBoost language; provider prose no longer leaks into the player UI for the supported canonical gear format.
 - The official Last War connector remains disabled until authorization.
+
+
+## V1.6.1 — AI Core + Alliance Activity
+- Compact PRO presentation: first 3 priorities remain visible by default.
+- R4/R5 alliance activity estimation with active/watch/inactive counters.
+- Member activity score uses only available freshness/progression/VS/Season signals and never claims Last War login status without authorized data.
+- Optional member telemetry fields are preserved for future official read-only synchronization.
+- Full UI translations kept for FR, EN-GB, EN-US, ES, DE, JA, ZH and AR.

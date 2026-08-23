@@ -50,3 +50,7 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
 .shopAvailability{display:block;margin-top:5px;font-size:12px;color:var(--muted)}
 .shopCard.unknown{opacity:.82}
 .shopCard.strategy .shopVerdict{background:#172c43;color:#b9ddff;border-color:#315c84}
+
+
+/* V1.6.0 — compact AI core + R4/R5 activity */
+.activitySection{padding:11px 12px}.activitySummary{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.activitySummary>div{padding:8px 5px;border-radius:11px;background:#0c1523;border:1px solid #21324b;text-align:center}.activitySummary b{display:block;font-size:12px}.activitySummary small{display:block;margin-top:2px;color:var(--muted);font-size:9px}.activityNote{margin:7px 0 0;color:#8796ad;font-size:9px;line-height:1.35}.activityLine{display:block;margin-top:4px;color:#9eabc0;font-size:9px}.member{align-items:center}.proPriorityPanel .priorityCard:nth-child(n+4){display:none}.proPriorityPanel .priorityList.expanded .priorityCard{display:grid}
