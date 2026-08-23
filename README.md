@@ -1,4 +1,4 @@
-# WarBoost V1.4.5 — Demo-safe / API-ready / Approval-first
+# WarBoost V1.4.7 — Demo-safe / API-ready / Approval-first
 
 ## Nouveautés V1.4
 
@@ -339,7 +339,7 @@ Version : **WarBoost V1.2.0 — Global Hybrid Sync**
 - Un scan incomplet ne doit pas effacer un nom de héros déjà confirmé.
 
 
-## V1.4.5 — Demo-safe confirmation flow
+## V1.4.7 — Demo-safe confirmation flow
 
 - Scan values are saved without committing AI-proposed portrait identities.
 - Hero identities are staged and require explicit player confirmation before being written.
