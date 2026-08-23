@@ -1,6 +1,6 @@
 {
   "name": "warboost-v1-global",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "private": true,
   "description": "WarBoost V1.6.1 AI Core + Alliance Activity - approval-first Last War companion with correct EX breakpoints, partial-catalog disclosure, safe scans and alliance cloud",
   "type": "module",
