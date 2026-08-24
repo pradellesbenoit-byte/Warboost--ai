@@ -8,6 +8,7 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/publisher-ui.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -40,20 +41,8 @@
       </div>
     </section>
 
-    <section class="heroShowcase" aria-label="Hero demo portraits">
-      <div class="sectionTitle compactPublisherTitle"><h3 data-i18n="hero_showcase">Hero intelligence preview</h3><span class="pill" data-i18n="demo_art">Demo art</span></div>
-      <div class="heroPortraitRail">
-        <article class="heroPortrait"><img src="/kimberly.svg" alt="Kimberly demo portrait"><b>Kimberly</b></article>
-        <article class="heroPortrait"><img src="/murphy.svg" alt="Murphy demo portrait"><b>Murphy</b></article>
-        <article class="heroPortrait"><img src="/williams.svg" alt="Williams demo portrait"><b>Williams</b></article>
-        <article class="heroPortrait"><img src="/dva.svg" alt="DVA demo portrait"><b>DVA</b></article>
-        <article class="heroPortrait"><img src="/lucius.svg" alt="Lucius demo portrait"><b>Lucius</b></article>
-        <article class="heroPortrait"><img src="/carlie.svg" alt="Carlie demo portrait"><b>Carlie</b></article>
-        <article class="heroPortrait"><img src="/morrison.svg" alt="Morrison demo portrait"><b>Morrison</b></article>
-        <article class="heroPortrait"><img src="/skyler.svg" alt="Skyler demo portrait"><b>Skyler</b></article>
-      </div>
-      <p class="demoArtNote" data-i18n="demo_art_note">Portraits are original demonstration placeholders and can be replaced by approved official assets after authorization.</p>
-    </section>
+    <!-- Hero portraits are injected contextually by publisher-ui.js -->
+
 
     <section class="serverStrip" aria-live="polite">
       <div class="serverTime">🕐 <b id="serverClock">--:--:--</b> · <span id="serverDay">WarBoost</span></div>
@@ -157,5 +146,6 @@
   </section>
 
   <script type="module" src="/app.js"></script>
+  <script type="module" src="/publisher-ui.js"></script>
 </body>
 </html>
