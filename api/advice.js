@@ -1,3 +1,4 @@
+import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function metric(v){
   if(v===null||v===undefined||v==="")return null;
@@ -125,7 +126,7 @@ function impactLabel(score,lang){const x=Math.round(score);const pack={fr:["Mod�
 function roiLabel(score,lang){const x=Math.round(score);const pack={fr:["Moyen","Bon","Excellent"],en:["Average","Good","Excellent"],es:["Medio","Bueno","Excelente"],de:["Mittel","Gut","Sehr gut"],ja:["普通","良い","非常に良い"],zh:["一般","良好","优秀"],ar:["متوسط","جيد","ممتاز"]}[lang]||["Average","Good","Excellent"];return x>=86?pack[2]:x>=72?pack[1]:pack[0]}
 function timingAdjustment(kind,state){const day=Number(state?.vs?.day);let x=0;if(day===4&&["level","stars","exclusive"].includes(kind))x+=7;if(day===1&&kind==="drone")x+=7;if(day===2&&kind==="gear")x+=3;const sd=num(state?.season?.day),st=num(state?.season?.total_days);if(sd!==null&&st!==null&&st>0&&sd/st>=.8)x-=kind==="scan"?0:2;return x}
 function heroImportance(h,heroes,type){const p=num(h?.power),known=heroes.map(x=>num(x.h?.power)).filter(x=>x!==null);let w=1;if(p!==null&&known.length){const mx=Math.max(...known),mn=Math.min(...known);w+=mx===mn?.06:((p-mn)/(mx-mn))*.12}const n=cleanName(h?.name);if(type&&HERO_TYPES[n]===type)w+=.05;return w}
-function candidate(kind,title,reason,action,buyFree,buyPaid,target,impact,cost,state,lang,meta={}){const timing=timingAdjustment(kind,state),roi=Math.max(1,Math.min(100,Math.round((impact/(Math.max(.35,cost)))*.78+timing))),score=Math.max(1,Math.min(100,Math.round(impact*.66+roi*.34+timing)));return {kind,title,reason,action,buy_free:buyFree,buy_paid:buyPaid,target,severity:score,impact_score:Math.round(impact),impact_label:impactLabel(impact,lang),roi_score:roi,roi_label:roiLabel(roi,lang),timing_adjustment:timing,...meta}}
+function candidate(kind,title,reason,action,buyFree,buyPaid,target,impact,cost,state,lang,meta={}){const timing=timingAdjustment(kind,state),intel=metaAdjustment({kind,target,...meta},state,lang),roi=Math.max(1,Math.min(100,Math.round((impact/(Math.max(.35,cost)))*.78+timing+intel.bonus*.35))),score=Math.max(1,Math.min(100,Math.round(impact*.66+roi*.34+timing+intel.bonus)));return {kind,title,reason:[reason,...intel.reasons].filter(Boolean).join(' '),action,buy_free:buyFree,buy_paid:buyPaid,target,severity:score,impact_score:Math.round(impact),impact_label:impactLabel(impact,lang),roi_score:roi,roi_label:roiLabel(roi,lang),timing_adjustment:timing,meta_adjustment:intel.bonus,evidence_ids:intel.evidence,...meta}}
 function buildPlayerAnalysis(state,locale){
   const lang=localePack(locale),p=T[lang],loc=String(locale||"en-GB");
   const squads=Array.from({length:4},(_,i)=>state?.squads?.[i]||{id:i+1,heroes:[]});
@@ -159,7 +160,7 @@ function buildPlayerAnalysis(state,locale){
   const comparison=squads.map((s,i)=>{const power=num(s.power),configuredHere=squadConfigured(s),optional=i===3&&!configuredHere,isMain=i===main.i,ratio=mainPower&&power!==null?power/mainPower:null,dataQ=Math.round((configuredHere?20:0)+(power!==null?20:0)+heroDetailCoverage(s)*.6);let status=optional?optionalSquadStatus(lang):p.squadStatusMissing;if(configuredHere)status=isMain?p.squadStatusMain:(ratio!==null&&ratio>=.75?p.squadStatusReady:p.squadStatusLow);return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional};});
   let conf=dataConfidence(squads,state?.drone||{});if(coverage<60)conf=Math.min(conf,82);if(weaponList.length)conf=Math.min(96,conf+3);
   const top=dedup[0],summary=top?p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",top.reason):p.main(mainName,mainPower!==null?fmt(mainPower,loc):"—");
-  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,candidates_evaluated:candidates.length,decision_model:"all-heroes marginal ROI + VS/Season timing",engine:"warboost-ai-roi-v1.6.2"};
+  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,candidates_evaluated:candidates.length,decision_model:"all-heroes marginal ROI + VS/Season timing + dated multi-source meta evidence",meta_intelligence:metaContext(state),engine:"warboost-ai-roi-v1.6.3"};
 }
 
 // ===== V1.4 · Last War Shop Advisor =====
@@ -277,7 +278,7 @@ function baseOfferScore(cat,needs){
   if(cat==="cosmetic")return 16;
   return 45;
 }
-function scoreVisibleOffer(o,needs,state){const cat=itemCategory(o?.item_name,o?.category),store=storeKind(o?.store_type||o?.store||""),shop=state?.shop||{},a=adaptiveText(state?._locale),factors=[];let score=baseOfferScore(cat,needs);
+function scoreVisibleOffer(o,needs,state){const cat=itemCategory(o?.item_name,o?.category),store=storeKind(o?.store_type||o?.store||""),shop=state?.shop||{},a=adaptiveText(state?._locale),factors=[];let score=baseOfferScore(cat,needs);const mi=metaShopAdjustment(cat,needs,state);score+=mi.bonus;if(mi.bonus)factors.push(`Multi-source meta +${mi.bonus}`);
   if(store==="honor"){if(cat==="blueprint")score=Math.max(score,99);else if(cat==="hero"&&!needs.needStars)score=Math.min(score,34);else if(cat!=="blueprint")score-=6;}
   if(store==="campaign"){if(cat==="exclusive"&&needs.needExclusive)score=Math.max(score,98);if(cat==="campaign_chest")score=Math.max(score,88);if(cat==="drone")score=Math.max(score,82);}
   if(store==="alliance"){if(cat==="hero"&&needs.needStars)score=Math.max(score,94);if(cat==="drone")score=Math.max(score,84);}
@@ -304,7 +305,7 @@ function scoreVisibleOffer(o,needs,state){const cat=itemCategory(o?.item_name,o?
 function verdict(score,p){return score>=85?{key:"buy_now",label:p.buy}:score>=55?{key:"consider",label:p.consider}:{key:"skip",label:p.skip};}
 function offerReason(cat,needs,p){const exTarget=needs.exTargets.slice(0,2).map(exTargetLabel).filter(Boolean).join(" / "),starTarget=needs.starTargets.slice(0,2).map(x=>x.name).join(" / ");if(cat==="blueprint")return p.reasonBlueprint;if(cat==="exclusive")return p.reasonExclusive(exTarget);if(cat==="hero")return p.reasonHero(starTarget);if(cat==="drone")return p.reasonDrone;if(cat==="stamina")return p.reasonStamina;if(["speed","speed_build","speed_research","speed_train","speed_heal"].includes(cat))return p.reasonSpeed;if(cat==="shield")return p.reasonShield;if(cat==="resource"||cat==="cosmetic")return p.reasonResource;return p.reasonVisible;}
 function priceLabel(o,locale){const price=num(o?.price),currency=cleanName(o?.currency);if(price===null)return currency||"";return `${price.toLocaleString(String(locale||"en-GB"),{maximumFractionDigits:2})}${currency?` ${currency}`:""}`;}
-function genericShopRecommendations(state,locale,needs){const p=shopText(locale),st=shopStores(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),out=[];const add=(item,store,cat,score,reason,target="")=>{out.push({item,store:`${store} · ${safe.notVerified}`,score,score_label:a.score(score),reason,target,verdict:safe.lookFor,verdict_key:"strategy",source:"strategy",availability_label:safe.notVerified});};
+function genericShopRecommendations(state,locale,needs){const p=shopText(locale),st=shopStores(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),out=[];const add=(item,store,cat,score,reason,target="")=>{const mi=metaShopAdjustment(cat,needs,state);score=Math.max(1,Math.min(100,score+mi.bonus));out.push({item,store:`${store} · ${safe.notVerified}`,score,score_label:a.score(score),reason,target,verdict:safe.lookFor,verdict_key:"strategy",source:"strategy",availability_label:safe.notVerified,evidence_ids:mi.evidence});};
   add(p.honorBp,st.honor,"blueprint",Math.round(84+needs.gearUrgency*14),p.reasonBlueprint,safe.mainGear);
   if(needs.needExclusive){const t=needs.exTargets.slice(0,3).map(exTargetLabel).filter(Boolean).join(" / ");add(p.campaignEx,st.campaign,"exclusive",98,p.reasonExclusive(t),t);add(p.paidExclusive,st.paid,"exclusive",82,p.reasonPaid(`EX: ${t}`),t);}
   if(needs.needStars){const t=needs.starTargets.slice(0,3).map(x=>x.name).join(" / ");add(p.allianceHero,st.allianceCampaign,"hero",94,p.reasonHero(t),t);}
@@ -321,7 +322,7 @@ function buildShopAdvice(state,locale,analysis){const p=shopText(locale),a=adapt
   else {recommendations=genericShopRecommendations(state,locale,needs);confidence=Math.min(officialCatalog?92:82,confidence);}
   const balance=num(shop?.currency_balance),currency=cleanName(shop?.currency),budgetSummary=(balance!==null&&isDiamondCurrency(currency||store))?` ${a.reserve(10000)}`:"";
   let summary;if(officialCatalog)summary=offers.length?safe.officialSummary(store,offers.length):safe.officialEmpty;else summary=offers.length?safe.partialScanSummary(store,offers.length):safe.partialRulesSummary;summary+=budgetSummary;
-  return {summary,confidence,confidence_label:`${T[localePack(locale)]?.confidence?T[localePack(locale)].confidence(confidence):`Confidence ${confidence}%`}`,scan_based:offers.length>0,catalog_status:officialCatalog?"official":"partial",catalog_complete:officialCatalog,catalog_label:officialCatalog?safe.officialLabel:safe.partialLabel,store_type:store,updated_at:shop?.updated_at||null,recommendations,knowledge_date:"2026-08-23",method:officialCatalog?"official-shop-catalog + adaptive-account-rules + diamond-reserve + VS/season-context":offers.length?"visible-shop-scan(partial) + adaptive-account-rules + diamond-reserve + VS/season-context":"strategic-categories(partial) + adaptive-account-rules + diamond-reserve + VS/season-context",budget:{currency:currency||null,balance,reserve_diamonds:10000},needs:{exclusive_urgency:Math.round(needs.exclusiveUrgency*100),stars_urgency:Math.round(needs.starsUrgency*100),gear_urgency:Math.round(needs.gearUrgency*100),drone_urgency:Math.round(needs.droneUrgency*100)},limitations:officialCatalog?[]:["Full Last War shop catalogue unavailable without approved official access","Only scanned visible offers are treated as currently observed","Unknown item types receive no purchase recommendation"],sources:[officialCatalog?"Official Last War read-only catalogue":"User-provided Last War shop scans","WarBoost saved account state"]};
+  return {summary,confidence,confidence_label:`${T[localePack(locale)]?.confidence?T[localePack(locale)].confidence(confidence):`Confidence ${confidence}%`}`,scan_based:offers.length>0,catalog_status:officialCatalog?"official":"partial",catalog_complete:officialCatalog,catalog_label:officialCatalog?safe.officialLabel:safe.partialLabel,store_type:store,updated_at:shop?.updated_at||null,recommendations,knowledge_date:"2026-08-24",meta_intelligence:metaContext(state),method:officialCatalog?"official-shop-catalog + adaptive-account-rules + diamond-reserve + VS/season-context":offers.length?"visible-shop-scan(partial) + adaptive-account-rules + diamond-reserve + VS/season-context":"strategic-categories(partial) + adaptive-account-rules + diamond-reserve + VS/season-context",budget:{currency:currency||null,balance,reserve_diamonds:10000},needs:{exclusive_urgency:Math.round(needs.exclusiveUrgency*100),stars_urgency:Math.round(needs.starsUrgency*100),gear_urgency:Math.round(needs.gearUrgency*100),drone_urgency:Math.round(needs.droneUrgency*100)},limitations:officialCatalog?[]:["Full Last War shop catalogue unavailable without approved official access","Only scanned visible offers are treated as currently observed","Unknown item types receive no purchase recommendation"],sources:[officialCatalog?"Official Last War read-only catalogue":"User-provided Last War shop scans","WarBoost saved account state"]};
 }
 
 
@@ -405,7 +406,7 @@ function buildVsAdvice(state,locale){
   let confidence=45+(v.opponent?15:0)+(us!==null&&them!==null?15:0)+(state?.updated_at||state?.sync?.last_sync?10:0);
   confidence=Math.max(25,Math.min(92,confidence));
   const advice=[pack.day(day),task,scoreLine,pack.hold,pt?pack.player(pt):"",pack.confidence(confidence)].filter(Boolean).join(" ");
-  return {advice,confidence,priorities:priorities.slice(0,4),day,opponent:v.opponent||null,score_gap:us!==null&&them!==null?us-them:null,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-vs-ai-v1.6.2"};
+  return {advice,confidence,priorities:priorities.slice(0,4),day,opponent:v.opponent||null,score_gap:us!==null&&them!==null?us-them:null,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-vs-ai-v1.6.3"};
 }
 function buildSeasonAdvice(state,locale){
   const s=state?.season||{},pack=contextPack(locale).season,day=num(s.day),total=num(s.total_days),progress=num(s.progress_pct),resistance=num(s.resistance);
@@ -417,7 +418,7 @@ function buildSeasonAdvice(state,locale){
   let confidence=35+(day!==null?15:0)+(total!==null?10:0)+(s.profession?10:0)+(progress!==null?10:0)+(resistance!==null?10:0);
   confidence=Math.max(25,Math.min(92,confidence));
   const advice=[pack.head(day,total),progress!==null?pack.progress(progress):"",s.profession?pack.profession(s.profession):"",resistance!==null?pack.resistance(resistance):"",pack.unlock,resistance!==null?pack.resist:"",late?pack.late:"",pt?pack.player(pt):"",pack.confidence(confidence)].filter(Boolean).join(" ");
-  return {advice,confidence,priorities:priorities.slice(0,4),day,total_days:total,progress_pct:progress,profession:s.profession||null,resistance,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-season-ai-v1.6.2"};
+  return {advice,confidence,priorities:priorities.slice(0,4),day,total_days:total,progress_pct:progress,profession:s.profession||null,resistance,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-season-ai-v1.6.3"};
 }
 function buildCrossDomain(state,locale,player){
   const vs=buildVsAdvice(state,locale),season=buildSeasonAdvice(state,locale),top=player?.priorities?.[0]||null;
@@ -431,10 +432,10 @@ export default function handler(req,res){
     const analysis=buildPlayerAnalysis(s,loc);
     analysis.shop=buildShopAdvice(s,loc,analysis);
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
-    analysis.engine="warboost-ai-core-v1.6.2";
+    analysis.engine="warboost-ai-core-v1.6.3";
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }
-  if(scope==="alliance"){const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:"warboost-alliance-ai-v1.6.2",...a});}
+  if(scope==="alliance"){const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:"warboost-alliance-ai-v1.6.3",...a});}
   if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
   if(scope==="season")return res.status(200).json({ok:true,...buildSeasonAdvice(s,loc)});
   return res.status(400).json({error:"unknown_scope"});
