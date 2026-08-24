@@ -1,3 +1,5 @@
+# WarBoost V1.6.3 — AI Multi-source Meta + Shop
+
 # WarBoost V1.6.1 — Publisher-safe Coach + Shop / API-ready / Approval-first
 
 ## V1.5.0 — Publisher-safe Coach + Shop
