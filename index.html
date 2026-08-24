@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2 — Publisher Edition</title>
+  <title>WarBoost V2.2 — Smart Diagnostic</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -16,7 +16,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V2 Publisher Edition · official integration pending</small></div>
+        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V2.2 Smart Diagnostic · official integration pending</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -83,7 +83,7 @@
       <div class="sectionTitle"><h3 data-i18n="pro_diagnostic">Diagnostic PRO</h3><span id="proConfidence" class="pill">—</span></div>
       <p id="proPrioritySummary" class="heroText" style="margin:0 0 10px"></p>
       <div class="proSubTitle" data-i18n="pro_top_actions">Priorités d'action</div>
-      <div id="proPriorityList" class="priorityList"></div>
+      <div id="proPriorityList" class="priorityList"></div><div id="proAvoidList" class="avoidList"></div>
       <details class="compactDetails"><summary data-i18n="pro_squad_compare">Comparaison des escouades</summary><div id="proSquadCompare" class="squadCompare"></div></details>
       <details class="compactDetails"><summary data-i18n="pro_shop_title">Boutique Last War · Conseiller IA</summary><div class="proShopHeader"><div><div class="proSubTitle" data-i18n="pro_shop_title">Boutique Last War · Conseiller IA</div><p id="proShopSummary" class="shopSummary" data-i18n="shop_summary_default">Catalogue partiel : WarBoost conseille uniquement à partir des offres visibles ou des données officiellement autorisées.</p></div><div class="shopPills"><span id="shopCatalogPill" class="pill catalogPartialPill">Catalogue partiel</span><span id="shopConfidence" class="pill">—</span></div></div>
       <div id="proShopList" class="shopList"></div>
