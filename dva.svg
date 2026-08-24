@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="300" viewBox="0 0 240 300">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d05a9f"/><stop offset="1" stop-color="#ff9fd3"/></linearGradient></defs>
+    <rect width="240" height="300" rx="28" fill="#0b1220"/>
+    <circle cx="120" cy="110" r="80" fill="url(#g)" opacity=".95"/>
+    <circle cx="120" cy="96" r="46" fill="#e9eef6" opacity=".94"/>
+    <path d="M54 226c11-57 121-57 132 0v38H54z" fill="#d7e0eb" opacity=".95"/>
+    <circle cx="120" cy="96" r="33" fill="#162235"/>
+    <text x="120" y="108" text-anchor="middle" font-size="44" font-family="Arial" font-weight="700" fill="#fff">D</text>
+    <text x="120" y="42" text-anchor="middle" font-size="26" font-family="Arial" fill="#fff">✈</text>
+    <rect x="18" y="238" width="204" height="46" rx="16" fill="#09101d" stroke="#ff9fd3" stroke-opacity=".5"/>
+    <text x="120" y="260" text-anchor="middle" font-size="18" font-family="Arial" font-weight="700" fill="#fff">DVA</text>
+    <text x="120" y="278" text-anchor="middle" font-size="10" font-family="Arial" fill="#b9c6d8">DEMO ART · NOT OFFICIAL</text>
+    </svg>
