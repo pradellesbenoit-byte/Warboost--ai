@@ -123,10 +123,30 @@ function dataConfidence(squads,drone){
 }
 function priority(kind,title,reason,action,buyFree,buyPaid,severity,target){return {kind,title,reason,action,buy_free:buyFree,buy_paid:buyPaid,severity:Math.round(severity),target}}
 function impactLabel(score,lang){const x=Math.round(score);const pack={fr:["Modéré","Élevé","Très élevé"],en:["Moderate","High","Very high"],es:["Moderado","Alto","Muy alto"],de:["Mittel","Hoch","Sehr hoch"],ja:["中","高","非常に高い"],zh:["中","高","很高"],ar:["متوسط","مرتفع","مرتفع جداً"]}[lang]||["Moderate","High","Very high"];return x>=88?pack[2]:x>=74?pack[1]:pack[0]}
-function roiLabel(score,lang){const x=Math.round(score);const pack={fr:["Moyen","Bon","Excellent"],en:["Average","Good","Excellent"],es:["Medio","Bueno","Excelente"],de:["Mittel","Gut","Sehr gut"],ja:["普通","良い","非常に良い"],zh:["一般","良好","优秀"],ar:["متوسط","جيد","ممتاز"]}[lang]||["Average","Good","Excellent"];return x>=86?pack[2]:x>=72?pack[1]:pack[0]}
+function roiLabel(score,lang){const x=Math.round(score);const pack={fr:["Moyenne","Bonne","Excellente"],en:["Average","Good","Excellent"],es:["Media","Buena","Excelente"],de:["Mittel","Gut","Sehr gut"],ja:["普通","良い","非常に良い"],zh:["一般","良好","优秀"],ar:["متوسطة","جيدة","ممتازة"]}[lang]||["Average","Good","Excellent"];return x>=86?pack[2]:x>=72?pack[1]:pack[0]}
 function timingAdjustment(kind,state){const day=Number(state?.vs?.day);let x=0;if(day===4&&["level","stars","exclusive"].includes(kind))x+=7;if(day===1&&kind==="drone")x+=7;if(day===2&&kind==="gear")x+=3;const sd=num(state?.season?.day),st=num(state?.season?.total_days);if(sd!==null&&st!==null&&st>0&&sd/st>=.8)x-=kind==="scan"?0:2;return x}
 function heroImportance(h,heroes,type){const p=num(h?.power),known=heroes.map(x=>num(x.h?.power)).filter(x=>x!==null);let w=1;if(p!==null&&known.length){const mx=Math.max(...known),mn=Math.min(...known);w+=mx===mn?.06:((p-mn)/(mx-mn))*.12}const n=cleanName(h?.name);if(type&&HERO_TYPES[n]===type)w+=.05;return w}
-function candidate(kind,title,reason,action,buyFree,buyPaid,target,impact,cost,state,lang,meta={}){const timing=timingAdjustment(kind,state),intel=metaAdjustment({kind,target,...meta},state,lang),roi=Math.max(1,Math.min(100,Math.round((impact/(Math.max(.35,cost)))*.78+timing+intel.bonus*.35))),score=Math.max(1,Math.min(100,Math.round(impact*.66+roi*.34+timing+intel.bonus)));return {kind,title,reason:[reason,...intel.reasons].filter(Boolean).join(' '),action,buy_free:buyFree,buy_paid:buyPaid,target,severity:score,impact_score:Math.round(impact),impact_label:impactLabel(impact,lang),roi_score:roi,roi_label:roiLabel(roi,lang),timing_adjustment:timing,meta_adjustment:intel.bonus,evidence_ids:intel.evidence,...meta}}
+function candidate(kind,title,reason,action,buyFree,buyPaid,target,impact,cost,state,lang,meta={}){const timing=timingAdjustment(kind,state),intel=metaAdjustment({kind,target,...meta},state,lang),roi=Math.max(1,Math.min(100,Math.round((impact/(Math.max(.35,cost)))*.78+timing+intel.bonus*.35))),score=Math.max(1,Math.min(100,Math.round(impact*.66+roi*.34+timing+intel.bonus)));return {kind,title,reason:[reason,...intel.reasons].filter(Boolean).join(' '),action,buy_free:buyFree,buy_paid:buyPaid,target,severity:score,impact_score:Math.round(impact),impact_label:impactLabel(impact,lang),roi_score:roi,roi_label:roiLabel(roi,lang),resource_efficiency_score:roi,resource_efficiency_label:roiLabel(roi,lang),timing_adjustment:timing,meta_adjustment:intel.bonus,evidence_ids:intel.evidence,...meta}}
+
+function avoidNowText(lang,mainName,topKinds){
+  const packs={
+    fr:[
+      `N'investis pas dans les escouades secondaires tant que les 3 priorités de ${mainName} ne sont pas sécurisées.`,
+      `Évite les packs de ressources génériques : privilégie uniquement un achat qui résout un goulot détecté.`,
+      `Ne dépense pas une ressource rare juste pour gagner de la puissance si le jour VS ou la Saison donne un meilleur timing.`
+    ],
+    en:[
+      `Do not invest in secondary squads until the top priorities for ${mainName} are secured.`,
+      `Avoid generic resource packs: only buy something that directly fixes a detected bottleneck.`,
+      `Do not spend a scarce resource just for power if VS or Season timing gives better value.`
+    ]
+  };
+  const base=packs[lang]||packs.en;
+  const out=[...base];
+  if(topKinds.includes("exclusive")) out.push(lang==="fr"?"Ne disperse pas les fragments d'arme exclusive sur plusieurs héros à la fois.":"Do not split exclusive-weapon shards across several heroes at once.");
+  return out.slice(0,3);
+}
+
 function buildPlayerAnalysis(state,locale){
   const lang=localePack(locale),p=T[lang],loc=String(locale||"en-GB");
   const squads=Array.from({length:4},(_,i)=>state?.squads?.[i]||{id:i+1,heroes:[]});
@@ -156,11 +176,31 @@ function buildPlayerAnalysis(state,locale){
   }
   const missing=squads.map((s,i)=>i<3&&!squadConfigured(s)?squadName(s,i,lang):null).filter(Boolean);if(missing.length)candidates.push(candidate("scan",p.titles.scan,p.scanMissing(missing.join(", ")),p.actionScan,p.freeNone,p.paidNone,missing.join(", "),70,.3,state,lang));
   candidates.sort((a,b)=>b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
-  const dedup=[],seen=new Set();for(const x of candidates){const key=`${x.kind}:${x.target}`;if(!seen.has(key)){seen.add(key);dedup.push(x)}if(dedup.length>=3)break}dedup.forEach((x,i)=>x.rank=i+1);
-  const comparison=squads.map((s,i)=>{const power=num(s.power),configuredHere=squadConfigured(s),optional=i===3&&!configuredHere,isMain=i===main.i,ratio=mainPower&&power!==null?power/mainPower:null,dataQ=Math.round((configuredHere?20:0)+(power!==null?20:0)+heroDetailCoverage(s)*.6);let status=optional?optionalSquadStatus(lang):p.squadStatusMissing;if(configuredHere)status=isMain?p.squadStatusMain:(ratio!==null&&ratio>=.75?p.squadStatusReady:p.squadStatusLow);return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional};});
-  let conf=dataConfidence(squads,state?.drone||{});if(coverage<60)conf=Math.min(conf,82);if(weaponList.length)conf=Math.min(96,conf+3);
-  const top=dedup[0],summary=top?p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",top.reason):p.main(mainName,mainPower!==null?fmt(mainPower,loc):"—");
-  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:dedup,squads:comparison,focus_squad:main.i+1,candidates_evaluated:candidates.length,decision_model:"all-heroes marginal ROI + VS/Season timing + dated multi-source meta evidence",meta_intelligence:metaContext(state),engine:"warboost-ai-roi-v1.6.3"};
+  // V2.2: compare bottleneck families first. This prevents three recommendations
+  // from being the same category when another account bottleneck is nearly as important.
+  const unique=[],seenKind=new Set(),seenKey=new Set();
+  for(const x of candidates){
+    const key=`${x.kind}:${x.target}`;
+    if(seenKey.has(key)||seenKind.has(x.kind))continue;
+    seenKey.add(key);seenKind.add(x.kind);unique.push(x);
+    if(unique.length>=3)break;
+  }
+  if(unique.length<3){
+    for(const x of candidates){
+      const key=`${x.kind}:${x.target}`;
+      if(seenKey.has(key))continue;
+      seenKey.add(key);unique.push(x);
+      if(unique.length>=3)break;
+    }
+  }
+  unique.forEach((x,i)=>x.rank=i+1);
+  const comparison=squads.map((s,i)=>{const power=num(s.power),configuredHere=squadConfigured(s),optional=i===3&&!configuredHere,isMain=i===main.i,ratio=mainPower&&power!==null?power/mainPower:null,dataQ=Math.round((configuredHere?20:0)+(power!==null?20:0)+heroDetailCoverage(s)*.6),detected=(s?.heroes||[]).filter(heroConfigured).length,complete=detected>=5;let status=optional?optionalSquadStatus(lang):p.squadStatusMissing;if(configuredHere)status=isMain?p.squadStatusMain:(ratio!==null&&ratio>=.75?p.squadStatusReady:p.squadStatusLow);return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional,heroes_detected:detected,composition_complete:complete};});
+  const mainHeroesDetected=heroes.length,compositionComplete=mainHeroesDetected>=5;
+  let conf=dataConfidence(squads,state?.drone||{});if(coverage<60)conf=Math.min(conf,82);if(!compositionComplete)conf=Math.min(conf,72);if(weaponList.length)conf=Math.min(96,conf+3);
+  const top=unique[0];
+  const incompleteNote=!compositionComplete?(lang==="fr"?` Composition incomplète : ${mainHeroesDetected}/5 héros détectés, les recommandations restent prudentes.`:` Incomplete composition: ${mainHeroesDetected}/5 heroes detected; recommendations remain cautious.`):"";
+  const summary=(top?p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",top.reason):p.main(mainName,mainPower!==null?fmt(mainPower,loc):"—"))+incompleteNote;
+  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,squads:comparison,focus_squad:main.i+1,candidates_evaluated:candidates.length,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"cross-bottleneck marginal value + resource efficiency + VS/Season timing + dated multi-source evidence",meta_intelligence:metaContext(state),engine:"warboost-ai-smart-v2.2"};
 }
 
 // ===== V1.4 · Last War Shop Advisor =====
@@ -432,7 +472,7 @@ export default function handler(req,res){
     const analysis=buildPlayerAnalysis(s,loc);
     analysis.shop=buildShopAdvice(s,loc,analysis);
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
-    analysis.engine="warboost-ai-core-v1.6.3";
+    analysis.engine="warboost-ai-core-v2.2";
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }
   if(scope==="alliance"){const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:"warboost-alliance-ai-v1.6.3",...a});}
