@@ -1,3 +1,17 @@
+# WarBoost V2 — Publisher Edition
+
+This branch/demo is intended for presentation to Last War / FirstFun. It demonstrates WarBoost as an **AI companion**, not a gameplay automation tool.
+
+## Publisher principles
+
+- **READ** — only player-consented, scanned, alliance-cloud, public or officially authorized data.
+- **UNDERSTAND** — AI + dated meta evidence + ROI + VS/Season context.
+- **RECOMMEND** — clear player/R4/R5 decisions; WarBoost never executes actions in Last War.
+- Official Last War account integration is explicitly marked **pending authorization**.
+- Hero portraits included in this demo are original placeholder artwork and are **not official Last War assets**.
+
+---
+
 # WarBoost V1.6.3 — AI Multi-source Meta + Shop
 
 # WarBoost V1.6.1 — Publisher-safe Coach + Shop / API-ready / Approval-first

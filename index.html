@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V1.5.0 Demo-safe API-ready</title>
+  <title>WarBoost V2 — Publisher Edition</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -15,11 +15,45 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V1.5.0 · API-ready · accès officiel en attente</small></div>
+        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V2 Publisher Edition · official integration pending</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
     </header>
+
+
+    <section class="publisherStrip" aria-label="Publisher demo status">
+      <div><b>WarBoost V2</b><span data-i18n="publisher_edition">Publisher Edition</span></div>
+      <span class="publisherPill" data-i18n="official_pending">Official integration pending</span>
+    </section>
+
+    <section class="publisherVision">
+      <div class="visionCopy">
+        <span class="eyebrow" data-i18n="publisher_demo">Publisher Demo</span>
+        <h2 data-i18n="publisher_value">One AI companion for Player, Alliance, VS and Season</h2>
+        <p data-i18n="publisher_value_desc">WarBoost turns consented account data into clear recommendations without automating gameplay.</p>
+      </div>
+      <div class="trustMiniGrid">
+        <div><b data-i18n="read_label">READ</b><small data-i18n="read_desc">Consented data</small></div>
+        <div><b data-i18n="understand_label">UNDERSTAND</b><small data-i18n="understand_desc">AI + meta + ROI</small></div>
+        <div><b data-i18n="recommend_label">RECOMMEND</b><small data-i18n="recommend_desc">No gameplay automation</small></div>
+      </div>
+    </section>
+
+    <section class="heroShowcase" aria-label="Hero demo portraits">
+      <div class="sectionTitle compactPublisherTitle"><h3 data-i18n="hero_showcase">Hero intelligence preview</h3><span class="pill" data-i18n="demo_art">Demo art</span></div>
+      <div class="heroPortraitRail">
+        <article class="heroPortrait"><img src="/assets/heroes/kimberly.svg" alt="Kimberly demo portrait"><b>Kimberly</b></article>
+        <article class="heroPortrait"><img src="/assets/heroes/murphy.svg" alt="Murphy demo portrait"><b>Murphy</b></article>
+        <article class="heroPortrait"><img src="/assets/heroes/williams.svg" alt="Williams demo portrait"><b>Williams</b></article>
+        <article class="heroPortrait"><img src="/assets/heroes/dva.svg" alt="DVA demo portrait"><b>DVA</b></article>
+        <article class="heroPortrait"><img src="/assets/heroes/lucius.svg" alt="Lucius demo portrait"><b>Lucius</b></article>
+        <article class="heroPortrait"><img src="/assets/heroes/carlie.svg" alt="Carlie demo portrait"><b>Carlie</b></article>
+        <article class="heroPortrait"><img src="/assets/heroes/morrison.svg" alt="Morrison demo portrait"><b>Morrison</b></article>
+        <article class="heroPortrait"><img src="/assets/heroes/skyler.svg" alt="Skyler demo portrait"><b>Skyler</b></article>
+      </div>
+      <p class="demoArtNote" data-i18n="demo_art_note">Portraits are original demonstration placeholders and can be replaced by approved official assets after authorization.</p>
+    </section>
 
     <section class="serverStrip" aria-live="polite">
       <div class="serverTime">🕐 <b id="serverClock">--:--:--</b> · <span id="serverDay">WarBoost</span></div>
@@ -39,7 +73,7 @@
       <button class="moduleCard" data-open="vs"><span class="moduleMeta" id="vsMeta">—</span><span class="moduleIcon">⚔️</span><h2 data-i18n="vs">VS</h2><p data-i18n="vs_desc">Adversaire de la semaine, jour actuel et plan.</p></button>
       <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
     </section>
-    <div class="footerNote" data-i18n="footer">WarBoost Scan + cloud alliance aujourd’hui ; intégration officielle Last War prête à être branchée après autorisation.</div>
+    <div class="footerNote publisherFooter"><b data-i18n="publisher_footer_title">Built for an authorized companion model.</b><span data-i18n="footer">WarBoost Scan + alliance cloud today; official Last War integration can be connected after authorization.</span></div>
   </main>
 
   <div id="backdrop" class="drawerBackdrop"></div>
