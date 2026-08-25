@@ -70,3 +70,9 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
 
 /* V2.3.4 · Diagnostic PRO reliability */
 .decisionTitle{min-width:0;flex:1}.decisionTitle>b{display:block;line-height:1.22}.priorityProgress{display:inline-flex;margin-top:4px;padding:3px 6px;border-radius:999px;border:1px solid #315a76;background:#0a1d2b;color:#bcecff;font-size:9px;font-weight:850;letter-spacing:.15px}
+
+/* ===== V2.3.5 • Diagnostic PRO single-portrait reliability ===== */
+.proPriorityPanel .priorityCard.compactDecision{grid-template-columns:34px 48px minmax(0,1fr);align-items:start}
+.priorityHeroSlot{width:48px;min-width:48px;display:flex;align-items:flex-start;justify-content:center}
+.priorityHeroSlot .wbHeroAvatar{width:44px;height:44px;border-radius:13px;object-fit:cover}
+@media(max-width:380px){.proPriorityPanel .priorityCard.compactDecision{grid-template-columns:32px 42px minmax(0,1fr);gap:7px}.priorityHeroSlot{width:42px;min-width:42px}.priorityHeroSlot .wbHeroAvatar{width:40px;height:40px}}

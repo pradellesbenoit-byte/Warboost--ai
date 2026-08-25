@@ -1,6 +1,6 @@
-# WarBoost V2.3.4 — Diagnostic PRO Reliability Patch
+# WarBoost V2.3.5 — Diagnostic PRO Single-Portrait Reliability
 
-La V2.3.4 conserve intégralement le socle V2.3.3 et fiabilise la restitution du Diagnostic PRO : portrait lié explicitement au héros recommandé, alias Morrison/Morrisson et Skyler, affichage clair état actuel → cible, terminologie EX uniforme, cache PWA mis à jour et version éditeur alignée. Voir `WARBOOST_V2_3_4_RELEASE.md`.
+La V2.3.5 conserve intégralement le socle V2.3.4 audité et corrige la duplication des portraits du Diagnostic PRO. Le portrait est désormais rendu une seule fois directement par la carte à partir de l’identité héros explicite fournie par l’IA ; le script de décoration ne modifie plus les cartes du Diagnostic. Les 31 héros, alias, paliers EX et protections de données de V2.3.4 restent inchangés.
 
 ---
 

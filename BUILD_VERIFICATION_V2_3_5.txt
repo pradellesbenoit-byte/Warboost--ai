@@ -1,0 +1,17 @@
+WarBoost V2.3.5 verification
+- Diagnostic PRO portrait comes from explicit hero identity.
+- Diagnostic PRO DOM mutation decorator disabled.
+- One static portrait slot per priority card maximum.
+- Squad portrait rail remains data-hero driven and de-duplicated.
+- 31-hero registry retained.
+- EX milestone logic retained: 0-9 -> 10, 10-19 -> 20, 20-29 -> 30.
+
+Automated checks:
+- npm run check: PASS
+- 31 hero identities/assets: PASS
+- 31 heroes x EX0/9/10/19/20/29 = 186 next-breakpoint checks: PASS
+- 31 heroes at EX30 = no invented next breakpoint: PASS
+- Total EX checks: 217
+- Alias checks: Morrison/Morrisson, Skyler/Schuyler/Shuyler, Stetmann/Stetman, Kimberly/Kimberley, DVA/D.V.A, Braz/Blaz: PASS
+- Static DOM architecture check: Diagnostic cards are not observed/decorated by publisher-ui.js: PASS
+- One direct portrait slot per priority card template: PASS
