@@ -1,5 +1,6 @@
 import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
-const ENGINE_VERSION="2.3.3";
+import {canonicalHeroName,heroType} from '../lib/heroes.js';
+const ENGINE_VERSION="2.3.4";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function metric(v){
   if(v===null||v===undefined||v==="")return null;
@@ -88,7 +89,7 @@ const T={
     main:(n,p)=>`ركّز مواردك على ${n} (${p}).`,mainDetail:(n,p,g)=>`ركّز مواردك على ${n} (${p}). ${g}`,noSquad:"امسح فريقاً واحداً على الأقل لتفعيل تشخيص PRO.",needHeroes:n=>`أعد مسح ${n} على شاشة تظهر الأبطال الخمسة. يحتاج WarBoost إلى المستويات والنجوم والسلاح الحصري والمعدات لترتيب المشتريات بدقة.`,level:(h,g,t)=>`${h} أقل بـ ${g} مستوى من أعلى بطل في الفريق (الهدف المرصود: Lv.${t}).`,stars:(h,g)=>`${h} يحتاج ${g} نجمة للوصول إلى 5★.`,exclusive:(h,g,t)=>`السلاح الحصري لـ ${h} أقل بـ ${g} مستوى من أفضل مستوى ظاهر (${t}).`,gear:(h,g,t)=>`معدات ${h} أقل بـ ${g} مستوى من أفضل مستوى ظاهر (${t}).`,drone:(l,p)=>`الدرون: ${l?`Lv.${l}`:"المستوى غير مقروء"}${p?` · ${p}`:""}. استثمر بعد فجوات الفريق الرئيسي الأعلى.`,scanMissing:l=>`ما زال ${l} بحاجة للمسح لمقارنة كل الفرق المتاحة في حسابك.`,actionLevel:h=>`ارفع مستوى ${h} أولاً ثم أعد المسح لقياس المكسب.`,actionStars:h=>`أعطِ الأولوية لشظايا ${h} / شظايا UR العامة.`,actionExclusive:h=>`ضع شظايا السلاح الحصري في ${h} قبل توزيعها على فريق آخر.`,actionGear:h=>`طوّر أضعف معدات ${h} أولاً.`,actionDrone:"احتفظ بمكونات الدرون وبيانات القتال حتى تعالج أكبر فجوتين للأبطال.",actionScan:"لا تشترِ الآن: أكمل المسح أولاً لتجنب إنفاق خاطئ.",freeHero:"متاجر التحالف / الشرف / الأحداث: شظايا UR عامة أو شظايا البطل عند توفرها.",paidHero:"إذا دفعت، اختر فقط حزمة تحتوي شظايا هذه الأولوية.",freeLevel:"المكافآت والأحداث والمتاجر المجانية: خبرة الأبطال.",paidLevel:"تجنب الحزم العامة؛ اشترِ خبرة فقط إذا كان فرق المستوى يعيق الفريق 1.",freeExclusive:"الأحداث والمتاجر: شظايا السلاح الحصري.",paidExclusive:"حزمة السلاح الحصري للبطل ذي الأولوية فقط.",freeGear:"الشرف / الأحداث: خامات التطوير ومخططات المعدات.",paidGear:"حزمة المعدات/المخططات فقط إذا كانت المعدات هي العائق الرئيسي.",freeDrone:"الأحداث والمتاجر: مكونات الدرون / بيانات القتال.",paidDrone:"حزمة الدرون فقط بعد الأولويات الأعلى.",freeNone:"لا تنفق قبل اكتمال المسح.",paidNone:"لا يُنصح بشراء مدفوع مع بيانات ناقصة.",focusHold:n=>`لا توزع الموارد على ${n} قبل إصلاح فجوات الفريق الرئيسي ذات الأولوية.`,squadStatusMain:"الأولوية الرئيسية",squadStatusReady:"ثانوي",squadStatusLow:"احتفاظ",squadStatusMissing:"يحتاج مسح",confidence:n=>`الثقة ${n}%`,titles:{scan:"إكمال البيانات",level:"مستوى البطل",stars:"نجوم البطل",exclusive:"السلاح الحصري",gear:"المعدات",drone:"الدرون",focus:"تركيز الموارد"}
   }
 };
-function heroName(h,i,lang){const n=cleanName(h?.name);if(n&&!/^(hero|héros)\s*\d+$/i.test(n))return n;return lang==="fr"?`Héros ${i+1}`:lang==="es"?`Héroe ${i+1}`:lang==="de"?`Held ${i+1}`:lang==="ja"?`英雄${i+1}`:lang==="zh"?`英雄${i+1}`:lang==="ar"?`البطل ${i+1}`:`Hero ${i+1}`}
+function heroName(h,i,lang){const n=canonicalHeroName(h?.name);if(n&&!/^(hero|héros)\s*\d+$/i.test(n))return n;return lang==="fr"?`Héros ${i+1}`:lang==="es"?`Héroe ${i+1}`:lang==="de"?`Held ${i+1}`:lang==="ja"?`英雄${i+1}`:lang==="zh"?`英雄${i+1}`:lang==="ar"?`البطل ${i+1}`:`Hero ${i+1}`}
 function squadName(s,i,lang){return lang==="fr"?`Escouade ${i+1}`:lang==="es"?`Escuadrón ${i+1}`:lang==="de"?`Trupp ${i+1}`:lang==="ja"?`部隊 ${i+1}`:lang==="zh"?`队伍 ${i+1}`:lang==="ar"?`الفريق ${i+1}`:`Squad ${i+1}`}
 function heroDetailCoverage(sq){
   const hs=(sq?.heroes||[]).filter(heroConfigured);if(!hs.length)return 0;
@@ -98,11 +99,10 @@ function heroDetailCoverage(sq){
 }
 function optionalSquadStatus(lang){return ({fr:"Optionnelle · à débloquer dans Last War",en:"Optional · unlockable in Last War",es:"Opcional · desbloqueable en Last War",de:"Optional · in Last War freischaltbar",ja:"任意 · Last Warで解放可能",zh:"可选 · 可在 Last War 中解锁",ar:"اختياري · يمكن فتحه في Last War"})[lang]||"Optional · unlockable in Last War"}
 
-const HERO_TYPES={Kimberly:"tank",Williams:"tank",Murphy:"tank",Marshall:"tank",Monica:"tank",Stetmann:"tank",Mason:"tank",Violet:"tank",Scarlett:"tank",Richard:"tank",Gump:"tank",Loki:"tank",DVA:"aircraft",Skyler:"aircraft",Morrisson:"aircraft",Lucius:"aircraft",Carlie:"aircraft",Sarah:"aircraft",Maxwell:"aircraft",Cage:"aircraft",Ambolt:"aircraft",Tesla:"missile",Swift:"missile",Fiona:"missile",Adam:"missile",McGregor:"missile",Venom:"missile",Elsa:"missile",Blaz:"missile",Kane:"missile"};
-function squadTypeFromHeroes(heroes){const c={aircraft:0,tank:0,missile:0};for(const x of heroes){const t=HERO_TYPES[cleanName(x?.h?.name||x?.name)];if(t)c[t]++}return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[1]>=3?Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0]:null}
-const AIR_EW_TO20={DVA:100,Lucius:97,Skyler:95,Morrisson:93,Carlie:80};
-const AIR_EW_TO30={DVA:100,Lucius:96,Morrisson:91,Skyler:89,Carlie:76};
-function ewPriorityWeight(name,type,target){if(type==="aircraft")return (target<=20?AIR_EW_TO20:AIR_EW_TO30)[name]||75;if(type==="tank")return ({Kimberly:100,Murphy:95,Marshall:88}[name]||78);if(type==="missile")return ({Tesla:100,Fiona:94,McGregor:88,Adam:84,Swift:80}[name]||78);return 80}
+function squadTypeFromHeroes(heroes){const c={aircraft:0,tank:0,missile:0};for(const x of heroes){const t=heroType(x?.h?.name||x?.name);if(t)c[t]++}return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[1]>=3?Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0]:null}
+const AIR_EX_TO20={DVA:100,Lucius:97,Skyler:95,Morrison:93,Carlie:80};
+const AIR_EX_TO30={DVA:100,Lucius:96,Morrison:91,Skyler:89,Carlie:76};
+function exPriorityWeight(name,type,target){if(type==="aircraft")return (target<=20?AIR_EX_TO20:AIR_EX_TO30)[name]||75;if(type==="tank")return ({Kimberly:100,Murphy:95,Marshall:88}[name]||78);if(type==="missile")return ({Tesla:100,Fiona:94,McGregor:88,Adam:84,Swift:80}[name]||78);return 80}
 const KNOWN_EX_BREAKPOINTS=[10,20,30];
 function nextKnownExBreakpoint(v){const n=num(v);if(n===null||n<0)return null;return KNOWN_EX_BREAKPOINTS.find(x=>n<x)??null}
 function exTargetLabel(x){const c=num(x?.exclusive),t=num(x?.next_breakpoint);if(!cleanName(x?.name)||c===null||t===null)return cleanName(x?.name)||"";return `${cleanName(x.name)} EX${c} → EX${t}`}
@@ -110,14 +110,14 @@ function exPriorityScore(name,type,current,target){
   // V2.3.2: compare the marginal value of the NEXT breakpoint, not the raw EX gap.
   // In S6-style progression, EX20 is deliberately favored over rushing one hero to EX30,
   // while EX10 remains useful but no longer automatically beats a well-positioned EX10→20 move.
-  const base=ewPriorityWeight(name,type,target);
+  const base=exPriorityWeight(name,type,target);
   const stageBonus=target===20?18:target===10?4:target===30?-12:0;
   const gap=Math.max(0,target-current);
   const closeness=Math.max(0,10-gap)*.7;
   const investedBonus=current>=10&&target===20?5:0;
   return base+stageBonus+closeness+investedBonus;
 }
-const EW_TEXT={
+const EX_TEXT={
 fr:(h,c,t)=>`${h} est à EX${c}. Le prochain palier efficace est EX${t} ; WarBoost privilégie les paliers 10/20/30 plutôt qu'un simple égalisage de niveaux.`,
 en:(h,c,t)=>`${h} is at EX${c}. The next efficient breakpoint is EX${t}; WarBoost prioritizes 10/20/30 breakpoints rather than simple level matching.`,
 es:(h,c,t)=>`${h} está en EX${c}. El siguiente punto eficiente es EX${t}; WarBoost prioriza los hitos 10/20/30 en lugar de igualar niveles.`,
@@ -125,7 +125,7 @@ de:(h,c,t)=>`${h} ist auf EX${c}. Der nächste effiziente Meilenstein ist EX${t}
 ja:(h,c,t)=>`${h} は EX${c}。次の効率的な節目は EX${t}。WarBoost は単純な均等化より 10/20/30 の節目を優先します。`,
 zh:(h,c,t)=>`${h} 当前 EX${c}。下一个高效节点是 EX${t}；WarBoost 优先 10/20/30 节点，而不是简单拉平等级。`,
 ar:(h,c,t)=>`${h} عند EX${c}. نقطة الكفاءة التالية هي EX${t}؛ يعطي WarBoost الأولوية لمراحل 10/20/30 بدلاً من مساواة المستويات فقط.`};
-function ewReason(locale,h,c,t){return (EW_TEXT[localePack(locale)]||EW_TEXT.en)(h,c,t)}
+function exReason(locale,h,c,t){return (EX_TEXT[localePack(locale)]||EX_TEXT.en)(h,c,t)}
 function dataConfidence(squads,drone){
   let score=0,max=0;
   squads.forEach((s,i)=>{if(i===3&&!squadConfigured(s))return;max+=20;if(squadConfigured(s))score+=5;if(num(s?.power)!==null)score+=5;const c=heroDetailCoverage(s);score+=c/100*10});
@@ -166,12 +166,13 @@ function timingWindow(kind,state,lang,meta={}){
   if(late&&Number(meta?.breakpoint)===30)return {status:"check_payback",best_day:null,label:fr?"Fin de saison : valide le retour immédiat avant un investissement EX30 coûteux.":"Late season: confirm near-term payback before a costly EX30 investment."};
   return {status:"neutral",best_day:null,label:fr?"Timing neutre : décide surtout selon le ROI et le goulot du compte.":"Neutral timing: decide mainly from ROI and the account bottleneck."};
 }
-function heroImportance(h,heroes,type){const p=num(h?.power),known=heroes.map(x=>num(x.h?.power)).filter(x=>x!==null);let w=1;if(p!==null&&known.length){const mx=Math.max(...known),mn=Math.min(...known);w+=mx===mn?.06:((p-mn)/(mx-mn))*.12}const n=cleanName(h?.name);if(type&&HERO_TYPES[n]===type)w+=.05;return w}
+function heroImportance(h,heroes,type){const p=num(h?.power),known=heroes.map(x=>num(x.h?.power)).filter(x=>x!==null);let w=1;if(p!==null&&known.length){const mx=Math.max(...known),mn=Math.min(...known);w+=mx===mn?.06:((p-mn)/(mx-mn))*.12}const n=canonicalHeroName(h?.name);if(type&&heroType(n)===type)w+=.05;return w}
 function candidate(kind,title,reason,action,buyFree,buyPaid,target,impact,cost,state,lang,meta={}){
+  const presentation={hero:canonicalHeroName(meta?.hero||target),current_label:meta?.current_label||null,next_target:meta?.next_target||null,progress_label:(meta?.current_label&&meta?.next_target)?`${meta.current_label} → ${meta.next_target}`:null};
   const timing=timingAdjustment(kind,state,meta),window=timingWindow(kind,state,lang,meta),intel=metaAdjustment({kind,target,...meta},state,lang);
   const roi=Math.max(1,Math.min(100,Math.round((impact/(Math.max(.35,cost)))*.78+timing+intel.bonus*.35)));
   const score=Math.max(1,Math.min(100,Math.round(impact*.66+roi*.34+timing+intel.bonus)));
-  return {kind,title,reason:[reason,...intel.reasons].filter(Boolean).join(' '),action,buy_free:buyFree,buy_paid:buyPaid,target,severity:score,impact_score:Math.round(impact),impact_label:impactLabel(impact,lang),roi_score:roi,roi_label:roiLabel(roi,lang),resource_efficiency_score:roi,resource_efficiency_label:roiLabel(roi,lang),resource_family:resourceFamily(kind),relative_cost:{index:Math.round(cost*100)/100,band:costBand(cost),basis:"relative_index_no_official_quantity"},timing_adjustment:timing,timing_window:window,meta_adjustment:intel.bonus,evidence_ids:intel.evidence,...meta}
+  return {kind,title,reason:[reason,...intel.reasons].filter(Boolean).join(' '),action,buy_free:buyFree,buy_paid:buyPaid,target,severity:score,impact_score:Math.round(impact),impact_label:impactLabel(impact,lang),roi_score:roi,roi_label:roiLabel(roi,lang),resource_efficiency_score:roi,resource_efficiency_label:roiLabel(roi,lang),resource_family:resourceFamily(kind),relative_cost:{index:Math.round(cost*100)/100,band:costBand(cost),basis:"relative_index_no_official_quantity"},timing_adjustment:timing,timing_window:window,meta_adjustment:intel.bonus,evidence_ids:intel.evidence,presentation,...meta}
 }
 
 
@@ -207,6 +208,9 @@ function selectSmartTop3(candidates,lang){
   // Explain the exclusive-weapon choice without cluttering the main card.
   const exclusivePool=adjusted.filter(x=>x.kind==="exclusive");
   out.forEach(x=>{
+    x.hero=canonicalHeroName(x.hero||x.presentation?.hero||"")||null;
+    if(x.presentation){x.presentation.hero=x.hero;x.presentation.progress_label=x.presentation.progress_label||((x.presentation.current_label&&x.presentation.next_target)?`${x.presentation.current_label} → ${x.presentation.next_target}`:null)}
+    x.progress_label=x.presentation?.progress_label||null;
     if(x.kind==="exclusive"){
       x.comparison_note=nextBreakpointWhy(exclusivePool,x,lang);
       x.progress_needed_levels=(Number(x.breakpoint)||0)-(Number(x.current)||0);
@@ -243,7 +247,7 @@ function buildPlayerAnalysis(state,locale){
   const powered=configured.filter(x=>num(x.s.power)!==null).sort((a,b)=>num(b.s.power)-num(a.s.power));
   const main=powered[0]||configured[0],mainPower=num(main.s.power),mainName=squadName(main.s,main.i,lang);
   const weaponList=Array.isArray(state?.exclusive_weapons)?state.exclusive_weapons:[];
-  const weaponByHero=name=>weaponList.find(w=>cleanName(w?.hero_name).toLowerCase()===cleanName(name).toLowerCase());
+  const weaponByHero=name=>weaponList.find(w=>canonicalHeroName(w?.hero_name).toLowerCase()===canonicalHeroName(name).toLowerCase());
   const enhancedHeroes=(main.s.heroes||[]).map(h=>{const w=weaponByHero(h?.name);return w&&num(w.level)!==null?{...h,exclusive:String(w.level)}:h});
   const heroes=enhancedHeroes.map((h,i)=>({h,i})).filter(x=>heroConfigured(x.h));
   const coverage=heroDetailCoverage({...main.s,heroes:enhancedHeroes});
@@ -255,10 +259,10 @@ function buildPlayerAnalysis(state,locale){
     const gears=heroes.map(({h})=>gearMetric(h.gear)).filter(x=>x!==null), gearTarget=gears.length?Math.max(...gears):null;
     for(const {h,i} of heroes){
       const hn=heroName(h,i,lang),importance=heroImportance(h,heroes,squadType);
-      const lv=num(h.level);if(lv!==null&&levelTarget!==null&&levelTarget-lv>=3){const gap=levelTarget-lv,impact=Math.min(92,(67+gap*2.2)*importance),cost=.72+gap/18;candidates.push(candidate("level",p.titles.level,p.level(hn,gap,levelTarget),p.actionLevel(hn),p.freeLevel,p.paidLevel,hn,impact,cost,state,lang,{hero:hn,next_target:`Lv.${levelTarget}`}));}
-      const st=num(h.stars);if(st!==null&&st<5){const gap=Math.max(.1,Math.round((5-st)*10)/10),impact=Math.min(99,(82+gap*5)*importance),cost=.9+gap*.42;candidates.push(candidate("stars",p.titles.stars,p.stars(hn,gap),p.actionStars(hn),p.freeHero,p.paidHero,hn,impact,cost,state,lang,{hero:hn,next_target:`${Math.min(5,Math.ceil((st+.1)*2)/2)}★`}));}
-      const ex=metric(h.exclusive),exTarget=nextKnownExBreakpoint(ex);if(ex!==null&&exTarget!==null){const raw=exPriorityScore(hn,squadType,ex,exTarget),gap=exTarget-ex,impact=Math.min(99,(64+raw*.28)*importance),cost=.75+gap/12;candidates.push(candidate("exclusive",p.titles.exclusive,ewReason(locale,hn,ex,exTarget),p.actionExclusive(hn),p.freeExclusive,p.paidExclusive,hn,impact,cost,state,lang,{hero:hn,current:ex,next_target:`EX${exTarget}`,breakpoint:exTarget}));}
-      const gr=gearMetric(h.gear);if(gr!==null&&gearTarget!==null&&gearTarget-gr>=3){const gap=gearTarget-gr,impact=Math.min(94,(65+gap*1.7)*importance),cost=.68+gap/16;candidates.push(candidate("gear",p.titles.gear,p.gear(hn,Math.round(gap*10)/10,gearTarget),p.actionGear(hn),p.freeGear,p.paidGear,hn,impact,cost,state,lang,{hero:hn,next_target:String(gearTarget)}));}
+      const lv=num(h.level);if(lv!==null&&levelTarget!==null&&levelTarget-lv>=3){const gap=levelTarget-lv,impact=Math.min(92,(67+gap*2.2)*importance),cost=.72+gap/18;candidates.push(candidate("level",p.titles.level,p.level(hn,gap,levelTarget),p.actionLevel(hn),p.freeLevel,p.paidLevel,hn,impact,cost,state,lang,{hero:hn,current:lv,current_label:`Lv.${lv}`,next_target:`Lv.${levelTarget}`}));}
+      const st=num(h.stars);if(st!==null&&st<5){const gap=Math.max(.1,Math.round((5-st)*10)/10),impact=Math.min(99,(82+gap*5)*importance),cost=.9+gap*.42;candidates.push(candidate("stars",p.titles.stars,p.stars(hn,gap),p.actionStars(hn),p.freeHero,p.paidHero,hn,impact,cost,state,lang,{hero:hn,current:st,current_label:`${st}★`,next_target:`${Math.min(5,Math.ceil((st+.1)*2)/2)}★`}));}
+      const ex=metric(h.exclusive),exTarget=nextKnownExBreakpoint(ex);if(ex!==null&&exTarget!==null){const raw=exPriorityScore(hn,squadType,ex,exTarget),gap=exTarget-ex,impact=Math.min(99,(64+raw*.28)*importance),cost=.75+gap/12;candidates.push(candidate("exclusive",p.titles.exclusive,exReason(locale,hn,ex,exTarget),p.actionExclusive(hn),p.freeExclusive,p.paidExclusive,hn,impact,cost,state,lang,{hero:hn,current:ex,current_label:`EX${ex}`,next_target:`EX${exTarget}`,breakpoint:exTarget}));}
+      const gr=gearMetric(h.gear);if(gr!==null&&gearTarget!==null&&gearTarget-gr>=3){const gap=gearTarget-gr,impact=Math.min(94,(65+gap*1.7)*importance),cost=.68+gap/16;candidates.push(candidate("gear",p.titles.gear,p.gear(hn,Math.round(gap*10)/10,gearTarget),p.actionGear(hn),p.freeGear,p.paidGear,hn,impact,cost,state,lang,{hero:hn,current:gr,current_label:`Nv.${gr}`,next_target:`Nv.${gearTarget}`}));}
     }
     const dLevel=num(state?.drone?.level),dPower=num(state?.drone?.power_m);if(dLevel!==null||dPower!==null){const impact=dLevel===null?62:dLevel<100?84:dLevel<150?75:dLevel<200?66:58;candidates.push(candidate("drone",p.titles.drone,p.drone(dLevel,dPower!==null?fmt(dPower,loc):null),p.actionDrone,p.freeDrone,p.paidDrone,"Drone",impact,1.15,state,lang));}
   }
@@ -308,11 +312,11 @@ function heroNeedSnapshot(state){
   const powered=squads.map((s,i)=>({s,i,p:num(s?.power)})).filter(x=>x.p!==null).sort((a,b)=>b.p-a.p);
   const main=powered[0]||squads.map((s,i)=>({s,i,p:num(s?.power)})).find(x=>squadConfigured(x.s));
   const sq=main?.s||{heroes:[]},weapons=Array.isArray(state?.exclusive_weapons)?state.exclusive_weapons:[];
-  const weaponLevel=n=>num(weapons.find(w=>cleanName(w?.hero_name).toLowerCase()===cleanName(n).toLowerCase())?.level);
-  const heroes=(sq.heroes||[]).filter(heroConfigured).map((h,i)=>({name:cleanName(h?.name)||`Hero ${i+1}`,stars:num(h?.stars),level:num(h?.level),exclusive:weaponLevel(h?.name)??metric(h?.exclusive),gear:gearMetric(h?.gear),gear_text:cleanName(h?.gear)}));
+  const weaponLevel=n=>num(weapons.find(w=>canonicalHeroName(w?.hero_name).toLowerCase()===canonicalHeroName(n).toLowerCase())?.level);
+  const heroes=(sq.heroes||[]).filter(heroConfigured).map((h,i)=>({name:canonicalHeroName(h?.name)||`Hero ${i+1}`,stars:num(h?.stars),level:num(h?.level),exclusive:weaponLevel(h?.name)??metric(h?.exclusive),gear:gearMetric(h?.gear),gear_text:cleanName(h?.gear)}));
   const starTargets=heroes.filter(h=>h.stars!==null&&h.stars<5).sort((a,b)=>a.stars-b.stars);
   const exKnown=heroes.filter(h=>h.exclusive!==null),typeCounts={aircraft:0,tank:0,missile:0};
-  for(const h of heroes){const t=HERO_TYPES[h.name];if(t)typeCounts[t]++}
+  for(const h of heroes){const t=heroType(h.name);if(t)typeCounts[t]++}
   const typeRows=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]),squadType=typeRows[0]?.[1]>=3?typeRows[0][0]:null;
   const exTargets=exKnown.map(h=>({...h,next_breakpoint:nextKnownExBreakpoint(h.exclusive)})).filter(h=>h.next_breakpoint!==null).sort((a,b)=>exPriorityScore(b.name,squadType,b.exclusive,b.next_breakpoint)-exPriorityScore(a.name,squadType,a.exclusive,a.next_breakpoint)||(a.exclusive-b.exclusive));
   const gearKnown=heroes.filter(h=>h.gear!==null),gearMax=gearKnown.length?Math.max(...gearKnown.map(h=>h.gear)):null;

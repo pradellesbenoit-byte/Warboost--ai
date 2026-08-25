@@ -1,5 +1,6 @@
 import {configured,userConfigured} from "../lib/supabase.js";
 import {providerConfig} from "../lib/provider.js";
+import {HERO_CATALOG} from "../lib/heroes.js";
 
 function isoWeek(d){
   const x=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
@@ -16,7 +17,7 @@ export default function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.3.3",
+    version:"2.3.4",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -41,12 +42,17 @@ export default function handler(req,res){
       no_placeholder_hero_names:true,
       hero_identity_confirmation:true,
       double_pass_portrait_verification:true,
+      hero_asset_identity_binding:true,
+      canonical_hero_aliases:true,
       hero_names_staged_until_confirmation:true,
       localized_scan_rendering:true,
       exclusive_breakpoints_10_20_30:true,
+      exclusive_ui_ex_only:true,
       partial_shop_catalog_disclosure:true,
       no_unknown_offer_recommendation:true
     },
+    hero_catalog_count:HERO_CATALOG.length,
+    hero_catalog_identity_source:"shared-single-source",
     serverless_functions:12
   })
 }
