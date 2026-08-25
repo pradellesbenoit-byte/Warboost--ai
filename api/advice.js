@@ -200,7 +200,7 @@ function buildPlayerAnalysis(state,locale){
   const top=unique[0];
   const incompleteNote=!compositionComplete?(lang==="fr"?` Composition incomplète : ${mainHeroesDetected}/5 héros détectés, les recommandations restent prudentes.`:` Incomplete composition: ${mainHeroesDetected}/5 heroes detected; recommendations remain cautious.`):"";
   const summary=(top?p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",top.reason):p.main(mainName,mainPower!==null?fmt(mainPower,loc):"—"))+incompleteNote;
-  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,squads:comparison,focus_squad:main.i+1,candidates_evaluated:candidates.length,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"cross-bottleneck marginal value + resource efficiency + VS/Season timing + dated multi-source evidence",meta_intelligence:metaContext(state),engine:"warboost-ai-smart-v2.2"};
+  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,squads:comparison,focus_squad:main.i+1,candidates_evaluated:candidates.length,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"cross-bottleneck marginal value + resource efficiency + VS/Season timing + dated multi-source evidence",meta_intelligence:metaContext(state),engine:"warboost-ai-smart-v2.3"};
 }
 
 // ===== V1.4 · Last War Shop Advisor =====
@@ -446,7 +446,13 @@ function buildVsAdvice(state,locale){
   let confidence=45+(v.opponent?15:0)+(us!==null&&them!==null?15:0)+(state?.updated_at||state?.sync?.last_sync?10:0);
   confidence=Math.max(25,Math.min(92,confidence));
   const advice=[pack.day(day),task,scoreLine,pack.hold,pt?pack.player(pt):"",pack.confidence(confidence)].filter(Boolean).join(" ");
-  return {advice,confidence,priorities:priorities.slice(0,4),day,opponent:v.opponent||null,score_gap:us!==null&&them!==null?us-them:null,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-vs-ai-v1.6.3"};
+  const isFr=localePack(locale)==="fr";
+  const today=task;
+  const keep=pack.hold;
+  const avoid=isFr?"À éviter : dépenser une ressource rare hors des tâches VS actives.":"Avoid: spending scarce resources outside active VS tasks.";
+  const concise=[{rank:1,kind:"today",label:isFr?"Aujourd’hui":"Today",text:today},{rank:2,kind:"keep",label:isFr?"À garder":"Keep",text:keep},{rank:3,kind:"avoid",label:isFr?"À éviter":"Avoid",text:avoid}];
+  const conciseAdvice=concise.map(x=>`${x.label} : ${x.text}`).join("\n");
+  return {advice:conciseAdvice,confidence,priorities:concise,day,week:v.week||null,opponent:v.opponent||null,score_gap:us!==null&&them!==null?us-them:null,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",engine:"warboost-vs-ai-v2.3"};
 }
 function buildSeasonAdvice(state,locale){
   const s=state?.season||{},pack=contextPack(locale).season,day=num(s.day),total=num(s.total_days),progress=num(s.progress_pct),resistance=num(s.resistance);
@@ -475,7 +481,7 @@ export default function handler(req,res){
     analysis.engine="warboost-ai-core-v2.2";
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }
-  if(scope==="alliance"){const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:"warboost-alliance-ai-v1.6.3",...a});}
+  if(scope==="alliance"){const role=String(s?.alliance?.role||s?.player?.role||"R1").toUpperCase();if(!["R4","R5"].includes(role))return res.status(403).json({ok:false,error:"manager_role_required",advice:loc.startsWith("fr")?"Plan de guerre réservé aux R5/R4 confirmés.":"War plan is reserved for verified R5/R4."});const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:"warboost-alliance-ai-v2.3",...a});}
   if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
   if(scope==="season")return res.status(200).json({ok:true,...buildSeasonAdvice(s,loc)});
   return res.status(400).json({error:"unknown_scope"});
