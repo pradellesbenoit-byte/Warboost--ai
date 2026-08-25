@@ -16,7 +16,7 @@ export default function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.3.1",
+    version:"2.3.3",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -32,7 +32,7 @@ export default function handler(req,res){
     lastwar_official_access:providers.official?"configured":providers.approved?"approved-connector":"pending-approval",
     legacy_provider:providers.legacy?"explicitly-enabled":"disabled",
     vision:Boolean(process.env.OPENAI_API_KEY||process.env.WARBOOST_VISION_ENDPOINT)?"configured":"optional",
-    languages:["fr","en-GB","en-US","es","de","ja","zh","ar"],
+    languages:["fr","en-GB","en-US","es","it","de","pt","nl","zh","ja","ru","ar","pl","tr","ko","vi","th","id","uk","ro","el","cs","sv"],
     safeguards:{
       read_only:true,
       player_consent:true,
