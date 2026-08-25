@@ -1,12 +1,20 @@
-# WarBoost V2.3.6 — Alliance Reliability
+# WarBoost V2.3.7 — Mobile Finish
 
-La V2.3.5 conserve intégralement le socle V2.3.4 audité et corrige la duplication des portraits du Diagnostic PRO. Le portrait est désormais rendu une seule fois directement par la carte à partir de l’identité héros explicite fournie par l’IA ; le script de décoration ne modifie plus les cartes du Diagnostic. Les 31 héros, alias, paliers EX et protections de données de V2.3.4 restent inchangés.
+La V2.3.7 conserve les moteurs Diagnostic PRO et Alliance Reliability validés en V2.3.6 et applique uniquement les finitions mobiles validées : libellés de fraîcheur naturels, roster par grade à défilement interne, Plan de guerre plus lisible et cartes PRO mieux adaptées aux petits écrans. Les 31 héros, alias, paliers EX et protections de données restent inchangés.
 
 ---
 
 # WarBoost V2 — Publisher Edition
 
 This branch/demo is intended for presentation to Last War / FirstFun. It demonstrates WarBoost as an **AI companion**, not a gameplay automation tool.
+
+## V2.3.7 — Mobile Finish
+
+V2.3.7 conserve les moteurs Diagnostic PRO et Alliance Reliability validés en V2.3.6. Les changements sont limités à la finition mobile, aux libellés de fraîcheur, à la présentation compacte du Plan de guerre et au défilement interne des rosters par grade.
+
+Voir `WARBOOST_V2_3_7_RELEASE.md`.
+
+Validation technique : `BUILD_VERIFICATION_V2_3_7.txt`.
 
 ## Publisher principles
 

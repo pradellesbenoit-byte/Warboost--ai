@@ -1,0 +1,31 @@
+WarBoost V2.3.7 — PATCH MANIFEST
+================================
+
+Apply on publisher-demo over validated V2.3.6.
+
+ROOT OF GITHUB REPOSITORY
+- app.js
+- i18n.js
+- index.html
+- styles.css
+- sw.js
+- package.json
+- manifest.webmanifest
+- README.md
+- WARBOOST_V2_3_7_RELEASE.md
+- BUILD_VERIFICATION_V2_3_7.txt
+- PATCH_MANIFEST_V2_3_7.txt
+
+api/
+- advice.js
+- health.js
+
+lib/
+- normalize.js
+
+DO NOT RE-UPLOAD
+- assets/heroes/ (31 portraits from V2.3.6 stay valid)
+- lib/alliance-activity.js (validated logic unchanged)
+- lib/heroes.js (31-hero registry unchanged)
+- api/scan.js (validated scan logic unchanged)
+- supabase/schema.sql (no migration required)
