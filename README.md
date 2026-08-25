@@ -1,4 +1,4 @@
-# WarBoost V2.3.5 — Diagnostic PRO Single-Portrait Reliability
+# WarBoost V2.3.6 — Alliance Reliability
 
 La V2.3.5 conserve intégralement le socle V2.3.4 audité et corrige la duplication des portraits du Diagnostic PRO. Le portrait est désormais rendu une seule fois directement par la carte à partir de l’identité héros explicite fournie par l’IA ; le script de décoration ne modifie plus les cartes du Diagnostic. Les 31 héros, alias, paliers EX et protections de données de V2.3.4 restent inchangés.
 
@@ -385,3 +385,6 @@ Version : **WarBoost V1.2.0 — Global Hybrid Sync**
 - Member activity score uses only available freshness/progression/VS/Season signals and never claims Last War login status without authorized data.
 - Optional member telemetry fields are preserved for future official read-only synchronization.
 - Full UI translations kept for FR, EN-GB, EN-US, ES, DE, JA, ZH and AR.
+
+
+Voir `WARBOOST_V2_3_6_RELEASE.md` pour les corrections Alliance V2.3.6.

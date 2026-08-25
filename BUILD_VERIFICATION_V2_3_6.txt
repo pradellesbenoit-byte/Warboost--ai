@@ -1,0 +1,33 @@
+WarBoost V2.3.6 — BUILD VERIFICATION
+Date: 2026-08-25
+
+SYNTAX
+- npm run check: PASS
+- app.js / i18n.js / service worker: PASS
+- all 12 Vercel API functions: PASS
+- lib/alliance-activity.js: PASS
+
+ALLIANCE RELIABILITY
+- stale roster snapshot at 5 days: 0 active / 94 refresh / 0 probable inactive: PASS
+- recent explicit activity: active: PASS
+- recent positive progression: active: PASS
+- probable inactive requires fresh observation + multiple coherent negative signals: PASS
+- missing evidence: activity unknown / refresh required: PASS
+- client and /api/advice use the same lib/alliance-activity.js classifier: PASS
+
+ROSTER UI
+- five rank panels present: R5 / R4 / R3 / R2 / R1
+- panels closed by default
+- open state preserved while the UI re-renders
+- members sorted by power inside their rank
+- no artificial 32/100 activity score shown
+
+DIAGNOSTIC PRO REGRESSION
+- 31 heroes present with assets: PASS
+- EX breakpoint audit: 217 cases, 0 failures
+- rules: EX0–9 -> EX10; EX10–19 -> EX20; EX20–29 -> EX30; EX30 -> no invented next breakpoint
+- labels: Sources IA / Méta / Impact / ROI / Sources
+
+DATA SAFETY
+- no Supabase schema change required
+- existing player / alliance / squad data preserved

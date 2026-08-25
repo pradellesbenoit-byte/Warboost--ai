@@ -1,4 +1,4 @@
-// WarBoost V2.3.5 — hero visuals reliability layer.
+// WarBoost V2.3.6 — hero visuals reliability layer.
 // Diagnostic PRO portraits are rendered directly by app.js from explicit AI hero identity.
 // This module only maintains the squad portrait rail and never mutates Diagnostic cards.
 import {heroKey,heroPresentation} from './lib/heroes.js';

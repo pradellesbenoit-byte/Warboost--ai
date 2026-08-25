@@ -1,8 +1,9 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {HERO_CATALOG,canonicalHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
+import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.3.5";
+const APP_VERSION="2.3.6";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const LEGACY_LANGUAGE_KEYS=["wb17_language","wb171_language","warboost_language"];
 const LEGACY_DATA_KEYS=["wb12_account","wb11_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster"];
@@ -67,6 +68,7 @@ function migrateLegacyLocalState(seed){
 function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const base=raw?mergeState(initialState(),JSON.parse(raw)):initialState();const migrated=migrateLegacyLocalState(base);if(migrated.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(migrated.state));return migrated.state}catch{return initialState()}}
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,suppressPush=false,cloud=null,cloudSession=null,proState={active:false,status:"free",configured:false,plan:null},scanImageData=null;
+const openRosterRoles=new Set();
 let pendingHeroSquadId=null,pendingHeroSuggestions=[];
 function clearScanImage(){scanImageData=null;const f=$("#scanFile"),p=$("#scanPreview");if(f)f.value="";if(p)p.classList.add("hidden")}
 function heroConfirmOptions(selected){return [`<option value="">${esc(t("hero_choose"))}</option>`].concat(HERO_CATALOG.map(n=>`<option value="${esc(n)}"${n===selected?" selected":""}>${esc(n)}</option>`)).join("")}
@@ -185,7 +187,7 @@ function renderExclusiveWeapons(){
   }).join("");
 }
 
-function aiUiText(){const k=String(lang||"en").toLowerCase();if(k.startsWith("fr"))return {impact:"Impact",roi:"Efficacité ressources",why:"Pourquoi",details:"Voir les détails",evaluated:"options comparées",avoid:"À ne pas améliorer / acheter maintenant",heroes:"héros détectés"};if(k.startsWith("es"))return {impact:"Impacto",roi:"Eficiencia de recursos",why:"Por qué",details:"Ver detalles",evaluated:"opciones comparadas",avoid:"No mejorar / comprar ahora",heroes:"héroes detectados"};if(k.startsWith("de"))return {impact:"Wirkung",roi:"Ressourceneffizienz",why:"Warum",details:"Details anzeigen",evaluated:"Optionen verglichen",avoid:"Jetzt nicht verbessern / kaufen",heroes:"erkannte Helden"};if(k.startsWith("ja"))return {impact:"効果",roi:"資源効率",why:"理由",details:"詳細を見る",evaluated:"件を比較",avoid:"今は強化・購入しない",heroes:"検出英雄"};if(k.startsWith("zh"))return {impact:"影响",roi:"资源效率",why:"原因",details:"查看详情",evaluated:"个方案已比较",avoid:"暂时不要升级/购买",heroes:"已识别英雄"};if(k.startsWith("ar"))return {impact:"الأثر",roi:"كفاءة الموارد",why:"السبب",details:"عرض التفاصيل",evaluated:"خياراً تمت مقارنتها",avoid:"لا تطور / تشترِ الآن",heroes:"أبطال تم اكتشافهم"};return {impact:"Impact",roi:"Resource efficiency",why:"Why",details:"View details",evaluated:"options compared",avoid:"Do not upgrade / buy now",heroes:"heroes detected"}}
+function aiUiText(){const k=String(lang||"en").toLowerCase();if(k.startsWith("fr"))return {impact:"Impact",roi:"ROI",sources:"Sources IA",meta:"Méta",why:"Pourquoi",details:"Voir les détails",evaluated:"options comparées",avoid:"À ne pas améliorer / acheter maintenant",heroes:"héros détectés"};if(k.startsWith("es"))return {impact:"Impacto",roi:"ROI",sources:"Fuentes IA",meta:"Meta",why:"Por qué",details:"Ver detalles",evaluated:"opciones comparadas",avoid:"No mejorar / comprar ahora",heroes:"héroes detectados"};if(k.startsWith("de"))return {impact:"Wirkung",roi:"ROI",sources:"KI-Quellen",meta:"Meta",why:"Warum",details:"Details anzeigen",evaluated:"Optionen verglichen",avoid:"Jetzt nicht verbessern / kaufen",heroes:"erkannte Helden"};if(k.startsWith("ja"))return {impact:"効果",roi:"ROI",sources:"AIソース",meta:"メタ",why:"理由",details:"詳細を見る",evaluated:"件を比較",avoid:"今は強化・購入しない",heroes:"検出英雄"};if(k.startsWith("zh"))return {impact:"影响",roi:"ROI",sources:"AI来源",meta:"Meta",why:"原因",details:"查看详情",evaluated:"个方案已比较",avoid:"暂时不要升级/购买",heroes:"已识别英雄"};if(k.startsWith("ar"))return {impact:"الأثر",roi:"ROI",sources:"مصادر الذكاء",meta:"الميتا",why:"السبب",details:"عرض التفاصيل",evaluated:"خياراً تمت مقارنتها",avoid:"لا تطور / تشترِ الآن",heroes:"أبطال تم اكتشافهم"};return {impact:"Impact",roi:"ROI",sources:"AI sources",meta:"Meta",why:"Why",details:"View details",evaluated:"options compared",avoid:"Do not upgrade / buy now",heroes:"heroes detected"}}
 function proHeroAttr(x){return canonicalStoredHeroName(x?.hero||x?.presentation?.hero||"")}
 function proHeroVisual(hero,top=false){const hit=heroPresentation(hero);if(!hit)return "";return `<span class="priorityHeroSlot"><img class="wbHeroAvatar${top?" wbTopHero":""}" src="${esc(hit.src)}" alt="${esc(hit.name)} — WarBoost demo visual" loading="lazy"></span>`}
 function proProgressLabel(x){return String(x?.progress_label||x?.presentation?.progress_label||((x?.current_label&&x?.next_target)?`${x.current_label} → ${x.next_target}`:"")||"").trim()}
@@ -195,12 +197,12 @@ function renderProPriority(analysis){
   if(note)note.classList.add("hidden");panel.classList.remove("hidden");
   if(summary){
     const mi=analysis.meta_intelligence,composition=analysis.composition?.label?` · ${analysis.composition.label}`:"";
-    summary.textContent=`${analysis.summary||""}${composition}${analysis.candidates_evaluated?` · ${analysis.candidates_evaluated} ${ui.evaluated}`:""}${mi?.source_count?` · AI sources ${mi.source_count} · Meta ${mi.confidence}%`:""}`;
+    summary.textContent=`${analysis.summary||""}${composition}${analysis.candidates_evaluated?` · ${analysis.candidates_evaluated} ${ui.evaluated}`:""}${mi?.source_count?` · ${ui.sources} ${mi.source_count} · ${ui.meta} ${mi.confidence}%`:""}`;
   }
   if(confidence)confidence.textContent=analysis.confidence_label||`${analysis.confidence||0}%`;
   if(list){
     const items=(Array.isArray(analysis.priorities)?analysis.priorities:[]).slice(0,3);
-    list.innerHTML=items.length?items.map((x,i)=>{const hero=proHeroAttr(x),progress=proProgressLabel(x);return `<article class="priorityCard compactDecision"${hero?` data-hero="${esc(hero)}"`:""}><span class="priorityRank">${esc(x.rank||"•")}</span>${proHeroVisual(hero,i===0)}<div class="priorityMain"><div class="decisionHead"><div class="decisionTitle"><b>${esc(x.title||"")}${x.target?` · ${esc(x.target)}`:""}</b>${progress?`<span class="priorityProgress">${esc(progress)}</span>`:""}</div><span class="decisionMetric">${esc(x.impact_label||"—")} · ${esc(x.resource_efficiency_label||x.roi_label||"—")}${Array.isArray(x.evidence_ids)&&x.evidence_ids.length?` · ${x.evidence_ids.length} src`:""}</span></div><strong>${esc(x.action||"")}</strong><details class="decisionDetails"><summary>${esc(ui.why)}</summary><p>${esc(x.reason||"")}</p>${x.comparison_note?`<small>⚖️ ${esc(x.comparison_note)}</small>`:""}${progress?`<small>🎯 ${esc(progress)}</small>`:""}${x.progress_needed_levels>0?`<small>📈 ${esc(String(x.progress_needed_levels))} niveau${x.progress_needed_levels>1?"x":""} jusqu'au prochain palier</small>`:""}${x.timing_window?.label?`<small>⏱️ ${esc(x.timing_window.label)}</small>`:""}<small>🆓 ${esc(x.buy_free||"")}</small><small>💎 ${esc(x.buy_paid||"")}</small></details></div></article>`}).join(""):`<div class="notice">${esc(analysis.summary||t("player_sync_note"))}</div>`;
+    list.innerHTML=items.length?items.map((x,i)=>{const hero=proHeroAttr(x),progress=proProgressLabel(x);return `<article class="priorityCard compactDecision"${hero?` data-hero="${esc(hero)}"`:""}><span class="priorityRank">${esc(x.rank||"•")}</span>${proHeroVisual(hero,i===0)}<div class="priorityMain"><div class="decisionHead"><div class="decisionTitle"><b>${esc(x.title||"")}${x.target?` · ${esc(x.target)}`:""}</b>${progress?`<span class="priorityProgress">${esc(progress)}</span>`:""}</div><span class="decisionMetric">${esc(ui.impact)} : ${esc(x.impact_label||"—")} · ${esc(ui.roi)} : ${esc(x.resource_efficiency_label||x.roi_label||"—")}${Array.isArray(x.evidence_ids)&&x.evidence_ids.length?` · ${esc(ui.sources)} : ${x.evidence_ids.length}`:""}</span></div><strong>${esc(x.action||"")}</strong><details class="decisionDetails"><summary>${esc(ui.why)}</summary><p>${esc(x.reason||"")}</p>${x.comparison_note?`<small>⚖️ ${esc(x.comparison_note)}</small>`:""}${progress?`<small>🎯 ${esc(progress)}</small>`:""}${x.progress_needed_levels>0?`<small>📈 ${esc(String(x.progress_needed_levels))} niveau${x.progress_needed_levels>1?"x":""} jusqu'au prochain palier</small>`:""}${x.timing_window?.label?`<small>⏱️ ${esc(x.timing_window.label)}</small>`:""}<small>🆓 ${esc(x.buy_free||"")}</small><small>💎 ${esc(x.buy_paid||"")}</small></details></div></article>`}).join(""):`<div class="notice">${esc(analysis.summary||t("player_sync_note"))}</div>`;
   }
   if(avoid){
     const rows=Array.isArray(analysis.avoid_now)?analysis.avoid_now:[];
@@ -220,28 +222,43 @@ function renderProPriority(analysis){
   }
 }
 
-function memberActivity(m){
-  const now=Date.now(),ts=Date.parse(m?.last_active_at||m?.updated_at||"");
-  const ageH=Number.isFinite(ts)?Math.max(0,(now-ts)/36e5):null;
-  let score=0,signals=0;
-  if(ageH!==null){signals++;score+=ageH<=24?55:ageH<=72?42:ageH<=168?24:8}
-  const delta=Number(m?.delta_m);if(Number.isFinite(delta)){signals++;score+=delta>0?25:delta===0?8:4}
-  const vs=Number(m?.vs_points);if(Number.isFinite(vs)){signals++;score+=vs>0?12:2}
-  const season=Number(m?.season_points);if(Number.isFinite(season)){signals++;score+=season>0?8:1}
-  if(!signals)return {score:null,key:"unknown",ageH:null};
-  score=Math.max(0,Math.min(100,Math.round(score)));
-  const key=score>=72?"very_active":score>=52?"active":score>=28?"low": "inactive";
-  return {score,key,ageH};
+function activityLabel(a){
+  return a.key==="active"?t("activity_active_confirmed"):a.key==="inactive"?t("activity_inactive_probable"):a.key==="unknown"?t("activity_indeterminate"):t("activity_refresh");
+}
+function activityIcon(a){return a.key==="active"?"🟢":a.key==="inactive"?"🔴":a.key==="unknown"?"⚪":"🟠"}
+function activityReason(a){
+  if(a.reason==="recent_activity")return t("activity_reason_recent");
+  if(a.reason==="recent_progress")return t("activity_reason_progress");
+  if(a.reason==="stale_snapshot")return t("activity_reason_stale");
+  if(a.reason==="fresh_negative_evidence")return t("activity_reason_negative");
+  return t("activity_reason_insufficient");
 }
 function renderAllianceActivity(){
-  const members=state.alliance.members||[],box=$("#activitySummary"),counts={active:0,watch:0,inactive:0,unknown:0};
-  const scored=members.map(m=>({m,a:memberActivity(m)}));
-  scored.forEach(({a})=>{if(a.key==="very_active"||a.key==="active")counts.active++;else if(a.key==="low")counts.watch++;else if(a.key==="inactive")counts.inactive++;else counts.unknown++});
-  if(box)box.innerHTML=`<div><b>🟢 ${counts.active}</b><small>${esc(t("activity_active"))}</small></div><div><b>🟠 ${counts.watch}</b><small>${esc(t("activity_watch"))}</small></div><div><b>🔴 ${counts.inactive}</b><small>${esc(t("activity_inactive"))}</small></div>`;
-  const note=$("#activityNote");if(note)note.textContent=members.length?t("activity_estimated_note"):t("activity_no_data");
-  return scored;
+  const members=state.alliance.members||[],box=$("#activitySummary"),summary=summarizeAllianceActivity(members);
+  const c=summary.counts;
+  if(box)box.innerHTML=`<div><b>🟢 ${c.active}</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>🟠 ${c.refresh}</b><small>${esc(t("activity_refresh"))}</small></div><div><b>🔴 ${c.inactive}</b><small>${esc(t("activity_inactive_probable"))}</small></div>`;
+  const note=$("#activityNote");if(note)note.textContent=members.length?t("activity_reliability_note"):t("activity_no_data");
+  return summary;
 }
-function renderMembers(){const box=$("#memberList"),members=state.alliance.members||[];if(!box)return;renderAllianceActivity();box.innerHTML=members.length?members.map(m=>{const a=memberActivity(m),icon=a.key==="very_active"||a.key==="active"?"🟢":a.key==="low"?"🟠":a.key==="inactive"?"🔴":"⚪",label=t(`activity_${a.key}`),score=a.score===null?"—":`${a.score}/100`;return `<div class="member"><div><b>${icon} ${esc(m.name||t("player"))}</b><small>${t("hq")} ${m.hq_level??"—"} · ${fmtPower(m.power_m)} · ${m.role||"R1"}</small><span class="activityLine">${esc(label)} · ${esc(score)}</span></div><div class="delta">${m.delta_m?`${m.delta_m>0?"+":""}${m.delta_m} M`:"—"}</div></div>`}).join(""):`<div class="notice">${t("no_members")}</div>`}
+function renderMemberRow(m){
+  const a=classifyAllianceMember(m),icon=activityIcon(a),label=activityLabel(a),reason=activityReason(a),delta=Number(m?.delta_m);
+  const deltaText=Number.isFinite(delta)&&delta!==0?`${delta>0?"+":""}${delta} M`:"";
+  return `<div class="member compactMember"><div><b>${icon} ${esc(m.name||t("player"))}</b><small>${t("hq")} ${m.hq_level??"—"} · ${fmtPower(m.power_m)} · ${normalizeAllianceRole(m.role)}</small><span class="activityLine">${esc(label)} · ${esc(reason)}</span></div>${deltaText?`<div class="delta">${esc(deltaText)}</div>`:""}</div>`;
+}
+function renderMembers(){
+  const box=$("#memberList"),members=state.alliance.members||[];if(!box)return;
+  const summary=renderAllianceActivity(),roles=["R5","R4","R3","R2","R1"];
+  if(!members.length){box.innerHTML=`<div class="notice">${t("no_members")}</div>`;return}
+  const chips=roles.map(role=>`<span class="roleCountChip"><b>${role}</b><small>${summary.roleCounts[role]||0}</small></span>`).join("");
+  const groups=roles.map(role=>{
+    const rows=members.filter(m=>normalizeAllianceRole(m.role)===role).sort((a,b)=>(Number(b.power_m)||0)-(Number(a.power_m)||0));
+    const open=openRosterRoles.has(role)?" open":"";
+    const body=rows.length?rows.map(renderMemberRow).join(""):`<div class="emptyRole">${esc(t("role_empty"))}</div>`;
+    return `<details class="roleRosterGroup" data-roster-role="${role}"${open}><summary><span class="roleRosterTitle"><b>${role}</b><small>${rows.length} ${esc(t("members_short"))}</small></span><span class="roleRosterChevron" aria-hidden="true">⌄</span></summary><div class="roleRosterBody">${body}</div></details>`;
+  }).join("");
+  box.innerHTML=`<div class="rosterOverview"><div><b>${esc(t("roster_by_role"))}</b><small>${esc(t("roster_hint"))}</small></div><div class="roleCountRow">${chips}</div></div><div class="roleRosterList">${groups}</div>`;
+  box.querySelectorAll("details[data-roster-role]").forEach(d=>d.addEventListener("toggle",()=>{const role=d.dataset.rosterRole;if(d.open)openRosterRoles.add(role);else openRosterRoles.delete(role)}));
+}
 function renderVsTimeline(){const active=Number(currentVsDay()||1),fmt=new Intl.DateTimeFormat(locale,{weekday:"short"}),monday=new Date(Date.UTC(2026,0,5));$("#vsTimeline").innerHTML=Array.from({length:6},(_,i)=>{const d=new Date(monday);d.setUTCDate(monday.getUTCDate()+i);return `<div class="day ${active===i+1?"active":""}">${fmt.format(d)}<br>${t("day_label")}${i+1}</div>`}).join("")}
 function renderAdvice(){const p=state.player;if(!p.name){$("#adviceTitle").textContent=t("configure_profile");$("#adviceText").textContent=t("configure_text");$("#adviceAction").textContent=t("configure");return}const populated=state.squads.filter(x=>Number(x.power)>0);if(!populated.length){$("#adviceTitle").textContent=t("hello",{name:p.name});$("#adviceText").textContent=t("sync_four");$("#adviceAction").textContent=t("open_player");return}const strongest=[...populated].sort((x,y)=>(Number(y.power)||0)-(Number(x.power)||0))[0];$("#adviceTitle").textContent=t("priority",{name:strongest.name||`${t("squad")} 1`});$("#adviceText").textContent=t("priority_text",{power:fmtPower(strongest.power)});$("#adviceAction").textContent=t("view_squads")}
 function renderAccountFields(){const p=state.player;if(!$("#fName"))return;$("#fName").value=p.name||"";$("#fServer").value=p.server_id||"";$("#fHq").value=p.hq_level||"";$("#fAlliance").value=state.alliance.tag||"";$("#fRole").value=state.alliance.role||p.role||"R1"}
