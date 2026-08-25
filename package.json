@@ -1,8 +1,8 @@
 {
   "name": "warboost-v2-publisher-edition",
-  "version": "2.3.8",
+  "version": "2.3.9",
   "private": true,
-  "description": "WarBoost V2.3.8 — Diagnostic PRO presentation reliability: uniform Impact/ROI badges while preserving validated V2.3.7 logic, evidence data and Alliance mobile finish",
+  "description": "WarBoost V2.3.9 — VS timing reliability: cycle-aware Day 4/Day 1 recommendations, safer paid exclusive-weapon wording, and preserved validated V2.3.8 logic",
   "type": "module",
   "scripts": {
     "check": "node --check app.js && node --check publisher-ui.js && node --check i18n.js && node --check sw.js && node --check api/state.js && node --check api/sync.js && node --check api/scan.js && node --check api/advice.js && node --check api/invite.js && node --check api/join.js && node --check api/ingest.js && node --check api/health.js && node --check api/cloud-config.js && node --check api/cron-sync.js && node --check api/pro.js && node --check lib/supabase.js && node --check lib/normalize.js && node --check lib/provider.js && node --check lib/auth.js && node --check lib/meta-intel.js && node --check lib/heroes.js && node --check lib/alliance-activity.js",

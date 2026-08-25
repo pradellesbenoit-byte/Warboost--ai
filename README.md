@@ -1,3 +1,17 @@
+# WarBoost V2.3.9 — VS Timing Reliability
+
+La V2.3.9 part strictement de la V2.3.8 validée sur `publisher-demo`. Elle corrige le conseil de timing VS dans le détail « Pourquoi » sans modifier le classement IA validé. WarBoost distingue désormais le jour optimal du cycle courant du **prochain cycle** lorsqu’il est déjà passé.
+
+## V2.3.9 — Correctif de timing
+
+- Héros / armes exclusives : jours 1–3 → jour 4 du cycle courant ; jour 4 → bon timing ; jours 5–6 → prochain jour 4 avec garde-fou ROI Saison/goulot.
+- Drone : jour 1 → bon timing ; jours 2–6 → prochain jour 1 avec garde-fou ROI.
+- Aucun conseil ne demande d’attendre un jour VS déjà passé dans le cycle courant.
+- Pack arme exclusive : recommandation payante uniquement si elle accélère directement le héros prioritaire avec un rapport coût/gain favorable ; pas de dispersion des fragments.
+- Diagnostic PRO, 31 héros, paliers EX, Alliance Reliability, Scan, méta et Supabase restent inchangés hors ce correctif ciblé.
+
+---
+
 # WarBoost V2.3.8 — Diagnostic Badge Reliability
 
 La V2.3.8 conserve intégralement la logique fonctionnelle validée en V2.3.7. Elle uniformise uniquement les badges des cartes du Diagnostic PRO : chaque priorité affiche `Impact + ROI`, tandis que le nombre global de Sources IA reste dans le résumé du Diagnostic. Les preuves internes (`evidence_ids`) sont conservées et aucune source n’est inventée.

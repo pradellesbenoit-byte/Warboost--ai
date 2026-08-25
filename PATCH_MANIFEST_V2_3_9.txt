@@ -1,0 +1,31 @@
+WarBoost V2.3.9 — PATCH MANIFEST
+=================================
+
+ROOT
+- app.js
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- sw.js
+- README.md
+- WARBOOST_V2_3_9_RELEASE.md
+- BUILD_VERIFICATION_V2_3_9.txt
+- PATCH_MANIFEST_V2_3_9.txt
+
+api/
+- advice.js
+- health.js
+
+lib/
+- normalize.js
+
+UNCHANGED / DO NOT RE-UPLOAD
+- styles.css
+- publisher-ui.js / publisher-ui.css
+- lib/heroes.js
+- lib/alliance-activity.js
+- lib/meta-intel.js
+- api/scan.js
+- assets/heroes/*
+- supabase/schema.sql
