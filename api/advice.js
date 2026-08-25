@@ -1,6 +1,7 @@
 import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
 import {canonicalHeroName,heroType} from '../lib/heroes.js';
-const ENGINE_VERSION="2.3.4";
+import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from '../lib/alliance-activity.js';
+const ENGINE_VERSION="2.3.6";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function metric(v){
   if(v===null||v===undefined||v==="")return null;
@@ -447,35 +448,34 @@ function buildShopAdvice(state,locale,analysis){const p=shopText(locale),a=adapt
 }
 
 
-function allianceActivityScore(m){
-  const ts=Date.parse(m?.last_active_at||m?.updated_at||"");
-  const ageH=Number.isFinite(ts)?Math.max(0,(Date.now()-ts)/36e5):null;
-  let score=0,signals=0;
-  if(ageH!==null){signals++;score+=ageH<=24?55:ageH<=72?42:ageH<=168?24:8}
-  const delta=num(m?.delta_m);if(delta!==null){signals++;score+=delta>0?25:delta===0?8:4}
-  const vs=num(m?.vs_points);if(vs!==null){signals++;score+=vs>0?12:2}
-  const season=num(m?.season_points);if(season!==null){signals++;score+=season>0?8:1}
-  if(!signals)return null;
-  return Math.max(0,Math.min(100,Math.round(score)));
+function allianceRoleLine(roleCounts,lang){
+  const order=["R5","R4","R3","R2","R1"],parts=order.map(r=>`${r} ${roleCounts[r]||0}`).join(" · ");
+  if(lang==="fr")return `Répartition : ${parts}.`;
+  if(lang==="es")return `Distribución: ${parts}.`;
+  if(lang==="de")return `Verteilung: ${parts}.`;
+  if(lang==="ja")return `構成：${parts}。`;
+  if(lang==="zh")return `分布：${parts}。`;
+  if(lang==="ar")return `التوزيع: ${parts}.`;
+  return `Rank split: ${parts}.`;
 }
 const ALLIANCE_AI={
- fr:{empty:"Fais rejoindre les membres et synchronise leur progression avant de générer un plan fiable.",line:(a,w,i,u)=>`${a} actifs · ${w} à surveiller · ${i} inactifs estimés${u?` · ${u} sans données suffisantes`:""}.`,core:n=>`Noyau conseillé : ${n}.`,action:"Priorité R4/R5 : contacte d'abord les membres faibles/inactifs avant toute exclusion, puis place les membres actifs les plus puissants sur les rôles critiques."},
- en:{empty:"Invite members and synchronize their progression before generating a reliable plan.",line:(a,w,i,u)=>`${a} active · ${w} to watch · ${i} estimated inactive${u?` · ${u} with insufficient data`:""}.`,core:n=>`Suggested core: ${n}.`,action:"R4/R5 priority: contact low/inactive members before any removal, then assign the strongest active members to critical roles."},
- es:{empty:"Invita miembros y sincroniza su progresión antes de generar un plan fiable.",line:(a,w,i,u)=>`${a} activos · ${w} a vigilar · ${i} inactivos estimados${u?` · ${u} sin datos suficientes`:""}.`,core:n=>`Núcleo recomendado: ${n}.`,action:"Prioridad R4/R5: contacta primero a los miembros con baja actividad antes de expulsar y asigna a los activos más fuertes a los roles críticos."},
- de:{empty:"Lade Mitglieder ein und synchronisiere ihren Fortschritt, bevor du einen verlässlichen Plan erstellst.",line:(a,w,i,u)=>`${a} aktiv · ${w} beobachten · ${i} geschätzt inaktiv${u?` · ${u} mit zu wenig Daten`:""}.`,core:n=>`Empfohlener Kern: ${n}.`,action:"R4/R5-Priorität: Mitglieder mit geringer Aktivität zuerst kontaktieren und erst danach die stärksten aktiven Mitglieder auf kritische Rollen setzen."},
- ja:{empty:"信頼できる計画を作る前に、メンバーを招待して進捗を同期してください。",line:(a,w,i,u)=>`アクティブ ${a} · 要確認 ${w} · 非アクティブ推定 ${i}${u?` · データ不足 ${u}`:""}。`,core:n=>`推奨中核：${n}。`,action:"R4/R5優先：低活動メンバーは除名前に連絡し、最も強いアクティブメンバーを重要役割へ配置します。"},
- zh:{empty:"先邀请成员并同步进度，再生成可靠计划。",line:(a,w,i,u)=>`活跃 ${a} · 需关注 ${w} · 估算不活跃 ${i}${u?` · 数据不足 ${u}`:""}。`,core:n=>`建议核心：${n}。`,action:"R4/R5 优先：在移除前先联系低活跃成员，再把最强的活跃成员安排到关键岗位。"},
- ar:{empty:"ادعُ الأعضاء وزامن تقدمهم قبل إنشاء خطة موثوقة.",line:(a,w,i,u)=>`${a} نشط · ${w} للمراقبة · ${i} غير نشط تقديرياً${u?` · ${u} ببيانات غير كافية`:""}.`,core:n=>`النواة المقترحة: ${n}.`,action:"أولوية R4/R5: تواصل مع الأعضاء منخفضي النشاط قبل الاستبعاد، ثم ضع أقوى الأعضاء النشطين في الأدوار الحرجة."}
+ fr:{empty:"Fais rejoindre les membres et synchronise leur progression avant de générer un plan fiable.",line:(a,r,i)=>`${a} actifs confirmés · ${r} à actualiser · ${i} inactifs probables.`,refresh:"Fiabilité insuffisante pour exclure des membres ou figer les rôles : actualise le roster avant l'affectation finale.",core:n=>`Noyau actif conseillé : ${n}.`,action:"R5/R4 pilotent la décision, R3 servent de cadres opérationnels, R2 de relais/soutien et R1 de base. Contacte toujours un membre avant toute exclusion."},
+ en:{empty:"Invite members and synchronize their progression before generating a reliable plan.",line:(a,r,i)=>`${a} confirmed active · ${r} need refresh · ${i} probable inactive.`,refresh:"Reliability is too low to exclude members or lock roles: refresh the roster before final assignments.",core:n=>`Suggested active core: ${n}.`,action:"R5/R4 lead decisions, R3 act as operational leads, R2 as relays/support and R1 as the base. Always contact a member before removal."},
+ es:{empty:"Invita miembros y sincroniza su progresión antes de generar un plan fiable.",line:(a,r,i)=>`${a} activos confirmados · ${r} por actualizar · ${i} inactivos probables.`,refresh:"La fiabilidad es insuficiente para excluir miembros o fijar roles: actualiza el roster antes de la asignación final.",core:n=>`Núcleo activo recomendado: ${n}.`,action:"R5/R4 dirigen, R3 son mandos operativos, R2 apoyo/enlace y R1 la base. Contacta siempre antes de excluir."},
+ de:{empty:"Lade Mitglieder ein und synchronisiere ihren Fortschritt, bevor du einen verlässlichen Plan erstellst.",line:(a,r,i)=>`${a} bestätigt aktiv · ${r} zu aktualisieren · ${i} wahrscheinlich inaktiv.`,refresh:"Die Zuverlässigkeit reicht nicht für Ausschlüsse oder feste Rollen: Roster vor der finalen Zuweisung aktualisieren.",core:n=>`Empfohlener aktiver Kern: ${n}.`,action:"R5/R4 führen, R3 sind operative Leiter, R2 Relais/Support und R1 die Basis. Vor Ausschluss immer Kontakt aufnehmen."},
+ ja:{empty:"信頼できる計画を作る前にメンバーを招待し進捗を同期してください。",line:(a,r,i)=>`アクティブ確認 ${a} · 更新必要 ${r} · 非アクティブの可能性 ${i}。`,refresh:"除名や最終役割固定には信頼度不足です。最終配置前にロスターを更新してください。",core:n=>`推奨アクティブ中核：${n}。`,action:"R5/R4が判断、R3が運用リーダー、R2が連携/支援、R1が基盤。除名前に必ず連絡してください。"},
+ zh:{empty:"先邀请成员并同步进度，再生成可靠计划。",line:(a,r,i)=>`已确认活跃 ${a} · 需要更新 ${r} · 可能不活跃 ${i}。`,refresh:"当前可靠度不足以移除成员或锁定角色；最终分配前请更新名单。",core:n=>`建议活跃核心：${n}。`,action:"R5/R4负责决策，R3作为行动干部，R2负责联络/支援，R1作为基础。移除成员前务必先联系。"},
+ ar:{empty:"ادعُ الأعضاء وزامن تقدمهم قبل إنشاء خطة موثوقة.",line:(a,r,i)=>`${a} نشط مؤكد · ${r} يحتاج تحديث · ${i} غير نشط على الأرجح.`,refresh:"الموثوقية غير كافية للاستبعاد أو تثبيت الأدوار؛ حدّث القائمة قبل التوزيع النهائي.",core:n=>`النواة النشطة المقترحة: ${n}.`,action:"R5/R4 يقودان القرار، R3 قادة عمليات، R2 دعم/ربط وR1 قاعدة التحالف. تواصل دائماً قبل الاستبعاد."}
 };
 function buildAllianceAdvice(state,locale){
-  const pack=ALLIANCE_AI[localePack(locale)]||ALLIANCE_AI.en,members=Array.isArray(state?.alliance?.members)?state.alliance.members:[];
-  if(!members.length)return {advice:pack.empty,confidence:20,activity:{active:0,watch:0,inactive:0,unknown:0}};
-  const rows=members.map(m=>({...m,_activity:allianceActivityScore(m)}));
-  const counts={active:0,watch:0,inactive:0,unknown:0};
-  rows.forEach(m=>{const x=m._activity;if(x===null)counts.unknown++;else if(x>=52)counts.active++;else if(x>=28)counts.watch++;else counts.inactive++});
-  const core=rows.filter(m=>m._activity===null||m._activity>=52).sort((a,b)=>(num(b.power_m)||0)-(num(a.power_m)||0)).slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
-  const known=members.length-counts.unknown,confidence=Math.max(25,Math.min(95,Math.round((known/members.length)*75+20)));
-  return {advice:[pack.line(counts.active,counts.watch,counts.inactive,counts.unknown),core.length?pack.core(core.join(" / ")):"",pack.action].filter(Boolean).join(" "),confidence,activity:counts,core};
+  const lang=localePack(locale),pack=ALLIANCE_AI[lang]||ALLIANCE_AI.en,members=Array.isArray(state?.alliance?.members)?state.alliance.members:[];
+  if(!members.length)return {advice:pack.empty,confidence:20,activity:{active:0,refresh:0,inactive:0,unknown:0},roles:{R5:0,R4:0,R3:0,R2:0,R1:0}};
+  const summary=summarizeAllianceActivity(members),counts=summary.counts;
+  const activeRows=summary.rows.filter(r=>r.activity.key==="active").map(r=>r.member);
+  const core=activeRows.sort((a,b)=>(num(b.power_m)||0)-(num(a.power_m)||0)).slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
+  const needsRefresh=counts.refresh>0;
+  const advice=[pack.line(counts.active,counts.refresh,counts.inactive),allianceRoleLine(summary.roleCounts,lang),needsRefresh?pack.refresh:"",core.length?pack.core(core.join(" / ")):"",pack.action].filter(Boolean).join(" ");
+  return {advice,confidence:summary.confidence,activity:counts,roles:summary.roleCounts,core,reliability:needsRefresh?"refresh_required":"usable"};
 }
 
 const CONTEXT_AI={
