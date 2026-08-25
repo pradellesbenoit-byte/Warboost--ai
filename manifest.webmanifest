@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2 Publisher Edition",
-  "short_name": "WarBoost V2",
-  "description": "WarBoost V1.5.0 — publisher-safe API-ready Last War companion with safe AI priorities, partial shop-catalog disclosure, intelligent scans and multilingual alliance cloud",
+  "name": "WarBoost V2.3.3",
+  "short_name": "WarBoost",
+  "description": "WarBoost V2.3.3 — AI companion for Player, Alliance R5/R4, VS, Season, scans and contextual progression recommendations.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

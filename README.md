@@ -1,3 +1,9 @@
+# WarBoost V2.3.3 — Smart Diagnostic / Protected Migration
+
+La V2.3.3 fusionne la base complète V2.3.1 et le patch Diagnostic PRO V2.3.2. Elle ajoute l'arbitrage global des ressources (héros, EX, Drone, ROI, coût relatif, VS/Saison), la migration locale protégée et le sélecteur global des 22 langues cibles. Voir `WARBOOST_V2_3_3_RELEASE.md` pour le détail.
+
+---
+
 # WarBoost V2 — Publisher Edition
 
 This branch/demo is intended for presentation to Last War / FirstFun. It demonstrates WarBoost as an **AI companion**, not a gameplay automation tool.
