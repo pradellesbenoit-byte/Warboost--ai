@@ -1,7 +1,7 @@
 import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
 import {canonicalHeroName,heroType} from '../lib/heroes.js';
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from '../lib/alliance-activity.js';
-const ENGINE_VERSION="2.3.6";
+const ENGINE_VERSION="2.3.7";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function metric(v){
   if(v===null||v===undefined||v==="")return null;
@@ -459,10 +459,10 @@ function allianceRoleLine(roleCounts,lang){
   return `Rank split: ${parts}.`;
 }
 const ALLIANCE_AI={
- fr:{empty:"Fais rejoindre les membres et synchronise leur progression avant de générer un plan fiable.",line:(a,r,i)=>`${a} actifs confirmés · ${r} à actualiser · ${i} inactifs probables.`,refresh:"Fiabilité insuffisante pour exclure des membres ou figer les rôles : actualise le roster avant l'affectation finale.",core:n=>`Noyau actif conseillé : ${n}.`,action:"R5/R4 pilotent la décision, R3 servent de cadres opérationnels, R2 de relais/soutien et R1 de base. Contacte toujours un membre avant toute exclusion."},
- en:{empty:"Invite members and synchronize their progression before generating a reliable plan.",line:(a,r,i)=>`${a} confirmed active · ${r} need refresh · ${i} probable inactive.`,refresh:"Reliability is too low to exclude members or lock roles: refresh the roster before final assignments.",core:n=>`Suggested active core: ${n}.`,action:"R5/R4 lead decisions, R3 act as operational leads, R2 as relays/support and R1 as the base. Always contact a member before removal."},
- es:{empty:"Invita miembros y sincroniza su progresión antes de generar un plan fiable.",line:(a,r,i)=>`${a} activos confirmados · ${r} por actualizar · ${i} inactivos probables.`,refresh:"La fiabilidad es insuficiente para excluir miembros o fijar roles: actualiza el roster antes de la asignación final.",core:n=>`Núcleo activo recomendado: ${n}.`,action:"R5/R4 dirigen, R3 son mandos operativos, R2 apoyo/enlace y R1 la base. Contacta siempre antes de excluir."},
- de:{empty:"Lade Mitglieder ein und synchronisiere ihren Fortschritt, bevor du einen verlässlichen Plan erstellst.",line:(a,r,i)=>`${a} bestätigt aktiv · ${r} zu aktualisieren · ${i} wahrscheinlich inaktiv.`,refresh:"Die Zuverlässigkeit reicht nicht für Ausschlüsse oder feste Rollen: Roster vor der finalen Zuweisung aktualisieren.",core:n=>`Empfohlener aktiver Kern: ${n}.`,action:"R5/R4 führen, R3 sind operative Leiter, R2 Relais/Support und R1 die Basis. Vor Ausschluss immer Kontakt aufnehmen."},
+ fr:{empty:"Fais rejoindre les membres et synchronise leur progression avant de générer un plan fiable.",line:(a,r,i)=>`${a} actifs confirmés · ${r} à actualiser · ${i} inactifs probables.`,refresh:"Données trop anciennes pour exclure ou figer les rôles : actualise d’abord le roster.",core:n=>`Noyau actif conseillé : ${n}.`,action:"R5/R4 pilotent · R3 encadrent · R2 relaient/soutiennent · R1 forment la base. Contacte toujours un membre avant toute exclusion."},
+ en:{empty:"Invite members and synchronize their progression before generating a reliable plan.",line:(a,r,i)=>`${a} confirmed active · ${r} need refresh · ${i} probable inactive.`,refresh:"Data is too old to remove members or lock roles: refresh the roster first.",core:n=>`Suggested active core: ${n}.`,action:"R5/R4 lead · R3 coordinate · R2 relay/support · R1 form the base. Always contact a member before removal."},
+ es:{empty:"Invita miembros y sincroniza su progresión antes de generar un plan fiable.",line:(a,r,i)=>`${a} activos confirmados · ${r} por actualizar · ${i} inactivos probables.`,refresh:"Los datos son demasiado antiguos para excluir o fijar roles: actualiza primero el roster.",core:n=>`Núcleo activo recomendado: ${n}.`,action:"R5/R4 dirigen · R3 coordinan · R2 apoyan/enlazan · R1 forma la base. Contacta siempre antes de excluir."},
+ de:{empty:"Lade Mitglieder ein und synchronisiere ihren Fortschritt, bevor du einen verlässlichen Plan erstellst.",line:(a,r,i)=>`${a} bestätigt aktiv · ${r} zu aktualisieren · ${i} wahrscheinlich inaktiv.`,refresh:"Die Daten sind zu alt für Ausschlüsse oder feste Rollen: zuerst den Roster aktualisieren.",core:n=>`Empfohlener aktiver Kern: ${n}.`,action:"R5/R4 führen · R3 koordinieren · R2 unterstützen/vermitteln · R1 bildet die Basis. Vor Ausschluss immer Kontakt aufnehmen."},
  ja:{empty:"信頼できる計画を作る前にメンバーを招待し進捗を同期してください。",line:(a,r,i)=>`アクティブ確認 ${a} · 更新必要 ${r} · 非アクティブの可能性 ${i}。`,refresh:"除名や最終役割固定には信頼度不足です。最終配置前にロスターを更新してください。",core:n=>`推奨アクティブ中核：${n}。`,action:"R5/R4が判断、R3が運用リーダー、R2が連携/支援、R1が基盤。除名前に必ず連絡してください。"},
  zh:{empty:"先邀请成员并同步进度，再生成可靠计划。",line:(a,r,i)=>`已确认活跃 ${a} · 需要更新 ${r} · 可能不活跃 ${i}。`,refresh:"当前可靠度不足以移除成员或锁定角色；最终分配前请更新名单。",core:n=>`建议活跃核心：${n}。`,action:"R5/R4负责决策，R3作为行动干部，R2负责联络/支援，R1作为基础。移除成员前务必先联系。"},
  ar:{empty:"ادعُ الأعضاء وزامن تقدمهم قبل إنشاء خطة موثوقة.",line:(a,r,i)=>`${a} نشط مؤكد · ${r} يحتاج تحديث · ${i} غير نشط على الأرجح.`,refresh:"الموثوقية غير كافية للاستبعاد أو تثبيت الأدوار؛ حدّث القائمة قبل التوزيع النهائي.",core:n=>`النواة النشطة المقترحة: ${n}.`,action:"R5/R4 يقودان القرار، R3 قادة عمليات، R2 دعم/ربط وR1 قاعدة التحالف. تواصل دائماً قبل الاستبعاد."}
@@ -474,7 +474,7 @@ function buildAllianceAdvice(state,locale){
   const activeRows=summary.rows.filter(r=>r.activity.key==="active").map(r=>r.member);
   const core=activeRows.sort((a,b)=>(num(b.power_m)||0)-(num(a.power_m)||0)).slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
   const needsRefresh=counts.refresh>0;
-  const advice=[pack.line(counts.active,counts.refresh,counts.inactive),allianceRoleLine(summary.roleCounts,lang),needsRefresh?pack.refresh:"",core.length?pack.core(core.join(" / ")):"",pack.action].filter(Boolean).join(" ");
+  const advice=[pack.line(counts.active,counts.refresh,counts.inactive),allianceRoleLine(summary.roleCounts,lang),needsRefresh?pack.refresh:"",core.length?pack.core(core.join(" / ")):"",pack.action].filter(Boolean).join("\n");
   return {advice,confidence:summary.confidence,activity:counts,roles:summary.roleCounts,core,reliability:needsRefresh?"refresh_required":"usable"};
 }
 
