@@ -67,3 +67,6 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
 .avoidTitle{font-weight:800;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;color:#f4b9b9;margin-bottom:7px}
 .avoidRow{font-size:.82rem;line-height:1.35;color:#aeb9ce;padding:6px 8px;border-left:2px solid rgba(244,185,185,.28);margin:5px 0;background:rgba(120,28,28,.06);border-radius:6px}
 .decisionMetric{white-space:normal;text-align:right}
+
+/* V2.3.4 · Diagnostic PRO reliability */
+.decisionTitle{min-width:0;flex:1}.decisionTitle>b{display:block;line-height:1.22}.priorityProgress{display:inline-flex;margin-top:4px;padding:3px 6px;border-radius:999px;border:1px solid #315a76;background:#0a1d2b;color:#bcecff;font-size:9px;font-weight:850;letter-spacing:.15px}

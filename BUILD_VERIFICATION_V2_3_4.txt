@@ -1,0 +1,75 @@
+WARBOOST V2.3.4 - BUILD VERIFICATION (FULL HERO AUDIT)
+Date: 2026-08-25
+
+Base:
+- Full V2.3.3 retained.
+- V2.3.4 reliability corrections retained.
+- No removal of Player, Alliance R5/R4, VS, Season, Scan, Shop AI, cloud, migration, PWA or publisher-safe integration layers.
+
+Global hero identity architecture:
+- One shared source of truth: lib/heroes.js.
+- Hero catalog audited: 31 identities.
+- Vehicle types audited: 13 Tank / 9 Aircraft / 9 Missile.
+- Every catalog hero has exactly one WarBoost demo visual under assets/heroes/.
+- Unknown hero names are never replaced with a known hero identity.
+- Generic placeholders (Hero 1 / Héros 1 etc.) are never accepted as real identities.
+
+Aliases / migration compatibility:
+- Morrison / Morrisson -> Morrison.
+- Skyler / Schuyler / Shuyler -> Skyler (WarBoost user-facing preference).
+- Braz / Blaz -> Braz.
+- Stetmann / Stetman -> Stetmann.
+- Kimberly / Kimberley -> Kimberly.
+- DVA / D.V.A / D V A -> DVA.
+- Spacing/punctuation variants such as Mc Gregor -> McGregor are resolved by canonical key.
+
+Known type correction:
+- Farhad now has a Tank type in the shared table and is no longer type-less in Scan/AI logic.
+
+Syntax verification:
+- npm run check: PASS.
+- Includes app.js, publisher-ui.js, i18n.js, sw.js, all 12 api/*.js files and all lib/*.js including lib/heroes.js.
+
+Automated hero regression tests: PASS
+- 31/31 canonical heroes: identity/type/asset binding PASS.
+- 31/31 hero assets exist and contain the matching hero label + vehicle type label.
+- 31/31 Diagnostic PRO hero bindings: PASS.
+- 217 EX breakpoint cases (31 heroes x EX0,9,10,19,20,29,30): PASS.
+- EX0/9 -> EX10, EX10/19 -> EX20, EX20/29 -> EX30, EX30 -> no invented next breakpoint: PASS.
+- 7 cross-alias hero <-> exclusive weapon link tests: PASS.
+- No EWxx terminology in audited Diagnostic hero results: PASS.
+- No exact shard/fragment quantity invented without official validated cost data: PASS.
+- Static serving smoke test for app.js, lib/heroes.js and representative hero assets: PASS.
+
+Portrait safety:
+- Diagnostic cards bind portrait from explicit data-hero identity first.
+- Squad rails use explicit data-hero values only.
+- Reason/comparison text is not allowed to replace a hero portrait.
+- No hero reuses another hero's asset path.
+- PWA cache includes lib/heroes.js + all 31 hero visuals.
+- Cache namespace bumped to warboost-v2-3-4-heroes-audit1.
+
+Structure checks:
+- Serverless functions: 12.
+- Hero assets in assets/heroes/: 31.
+- Language selector: 22 target languages, with en-GB/en-US locale variants.
+- No Supabase schema change required by this hero audit.
+
+Main changed runtime files in the audited V2.3.4:
+- app.js
+- publisher-ui.js
+- sw.js
+- api/advice.js
+- api/scan.js
+- api/health.js
+- lib/normalize.js
+- lib/meta-intel.js
+- lib/heroes.js (new shared identity table)
+- package.json
+- assets/heroes/*.svg (31 WarBoost demo visuals)
+- legacy root hero SVGs refreshed for the previously supported 8 heroes
+
+Documentation:
+- README.md
+- WARBOOST_V2_3_4_RELEASE.md
+- BUILD_VERIFICATION_V2_3_4.txt

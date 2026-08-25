@@ -1,6 +1,6 @@
-# WarBoost V2.3.3 — Smart Diagnostic / Protected Migration
+# WarBoost V2.3.4 — Diagnostic PRO Reliability Patch
 
-La V2.3.3 fusionne la base complète V2.3.1 et le patch Diagnostic PRO V2.3.2. Elle ajoute l'arbitrage global des ressources (héros, EX, Drone, ROI, coût relatif, VS/Saison), la migration locale protégée et le sélecteur global des 22 langues cibles. Voir `WARBOOST_V2_3_3_RELEASE.md` pour le détail.
+La V2.3.4 conserve intégralement le socle V2.3.3 et fiabilise la restitution du Diagnostic PRO : portrait lié explicitement au héros recommandé, alias Morrison/Morrisson et Skyler, affichage clair état actuel → cible, terminologie EX uniforme, cache PWA mis à jour et version éditeur alignée. Voir `WARBOOST_V2_3_4_RELEASE.md`.
 
 ---
 
@@ -100,7 +100,7 @@ Cette version corrige les noms de héros inventés ou mal associés lors d’un 
 - Le type de héros (Tank / Aircraft / Missile) est contrôlé pour bloquer les incohérences.
 - Les anciens noms non fiables sont effacés lors du prochain scan de l’escouade au lieu d’être conservés.
 - WarBoost préfère afficher « Héros 1 » plutôt que d’inventer un mauvais nom.
-- Correction du catalogue : `Blaz` remplace l’ancienne faute `Braz`.
+- Compatibilité de nom : `Braz` et `Blaz` sont reconnus comme le même héros ; WarBoost affiche `Braz` dans cette version auditée.
 
 Les niveaux, étoiles, équipements, armes exclusives, Drone, PRO, internationalisation et verrouillage Escouade 1/2/3/4 sont conservés.
 
@@ -112,7 +112,7 @@ Cette version corrige le cas où une escouade était bien analysée (niveau, ét
 ## Améliorations V1.2.8
 
 - image envoyée à WarBoost Vision en résolution supérieure (jusqu’à 2048 px) pour mieux lire les portraits et petits textes ;
-- catalogue contrôlé des héros Last War pour canonicaliser les vrais noms (DVA, Lucius, Carlie, Morrisson, Skyler, etc.) ;
+- catalogue contrôlé des héros Last War pour canonicaliser les identités (DVA, Lucius, Carlie, Morrison/Morrisson, Skyler/Schuyler, Braz/Blaz, etc.) ;
 - seconde passe Vision ciblée uniquement sur les portraits si le premier scan n’a pas reconnu tous les noms ;
 - aucun remplissage basé uniquement sur une composition “probable” : WarBoost exige une preuve visuelle suffisante ;
 - conservation de toutes les fonctions V1.2.7 : 4 emplacements d’escouade séparés, Escouade 4 optionnelle, armes exclusives intégrées aux héros, PRO, Stripe, Supabase, traduction mondiale et Sync hybride.

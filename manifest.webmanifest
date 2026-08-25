@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.3.3",
+  "name": "WarBoost V2.3.4",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.3.3 — AI companion for Player, Alliance R5/R4, VS, Season, scans and contextual progression recommendations.",
+  "description": "WarBoost V2.3.4 — AI companion for Player, Alliance R5/R4, VS, Season, scans and contextual progression recommendations.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
