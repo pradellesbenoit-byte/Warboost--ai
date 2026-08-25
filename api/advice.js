@@ -105,7 +105,17 @@ function ewPriorityWeight(name,type,target){if(type==="aircraft")return (target<
 const KNOWN_EX_BREAKPOINTS=[10,20,30];
 function nextKnownExBreakpoint(v){const n=num(v);if(n===null||n<0)return null;return KNOWN_EX_BREAKPOINTS.find(x=>n<x)??null}
 function exTargetLabel(x){const c=num(x?.exclusive),t=num(x?.next_breakpoint);if(!cleanName(x?.name)||c===null||t===null)return cleanName(x?.name)||"";return `${cleanName(x.name)} EX${c} → EX${t}`}
-function exPriorityScore(name,type,current,target){const base=ewPriorityWeight(name,type,target),stageBonus=target===10?15:target===20?8:target===30?-5:0,gap=Math.max(0,target-current),closeness=Math.max(0,10-gap)*.5;return base+stageBonus+closeness}
+function exPriorityScore(name,type,current,target){
+  // V2.3.2: compare the marginal value of the NEXT breakpoint, not the raw EX gap.
+  // In S6-style progression, EX20 is deliberately favored over rushing one hero to EX30,
+  // while EX10 remains useful but no longer automatically beats a well-positioned EX10→20 move.
+  const base=ewPriorityWeight(name,type,target);
+  const stageBonus=target===20?18:target===10?4:target===30?-12:0;
+  const gap=Math.max(0,target-current);
+  const closeness=Math.max(0,10-gap)*.7;
+  const investedBonus=current>=10&&target===20?5:0;
+  return base+stageBonus+closeness+investedBonus;
+}
 const EW_TEXT={
 fr:(h,c,t)=>`${h} est à EX${c}. Le prochain palier efficace est EX${t} ; WarBoost privilégie les paliers 10/20/30 plutôt qu'un simple égalisage de niveaux.`,
 en:(h,c,t)=>`${h} is at EX${c}. The next efficient breakpoint is EX${t}; WarBoost prioritizes 10/20/30 breakpoints rather than simple level matching.`,
@@ -127,6 +137,48 @@ function roiLabel(score,lang){const x=Math.round(score);const pack={fr:["Moyenne
 function timingAdjustment(kind,state){const day=Number(state?.vs?.day);let x=0;if(day===4&&["level","stars","exclusive"].includes(kind))x+=7;if(day===1&&kind==="drone")x+=7;if(day===2&&kind==="gear")x+=3;const sd=num(state?.season?.day),st=num(state?.season?.total_days);if(sd!==null&&st!==null&&st>0&&sd/st>=.8)x-=kind==="scan"?0:2;return x}
 function heroImportance(h,heroes,type){const p=num(h?.power),known=heroes.map(x=>num(x.h?.power)).filter(x=>x!==null);let w=1;if(p!==null&&known.length){const mx=Math.max(...known),mn=Math.min(...known);w+=mx===mn?.06:((p-mn)/(mx-mn))*.12}const n=cleanName(h?.name);if(type&&HERO_TYPES[n]===type)w+=.05;return w}
 function candidate(kind,title,reason,action,buyFree,buyPaid,target,impact,cost,state,lang,meta={}){const timing=timingAdjustment(kind,state),intel=metaAdjustment({kind,target,...meta},state,lang),roi=Math.max(1,Math.min(100,Math.round((impact/(Math.max(.35,cost)))*.78+timing+intel.bonus*.35))),score=Math.max(1,Math.min(100,Math.round(impact*.66+roi*.34+timing+intel.bonus)));return {kind,title,reason:[reason,...intel.reasons].filter(Boolean).join(' '),action,buy_free:buyFree,buy_paid:buyPaid,target,severity:score,impact_score:Math.round(impact),impact_label:impactLabel(impact,lang),roi_score:roi,roi_label:roiLabel(roi,lang),resource_efficiency_score:roi,resource_efficiency_label:roiLabel(roi,lang),timing_adjustment:timing,meta_adjustment:intel.bonus,evidence_ids:intel.evidence,...meta}}
+
+
+function nextBreakpointWhy(heroCandidates,chosen,lang){
+  if(!chosen||chosen.kind!=="exclusive")return "";
+  const others=heroCandidates.filter(x=>x!==chosen&&x.kind==="exclusive").slice(0,3);
+  if(!others.length)return "";
+  const label=x=>`${x.target} ${x.current!=null?`EX${x.current}→${x.next_target||"?"}`:""}`.trim();
+  if(lang==="fr")return `Comparé à ${others.map(label).join(", ")}, ${chosen.target} offre actuellement le meilleur compromis entre palier, coût restant, rôle dans l'escouade et timing.`;
+  if(lang==="es")return `Frente a ${others.map(label).join(", ")}, ${chosen.target} ofrece ahora el mejor equilibrio entre hito, coste restante, rol y timing.`;
+  if(lang==="de")return `Im Vergleich zu ${others.map(label).join(", ")} bietet ${chosen.target} aktuell das beste Verhältnis aus Meilenstein, Restkosten, Rolle und Timing.`;
+  return `Compared with ${others.map(label).join(", ")}, ${chosen.target} currently has the best balance of breakpoint value, remaining cost, squad role and timing.`;
+}
+function bottleneckFamily(kind){return kind==="level"||kind==="stars"||kind==="exclusive"||kind==="gear"?"hero":kind}
+function selectSmartTop3(candidates,lang){
+  const sorted=[...candidates].sort((a,b)=>b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
+  const heroCandidates=sorted.filter(x=>bottleneckFamily(x.kind)==="hero");
+  const topHero=heroCandidates[0];
+  // Drone must beat a hero upgrade on marginal value; it is no longer inserted just to diversify categories.
+  const adjusted=sorted.map(x=>{
+    if(x.kind!=="drone"||!topHero)return x;
+    const heroPressure=heroCandidates.filter(h=>h.kind==="exclusive"&&h.severity>=x.severity-8).length;
+    return heroPressure>=2?{...x,severity:Math.max(1,x.severity-12),resource_efficiency_score:Math.max(1,x.resource_efficiency_score-10),roi_score:Math.max(1,x.roi_score-10)}:x;
+  }).sort((a,b)=>b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
+
+  const out=[],seen=new Set();
+  for(const x of adjusted){
+    const key=`${x.kind}:${x.target}`;
+    if(seen.has(key))continue;
+    seen.add(key);out.push(x);
+    if(out.length>=3)break;
+  }
+  // Explain the exclusive-weapon choice without cluttering the main card.
+  const exclusivePool=adjusted.filter(x=>x.kind==="exclusive");
+  out.forEach(x=>{
+    if(x.kind==="exclusive"){
+      x.comparison_note=nextBreakpointWhy(exclusivePool,x,lang);
+      x.progress_needed_levels=(Number(x.breakpoint)||0)-(Number(x.current)||0);
+      x.fragment_cost_known=false;
+    }
+  });
+  return out;
+}
 
 function avoidNowText(lang,mainName,topKinds){
   const packs={
@@ -176,23 +228,9 @@ function buildPlayerAnalysis(state,locale){
   }
   const missing=squads.map((s,i)=>i<3&&!squadConfigured(s)?squadName(s,i,lang):null).filter(Boolean);if(missing.length)candidates.push(candidate("scan",p.titles.scan,p.scanMissing(missing.join(", ")),p.actionScan,p.freeNone,p.paidNone,missing.join(", "),70,.3,state,lang));
   candidates.sort((a,b)=>b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
-  // V2.2: compare bottleneck families first. This prevents three recommendations
-  // from being the same category when another account bottleneck is nearly as important.
-  const unique=[],seenKind=new Set(),seenKey=new Set();
-  for(const x of candidates){
-    const key=`${x.kind}:${x.target}`;
-    if(seenKey.has(key)||seenKind.has(x.kind))continue;
-    seenKey.add(key);seenKind.add(x.kind);unique.push(x);
-    if(unique.length>=3)break;
-  }
-  if(unique.length<3){
-    for(const x of candidates){
-      const key=`${x.kind}:${x.target}`;
-      if(seenKey.has(key))continue;
-      seenKey.add(key);unique.push(x);
-      if(unique.length>=3)break;
-    }
-  }
+  // V2.3.2: choose the real top marginal-value actions. We no longer force one
+  // recommendation per category, because that could push Drone above a stronger hero breakpoint.
+  const unique=selectSmartTop3(candidates,lang);
   unique.forEach((x,i)=>x.rank=i+1);
   const comparison=squads.map((s,i)=>{const power=num(s.power),configuredHere=squadConfigured(s),optional=i===3&&!configuredHere,isMain=i===main.i,ratio=mainPower&&power!==null?power/mainPower:null,dataQ=Math.round((configuredHere?20:0)+(power!==null?20:0)+heroDetailCoverage(s)*.6),detected=(s?.heroes||[]).filter(heroConfigured).length,complete=detected>=5;let status=optional?optionalSquadStatus(lang):p.squadStatusMissing;if(configuredHere)status=isMain?p.squadStatusMain:(ratio!==null&&ratio>=.75?p.squadStatusReady:p.squadStatusLow);return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional,heroes_detected:detected,composition_complete:complete};});
   const mainHeroesDetected=heroes.length,compositionComplete=mainHeroesDetected>=5;
@@ -200,7 +238,7 @@ function buildPlayerAnalysis(state,locale){
   const top=unique[0];
   const incompleteNote=!compositionComplete?(lang==="fr"?` Composition incomplète : ${mainHeroesDetected}/5 héros détectés, les recommandations restent prudentes.`:` Incomplete composition: ${mainHeroesDetected}/5 heroes detected; recommendations remain cautious.`):"";
   const summary=(top?p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",top.reason):p.main(mainName,mainPower!==null?fmt(mainPower,loc):"—"))+incompleteNote;
-  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,squads:comparison,focus_squad:main.i+1,candidates_evaluated:candidates.length,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"cross-bottleneck marginal value + resource efficiency + VS/Season timing + dated multi-source evidence",meta_intelligence:metaContext(state),engine:"warboost-ai-smart-v2.3"};
+  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,squads:comparison,focus_squad:main.i+1,candidates_evaluated:candidates.length,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"hero-by-hero breakpoint comparison + marginal value + resource efficiency + VS/Season timing + dated multi-source evidence",meta_intelligence:metaContext(state),engine:"warboost-ai-smart-v2.3.2"};
 }
 
 // ===== V1.4 · Last War Shop Advisor =====
