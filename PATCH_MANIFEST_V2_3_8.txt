@@ -1,0 +1,37 @@
+WarBoost V2.3.8 — PATCH MANIFEST
+================================
+
+Apply on publisher-demo over validated V2.3.7.
+
+ROOT OF GITHUB REPOSITORY
+- app.js
+- i18n.js
+- index.html
+- package.json
+- manifest.webmanifest
+- sw.js
+- README.md
+- WARBOOST_V2_3_8_RELEASE.md
+- BUILD_VERIFICATION_V2_3_8.txt
+- PATCH_MANIFEST_V2_3_8.txt
+
+api/
+- advice.js
+- health.js
+
+lib/
+- normalize.js
+
+DO NOT RE-UPLOAD
+- styles.css (no functional CSS change required for this fix)
+- publisher-ui.js (unchanged)
+- assets/heroes/ (31 portraits unchanged)
+- lib/heroes.js (31-hero registry unchanged)
+- lib/alliance-activity.js (validated Alliance Reliability unchanged)
+- lib/meta-intel.js (meta evidence logic unchanged)
+- api/scan.js (validated Scan logic unchanged)
+- supabase/schema.sql (no migration required)
+
+VISIBLE RESULT
+- Morrison, Carlie, Lucius and every other TOP 3 card use the same Impact + ROI badge.
+- Sources IA remains in the global Diagnostic PRO summary only.

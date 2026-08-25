@@ -1,0 +1,36 @@
+WarBoost V2.3.8 — BUILD VERIFICATION
+====================================
+
+Base: WarBoost V2.3.7 validated on publisher-demo.
+Scope: Diagnostic PRO badge presentation only + version/cache metadata alignment.
+
+CHECKS PASSED
+-------------
+[OK] npm run check: all browser, API and lib JavaScript files pass node --check.
+[OK] Hero catalog: 31 heroes.
+[OK] Hero assets: 31/31 SVG files present under assets/heroes/.
+[OK] Exclusive Weapon breakpoint regression: 217 cases passed (31 heroes x EX0, EX9, EX10, EX19, EX20, EX29, EX30).
+[OK] Breakpoints remain: EX0-9 -> EX10; EX10-19 -> EX20; EX20-29 -> EX30; EX30 -> no invented next breakpoint.
+[OK] No exclusive-fragment quantity is invented; fragment_cost_known remains false for EX recommendations.
+[OK] Evidence IDs remain present in AI data; presentation change does not remove provenance.
+[OK] Diagnostic summary still displays the global Sources IA count.
+[OK] Per-card badge no longer conditionally displays a Sources IA count; all TOP 3 cards use the same Impact + ROI format.
+[OK] Alliance stale-data case: 94 members at 5 days old => 0 confirmed active / 94 refresh needed / 0 probable inactive.
+[OK] Alliance role distribution regression: R5 0 / R4 10 / R3 70 / R2 11 / R1 3.
+[OK] lib/alliance-activity.js unchanged from V2.3.7.
+[OK] lib/heroes.js unchanged from V2.3.7.
+[OK] lib/meta-intel.js unchanged from V2.3.7.
+[OK] api/scan.js unchanged from V2.3.7.
+[OK] publisher-ui.js unchanged from V2.3.7.
+[OK] Supabase schema unchanged from V2.3.7.
+[OK] Supabase schema SHA-256: 5574484f26eb79b13e9f3da24ece1fb080f4c62610b767571b20c72e322fc390
+[OK] 12 serverless API functions retained.
+[OK] Runtime version metadata aligned to V2.3.8 (app, i18n taglines, index, package, manifest, health, advice engine, normalize state).
+[OK] PWA cache key renewed for V2.3.8.
+
+V2.3.8 PRESENTATION RULE
+------------------------
+- Each Diagnostic PRO priority card shows: Impact + ROI.
+- Global Diagnostic summary shows the overall Sources IA count and Meta confidence.
+- Evidence IDs remain available internally for traceability.
+- No AI ranking, hero, EX, Alliance, Scan or Supabase decision logic changed.

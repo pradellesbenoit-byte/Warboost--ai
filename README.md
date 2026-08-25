@@ -1,4 +1,14 @@
-# WarBoost V2.3.7 — Mobile Finish
+# WarBoost V2.3.8 — Diagnostic Badge Reliability
+
+La V2.3.8 conserve intégralement la logique fonctionnelle validée en V2.3.7. Elle uniformise uniquement les badges des cartes du Diagnostic PRO : chaque priorité affiche `Impact + ROI`, tandis que le nombre global de Sources IA reste dans le résumé du Diagnostic. Les preuves internes (`evidence_ids`) sont conservées et aucune source n’est inventée.
+
+## V2.3.8 — Correctif de présentation
+
+- Badge identique sur toutes les cartes TOP 3 : Impact + ROI.
+- Sources IA conservées globalement dans le résumé.
+- Aucune règle IA, Alliance, Scan ou Supabase modifiée.
+
+---
 
 La V2.3.7 conserve les moteurs Diagnostic PRO et Alliance Reliability validés en V2.3.6 et applique uniquement les finitions mobiles validées : libellés de fraîcheur naturels, roster par grade à défilement interne, Plan de guerre plus lisible et cartes PRO mieux adaptées aux petits écrans. Les 31 héros, alias, paliers EX et protections de données restent inchangés.
 
