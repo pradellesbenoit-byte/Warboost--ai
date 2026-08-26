@@ -1,9 +1,10 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {HERO_CATALOG,canonicalHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
+import {canonicalShopStore} from "./lib/shop-catalog.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.3.9";
+const APP_VERSION="2.4.0";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const LEGACY_LANGUAGE_KEYS=["wb17_language","wb171_language","warboost_language"];
 const LEGACY_DATA_KEYS=["wb12_account","wb11_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster"];
@@ -12,7 +13,7 @@ function uid(){return crypto.randomUUID?.()||`wb-${Date.now()}-${Math.random().t
 function clientId(){let id=localStorage.getItem(CLIENT_KEY);if(!id){id=uid();localStorage.setItem(CLIENT_KEY,id)}return id}
 function emptyHero(i){return {name:"",level:null,stars:null,power:null,exclusive:null,gear:null}}
 function emptySquad(i){return {id:i,name:`Squad ${i}`,power:null,updated_at:null,heroes:[1,2,3,4,5].map(emptyHero)}}
-function initialState(){return {version:APP_VERSION,player_id:clientId(),updated_at:null,player:{name:"",server_id:"",hq_level:null,power_m:null,coordinates:null,role:"R1"},exclusive_weapons:[],drone:{level:null,power_m:null,updated_at:null},shop:{store_type:"",currency:"",currency_balance:null,vip_level:null,vip_days_remaining:null,offers:[],updated_at:null},squads:[1,2,3,4].map(emptySquad),alliance:{id:null,tag:"",name:"",role:"R1",invite_code:"",members:[],updated_at:null},vs:{week:null,day:null,our_alliance:"",opponent:"",our_score:null,their_score:null,updated_at:null},season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:0,resistance:null,updated_at:null},sync:{provider:"warboost-local",provider_kind:"local",access_status:"pending",capabilities:[],status:"local",last_sync:null,last_error:null,auto_ready:true,last_scan:null,official_last_sync:null,public_last_sync:null,sources:{official:false,public:false,scan:false,alliance:false}}}}
+function initialState(){return {version:APP_VERSION,player_id:clientId(),updated_at:null,player:{name:"",server_id:"",hq_level:null,power_m:null,coordinates:null,role:"R1"},exclusive_weapons:[],drone:{level:null,power_m:null,updated_at:null},shop:{store_type:"",currency:"",currency_balance:null,vip_level:null,vip_days_remaining:null,offers:[],snapshots:[],updated_at:null},squads:[1,2,3,4].map(emptySquad),alliance:{id:null,tag:"",name:"",role:"R1",invite_code:"",members:[],updated_at:null},vs:{week:null,day:null,our_alliance:"",opponent:"",our_score:null,their_score:null,updated_at:null},season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:0,resistance:null,updated_at:null},sync:{provider:"warboost-local",provider_kind:"local",access_status:"pending",capabilities:[],status:"local",last_sync:null,last_error:null,auto_ready:true,last_scan:null,official_last_sync:null,public_last_sync:null,sources:{official:false,public:false,scan:false,alliance:false}}}}
 function canonicalStoredHeroName(v){return canonicalHeroName(v)}
 function mergeExclusiveWeapons(baseList,incomingList){
   const out=Array.isArray(baseList)?baseList.map(x=>({...x,hero_name:canonicalStoredHeroName(x?.hero_name)})):[];
@@ -29,7 +30,30 @@ function mergeExclusiveWeapons(baseList,incomingList){
   }
   return out.slice(0,24);
 }
-function mergeState(base,incoming){if(!incoming||typeof incoming!=="object")return base;const out={...base,...incoming};out.player={...base.player,...incoming.player};out.drone={...base.drone,...incoming.drone};out.shop={...base.shop,...incoming.shop,offers:Array.isArray(incoming.shop?.offers)?incoming.shop.offers:(base.shop?.offers||[])};out.alliance={...base.alliance,...incoming.alliance};out.vs={...base.vs,...incoming.vs};out.season={...base.season,...incoming.season};out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.sync={...base.sync,...incoming.sync,sources:{...base.sync.sources,...incoming.sync?.sources}};out.squads=Array.from({length:4},(_,i)=>{const src=incoming.squads?.[i]||{};return {...base.squads[i],...src,id:i+1,name:`Squad ${i+1}`,heroes:Array.from({length:5},(_,j)=>{const h={...base.squads[i].heroes[j],...(src.heroes?.[j]||{})};h.name=canonicalStoredHeroName(h.name);return h})}});out.version=APP_VERSION;return out}
+function cleanShopSnapshot(x){
+  if(!x||typeof x!=="object")return null;
+  const offers=Array.isArray(x.offers)?x.offers.filter(o=>o&&o.item_name).slice(0,24):[];
+  const store_type=canonicalShopStore(x.store_type||x.store||"")||String(x.store_type||x.store||"").trim();
+  if(!offers.length&&!store_type)return null;
+  return {store_type,currency:x.currency||"",currency_balance:x.currency_balance??null,vip_level:x.vip_level??null,vip_days_remaining:x.vip_days_remaining??null,offers,updated_at:x.updated_at||null};
+}
+function mergeShopState(baseShop={},incomingShop){
+  if(!incomingShop||typeof incomingShop!=="object")return {...baseShop,snapshots:Array.isArray(baseShop.snapshots)?baseShop.snapshots:[]};
+  const current={...baseShop,...incomingShop,store_type:canonicalShopStore(incomingShop.store_type||baseShop.store_type||"")||String(incomingShop.store_type||baseShop.store_type||"").trim(),offers:Array.isArray(incomingShop.offers)?incomingShop.offers:(baseShop.offers||[])};
+  const pool=[...(Array.isArray(baseShop.snapshots)?baseShop.snapshots:[]),...(Array.isArray(incomingShop.snapshots)?incomingShop.snapshots:[])];
+  const fresh=cleanShopSnapshot(incomingShop);
+  if(fresh&&fresh.offers.length)pool.push(fresh);
+  const seen=new Set(),snapshots=[];
+  for(const raw of pool){
+    const snap=cleanShopSnapshot(raw);if(!snap)continue;
+    const key=`${snap.store_type.toLowerCase()}|${snap.updated_at||""}|${snap.offers.map(o=>`${String(o.item_name).toLowerCase()}@${o.price??""}${o.currency??""}`).sort().join(";")}`;
+    if(seen.has(key))continue;seen.add(key);snapshots.push(snap);
+  }
+  snapshots.sort((a,b)=>String(b.updated_at||"").localeCompare(String(a.updated_at||"")));
+  current.snapshots=snapshots.slice(0,36);
+  return current;
+}
+function mergeState(base,incoming){if(!incoming||typeof incoming!=="object")return base;const out={...base,...incoming};out.player={...base.player,...incoming.player};out.drone={...base.drone,...incoming.drone};out.shop=mergeShopState(base.shop,incoming.shop);out.alliance={...base.alliance,...incoming.alliance};out.vs={...base.vs,...incoming.vs};out.season={...base.season,...incoming.season};out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.sync={...base.sync,...incoming.sync,sources:{...base.sync.sources,...incoming.sync?.sources}};out.squads=Array.from({length:4},(_,i)=>{const src=incoming.squads?.[i]||{};return {...base.squads[i],...src,id:i+1,name:`Squad ${i+1}`,heroes:Array.from({length:5},(_,j)=>{const h={...base.squads[i].heroes[j],...(src.heroes?.[j]||{})};h.name=canonicalStoredHeroName(h.name);return h})}});out.version=APP_VERSION;return out}
 function hasValue(v){return !(v===null||v===undefined||v===""||(Array.isArray(v)&&v.length===0))}
 function safeFields(base={},incoming={},preferBase=false){const out={...base};for(const [k,v] of Object.entries(incoming||{})){if(!hasValue(v))continue;if(preferBase&&hasValue(out[k]))continue;out[k]=v}return out}
 function mergeStateProtected(base,incoming,{preferBase=false}={}){
@@ -37,7 +61,7 @@ function mergeStateProtected(base,incoming,{preferBase=false}={}){
   const out=mergeState(base,incoming);
   out.player=safeFields(base.player,incoming.player,preferBase);
   out.drone=safeFields(base.drone,incoming.drone,preferBase);
-  out.shop=safeFields(base.shop,incoming.shop,preferBase);if(!Array.isArray(incoming.shop?.offers)||!incoming.shop.offers.length)out.shop.offers=base.shop?.offers||[];
+  out.shop=mergeShopState(base.shop,incoming.shop);if(preferBase){out.shop={...out.shop,...base.shop,offers:base.shop?.offers||[],snapshots:out.shop.snapshots||base.shop?.snapshots||[]};}
   out.alliance=safeFields(base.alliance,incoming.alliance,preferBase);if(!Array.isArray(incoming.alliance?.members)||!incoming.alliance.members.length)out.alliance.members=base.alliance?.members||[];
   out.vs=safeFields(base.vs,incoming.vs,preferBase);out.season=safeFields(base.season,incoming.season,preferBase);
   out.sync={...base.sync,...safeFields(base.sync,incoming.sync,preferBase),sources:{...base.sync?.sources,...incoming.sync?.sources}};
@@ -187,7 +211,7 @@ function renderExclusiveWeapons(){
   }).join("");
 }
 
-function aiUiText(){const k=String(lang||"en").toLowerCase();if(k.startsWith("fr"))return {impact:"Impact",roi:"ROI",sources:"Sources IA",meta:"Méta",why:"Pourquoi",details:"Voir les détails",evaluated:"options comparées",avoid:"À ne pas améliorer / acheter maintenant",heroes:"héros détectés"};if(k.startsWith("es"))return {impact:"Impacto",roi:"ROI",sources:"Fuentes IA",meta:"Meta",why:"Por qué",details:"Ver detalles",evaluated:"opciones comparadas",avoid:"No mejorar / comprar ahora",heroes:"héroes detectados"};if(k.startsWith("de"))return {impact:"Wirkung",roi:"ROI",sources:"KI-Quellen",meta:"Meta",why:"Warum",details:"Details anzeigen",evaluated:"Optionen verglichen",avoid:"Jetzt nicht verbessern / kaufen",heroes:"erkannte Helden"};if(k.startsWith("ja"))return {impact:"効果",roi:"ROI",sources:"AIソース",meta:"メタ",why:"理由",details:"詳細を見る",evaluated:"件を比較",avoid:"今は強化・購入しない",heroes:"検出英雄"};if(k.startsWith("zh"))return {impact:"影响",roi:"ROI",sources:"AI来源",meta:"Meta",why:"原因",details:"查看详情",evaluated:"个方案已比较",avoid:"暂时不要升级/购买",heroes:"已识别英雄"};if(k.startsWith("ar"))return {impact:"الأثر",roi:"ROI",sources:"مصادر الذكاء",meta:"الميتا",why:"السبب",details:"عرض التفاصيل",evaluated:"خياراً تمت مقارنتها",avoid:"لا تطور / تشترِ الآن",heroes:"أبطال تم اكتشافهم"};return {impact:"Impact",roi:"ROI",sources:"AI sources",meta:"Meta",why:"Why",details:"View details",evaluated:"options compared",avoid:"Do not upgrade / buy now",heroes:"heroes detected"}}
+function aiUiText(){const k=String(lang||"en").toLowerCase();if(k.startsWith("fr"))return {impact:"Impact",roi:"ROI",sources:"Sources IA",meta:"Méta",why:"Pourquoi",details:"Voir les détails",evaluated:"options comparées",avoid:"À ne pas améliorer / acheter maintenant",heroes:"héros détectés",freshness:"Fraîcheur"};if(k.startsWith("es"))return {impact:"Impacto",roi:"ROI",sources:"Fuentes IA",meta:"Meta",why:"Por qué",details:"Ver detalles",evaluated:"opciones comparadas",avoid:"No mejorar / comprar ahora",heroes:"héroes detectados"};if(k.startsWith("de"))return {impact:"Wirkung",roi:"ROI",sources:"KI-Quellen",meta:"Meta",why:"Warum",details:"Details anzeigen",evaluated:"Optionen verglichen",avoid:"Jetzt nicht verbessern / kaufen",heroes:"erkannte Helden"};if(k.startsWith("ja"))return {impact:"効果",roi:"ROI",sources:"AIソース",meta:"メタ",why:"理由",details:"詳細を見る",evaluated:"件を比較",avoid:"今は強化・購入しない",heroes:"検出英雄"};if(k.startsWith("zh"))return {impact:"影响",roi:"ROI",sources:"AI来源",meta:"Meta",why:"原因",details:"查看详情",evaluated:"个方案已比较",avoid:"暂时不要升级/购买",heroes:"已识别英雄"};if(k.startsWith("ar"))return {impact:"الأثر",roi:"ROI",sources:"مصادر الذكاء",meta:"الميتا",why:"السبب",details:"عرض التفاصيل",evaluated:"خياراً تمت مقارنتها",avoid:"لا تطور / تشترِ الآن",heroes:"أبطال تم اكتشافهم"};return {impact:"Impact",roi:"ROI",sources:"AI sources",meta:"Meta",why:"Why",details:"View details",evaluated:"options compared",avoid:"Do not upgrade / buy now",heroes:"heroes detected",freshness:"Freshness"}}
 function proHeroAttr(x){return canonicalStoredHeroName(x?.hero||x?.presentation?.hero||"")}
 function proHeroVisual(hero,top=false){const hit=heroPresentation(hero);if(!hit)return "";return `<span class="priorityHeroSlot"><img class="wbHeroAvatar${top?" wbTopHero":""}" src="${esc(hit.src)}" alt="${esc(hit.name)} — WarBoost demo visual" loading="lazy"></span>`}
 function proProgressLabel(x){return String(x?.progress_label||x?.presentation?.progress_label||((x?.current_label&&x?.next_target)?`${x.current_label} → ${x.next_target}`:"")||"").trim()}
@@ -202,7 +226,7 @@ function renderProPriority(analysis){
   if(confidence)confidence.textContent=analysis.confidence_label||`${analysis.confidence||0}%`;
   if(list){
     const items=(Array.isArray(analysis.priorities)?analysis.priorities:[]).slice(0,3);
-    list.innerHTML=items.length?items.map((x,i)=>{const hero=proHeroAttr(x),progress=proProgressLabel(x);return `<article class="priorityCard compactDecision"${hero?` data-hero="${esc(hero)}"`:""}><span class="priorityRank">${esc(x.rank||"•")}</span>${proHeroVisual(hero,i===0)}<div class="priorityMain"><div class="decisionHead"><div class="decisionTitle"><b>${esc(x.title||"")}${x.target?` · ${esc(x.target)}`:""}</b>${progress?`<span class="priorityProgress">${esc(progress)}</span>`:""}</div><span class="decisionMetric">${esc(ui.impact)} : ${esc(x.impact_label||"—")} · ${esc(ui.roi)} : ${esc(x.resource_efficiency_label||x.roi_label||"—")}</span></div><strong>${esc(x.action||"")}</strong><details class="decisionDetails"><summary>${esc(ui.why)}</summary><p>${esc(x.reason||"")}</p>${x.comparison_note?`<small>⚖️ ${esc(x.comparison_note)}</small>`:""}${progress?`<small>🎯 ${esc(progress)}</small>`:""}${x.progress_needed_levels>0?`<small>📈 ${esc(String(x.progress_needed_levels))} niveau${x.progress_needed_levels>1?"x":""} jusqu'au prochain palier</small>`:""}${x.timing_window?.label?`<small>⏱️ ${esc(x.timing_window.label)}</small>`:""}<small>🆓 ${esc(x.buy_free||"")}</small><small>💎 ${esc(x.buy_paid||"")}</small></details></div></article>`}).join(""):`<div class="notice">${esc(analysis.summary||t("player_sync_note"))}</div>`;
+    list.innerHTML=items.length?items.map((x,i)=>{const hero=proHeroAttr(x),progress=proProgressLabel(x);return `<article class="priorityCard compactDecision"${hero?` data-hero="${esc(hero)}"`:""}><span class="priorityRank">${esc(x.rank||"•")}</span>${proHeroVisual(hero,i===0)}<div class="priorityMain"><div class="decisionHead"><div class="decisionTitle"><b>${esc(x.title||"")}${x.target?` · ${esc(x.target)}`:""}</b>${progress?`<span class="priorityProgress">${esc(progress)}</span>`:""}</div><span class="decisionMetric">${esc(ui.impact)} : ${esc(x.impact_label||"—")} · ${esc(ui.roi)} : ${esc(x.resource_efficiency_label||x.roi_label||"—")}</span></div><strong>${esc(x.action||"")}</strong><details class="decisionDetails"><summary>${esc(ui.why)}</summary><p>${esc(x.reason||"")}</p>${x.comparison_note?`<small>⚖️ ${esc(x.comparison_note)}</small>`:""}${progress?`<small>🎯 ${esc(progress)}</small>`:""}${x.progress_needed_levels>0?`<small>📈 ${esc(String(x.progress_needed_levels))} niveau${x.progress_needed_levels>1?"x":""} jusqu'au prochain palier</small>`:""}${x.timing_window?.label?`<small>⏱️ ${esc(x.timing_window.label)}</small>`:""}${x.data_freshness?.label?`<small>🕒 ${esc(x.data_freshness.label)}</small>`:""}<small>🆓 ${esc(x.buy_free||"")}</small><small>💎 ${esc(x.buy_paid||"")}</small></details></div></article>`}).join(""):`<div class="notice">${esc(analysis.summary||t("player_sync_note"))}</div>`;
   }
   if(avoid){
     const rows=Array.isArray(analysis.avoid_now)?analysis.avoid_now:[];

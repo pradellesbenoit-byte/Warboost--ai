@@ -1,0 +1,39 @@
+WarBoost V2.4.0 — BUILD VERIFICATION
+====================================
+
+Base: WarBoost V2.3.9 validated on publisher-demo.
+Scope: Decision Integrity + Boutique IA multi-shop + dated screenshot reference catalogue.
+
+CHECKS PASSED
+-------------
+[OK] npm run check: all browser, API and lib JavaScript files pass node --check.
+[OK] Hero catalog: 31 heroes.
+[OK] Hero assets: 31/31 SVG files present under assets/heroes/.
+[OK] Exclusive Weapon breakpoint regression: 217 cases passed (31 heroes x EX0, EX9, EX10, EX19, EX20, EX29, EX30).
+[OK] Breakpoints remain EX0-9 -> EX10; EX10-19 -> EX20; EX20-29 -> EX30; EX30 -> no invented next breakpoint.
+[OK] Reference shop catalogue: 164 entries, 163 named entries, 137 entries with a visible/reference price, 15 shop families.
+[OK] Reference catalogue date: 2026-08-26.
+[OK] Unknown/hidden prices are not reconstructed: 27 entries intentionally have no stored price.
+[OK] Multi-shop persistence test: VIP scan + Alliance scan => 2 preserved snapshots and 2 distinct stores.
+[OK] Exact reference recognition test: Fragment d'Arme Exclusive Universel / Honneur => 100% reference match, 2,500 honor-medal reference price.
+[OK] The catalogue is explicitly non-live: reference availability never counts as confirmed current availability.
+[OK] Fresh scanned shop offers are accumulated and compared; stale shop data is excluded from current-availability ranking.
+[OK] Paid purchase freshness guard remains enabled.
+[OK] Alliance stale-data regression: 94 members at 5 days old => 0 confirmed active / 94 refresh needed / 0 probable inactive.
+[OK] 12 serverless API functions retained.
+[OK] lib/heroes.js unchanged from V2.3.9.
+[OK] lib/meta-intel.js unchanged from V2.3.9.
+[OK] lib/alliance-activity.js unchanged from V2.3.9.
+[OK] api/scan.js unchanged from V2.3.9.
+[OK] styles.css unchanged from V2.3.9.
+[OK] publisher-ui.js unchanged from V2.3.9.
+[OK] Supabase schema unchanged from V2.3.9.
+[OK] Supabase schema SHA-256: 5574484f26eb79b13e9f3da24ece1fb080f4c62610b767571b20c72e322fc390
+[OK] PWA cache key renewed for V2.4.0 Boutique IA.
+
+SHOP SAFETY RULE
+----------------
+- The dated reference catalogue helps identify and rank known items.
+- It never proves that an offer is available now.
+- Current availability comes from a recent player scan or an approved official Last War source.
+- No hidden price, sold-item price, or missing quantity is invented.

@@ -1,0 +1,33 @@
+WarBoost V2.4.0 — Decision Integrity + Boutique IA
+
+ROOT
+- app.js
+- BUILD_VERIFICATION_V2_4_0.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_4_0.txt
+- README.md
+- SHOP_CATALOG_AUDIT_V2_4_0.md
+- sw.js
+- WARBOOST_V2_4_0_RELEASE.md
+
+API
+- api/advice.js
+- api/health.js
+
+LIB
+- lib/data-freshness.js (NEW)
+- lib/normalize.js
+- lib/shop-catalog.js (NEW)
+
+UNCHANGED / DO NOT UPLOAD FOR THIS PATCH
+- styles.css
+- publisher-ui.js / publisher-ui.css
+- api/scan.js
+- lib/heroes.js
+- lib/meta-intel.js
+- lib/alliance-activity.js
+- supabase/schema.sql
+- assets/heroes/*

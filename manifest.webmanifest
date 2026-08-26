@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.3.9",
+  "name": "WarBoost V2.4.0",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.3.9 — AI companion with cycle-aware VS timing for Player, Alliance R5/R4, VS, Season, scans and contextual progression recommendations.",
+  "description": "WarBoost V2.4.0 — Decision Integrity + Boutique IA multi-shop: dated screenshot reference catalogue, accumulated fresh shop scans, and paid-purchase freshness safeguards while official Last War integration is pending.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
