@@ -3,7 +3,7 @@ import {canonicalHeroName,heroType} from '../lib/heroes.js';
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from '../lib/alliance-activity.js';
 import {freshnessInfo,refreshBeforePaidText} from '../lib/data-freshness.js';
 import {canonicalShopStore,findShopReference,referenceCategoryForItem,referenceItemsForStrategy,shopReferenceStats,SHOP_REFERENCE_DATE} from '../lib/shop-catalog.js';
-const ENGINE_VERSION="2.4.0";
+const ENGINE_VERSION="2.4.1";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function metric(v){
   if(v===null||v===undefined||v==="")return null;
@@ -384,6 +384,35 @@ const ADAPTIVE_TEXT={
   zh:{score:n=>`优先度 ${n}/100`,reserve:n=>`建议预留：保留 ${n.toLocaleString("zh-CN")} 钻石用于30天VIP。`,lowBudget:"购买后钻石会低于建议预留。",unknownBudget:"未读取钻石余额；分数不扣减，但仍建议保留VIP预留。",vs:d=>`已纳入VS第${d}天情境。`,allStars:"可见主力英雄均已5★，通用英雄碎片优先度大幅下降。",exFirst:t=>`专属武器仍落后${t?`（${t}）`:""}；不要分散稀缺资源。`,notAffordable:"可见余额不足以购买该商品。",realMoney:"真钱购买：若不能直接解决瓶颈，WarBoost会限制推荐等级。",budgetOk:"购买后可见余额仍高于钻石预留。"},
   ar:{score:n=>`الأولوية ${n}/100`,reserve:n=>`احتياطي مقترح: احتفظ بـ ${n.toLocaleString("ar")} ألماسة لـ VIP لمدة 30 يوماً.`,lowBudget:"سيخفض هذا الشراء الألماس تحت الاحتياطي المقترح.",unknownBudget:"لم تتم قراءة رصيد الألماس؛ لا تُخفض النتيجة لكن يُنصح باحتياطي VIP.",vs:d=>`تم احتساب سياق يوم VS ${d}.`,allStars:"الأبطال الرئيسيون الظاهرون عند 5★؛ شظايا الأبطال العامة أقل أولوية.",exFirst:t=>`الأسلحة الحصرية ما زالت متأخرة${t?` (${t})`:""}؛ لا تشتت الموارد النادرة.`,notAffordable:"الرصيد الظاهر غير كافٍ لهذا العرض.",realMoney:"شراء بأموال حقيقية: يحد WarBoost التوصية ما لم يكن التقدم مستهدفاً مباشرة.",budgetOk:"يبقى الرصيد الظاهر فوق احتياطي الألماس بعد الشراء."}
 };
+const SHOP_ALIGNMENT_TEXT={
+  fr:{verify:"À vérifier en boutique",aligned:"Aligné avec le Diagnostic PRO : cette ressource alimente directement tes priorités actuelles.",deferred:"Le Diagnostic PRO place actuellement une autre famille de ressources devant celle-ci.",rank:n=>`Correspond à la priorité ressource n°${n} du Diagnostic PRO.`},
+  en:{verify:"Check in shop",aligned:"Aligned with PRO Diagnosis: this resource directly feeds your current priorities.",deferred:"PRO Diagnosis currently places another resource family ahead of this one.",rank:n=>`Matches resource priority #${n} from PRO Diagnosis.`},
+  es:{verify:"Verificar en tienda",aligned:"Alineado con el Diagnóstico PRO: este recurso alimenta directamente tus prioridades actuales.",deferred:"El Diagnóstico PRO coloca actualmente otra familia de recursos por delante de esta.",rank:n=>`Coincide con la prioridad de recurso n.º ${n} del Diagnóstico PRO.`},
+  it:{verify:"Verifica nel negozio",aligned:"Allineato con la Diagnosi PRO: questa risorsa alimenta direttamente le tue priorità attuali.",deferred:"La Diagnosi PRO mette attualmente un'altra famiglia di risorse davanti a questa.",rank:n=>`Corrisponde alla priorità risorsa n. ${n} della Diagnosi PRO.`},
+  de:{verify:"Im Shop prüfen",aligned:"Mit der PRO-Diagnose abgestimmt: Diese Ressource unterstützt direkt deine aktuellen Prioritäten.",deferred:"Die PRO-Diagnose setzt derzeit eine andere Ressourcenfamilie vor diese.",rank:n=>`Entspricht Ressourcenpriorität Nr. ${n} der PRO-Diagnose.`},
+  pt:{verify:"Verificar na loja",aligned:"Alinhado com o Diagnóstico PRO: este recurso alimenta diretamente as tuas prioridades atuais.",deferred:"O Diagnóstico PRO coloca atualmente outra família de recursos à frente desta.",rank:n=>`Corresponde à prioridade de recurso n.º ${n} do Diagnóstico PRO.`},
+  nl:{verify:"In winkel controleren",aligned:"Afgestemd op de PRO-diagnose: deze grondstof ondersteunt direct je huidige prioriteiten.",deferred:"De PRO-diagnose plaatst momenteel een andere grondstoffamilie boven deze.",rank:n=>`Komt overeen met grondstofprioriteit #${n} van de PRO-diagnose.`},
+  zh:{verify:"在商店中确认",aligned:"与 PRO 诊断一致：该资源会直接推进你当前的优先目标。",deferred:"PRO 诊断目前将另一类资源排在此项之前。",rank:n=>`对应 PRO 诊断中的第 ${n} 资源优先级。`},
+  ja:{verify:"ショップで確認",aligned:"PRO診断と一致：この資源は現在の優先目標を直接進めます。",deferred:"PRO診断では現在、別の資源カテゴリがこれより上位です。",rank:n=>`PRO診断の資源優先度 ${n} 位に一致します。`},
+  ru:{verify:"Проверить в магазине",aligned:"Согласовано с PRO-диагностикой: этот ресурс напрямую продвигает текущие приоритеты.",deferred:"PRO-диагностика сейчас ставит другую группу ресурсов выше этой.",rank:n=>`Соответствует приоритету ресурсов №${n} в PRO-диагностике.`},
+  ar:{verify:"تحقق في المتجر",aligned:"متوافق مع تشخيص PRO: هذا المورد يدعم أولوياتك الحالية مباشرة.",deferred:"يضع تشخيص PRO حالياً فئة موارد أخرى قبل هذه الفئة.",rank:n=>`يتوافق مع أولوية الموارد رقم ${n} في تشخيص PRO.`},
+  pl:{verify:"Sprawdź w sklepie",aligned:"Zgodne z Diagnostyką PRO: ten zasób bezpośrednio wspiera Twoje obecne priorytety.",deferred:"Diagnostyka PRO stawia obecnie inną grupę zasobów wyżej.",rank:n=>`Odpowiada priorytetowi zasobów nr ${n} w Diagnostyce PRO.`},
+  tr:{verify:"Mağazada kontrol et",aligned:"PRO Tanısı ile uyumlu: bu kaynak mevcut önceliklerini doğrudan ilerletir.",deferred:"PRO Tanısı şu anda başka bir kaynak grubunu bunun önüne koyuyor.",rank:n=>`PRO Tanısındaki ${n}. kaynak önceliğiyle eşleşir.`},
+  ko:{verify:"상점에서 확인",aligned:"PRO 진단과 일치: 이 자원은 현재 우선순위를 직접 강화합니다.",deferred:"PRO 진단은 현재 다른 자원군을 이 항목보다 우선합니다.",rank:n=>`PRO 진단의 자원 우선순위 ${n}위와 일치합니다.`},
+  vi:{verify:"Kiểm tra trong cửa hàng",aligned:"Phù hợp với Chẩn đoán PRO: tài nguyên này trực tiếp phục vụ các ưu tiên hiện tại của bạn.",deferred:"Chẩn đoán PRO hiện xếp một nhóm tài nguyên khác cao hơn nhóm này.",rank:n=>`Khớp với ưu tiên tài nguyên số ${n} của Chẩn đoán PRO.`},
+  th:{verify:"ตรวจสอบในร้านค้า",aligned:"สอดคล้องกับการวิเคราะห์ PRO: ทรัพยากรนี้ช่วยเป้าหมายลำดับความสำคัญปัจจุบันโดยตรง",deferred:"การวิเคราะห์ PRO จัดทรัพยากรอีกกลุ่มไว้เหนือรายการนี้ในตอนนี้",rank:n=>`ตรงกับลำดับความสำคัญทรัพยากรอันดับ ${n} ของการวิเคราะห์ PRO`},
+  id:{verify:"Periksa di toko",aligned:"Selaras dengan Diagnosis PRO: sumber daya ini langsung mendukung prioritasmu saat ini.",deferred:"Diagnosis PRO saat ini menempatkan kelompok sumber daya lain di atas ini.",rank:n=>`Sesuai dengan prioritas sumber daya #${n} dari Diagnosis PRO.`},
+  uk:{verify:"Перевірити в магазині",aligned:"Узгоджено з PRO-діагностикою: цей ресурс безпосередньо підтримує поточні пріоритети.",deferred:"PRO-діагностика наразі ставить іншу групу ресурсів вище цієї.",rank:n=>`Відповідає пріоритету ресурсів №${n} у PRO-діагностиці.`},
+  ro:{verify:"Verifică în magazin",aligned:"Aliniat cu Diagnosticul PRO: această resursă susține direct prioritățile tale actuale.",deferred:"Diagnosticul PRO plasează momentan o altă familie de resurse înaintea acesteia.",rank:n=>`Corespunde priorității de resurse nr. ${n} din Diagnosticul PRO.`},
+  el:{verify:"Έλεγχος στο κατάστημα",aligned:"Ευθυγραμμισμένο με τη Διάγνωση PRO: αυτός ο πόρος τροφοδοτεί άμεσα τις τρέχουσες προτεραιότητές σου.",deferred:"Η Διάγνωση PRO τοποθετεί αυτή τη στιγμή άλλη κατηγορία πόρων πιο ψηλά.",rank:n=>`Αντιστοιχεί στην προτεραιότητα πόρου #${n} της Διάγνωσης PRO.`},
+  cs:{verify:"Ověřit v obchodě",aligned:"V souladu s PRO diagnostikou: tento zdroj přímo podporuje tvé aktuální priority.",deferred:"PRO diagnostika nyní řadí jinou skupinu zdrojů před tuto.",rank:n=>`Odpovídá prioritě zdrojů č. ${n} z PRO diagnostiky.`},
+  sv:{verify:"Kontrollera i butiken",aligned:"I linje med PRO-diagnosen: den här resursen driver direkt dina nuvarande prioriteringar.",deferred:"PRO-diagnosen placerar just nu en annan resursfamilj före denna.",rank:n=>`Motsvarar resursprioritet #${n} i PRO-diagnosen.`}
+};
+function shopLocaleKey(locale){
+  const x=String(locale||"en").toLowerCase();
+  if(x.startsWith("fr"))return "fr";if(x.startsWith("es"))return "es";if(x.startsWith("it"))return "it";if(x.startsWith("de"))return "de";if(x.startsWith("pt"))return "pt";if(x.startsWith("nl"))return "nl";if(x.startsWith("zh"))return "zh";if(x.startsWith("ja"))return "ja";if(x.startsWith("ru"))return "ru";if(x.startsWith("ar"))return "ar";if(x.startsWith("pl"))return "pl";if(x.startsWith("tr"))return "tr";if(x.startsWith("ko"))return "ko";if(x.startsWith("vi"))return "vi";if(x.startsWith("th"))return "th";if(x.startsWith("id"))return "id";if(x.startsWith("uk"))return "uk";if(x.startsWith("ro"))return "ro";if(x.startsWith("el"))return "el";if(x.startsWith("cs"))return "cs";if(x.startsWith("sv"))return "sv";return "en";
+}
+function shopAlignmentText(locale){return SHOP_ALIGNMENT_TEXT[shopLocaleKey(locale)]||SHOP_ALIGNMENT_TEXT.en;}
 function adaptiveText(locale){return ADAPTIVE_TEXT[localePack(locale)]||ADAPTIVE_TEXT.en;}
 function isDiamondCurrency(v){return /diamond|diamant|diamante|gem|gems|钻石|ダイヤ|ألماس|💎/.test(normItem(v));}
 function isCashCurrency(v){const raw=String(v||"");return /eur|usd|gbp|euro|dollar|pound/.test(normItem(v))||/[€$£]/.test(raw);}
@@ -398,6 +427,22 @@ function vsContextBoost(cat,name,day){const d=Number(day),s=normItem(name);if(!N
   if(d===6&&cat==="teleport")return 12;
   if(d===6&&cat==="speed_heal")return 10;
   return 0;
+}
+function shopCategoryResourceFamily(cat){return ({exclusive:"exclusive_weapon_shards",blueprint:"gear_materials",gear_material:"gear_materials",hero:"hero_shards",hero_recruit:"hero_shards",drone:"drone_components",training:"hero_xp"})[cat]||null;}
+function buildShopDiagnosticAlignment(analysis={}){
+  const top=Array.isArray(analysis?.priorities)?analysis.priorities.slice(0,3):[];
+  const families=top.map(x=>x?.resource_family||resourceFamily(x?.kind)).filter(x=>x&&x!=="other"&&x!=="data");
+  const ordered=[...new Set(families)],counts={};for(const f of families)counts[f]=(counts[f]||0)+1;
+  const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]||null;
+  return {ordered_families:ordered,dominant_family:dominant&&dominant[1]>=2?dominant[0]:null,dominant_count:dominant&&dominant[1]>=2?dominant[1]:0,top_actions:top.map(x=>({kind:x?.kind||null,resource_family:x?.resource_family||resourceFamily(x?.kind),target:x?.target||null,rank:x?.rank||null}))};
+}
+function diagnosticShopAdjustment(cat,alignment,locale){
+  const family=shopCategoryResourceFamily(cat),txt=shopAlignmentText(locale);
+  if(!family||!Array.isArray(alignment?.ordered_families)||!alignment.ordered_families.length)return {bonus:0,reasons:[],family,rank:null};
+  const rank=alignment.ordered_families.indexOf(family),scarce=new Set(["exclusive_weapon_shards","gear_materials","hero_shards","drone_components","hero_xp"]);let bonus=rank===0?8:rank===1?5:rank===2?3:0,reasons=[];
+  if(alignment.dominant_family){if(family===alignment.dominant_family){bonus+=8;reasons.push(txt.aligned);}else if(scarce.has(family)){bonus-=6;reasons.push(txt.deferred);}}
+  else if(rank>=0)reasons.push(txt.rank(rank+1));
+  return {bonus,reasons,family,rank:rank>=0?rank+1:null};
 }
 function baseOfferScore(cat,needs){
   if(cat==="vip_time")return 94;
@@ -456,6 +501,7 @@ function scoreVisibleOffer(o,needs,state){const rawStore=o?.store_type||o?.store
   if(isCashCurrency(currency)){const targeted=["exclusive","blueprint","gear_material","drone","armament","armament_material","monthly_pass"].includes(cat);score=Math.min(score,targeted?88:78);factors.push(a.realMoney);}
   if(cat==="hero"&&!needs.needStars)factors.push(a.allStars);
   if(needs.needExclusive&&["drone","stamina","speed","speed_build","speed_research","speed_train","speed_heal","hero"].includes(cat)){const t=needs.exTargets.slice(0,2).map(exTargetLabel).filter(Boolean).join(" / ");factors.push(a.exFirst(t));}
+  const da=diagnosticShopAdjustment(cat,state?._shop_alignment,state?._locale);score+=da.bonus;factors.push(...da.reasons);
   score=Math.max(0,Math.min(100,Math.round(score)));
   return {score,cat,factors,budget:{currency,price,balance,reserve,diamond}};
 }
@@ -463,7 +509,7 @@ function verdict(score,p){return score>=85?{key:"buy_now",label:p.buy}:score>=55
 function offerReason(cat,needs,p){const exTarget=needs.exTargets.slice(0,2).map(exTargetLabel).filter(Boolean).join(" / "),starTarget=needs.starTargets.slice(0,2).map(x=>x.name).join(" / ");if(cat==="blueprint"||cat==="gear_material")return p.reasonBlueprint;if(cat==="exclusive")return p.reasonExclusive(exTarget);if(cat==="hero"||cat==="hero_recruit")return p.reasonHero(starTarget);if(cat==="drone")return p.reasonDrone;if(cat==="stamina")return p.reasonStamina;if(["speed","speed_build","speed_research","speed_train","speed_heal"].includes(cat))return p.reasonSpeed;if(cat==="shield")return p.reasonShield;if(["resource","cosmetic","diamond_topup","gold_brick","event_pack"].includes(cat))return p.reasonResource;return p.reasonVisible;}
 function currencyLabel(v,locale){const c=normItem(v),k=localePack(locale);const mapFr={diamonds:"diamants",alliance_coins:"jetons Alliance",honor_medals:"médailles d'Honneur",campaign_points:"points Campagne",season_tokens:"jetons Saison",cosmetic_tokens:"jetons Cosmétiques",coupons:"coupons"};if(k==="fr"&&mapFr[c])return mapFr[c];return cleanName(v);}
 function priceLabel(o,locale){const price=num(o?.price),currency=currencyLabel(o?.currency,locale);if(price===null)return currency||"";const n=price.toLocaleString(String(locale||"en-GB"),{maximumFractionDigits:2});return `${n}${currency?` ${currency}`:""}`;}
-function genericShopRecommendations(state,locale,needs){const p=shopText(locale),st=shopStores(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),out=[];const add=(item,store,cat,score,reason,target="")=>{const mi=metaShopAdjustment(cat,needs,state);score=Math.max(1,Math.min(100,score+mi.bonus));out.push({item,store:`${store} · ${safe.notVerified}`,score,score_label:a.score(score),reason,target,verdict:safe.lookFor,verdict_key:"strategy",source:"strategy",availability_label:safe.notVerified,evidence_ids:mi.evidence});};
+function genericShopRecommendations(state,locale,needs){const p=shopText(locale),st=shopStores(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),action=shopAlignmentText(locale),out=[];const add=(item,store,cat,score,reason,target="")=>{const mi=metaShopAdjustment(cat,needs,state),da=diagnosticShopAdjustment(cat,state?._shop_alignment,locale);score=Math.max(1,Math.min(100,score+mi.bonus+da.bonus));out.push({item,store:`${store} · ${safe.notVerified}`,score,score_label:a.score(score),reason:[reason,...da.reasons].filter(Boolean).join(" "),target,verdict:action.verify,verdict_key:"strategy",source:"strategy",availability_label:safe.notVerified,evidence_ids:mi.evidence,diagnostic_alignment:{resource_family:da.family,priority_rank:da.rank,bonus:da.bonus}});};
   add(p.honorBp,st.honor,"blueprint",Math.round(84+needs.gearUrgency*14),p.reasonBlueprint,safe.mainGear);
   if(needs.needExclusive){const t=needs.exTargets.slice(0,3).map(exTargetLabel).filter(Boolean).join(" / ");add(p.campaignEx,st.campaign,"exclusive",98,p.reasonExclusive(t),t);add(p.paidExclusive,st.paid,"exclusive",82,p.reasonPaid(`EX: ${t}`),t);}
   if(needs.needStars){const t=needs.starTargets.slice(0,3).map(x=>x.name).join(" / ");add(p.allianceHero,st.allianceCampaign,"hero",94,p.reasonHero(t),t);}
@@ -500,7 +546,7 @@ function observedShopOffers(shop={}){
 }
 
 function referenceCatalogRecommendations(state,locale,needs){
-  const refs=referenceItemsForStrategy({locale,includeTemporary:true}),p=shopText(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),out=[];
+  const refs=referenceItemsForStrategy({locale,includeTemporary:true}),p=shopText(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),action=shopAlignmentText(locale),out=[];
   for(const r of refs){
     const stateCtx={...state,_locale:locale,shop:{...(state?.shop||{}),currency:r.currency||"",currency_balance:null}};
     const scored=scoreVisibleOffer({item_name:r.item,category:r.category,price:r.price,currency:r.currency,store_type:r.store},needs,stateCtx);
@@ -511,7 +557,7 @@ function referenceCatalogRecommendations(state,locale,needs){
     score=Math.max(0,Math.min(100,Math.round(score)));
     const target=r.category==="exclusive"?needs.exTargets.slice(0,3).map(exTargetLabel).filter(Boolean).join(" / "):r.category==="hero"?needs.starTargets.slice(0,3).map(x=>x.name).join(" / "):r.category==="drone"?safe.droneTarget(needs.droneLevel):"";
     const price=r.price!==null&&r.price!==undefined?`${String(locale||"").toLowerCase().startsWith("fr")?"réf. ":"ref. "}${priceLabel({price:r.price,currency:r.currency},locale)}`:"";
-    out.push({item:r.item,store:`${r.store} · ${safe.notVerified}`,score,score_label:a.score(score),reason:`${offerReason(r.category,needs,p)} ${r.temporary?(localePack(locale)==="fr"?"Offre/rotation observée : rescanner avant achat.":"Observed rotating offer: rescan before buying."):""}`.trim(),target,verdict:safe.lookFor,verdict_key:"strategy",price_label:price,source:"reference",category:r.category,availability_label:safe.notVerified,_sort:score});
+    const da=diagnosticShopAdjustment(r.category,state?._shop_alignment,locale);out.push({item:r.item,store:`${r.store} · ${safe.notVerified}`,score,score_label:a.score(score),reason:[offerReason(r.category,needs,p),...da.reasons,r.temporary?(localePack(locale)==="fr"?"Offre/rotation observée : rescanner avant achat.":"Observed rotating offer: rescan before buying."):""].filter(Boolean).join(" ").trim(),target,verdict:action.verify,verdict_key:"strategy",price_label:price,source:"reference",category:r.category,availability_label:safe.notVerified,diagnostic_alignment:{resource_family:da.family,priority_rank:da.rank,bonus:da.bonus},_sort:score});
   }
   const seen=new Set(),seenCategories=new Set(),ranked=[];
   for(const x of out.sort((a,b)=>b._sort-a._sort)){
@@ -525,7 +571,7 @@ function referenceCatalogRecommendations(state,locale,needs){
 }
 
 function buildShopAdvice(state,locale,analysis){
-  const p=shopText(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),needs=heroNeedSnapshot(state),shop=state?.shop||{},profileConfidence=shopProfileConfidence(needs),stateCtx={...state,_locale:locale},caps=Array.isArray(state?.sync?.capabilities)?state.sync.capabilities:[],officialCatalog=Boolean(state?.sync?.sources?.official&&(caps.includes("shop_catalog")||caps.includes("shop")||caps.includes("store_catalog"))),referenceStats=shopReferenceStats();
+  const p=shopText(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),needs=heroNeedSnapshot(state),shop=state?.shop||{},profileConfidence=shopProfileConfidence(needs),alignment=buildShopDiagnosticAlignment(analysis),stateCtx={...state,_locale:locale,_shop_alignment:alignment},caps=Array.isArray(state?.sync?.capabilities)?state.sync.capabilities:[],officialCatalog=Boolean(state?.sync?.sources?.official&&(caps.includes("shop_catalog")||caps.includes("shop")||caps.includes("store_catalog"))),referenceStats=shopReferenceStats();
   let recommendations=[],confidence=Math.min(90,profileConfidence),scanBased=false,store="Last War Shop",catalogFreshness=freshnessInfo(shop?.updated_at||null,"shop",locale),observed=officialCatalog?(Array.isArray(shop?.offers)?shop.offers.map(o=>({...o,_store_type:canonicalShopStore(shop?.store_type)||shop?.store_type||"Last War Shop",_currency:o?.currency||shop?.currency,_currency_balance:shop?.currency_balance,_updated_at:shop?.updated_at})):[]):observedShopOffers(shop);
   const liveObserved=officialCatalog?observed:observed.filter(o=>freshnessInfo(o?._updated_at||null,"shop",locale).status!=="stale"&&freshnessInfo(o?._updated_at||null,"shop",locale).status!=="unknown");
   if(liveObserved.length){
@@ -543,8 +589,8 @@ function buildShopAdvice(state,locale,analysis){
     confidence=Math.max(confidence,Math.round(profileConfidence*.66+(68+quality)*.34));confidence=Math.min(officialCatalog?98:92,confidence);
     const freshest=liveObserved.map(x=>x._updated_at).filter(Boolean).sort().at(-1);catalogFreshness=freshnessInfo(freshest||shop?.updated_at||null,"shop",locale);
   }else{
-    recommendations=referenceCatalogRecommendations(state,locale,needs);
-    if(!recommendations.length)recommendations=genericShopRecommendations(state,locale,needs);
+    recommendations=referenceCatalogRecommendations(stateCtx,locale,needs);
+    if(!recommendations.length)recommendations=genericShopRecommendations(stateCtx,locale,needs);
     confidence=Math.min(officialCatalog?92:80,Math.max(40,profileConfidence));
   }
   confidence=Math.max(0,confidence-(liveObserved.length?(catalogFreshness?.confidence_penalty||0):0));
@@ -554,7 +600,7 @@ function buildShopAdvice(state,locale,analysis){
   else if(liveObserved.length){summary=observedSummary(locale,new Set(liveObserved.map(o=>o._store_type)).size,liveObserved.length);catalogStatus="partial";catalogLabel=safe.partialLabel;}
   else {summary=referenceSummary(locale,referenceStats);catalogStatus="reference";catalogLabel=referenceLabel(locale);}
   summary+=budgetSummary;
-  return {summary,confidence,confidence_label:`${T[localePack(locale)]?.confidence?T[localePack(locale)].confidence(confidence):`Confidence ${confidence}%`}`,scan_based:scanBased,catalog_status:catalogStatus,catalog_complete:officialCatalog,catalog_label:catalogLabel,store_type:store,updated_at:shop?.updated_at||null,data_freshness:catalogFreshness,recommendations,knowledge_date:SHOP_REFERENCE_DATE,reference_catalog:referenceStats,observed_shop_count:new Set(liveObserved.map(o=>o._store_type)).size,observed_offer_count:liveObserved.length,meta_intelligence:metaContext(state),method:officialCatalog?"official-shop-catalog + adaptive-account-rules + diamond-reserve + VS/season-context":liveObserved.length?"multi-shop-visible-scan + dated-reference-matching + adaptive-account-rules + diamond-reserve + VS/season-context":"dated-user-screenshot-reference + adaptive-account-rules + availability-unverified",budget:{currency:currency||null,balance,reserve_diamonds:10000},needs:{exclusive_urgency:Math.round(needs.exclusiveUrgency*100),stars_urgency:Math.round(needs.starsUrgency*100),gear_urgency:Math.round(needs.gearUrgency*100),drone_urgency:Math.round(needs.droneUrgency*100)},limitations:officialCatalog?[]:["Reference catalogue is dated and does not prove current availability","Fresh scans are accumulated across multiple shops for live ranking","Unknown item types receive no purchase recommendation","Paid offers require fresh account/shop data"],sources:[officialCatalog?"Official Last War read-only catalogue":"User-provided Last War shop scans",`WarBoost screenshot reference catalogue ${SHOP_REFERENCE_DATE}`,"WarBoost saved account state"]};
+  return {summary,confidence,confidence_label:`${T[localePack(locale)]?.confidence?T[localePack(locale)].confidence(confidence):`Confidence ${confidence}%`}`,scan_based:scanBased,catalog_status:catalogStatus,catalog_complete:officialCatalog,catalog_label:catalogLabel,store_type:store,updated_at:shop?.updated_at||null,data_freshness:catalogFreshness,recommendations,knowledge_date:SHOP_REFERENCE_DATE,reference_catalog:referenceStats,observed_shop_count:new Set(liveObserved.map(o=>o._store_type)).size,observed_offer_count:liveObserved.length,meta_intelligence:metaContext(state),method:officialCatalog?"official-shop-catalog + diagnostic-pro-alignment + adaptive-account-rules + diamond-reserve + VS/season-context":liveObserved.length?"multi-shop-visible-scan + dated-reference-matching + diagnostic-pro-alignment + adaptive-account-rules + diamond-reserve + VS/season-context":"dated-user-screenshot-reference + diagnostic-pro-alignment + adaptive-account-rules + availability-unverified",diagnostic_alignment:alignment,budget:{currency:currency||null,balance,reserve_diamonds:10000},needs:{exclusive_urgency:Math.round(needs.exclusiveUrgency*100),stars_urgency:Math.round(needs.starsUrgency*100),gear_urgency:Math.round(needs.gearUrgency*100),drone_urgency:Math.round(needs.droneUrgency*100)},limitations:officialCatalog?[]:["Reference catalogue is dated and does not prove current availability","Fresh scans are accumulated across multiple shops for live ranking","Unknown item types receive no purchase recommendation","Paid offers require fresh account/shop data"],sources:[officialCatalog?"Official Last War read-only catalogue":"User-provided Last War shop scans",`WarBoost screenshot reference catalogue ${SHOP_REFERENCE_DATE}`,"WarBoost saved account state"]};
 }
 
 
