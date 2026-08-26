@@ -1,6 +1,7 @@
 import {configured,userConfigured} from "../lib/supabase.js";
 import {providerConfig} from "../lib/provider.js";
 import {HERO_CATALOG} from "../lib/heroes.js";
+import {shopReferenceStats} from "../lib/shop-catalog.js";
 
 function isoWeek(d){
   const x=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
@@ -11,13 +12,13 @@ function isoWeek(d){
 
 export default function handler(req,res){
   res.setHeader("Cache-Control","no-store");
-  const providers=providerConfig(),serviceDb=configured(),userDb=userConfigured();
+  const providers=providerConfig(),serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats();
   const now=new Date(),dow=now.getUTCDay();
 
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.3.9",
+    version:"2.4.0",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -50,9 +51,13 @@ export default function handler(req,res){
       exclusive_breakpoints_10_20_30:true,
       exclusive_ui_ex_only:true,
       partial_shop_catalog_disclosure:true,
-      no_unknown_offer_recommendation:true
+      no_unknown_offer_recommendation:true,
+      multi_shop_scan_accumulation:true,
+      dated_shop_reference_catalog:true,
+      reference_catalog_never_claims_live_availability:true
     },
     hero_catalog_count:HERO_CATALOG.length,
+    shop_reference_catalog:shopRef,
     hero_catalog_identity_source:"shared-single-source",
     serverless_functions:12
   })
