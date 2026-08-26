@@ -1,0 +1,43 @@
+WarBoost V2.4.1 — BUILD VERIFICATION
+====================================
+
+Base: WarBoost V2.4.0 Boutique IA validated in publisher-demo Preview.
+Scope: Diagnostic PRO -> Boutique IA ranking alignment + translated shop verification labels.
+
+CHECKS PASSED
+-------------
+[OK] npm run check: all browser, API and lib JavaScript files pass node --check.
+[OK] Diagnostic/Boutique regression on a profile reproducing the observed case: TOP 3 Diagnostic = exclusive-weapon priorities.
+[OK] Reference Boutique order after alignment: Fragment d'Arme Exclusive Universel 100/100 > Plan d'Équipement (MR) 93/100 > Pièce de Drone 81/100.
+[OK] Reference-only verdict changed from "À rechercher" to "À vérifier en boutique" in French.
+[OK] Fresh Honor-shop scan keeps exact observed values: EX fragment 2,500 honor medals and MR blueprint 30,000 honor medals; EX remains ranked first when Diagnostic PRO is EX-dominant.
+[OK] New shop verification/alignment wording is localized for every selectable WarBoost locale currently exposed (including EN-GB and EN-US variants).
+[OK] Boutique IA UI labels are explicitly provided for the secondary languages that previously inherited English fallback shop labels.
+[OK] Reference shop catalogue unchanged: 164 entries, 163 named entries, 137 priced entries, 15 shop families.
+[OK] Hidden/sold/unknown-price safety unchanged: 27 catalogue entries intentionally have no stored price.
+[OK] Multi-shop persistence regression: VIP scan + Alliance scan remain preserved as distinct snapshots.
+[OK] Hero catalog: 31 heroes.
+[OK] Hero assets: 31/31 SVG files present under assets/heroes/.
+[OK] Exclusive Weapon breakpoint regression: 217 cases passed (31 heroes x EX0, EX9, EX10, EX19, EX20, EX29, EX30).
+[OK] Breakpoints remain EX0-9 -> EX10; EX10-19 -> EX20; EX20-29 -> EX30; EX30 -> no invented next breakpoint.
+[OK] Alliance stale-data regression: 94 members at 5 days old => 0 confirmed active / 94 refresh needed / 0 probable inactive.
+[OK] 12 serverless API functions retained.
+[OK] lib/shop-catalog.js unchanged from V2.4.0.
+[OK] lib/data-freshness.js unchanged from V2.4.0.
+[OK] lib/heroes.js unchanged from V2.4.0.
+[OK] lib/meta-intel.js unchanged from V2.4.0.
+[OK] lib/alliance-activity.js unchanged from V2.4.0.
+[OK] api/scan.js unchanged from V2.4.0.
+[OK] styles.css unchanged from V2.4.0.
+[OK] publisher-ui.js / publisher-ui.css unchanged from V2.4.0.
+[OK] Supabase schema unchanged from V2.4.0.
+[OK] Supabase schema SHA-256: 5574484f26eb79b13e9f3da24ece1fb080f4c62610b767571b20c72e322fc390
+[OK] PWA cache key renewed for V2.4.1.
+
+DECISION ALIGNMENT RULE
+-----------------------
+- The Shop engine receives the Diagnostic PRO TOP 3 resource families.
+- Matching the first Diagnostic resource family raises shop priority.
+- If the same resource family appears at least twice in the TOP 3, it becomes dominant and receives an additional alignment bonus.
+- Other scarce progression families receive only a small prudence penalty; they are not deleted and can return to #1 as soon as the account bottleneck changes.
+- Live availability remains separate from strategic priority: dated reference items still require verification in Last War.
