@@ -18,7 +18,7 @@ export default function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.4.3",
+    version:"2.4.4",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -57,7 +57,19 @@ export default function handler(req,res){
       reference_catalog_never_claims_live_availability:true,
       diagnostic_shop_priority_alignment:true,
       shop_alignment_labels_22_languages:true,
-      opaque_container_direct_resource_guard:true
+      opaque_container_direct_resource_guard:true,
+      situational_utility_priority_guard:true,
+      shop_offer_deduplication:true,
+      store_currency_integrity:true,
+      sold_offer_exclusion:true,
+      ambiguous_price_suppression:true,
+      season6_awakening_readiness:true,
+      season6_awakening_dynamic_value:true,
+      season6_mono_type_formation_bonus:true,
+      season6_hybrid_synergy_guard:true,
+      awakening_swap_safety:true,
+      no_exact_reshape_power_without_source:true,
+      awakening_labels_22_languages:true
     },
     hero_catalog_count:HERO_CATALOG.length,
     shop_reference_catalog:shopRef,
