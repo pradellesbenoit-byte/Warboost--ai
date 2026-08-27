@@ -1,0 +1,45 @@
+WarBoost V2.4.3 — BUILD VERIFICATION
+====================================
+
+Base: WarBoost V2.4.2 Direct Resource Priority validated in publisher-demo Preview.
+Scope: situational-utility guard + translated explanations + version/cache alignment.
+
+CHECKS PASSED
+-------------
+[OK] npm run check: all browser, API and lib JavaScript files pass node --check.
+[OK] Reference regression: Fragment d'Arme Exclusive Universel 100/100 > Plan d'Équipement (MR) 93/100 > Pièce de Drone 81/100.
+[OK] Active-Season Endurance without explicit need is capped at 76/100 and stays outside the TOP 3 in the reference regression.
+[OK] Endurance without Season/event context is capped more strictly.
+[OK] Explicit stamina/energy context can raise the situational cap temporarily; the context flag is retained in recommendation metadata.
+[OK] Fresh visible-shop regression: Pièce de Drone 81/100 > 50 Endurance 76/100 > Coffre de Campagne (UR) 70/100.
+[OK] V2.4.2 opaque-chest guard retained: generic campaign/general chests remain capped at 70/100 while contents are unknown.
+[OK] Situational safeguards cover stamina, shields, teleports, transfer, construction/research/training/healing speed-ups and generic speed-ups.
+[OK] Situational explanation strings exist for all 22 WarBoost languages; EN-GB and EN-US share English.
+[OK] Reference shop catalogue unchanged: 164 entries, 163 named entries, 137 priced entries, 15 shop families.
+[OK] Hidden/sold/unknown-price safety unchanged: 27 catalogue entries intentionally have no stored price.
+[OK] Multi-shop persistence regression: VIP + Alliance snapshots remain preserved together.
+[OK] Hero catalog: 31 heroes.
+[OK] Hero assets: 31/31 SVG files present under assets/heroes/.
+[OK] Exclusive Weapon breakpoint regression: 217 cases checked (31 heroes x EX0, EX9, EX10, EX19, EX20, EX29, EX30).
+[OK] Breakpoints remain EX0-9 -> EX10; EX10-19 -> EX20; EX20-29 -> EX30; EX30 -> no invented next breakpoint.
+[OK] Alliance stale-data regression: 94 members at 5 days old => 0 confirmed active / 94 refresh needed / 0 probable inactive.
+[OK] 12 serverless API functions retained.
+[OK] lib/shop-catalog.js unchanged from V2.4.2.
+[OK] lib/data-freshness.js unchanged from V2.4.2.
+[OK] lib/heroes.js unchanged from V2.4.2.
+[OK] lib/meta-intel.js unchanged from V2.4.2.
+[OK] lib/alliance-activity.js unchanged from V2.4.2.
+[OK] api/scan.js unchanged from V2.4.2.
+[OK] styles.css unchanged from V2.4.2.
+[OK] publisher-ui.js / publisher-ui.css unchanged from V2.4.2.
+[OK] Supabase schema unchanged from V2.4.2.
+[OK] Supabase schema SHA-256: 5574484f26eb79b13e9f3da24ece1fb080f4c62610b767571b20c72e322fc390
+[OK] PWA cache key renewed for V2.4.3.
+
+SITUATIONAL UTILITY RULE
+------------------------
+- "Useful" does not automatically mean "buy now".
+- Direct Diagnostic PRO resources keep priority over situational utilities unless matching context is confirmed.
+- Active Season alone gives Endurance moderate value, not automatic TOP-3 status.
+- Matching VS day or explicit Season/event signals can temporarily lift the guard.
+- Live availability and missing prices are never invented.

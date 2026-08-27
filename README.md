@@ -1,26 +1,27 @@
-# WarBoost V2.4.2 — Direct Resource Priority
+# WarBoost V2.4.3 — Situational Utility Priority
 
-V2.4.2 est un micro-correctif de fiabilité Boutique IA basé sur la V2.4.1 validée en Preview.
+V2.4.3 est un micro-correctif de fiabilité de la Boutique IA basé sur la V2.4.2 validée en Preview.
 
-## Correction
-Un coffre générique ou dont le contenu n'est pas détaillé (ex. `Coffre de Campagne (UR)`) ne peut plus remonter devant une ressource de progression directe simplement parce qu'il est UR.
+## Objectif
+Les ressources situationnelles ne doivent pas dépasser automatiquement les ressources qui résolvent directement le Diagnostic PRO.
 
-- catégories opaques protégées : `campaign_chest`, `chest` ;
-- score plafonné à 70/100 tant que le contenu reste inconnu ;
-- les ressources directes conservent leur score calculé par Diagnostic PRO + goulot + VS/Saison ;
-- si le contenu d'un coffre est identifié plus tard, il doit être classé dans sa vraie catégorie (Drone, EX, EXP, etc.) et le plafond ne s'applique plus ;
-- aucune disponibilité ni contenu de coffre n'est inventé.
+Le garde-fou couvre notamment :
+- Endurance ;
+- boucliers ;
+- téléporteurs ;
+- tickets / besoins de transfert ;
+- accélérations de construction, recherche, formation et soins ;
+- accélérations génériques lorsqu'aucun contexte utile n'est confirmé.
+
+## Règle V2.4.3
+- Une ressource directe (EX, équipement, Drone, fragments héros, EXP ciblée) conserve la priorité issue du Diagnostic PRO.
+- Une ressource situationnelle est plafonnée tant qu'aucun besoin VS / Saison / événement ne la justifie.
+- Une Saison active donne une valeur modérée à l'Endurance, sans lui permettre de dépasser automatiquement un goulot direct.
+- Un contexte explicite (jour VS correspondant ou signal d'événement/objectif) peut lever temporairement le plafond.
+- Les garde-fous V2.4.1 (alignement Diagnostic → Boutique) et V2.4.2 (coffres opaques) restent actifs.
 
 ## Multilingue
-L'explication du garde-fou est fournie dans toutes les langues actuellement proposées par WarBoost, avec les variantes anglaises toujours supportées.
+Les explications du nouveau garde-fou sont présentes dans les 22 langues WarBoost. EN-GB et EN-US utilisent la même traduction anglaise.
 
-## Invariants conservés
-- catalogue V2.4.0 : 164 entrées / 163 nommées / 15 familles ;
-- Diagnostic PRO → Boutique V2.4.1 ;
-- 31 héros / 31 portraits ;
-- EX 10/20/30 ;
-- multi-scan Boutique ;
-- Alliance reliability ;
-- Scan, méta, CSS, Publisher UI et Supabase inchangés.
-
-Voir `WARBOOST_V2_4_2_RELEASE.md`, `BUILD_VERIFICATION_V2_4_2.txt` et `PATCH_MANIFEST_V2_4_2.txt`.
+## Données et disponibilité
+Le référentiel issu des captures reste daté. WarBoost ne transforme jamais une offre du référentiel en disponibilité live sans scan récent ou donnée officielle autorisée.
