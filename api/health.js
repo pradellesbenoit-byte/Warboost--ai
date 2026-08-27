@@ -18,7 +18,7 @@ export default function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.4.1",
+    version:"2.4.2",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -56,7 +56,8 @@ export default function handler(req,res){
       dated_shop_reference_catalog:true,
       reference_catalog_never_claims_live_availability:true,
       diagnostic_shop_priority_alignment:true,
-      shop_alignment_labels_22_languages:true
+      shop_alignment_labels_22_languages:true,
+      opaque_container_direct_resource_guard:true
     },
     hero_catalog_count:HERO_CATALOG.length,
     shop_reference_catalog:shopRef,
