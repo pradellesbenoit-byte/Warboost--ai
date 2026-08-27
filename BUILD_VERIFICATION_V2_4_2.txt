@@ -1,0 +1,43 @@
+WarBoost V2.4.2 — BUILD VERIFICATION
+====================================
+
+Base: WarBoost V2.4.1 Diagnostic → Boutique Alignment validated in publisher-demo Preview.
+Scope: opaque/generic chest guard + translated explanation + version/cache alignment.
+
+CHECKS PASSED
+-------------
+[OK] npm run check: all browser, API and lib JavaScript files pass node --check.
+[OK] Fresh Campaign-shop regression: Pièce de Drone 81/100 > Coffre de Campagne (UR) 70/100.
+[OK] Opaque campaign/general chests are capped at 70/100 while their contents remain unknown.
+[OK] Known-content chest regression: Coffre d'EXP de Héros remains classified as training/EXP and is not treated as opaque.
+[OK] French opaque-chest explanation is present in returned purchase reasoning.
+[OK] Opaque-chest explanation exists for all 22 WarBoost languages; EN-GB and EN-US share English (23 locale options tested).
+[OK] Reference Boutique alignment retained: Fragment d'Arme Exclusive Universel 100/100; Plan d'Équipement (MR) 93/100; Pièce de Drone remains above opaque chest cap.
+[OK] Reference shop catalogue unchanged: 164 entries, 163 named entries, 137 priced entries, 15 shop families.
+[OK] Hidden/sold/unknown-price safety unchanged: 27 catalogue entries intentionally have no stored price.
+[OK] Multi-shop persistence regression: VIP + Alliance snapshots remain preserved together.
+[OK] Hero catalog: 31 heroes.
+[OK] Hero assets: 31/31 SVG files present under assets/heroes/.
+[OK] Exclusive Weapon breakpoint regression: 217 cases executed against the production next-breakpoint function body (31 heroes x EX0, EX9, EX10, EX19, EX20, EX29, EX30).
+[OK] Breakpoints remain EX0-9 -> EX10; EX10-19 -> EX20; EX20-29 -> EX30; EX30 -> no invented next breakpoint.
+[OK] Alliance stale-data regression: 94 members at 5 days old => 0 confirmed active / 94 refresh needed / 0 probable inactive.
+[OK] 12 serverless API functions retained.
+[OK] lib/shop-catalog.js unchanged from V2.4.1.
+[OK] lib/data-freshness.js unchanged from V2.4.1.
+[OK] lib/heroes.js unchanged from V2.4.1.
+[OK] lib/meta-intel.js unchanged from V2.4.1.
+[OK] lib/alliance-activity.js unchanged from V2.4.1.
+[OK] api/scan.js unchanged from V2.4.1.
+[OK] styles.css unchanged from V2.4.1.
+[OK] publisher-ui.js / publisher-ui.css unchanged from V2.4.1.
+[OK] Supabase schema unchanged from V2.4.1.
+[OK] Supabase schema SHA-256: 5574484f26eb79b13e9f3da24ece1fb080f4c62610b767571b20c72e322fc390
+[OK] PWA cache key renewed for V2.4.2.
+
+DIRECT RESOURCE RULE
+--------------------
+- A generic chest is not treated as a known reward merely because its rarity is UR.
+- Opaque categories `campaign_chest` and `chest` are capped at 70/100.
+- Direct resource categories keep their normal Diagnostic/ROI/VS/Season scoring.
+- Once a chest's contents are identified as a specific progression resource, it is classified into that resource category and the opaque cap no longer applies.
+- WarBoost never invents chest contents or live availability.

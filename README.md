@@ -1,28 +1,26 @@
-# WarBoost V2.4.1 — Diagnostic → Boutique Alignment
+# WarBoost V2.4.2 — Direct Resource Priority
 
-V2.4.1 est un correctif ciblé de la V2.4.0 Boutique IA validée en Preview.
+V2.4.2 est un micro-correctif de fiabilité Boutique IA basé sur la V2.4.1 validée en Preview.
 
-## Correction principale
-La Boutique IA hérite maintenant directement des priorités du **Diagnostic PRO**.
+## Correction
+Un coffre générique ou dont le contenu n'est pas détaillé (ex. `Coffre de Campagne (UR)`) ne peut plus remonter devant une ressource de progression directe simplement parce qu'il est UR.
 
-Exemple validé sur un profil correspondant au cas observé :
-- Diagnostic PRO : Morrison / Carlie / Lucius = priorités Arme exclusive.
-- Boutique IA : **Fragment d'Arme Exclusive Universel** passe devant **Plan d'Équipement (MR)** et les ressources Drone tant qu'aucun goulot d'équipement plus fort n'est détecté.
+- catégories opaques protégées : `campaign_chest`, `chest` ;
+- score plafonné à 70/100 tant que le contenu reste inconnu ;
+- les ressources directes conservent leur score calculé par Diagnostic PRO + goulot + VS/Saison ;
+- si le contenu d'un coffre est identifié plus tard, il doit être classé dans sa vraie catégorie (Drone, EX, EXP, etc.) et le plafond ne s'applique plus ;
+- aucune disponibilité ni contenu de coffre n'est inventé.
 
-Le moteur applique un bonus aux familles de ressources alignées avec le TOP 3 du Diagnostic PRO et une pénalité prudente aux autres familles rares lorsqu'une même famille domine au moins 2 des 3 priorités.
+## Multilingue
+L'explication du garde-fou est fournie dans toutes les langues actuellement proposées par WarBoost, avec les variantes anglaises toujours supportées.
 
-## Fiabilité boutique conservée
-- Référentiel V2.4.0 inchangé : 164 entrées, 163 nommées, 15 familles.
-- Aucun prix masqué / VENDU n'est reconstruit.
-- Une offre du référentiel n'est jamais présentée comme disponible aujourd'hui sans scan récent ou donnée officielle autorisée.
-- Les scans récents de plusieurs boutiques restent cumulés.
-- Les achats payants restent soumis aux règles de fraîcheur des données.
+## Invariants conservés
+- catalogue V2.4.0 : 164 entrées / 163 nommées / 15 familles ;
+- Diagnostic PRO → Boutique V2.4.1 ;
+- 31 héros / 31 portraits ;
+- EX 10/20/30 ;
+- multi-scan Boutique ;
+- Alliance reliability ;
+- Scan, méta, CSS, Publisher UI et Supabase inchangés.
 
-## Traductions
-Le nouveau verdict de référence **« À vérifier en boutique »** et les explications d'alignement Diagnostic PRO → Boutique sont localisés pour toutes les options de langue actuellement exposées par WarBoost. Les libellés Boutique IA de l'interface ont aussi été complétés pour les langues qui utilisaient encore le fallback anglais.
-
-Voir :
-- `WARBOOST_V2_4_1_RELEASE.md`
-- `BUILD_VERIFICATION_V2_4_1.txt`
-- `PATCH_MANIFEST_V2_4_1.txt`
-- `SHOP_CATALOG_AUDIT_V2_4_0.md` (catalogue inchangé)
+Voir `WARBOOST_V2_4_2_RELEASE.md`, `BUILD_VERIFICATION_V2_4_2.txt` et `PATCH_MANIFEST_V2_4_2.txt`.

@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.4.1",
+  "name": "WarBoost V2.4.2",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.4.1 — Decision Integrity + Boutique IA multi-shop: dated screenshot reference catalogue, accumulated fresh shop scans, and paid-purchase freshness safeguards while official Last War integration is pending.",
+  "description": "WarBoost V2.4.2 — Boutique IA Direct Resource Priority: opaque or unknown-content chests are capped below known direct progression resources, while dated-reference and fresh-scan safeguards remain active.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

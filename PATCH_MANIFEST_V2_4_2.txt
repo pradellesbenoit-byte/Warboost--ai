@@ -1,0 +1,35 @@
+WarBoost V2.4.2 — Direct Resource Priority
+
+ROOT (10)
+- app.js
+- BUILD_VERIFICATION_V2_4_2.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_4_2.txt
+- README.md
+- sw.js
+- WARBOOST_V2_4_2_RELEASE.md
+
+API (2)
+- api/advice.js
+- api/health.js
+
+LIB (1)
+- lib/normalize.js
+
+TOTAL PATCH: 13 files
+
+UNCHANGED / DO NOT UPLOAD FOR THIS PATCH
+- SHOP_CATALOG_AUDIT_V2_4_0.md
+- lib/shop-catalog.js
+- lib/data-freshness.js
+- lib/heroes.js
+- lib/meta-intel.js
+- lib/alliance-activity.js
+- api/scan.js
+- styles.css
+- publisher-ui.js / publisher-ui.css
+- supabase/schema.sql
+- assets/heroes/*

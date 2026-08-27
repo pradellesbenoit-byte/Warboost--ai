@@ -4,7 +4,7 @@ import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} 
 import {canonicalShopStore} from "./lib/shop-catalog.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.4.1";
+const APP_VERSION="2.4.2";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const LEGACY_LANGUAGE_KEYS=["wb17_language","wb171_language","warboost_language"];
 const LEGACY_DATA_KEYS=["wb12_account","wb11_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster"];
