@@ -1,0 +1,35 @@
+WarBoost V2.4.5 PATCH — Squad Identity Reliability
+
+ROOT
+- app.js
+- BUILD_VERIFICATION_V2_4_5.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_4_5.txt
+- README.md
+- sw.js
+- WARBOOST_V2_4_5_RELEASE.md
+
+api/
+- advice.js
+- health.js
+
+lib/
+- data-freshness.js
+- normalize.js
+- squad-identity.js (new)
+
+UNCHANGED / DO NOT RE-UPLOAD FOR THIS PATCH
+- api/scan.js
+- api/state.js
+- lib/heroes.js
+- lib/shop-catalog.js
+- lib/season6-awakening.js
+- lib/meta-intel.js
+- lib/alliance-activity.js
+- styles.css
+- publisher-ui.js / publisher-ui.css
+- assets/heroes/*
+- supabase/schema.sql

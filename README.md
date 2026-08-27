@@ -1,6 +1,23 @@
-# WarBoost V2.4.4 — Awakening & Shop Integrity
+# WarBoost V2.4.5 — Squad Identity Reliability
 
-V2.4.4 consolide les garde-fous Boutique IA validés en V2.4.1–V2.4.3 et ajoute la couche Saison 6 Awakening/Reshape demandée pour le Diagnostic PRO.
+V2.4.5 corrige en priorité la fusion des scans d’escouade : les données d’un héros suivent désormais **son identité canonique** et jamais sa position 1–5. Un changement de composition est traité comme un déplacement, pas comme une copie.
+
+## Correctifs V2.4.5
+- niveaux, étoiles, puissance, EX, équipement et Awakening liés au héros, jamais au slot ;
+- un héros déplacé vers une nouvelle escouade est retiré de son ancienne escouade ;
+- contrôle anti-doublon global sur les 4 escouades ;
+- migration automatique des doublons créés par le comportement V2.4.4, sans obliger le joueur à ressaisir ses données lorsque l’identité peut être récupérée ;
+- une escouade dont la composition devient incertaine est marquée **À synchroniser** et n’est pas privilégiée par le Diagnostic PRO / Boutique IA ;
+- fraîcheur d’une recommandation EX basée sur la donnée EX du héros la plus récente ;
+- prix Boutique manquant : une valeur du référentiel n’est affichée que comme **référence** et uniquement sur correspondance forte de l’article et de la boutique ;
+- suppression du double titre « Boutique Last War · Conseiller IA » ;
+- libellés de fraîcheur « à l’instant » disponibles dans les 22 langues cibles.
+
+Les règles Saison 6 Awakening/Reshape, le classement Boutique IA et les garde-fous de V2.4.4 sont conservés.
+
+---
+
+V2.4.5 consolide les garde-fous Boutique IA validés en V2.4.1–V2.4.4 et conserve la couche Saison 6 Awakening/Reshape intégrée en V2.4.4 pour le Diagnostic PRO.
 
 ## 1. Saison 6 — Awakening comme goulot distinct
 WarBoost compare l’Awakening au prochain palier EX, à l’équipement, au Drone et aux technologies au lieu d’imposer un héros fixe.
@@ -49,7 +66,7 @@ Avant toute recommandation de Swap, WarBoost vérifie :
 WarBoost avertit de dépenser les fragments spécifiques du héros cible avant un Swap lorsque cela est pertinent et ne déclenche jamais l’action automatiquement.
 
 ## 6. Boutique IA — déduplication et intégrité de monnaie
-V2.4.4 corrige le cas observé en Preview où un même article Honneur apparaissait deux fois avec une monnaie ambiguë.
+V2.4.5 conserve les correctifs de déduplication/monnaie des versions précédentes et ajoute le repli de prix référentiel sûr lorsqu’un article et sa boutique sont reconnus avec forte confiance mais que le montant n’est pas lisible.
 
 Garde-fous :
 - fusion des doublons du même article / même boutique ;
@@ -67,7 +84,7 @@ Cas de validation :
 3. Pièce de Drone — VIP — 2 000 diamants.
 
 ## 7. Multilingue
-Les libellés Awakening / Reshape et les explications Boutique V2.4.4 sont disponibles dans les 22 langues WarBoost. EN-GB et EN-US utilisent le même pack anglais, soit 23 options d’interface.
+Les libellés Awakening / Reshape et les explications Boutique V2.4.5 sont disponibles dans les 22 langues WarBoost. EN-GB et EN-US utilisent le même pack anglais, soit 23 options d’interface.
 
 ## 8. Sécurité / API
 WarBoost reste un compagnon indépendant, lecture seule, API-ready et sans automatisation du gameplay. Toute donnée officielle Last War ne doit être branchée qu’après autorisation.

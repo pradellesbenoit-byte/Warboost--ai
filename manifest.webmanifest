@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.4.4",
+  "name": "WarBoost V2.4.5",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.4.4 — Season 6 Awakening/Reshape decision layer plus Boutique IA deduplication, currency integrity, sold-item exclusion and ambiguity safeguards. Recommendations remain diagnostic-led and availability-safe.",
+  "description": "WarBoost V2.4.5 — Identity-safe squad scans, anti-duplicate hero migration, Season 6 Awakening/Reshape and Boutique IA integrity. Hero attributes stay bound to hero identity, never to squad slot position.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

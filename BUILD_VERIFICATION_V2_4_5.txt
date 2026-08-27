@@ -1,0 +1,90 @@
+WarBoost V2.4.5 — BUILD VERIFICATION
+
+Status: PASS
+Base verified: WarBoost V2.4.4 AWAKENING_SHOP_INTEGRITY
+Primary fix: hero attributes are identity-bound, never slot-bound.
+
+Core regression checks
+- JavaScript syntax (`npm run check`): PASS
+- V2.4.5 targeted + extended identity suite: PASS
+- Hero catalog: 31
+- Hero portraits: 31
+- EX breakpoint matrix: 31 heroes × 7 boundary cases = 217 PASS
+- API functions preserved: 12
+- UI locale options: 23 (22 target languages + en-US variant)
+- New identity/sync labels checked across locale options: 207 key/locale checks, 0 missing
+- Shop reference catalogue: 164 entries / 163 named / 137 priced / 15 stores
+- Alliance stale regression: 0 confirmed active / 94 refresh / 0 probable inactive
+- Season 6 mono-type 5/5 formation bonus: 20% PASS
+- Season 6 Awakening heroes preserved: Kimberly / DVA / Tesla
+
+Exact user-reported squad regression
+Initial state:
+- Squad 1: DVA / Morrison / Carlie / Lucius / Skyler
+- Squad 2: Murphy / Williams / Stetmann / Kimberly / Marshall
+Action:
+- Scan confirms Squad 1 becomes Murphy / Williams / Stetmann / Kimberly / Marshall.
+Assertions:
+- Murphy keeps Murphy data, never DVA slot data: PASS
+- Williams keeps Williams EX, never Morrison slot EX: PASS
+- Kimberly latest hero-specific EX19 is retained: PASS
+- Marshall identity is retained independently of former slot occupant: PASS
+- Heroes moved to Squad 1 are removed from old Squad 2: PASS
+- Old Squad 2 is flagged `needs_rescan=true`: PASS
+- Cross-squad duplicate audit: 0 duplicates PASS
+
+Legacy V2.4.4 repair
+- Simulated positional-corruption state repaired from the duplicate identity record: PASS
+- Latest hero-specific EX/Awakening overlay applied after identity repair: PASS
+- Migration is idempotent: second repair causes 0 changes / 0 removals PASS
+- Unknown/new hero never inherits previous slot level/EX/gear/stars/power: PASS
+
+Scan staging safety
+- Squad scan hero rows are staged until identity confirmation: PASS (code path audited)
+- Scanned values are applied only after confirmed hero identity: PASS
+- If confirmation is skipped, squad is marked for synchronization instead of trusting uncertain identity: PASS
+- Current squad is not selected as Diagnostic PRO focus when marked `needs_rescan` and a reliable squad exists: PASS (logic audited)
+
+Freshness + Boutique IA
+- Hero EX freshness takes the newest timestamp among hero-specific EX/progression and squad data: PASS
+- <1 h freshness displays “updated just now” equivalent: PASS
+- Honneur / Fragment d'Arme Exclusive Universel reference remains 2,500 honor medals: PASS
+- Reference price is not presented as live availability: PASS (guard preserved)
+- Double Boutique IA title removal preserved: PASS
+
+Unchanged safeguards preserved from V2.4.4
+- Season 6 Awakening / Reshape model
+- No invented exact Reshape power projection
+- Awakening Swap safety
+- Shop offer deduplication / sold exclusion / ambiguous-price suppression
+- Opaque-container guard / situational utility guard
+- Alliance reliability model
+- Supabase schema
+- Hero catalogue / portraits
+
+Patch upload surface
+ROOT (10):
+app.js
+BUILD_VERIFICATION_V2_4_5.txt
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+PATCH_MANIFEST_V2_4_5.txt
+README.md
+sw.js
+WARBOOST_V2_4_5_RELEASE.md
+
+api/ (2):
+advice.js
+health.js
+
+lib/ (3):
+data-freshness.js
+normalize.js
+squad-identity.js (new)
+
+Do not re-upload for this patch:
+api/scan.js, api/state.js, lib/heroes.js, lib/shop-catalog.js,
+lib/season6-awakening.js, lib/meta-intel.js, lib/alliance-activity.js,
+styles.css, publisher-ui.js, publisher-ui.css, assets/heroes/*, supabase/schema.sql.
