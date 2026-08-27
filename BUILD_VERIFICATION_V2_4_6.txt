@@ -1,0 +1,39 @@
+WarBoost V2.4.6 — BUILD VERIFICATION
+
+RESULT: PASS
+
+1. JavaScript syntax
+- npm run check: PASS
+- app.js, i18n.js, sw.js, API modules and lib modules parsed successfully.
+
+2. Squad confirmation button reliability
+- saveHeroConfirmation no longer waits for a direct /api/state request: PASS
+- saveInlineHeroNames no longer waits for a direct /api/state request: PASS
+- skipHeroConfirmation no longer waits for a direct /api/state request: PASS
+- all three flows save locally first through saveState(), then cloud persistence is scheduled in background: PASS
+
+3. Hero identity reliability regression
+- moved heroes are removed from their previous squad instead of duplicated: PASS
+- hero attributes follow canonical hero identity, not slot position: PASS
+- Kimberly global exclusive-weapon overlay test keeps EX19 after moving squads: PASS
+- duplicate audit after move: PASS (0 duplicates)
+
+4. Translation coverage
+- 23 explicit language packs/options tested (22 target languages plus en-US variant): PASS
+- hero_save / hero_saving / hero_confirm_saved / hero_confirm_skipped / syncing / sync_needed resolve in every option: PASS
+- no new untranslated user-facing sentence was introduced by this patch.
+
+5. Preserved components
+- Season 6 Awakening/Reshape logic unchanged.
+- Boutique IA catalog/scoring logic unchanged.
+- Diagnostic PRO core unchanged.
+- Alliance activity logic unchanged.
+- api/scan.js and api/state.js unchanged.
+- Supabase schema unchanged.
+
+6. Version alignment
+- app: 2.4.6
+- API advice engine: 2.4.6
+- health endpoint: 2.4.6
+- normalized state: 2.4.6
+- manifest/package/index/i18n/service-worker cache: 2.4.6

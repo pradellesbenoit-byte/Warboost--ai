@@ -5,7 +5,7 @@ import {canonicalShopStore} from "./lib/shop-catalog.js";
 import {reconcileConfirmedSquad,repairLegacySquadIdentity} from "./lib/squad-identity.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.4.5";
+const APP_VERSION="2.4.6";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const LEGACY_LANGUAGE_KEYS=["wb17_language","wb171_language","warboost_language"];
 const LEGACY_DATA_KEYS=["wb12_account","wb11_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster"];
@@ -127,15 +127,26 @@ async function saveHeroConfirmation(){
   if(new Set(values.map(v=>canonicalStoredHeroName(v).toLowerCase())).size!==values.length){st.className="notice warn";st.textContent=t("hero_duplicate");return}
   const id=pendingHeroSquadId,now=new Date().toISOString();let next;
   try{next=reconcileConfirmedSquad(state,{squadId:id,names:values,incomingHeroes:pendingHeroScanSlots,updatedAt:now}).state}catch{st.className="notice warn";st.textContent=t("hero_save_failed");return}
+  // V2.4.6: confirmation is local-first. A slow/unavailable cloud must never block the button.
   next.updated_at=now;next.version=APP_VERSION;
-  if(btn){btn.disabled=true;btn.textContent=t("syncing")}st.className="notice";st.textContent=t("hero_saving");
-  try{
-    let persisted=next;
-    if(cloudSession?.access_token){const r=await fetch("/api/state",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state:next})}),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||"hero_save_failed");if(j?.state)persisted=repairLegacySquadIdentity(mergeState(initialState(),j.state)).state}
-    state=persisted;state.version=APP_VERSION;localStorage.setItem(STORE_KEY,JSON.stringify(state));render();st.className="notice";st.textContent=t("hero_confirm_saved");closeHeroConfirmation(true)
-  }catch{st.className="notice warn";st.textContent=t("hero_save_failed");if(btn){btn.disabled=false;btn.textContent=t("hero_save")}}
+  if(btn){btn.disabled=true;btn.textContent=t("syncing")}
+  st.className="notice";st.textContent=t("hero_saving");
+  state=next;
+  saveState(); // saves immediately, then schedules the cloud push in background.
+  st.className="notice";st.textContent=t("hero_confirm_saved");
+  closeHeroConfirmation(true);
 }
-async function skipHeroConfirmation(){if(!pendingHeroSquadId){closeHeroConfirmation(true);return}const id=pendingHeroSquadId,next=JSON.parse(JSON.stringify(state)),sq=next.squads?.[id-1],st=$("#scanStatus"),btn=$("#skipHeroNamesBtn");if(sq){sq.needs_rescan=true;sq.composition_changed_at=new Date().toISOString();if(sq?.heroes)for(const h of sq.heroes){if(isGenericHeroName(h?.name))h.name=""}}next.version=APP_VERSION;if(btn)btn.disabled=true;st.className="notice";st.textContent=t("syncing");try{let persisted=next;if(cloudSession?.access_token){const r=await fetch("/api/state",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state:next})}),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||"hero_save_failed");if(j?.state)persisted=repairLegacySquadIdentity(mergeState(initialState(),j.state)).state}state=persisted;state.version=APP_VERSION;localStorage.setItem(STORE_KEY,JSON.stringify(state));render();st.className="notice";st.textContent=t("hero_confirm_skipped");closeHeroConfirmation(true)}catch{st.className="notice warn";st.textContent=t("hero_save_failed");if(btn)btn.disabled=false}}
+async function skipHeroConfirmation(){
+  if(!pendingHeroSquadId){closeHeroConfirmation(true);return}
+  const id=pendingHeroSquadId,next=JSON.parse(JSON.stringify(state)),sq=next.squads?.[id-1],st=$("#scanStatus"),btn=$("#skipHeroNamesBtn");
+  if(sq){sq.needs_rescan=true;sq.composition_changed_at=new Date().toISOString();if(sq?.heroes)for(const h of sq.heroes){if(isGenericHeroName(h?.name))h.name=""}}
+  next.version=APP_VERSION;
+  if(btn){btn.disabled=true;btn.textContent=t("syncing")}
+  state=next;
+  saveState(); // local-first; cloud remains best-effort in the background.
+  st.className="notice";st.textContent=t("hero_confirm_skipped");
+  closeHeroConfirmation(true);
+}
 
 function inlineHeroConfirmationHtml(sq,squadId){const rows=Array.from({length:5},(_,i)=>{const h=sq.heroes?.[i]||emptyHero(i+1),saved=isGenericHeroName(h?.name)?"":canonicalStoredHeroName(h.name);return `<div class="inlineHeroConfirmRow"><span class="inlineHeroSlot">${i+1}</span><select class="fieldSelect inlineHeroSelect" data-inline-hero-slot="${i}">${heroConfirmOptions(saved)}</select></div>`}).join("");return `<div class="inlineHeroConfirm" data-inline-confirm="${squadId}"><div class="inlineHeroConfirmHead"><div><b>${esc(t("hero_confirm_title",{squad:squadId}))}</b><small>${esc(t("hero_confirm_help"))}</small></div><span class="pill">${esc(t("hero_confirm_badge"))}</span></div><div class="inlineHeroConfirmRows">${rows}</div><div class="notice warn hidden" data-inline-hero-status></div><button class="primaryAction inlineHeroSaveBtn" type="button" data-inline-hero-save="${squadId}">${esc(t("hero_save"))}</button></div>`}
 async function saveInlineHeroNames(squadId,container,button=null){
@@ -152,22 +163,10 @@ async function saveInlineHeroNames(squadId,container,button=null){
   next.updated_at=now;next.version=APP_VERSION;
   if(button){button.disabled=true;button.textContent=t("syncing")}
   show("hero_saving",false);
-  try{
-    let persisted=next;
-    if(cloudSession?.access_token){
-      const r=await fetch("/api/state",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state:next})});
-      const j=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error(j.message||"hero_save_failed");
-      if(j?.state)persisted=repairLegacySquadIdentity(mergeState(initialState(),j.state)).state;
-    }
-    state=persisted;state.version=APP_VERSION;
-    localStorage.setItem(STORE_KEY,JSON.stringify(state));
-    render();
-    requestAnimationFrame(()=>{const squads=[...document.querySelectorAll("#squadList .squad")];squads[id-1]?.classList.add("open")});
-  }catch{
-    show("hero_save_failed");
-    if(button){button.disabled=false;button.textContent=t("hero_save")}
-  }
+  // V2.4.6: save immediately in the browser. Cloud persistence runs asynchronously.
+  state=next;
+  saveState();
+  requestAnimationFrame(()=>{const squads=[...document.querySelectorAll("#squadList .squad")];squads[id-1]?.classList.add("open")});
 }
 
 if(!localStorage.getItem(LANG_KEY)){for(const key of LEGACY_LANGUAGE_KEYS){const v=localStorage.getItem(key);if(v){localStorage.setItem(LANG_KEY,v);break}}}

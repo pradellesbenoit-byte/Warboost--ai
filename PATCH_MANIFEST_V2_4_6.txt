@@ -1,0 +1,35 @@
+WarBoost V2.4.6 PATCH — Local-first Squad Synchronisation
+
+ROOT
+- app.js
+- BUILD_VERIFICATION_V2_4_6.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_4_6.txt
+- README.md
+- sw.js
+- WARBOOST_V2_4_6_RELEASE.md
+
+api/
+- advice.js
+- health.js
+
+lib/
+- normalize.js
+
+UNCHANGED / DO NOT RE-UPLOAD FOR THIS PATCH
+- api/scan.js
+- api/state.js
+- lib/squad-identity.js
+- lib/data-freshness.js
+- lib/heroes.js
+- lib/shop-catalog.js
+- lib/season6-awakening.js
+- lib/meta-intel.js
+- lib/alliance-activity.js
+- styles.css
+- publisher-ui.js / publisher-ui.css
+- assets/heroes/*
+- supabase/schema.sql
