@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.4.3",
+  "name": "WarBoost V2.4.4",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.4.3 — Boutique IA Situational Utility Priority: situational items stay below direct progression unless VS, Season or event context justifies them; opaque-chest, dated-reference and fresh-scan safeguards remain active.",
+  "description": "WarBoost V2.4.4 — Season 6 Awakening/Reshape decision layer plus Boutique IA deduplication, currency integrity, sold-item exclusion and ambiguity safeguards. Recommendations remain diagnostic-led and availability-safe.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

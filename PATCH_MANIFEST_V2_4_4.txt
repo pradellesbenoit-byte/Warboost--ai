@@ -1,0 +1,49 @@
+WarBoost V2.4.4 — Awakening & Shop Integrity
+PATCH ONLY — apply over validated V2.4.3
+
+ROOT (10)
+app.js
+BUILD_VERIFICATION_V2_4_4.txt
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+PATCH_MANIFEST_V2_4_4.txt
+README.md
+sw.js
+WARBOOST_V2_4_4_RELEASE.md
+
+api/ (3)
+advice.js
+health.js
+scan.js
+
+lib/ (2)
+normalize.js
+season6-awakening.js
+
+TOTAL: 15 files
+
+UNCHANGED / DO NOT RE-UPLOAD
+styles.css
+publisher-ui.css
+publisher-ui.js
+lib/heroes.js
+lib/shop-catalog.js
+lib/data-freshness.js
+lib/meta-intel.js
+lib/alliance-activity.js
+lib/auth.js
+lib/provider.js
+lib/supabase.js
+supabase/schema.sql
+assets/heroes/*
+api/state.js
+api/sync.js
+api/alliance-role.js
+api/cloud-config.js
+api/cron-sync.js
+api/ingest.js
+api/invite.js
+api/join.js
+api/pro.js

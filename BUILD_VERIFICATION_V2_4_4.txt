@@ -1,0 +1,34 @@
+WarBoost V2.4.4 — BUILD VERIFICATION
+
+Core tests
+- V2.4.4 functional test: PASS
+- 23 UI locale options / 22 language packs: PASS
+- Regression suite: PASS
+- JavaScript syntax check (`npm run check`): PASS
+
+Regression counters
+- Hero catalog: 31
+- Hero portraits: 31
+- EX breakpoint cases: 217
+- Shop reference entries: 164
+- Named shop entries: 163
+- Shop families: 15
+- Priced reference entries: 137
+- Unknown prices intentionally preserved: 27
+- API functions: 12
+- Alliance stale test: 0 confirmed active / 94 refresh / 0 probable inactive
+
+V2.4.4 targeted tests
+- Awakening Aircraft scenario: DVA chosen dynamically
+- Awakening Tank scenario: Kimberly chosen dynamically
+- Reshape exact power projection: disabled
+- Awakening Swap safety checks: enabled
+- 5/5 mono-type formation bonus: 20%
+- Hybrid composition without measured synergy: guarded
+- Duplicate shop item rows: merged
+- Deterministic store currency: normalized
+- Sold offers: excluded
+- Ambiguous numeric prices: suppressed
+- Honneur EX fragment reference: 2,500 Honor medals
+- Honneur MR plan reference: 30,000 Honor medals
+- VIP Drone Part reference: 2,000 diamonds

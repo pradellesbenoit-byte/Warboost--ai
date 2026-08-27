@@ -4,16 +4,16 @@ import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} 
 import {canonicalShopStore} from "./lib/shop-catalog.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.4.3";
+const APP_VERSION="2.4.4";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const LEGACY_LANGUAGE_KEYS=["wb17_language","wb171_language","warboost_language"];
 const LEGACY_DATA_KEYS=["wb12_account","wb11_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster"];
 
 function uid(){return crypto.randomUUID?.()||`wb-${Date.now()}-${Math.random().toString(16).slice(2)}`}
 function clientId(){let id=localStorage.getItem(CLIENT_KEY);if(!id){id=uid();localStorage.setItem(CLIENT_KEY,id)}return id}
-function emptyHero(i){return {name:"",level:null,stars:null,power:null,exclusive:null,gear:null}}
+function emptyHero(i){return {name:"",level:null,stars:null,power:null,exclusive:null,gear:null,awakening:null}}
 function emptySquad(i){return {id:i,name:`Squad ${i}`,power:null,updated_at:null,heroes:[1,2,3,4,5].map(emptyHero)}}
-function initialState(){return {version:APP_VERSION,player_id:clientId(),updated_at:null,player:{name:"",server_id:"",hq_level:null,power_m:null,coordinates:null,role:"R1"},exclusive_weapons:[],drone:{level:null,power_m:null,updated_at:null},shop:{store_type:"",currency:"",currency_balance:null,vip_level:null,vip_days_remaining:null,offers:[],snapshots:[],updated_at:null},squads:[1,2,3,4].map(emptySquad),alliance:{id:null,tag:"",name:"",role:"R1",invite_code:"",members:[],updated_at:null},vs:{week:null,day:null,our_alliance:"",opponent:"",our_score:null,their_score:null,updated_at:null},season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:0,resistance:null,updated_at:null},sync:{provider:"warboost-local",provider_kind:"local",access_status:"pending",capabilities:[],status:"local",last_sync:null,last_error:null,auto_ready:true,last_scan:null,official_last_sync:null,public_last_sync:null,sources:{official:false,public:false,scan:false,alliance:false}}}}
+function initialState(){return {version:APP_VERSION,player_id:clientId(),updated_at:null,player:{name:"",server_id:"",hq_level:null,power_m:null,coordinates:null,role:"R1"},exclusive_weapons:[],hero_progression:[],drone:{level:null,power_m:null,updated_at:null},shop:{store_type:"",currency:"",currency_balance:null,vip_level:null,vip_days_remaining:null,offers:[],snapshots:[],updated_at:null},squads:[1,2,3,4].map(emptySquad),alliance:{id:null,tag:"",name:"",role:"R1",invite_code:"",members:[],updated_at:null},vs:{week:null,day:null,our_alliance:"",opponent:"",our_score:null,their_score:null,updated_at:null},season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:0,resistance:null,focus:null,measured_hybrid_synergy:false,awakening_swap:null,updated_at:null},technology:{type_mastery_pct:null,hero_tech_pct:null,siege_to_seize_pct:null,defensive_fortification_pct:null,tactical_weapon_pct:null,updated_at:null},sync:{provider:"warboost-local",provider_kind:"local",access_status:"pending",capabilities:[],status:"local",last_sync:null,last_error:null,auto_ready:true,last_scan:null,official_last_sync:null,public_last_sync:null,sources:{official:false,public:false,scan:false,alliance:false}}}}
 function canonicalStoredHeroName(v){return canonicalHeroName(v)}
 function mergeExclusiveWeapons(baseList,incomingList){
   const out=Array.isArray(baseList)?baseList.map(x=>({...x,hero_name:canonicalStoredHeroName(x?.hero_name)})):[];
@@ -29,6 +29,17 @@ function mergeExclusiveWeapons(baseList,incomingList){
     else out.push(normalized);
   }
   return out.slice(0,24);
+}
+function mergeHeroProgression(baseList,incomingList){
+  const out=Array.isArray(baseList)?baseList.map(x=>({...x,hero_name:canonicalStoredHeroName(x?.hero_name||x?.name),awakening:x?.awakening?{...x.awakening}:null})):[];
+  if(!Array.isArray(incomingList))return out;
+  const keyOf=x=>String(canonicalStoredHeroName(x?.hero_name||x?.name)||"").trim().toLowerCase();
+  for(const item of incomingList){
+    if(!item||typeof item!=="object")continue;const key=keyOf(item);if(!key)continue;const idx=out.findIndex(x=>keyOf(x)===key);
+    const normalized={...item,hero_name:canonicalStoredHeroName(item?.hero_name||item?.name),awakening:item?.awakening?{...(idx>=0?out[idx]?.awakening||{}:{}),...item.awakening}:idx>=0?out[idx]?.awakening||null:null};
+    if(idx>=0)out[idx]={...out[idx],...normalized};else out.push(normalized);
+  }
+  return out.slice(0,40);
 }
 function cleanShopSnapshot(x){
   if(!x||typeof x!=="object")return null;
@@ -53,7 +64,7 @@ function mergeShopState(baseShop={},incomingShop){
   current.snapshots=snapshots.slice(0,36);
   return current;
 }
-function mergeState(base,incoming){if(!incoming||typeof incoming!=="object")return base;const out={...base,...incoming};out.player={...base.player,...incoming.player};out.drone={...base.drone,...incoming.drone};out.shop=mergeShopState(base.shop,incoming.shop);out.alliance={...base.alliance,...incoming.alliance};out.vs={...base.vs,...incoming.vs};out.season={...base.season,...incoming.season};out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.sync={...base.sync,...incoming.sync,sources:{...base.sync.sources,...incoming.sync?.sources}};out.squads=Array.from({length:4},(_,i)=>{const src=incoming.squads?.[i]||{};return {...base.squads[i],...src,id:i+1,name:`Squad ${i+1}`,heroes:Array.from({length:5},(_,j)=>{const h={...base.squads[i].heroes[j],...(src.heroes?.[j]||{})};h.name=canonicalStoredHeroName(h.name);return h})}});out.version=APP_VERSION;return out}
+function mergeState(base,incoming){if(!incoming||typeof incoming!=="object")return base;const out={...base,...incoming};out.player={...base.player,...incoming.player};out.drone={...base.drone,...incoming.drone};out.shop=mergeShopState(base.shop,incoming.shop);out.alliance={...base.alliance,...incoming.alliance};out.vs={...base.vs,...incoming.vs};out.season={...base.season,...incoming.season};out.technology={...(base.technology||{}),...(incoming.technology||{})};out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.sync={...base.sync,...incoming.sync,sources:{...base.sync.sources,...incoming.sync?.sources}};out.squads=Array.from({length:4},(_,i)=>{const src=incoming.squads?.[i]||{};return {...base.squads[i],...src,id:i+1,name:`Squad ${i+1}`,heroes:Array.from({length:5},(_,j)=>{const h={...base.squads[i].heroes[j],...(src.heroes?.[j]||{})};h.name=canonicalStoredHeroName(h.name);return h})}});out.version=APP_VERSION;return out}
 function hasValue(v){return !(v===null||v===undefined||v===""||(Array.isArray(v)&&v.length===0))}
 function safeFields(base={},incoming={},preferBase=false){const out={...base};for(const [k,v] of Object.entries(incoming||{})){if(!hasValue(v))continue;if(preferBase&&hasValue(out[k]))continue;out[k]=v}return out}
 function mergeStateProtected(base,incoming,{preferBase=false}={}){
@@ -63,7 +74,7 @@ function mergeStateProtected(base,incoming,{preferBase=false}={}){
   out.drone=safeFields(base.drone,incoming.drone,preferBase);
   out.shop=mergeShopState(base.shop,incoming.shop);if(preferBase){out.shop={...out.shop,...base.shop,offers:base.shop?.offers||[],snapshots:out.shop.snapshots||base.shop?.snapshots||[]};}
   out.alliance=safeFields(base.alliance,incoming.alliance,preferBase);if(!Array.isArray(incoming.alliance?.members)||!incoming.alliance.members.length)out.alliance.members=base.alliance?.members||[];
-  out.vs=safeFields(base.vs,incoming.vs,preferBase);out.season=safeFields(base.season,incoming.season,preferBase);
+  out.vs=safeFields(base.vs,incoming.vs,preferBase);out.season=safeFields(base.season,incoming.season,preferBase);out.technology=safeFields(base.technology||{},incoming.technology||{},preferBase);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);
   out.sync={...base.sync,...safeFields(base.sync,incoming.sync,preferBase),sources:{...base.sync?.sources,...incoming.sync?.sources}};
   out.squads=Array.from({length:4},(_,i)=>{const b=base.squads?.[i]||emptySquad(i+1),n=incoming.squads?.[i];if(!n)return b;const sq=safeFields(b,n,preferBase);sq.id=i+1;sq.name=`Squad ${i+1}`;sq.heroes=Array.from({length:5},(_,j)=>{const bh=b.heroes?.[j]||emptyHero(j+1),nh=n.heroes?.[j];const h=nh?safeFields(bh,nh,preferBase):bh;h.name=canonicalStoredHeroName(h.name);return h});return sq});
   out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.version=APP_VERSION;return out
@@ -154,7 +165,7 @@ function managerOnlyMessage(){const k=String(lang||"en").toLowerCase();return k.
 function safeSelfRole(requested){const r=normalizedRole(requested),verified=normalizedRole(state?.alliance?.role);if(["R4","R5"].includes(verified))return verified;return ["R1","R2","R3"].includes(r)?r:"R1"}
 
 function vsDayFromServer(d){const day=d.getUTCDay();return day===0?6:day}
-function renderScanTypeOptions(){const sel=$("#scanType");if(!sel)return;const current=sel.value||"profile";const opts=[["profile",t("scan_profile")],["squad1",`${t("squad")} 1`],["squad2",`${t("squad")} 2`],["squad3",`${t("squad")} 3`],["squad4",`${t("squad")} 4`],["drone",t("scan_drone")],["exclusive",t("scan_exclusive")],["shop",t("scan_shop")],["vs",t("scan_vs")],["season",t("scan_season")]];sel.innerHTML=opts.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=opts.some(([v])=>v===current)?current:"profile"}
+function renderScanTypeOptions(){const sel=$("#scanType");if(!sel)return;const current=sel.value||"profile";const opts=[["profile",t("scan_profile")],["squad1",`${t("squad")} 1`],["squad2",`${t("squad")} 2`],["squad3",`${t("squad")} 3`],["squad4",`${t("squad")} 4`],["drone",t("scan_drone")],["exclusive",t("scan_exclusive")],["awakening",t("scan_awakening")],["shop",t("scan_shop")],["vs",t("scan_vs")],["season",t("scan_season")]];sel.innerHTML=opts.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=opts.some(([v])=>v===current)?current:"profile"}
 function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(lang);t=translator(lang);document.documentElement.lang=lang;document.documentElement.dir=dirFor(lang);$$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});$$('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));const sel=$("#languageSelect");if(sel){sel.innerHTML=LANGUAGES.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=languageChoice}renderScanTypeOptions();renderClock();render();renderAuth();renderPro();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden")}
 function saveState(){state.updated_at=new Date().toISOString();state.version=APP_VERSION;localStorage.setItem(STORE_KEY,JSON.stringify(state));render();if(!suppressPush)scheduleServerSave()}
 function scheduleServerSave(){clearTimeout(pushTimer);pushTimer=setTimeout(pushServerState,700)}
