@@ -1,0 +1,83 @@
+WarBoost V2.4.7 — BUILD VERIFICATION
+
+RESULT: PASS
+
+1. JavaScript syntax
+- npm run check: PASS
+- app.js, i18n.js, sw.js, 12 API modules and all lib modules parse successfully.
+
+2. Hero Identity Memory regression
+Scenario reproduced from the squad-change problem:
+- initial Squad 1: DVA / Morrison / Carlie / Lucius / Skyler
+- initial Squad 2: Murphy / Williams / Stetmann / Marshall / Kimberly
+- known test progression: Murphy EX21, Williams EX10, Stetmann EX1, Marshall EX1, Kimberly EX19
+- move Squad 2 heroes into Squad 1, then restore aircraft heroes to Squad 1, then rebuild Squad 2.
+Assertions:
+- Murphy restores EX21: PASS
+- Williams restores EX10: PASS
+- Stetmann restores EX1: PASS
+- Marshall restores EX1: PASS
+- Kimberly restores EX19: PASS
+- no hero is duplicated across squads: PASS
+- old squad is marked needs_rescan when heroes move out: PASS
+- hero registry survives clearing/replacing a squad: PASS
+
+3. Slot inheritance safety
+- replacing Kimberly with Tesla in the same slot does not transfer Kimberly EX19 to Tesla: PASS
+- a new/unknown slot occupant receives only its own known data: PASS
+
+4. Partial scan safety
+- scan updates a visible field (example: hero level): PASS
+- fields absent from the scan remain preserved: PASS
+- a later EX scan updates only that hero's EX: PASS
+- identity confirmation without numeric scan fields does not erase saved progression: PASS
+
+5. Persistent state / cloud normalization
+- hero_profiles survives normalizeState(): PASS
+- mergeNewest() can update a newer hero field without clearing older known fields: PASS
+- no Supabase schema change required because hero_profiles remains inside the existing state JSON: PASS
+
+6. Translation coverage
+- 23 explicit UI language options tested (22 target languages plus en-US variant): PASS
+- tagline version + updated_now + updated_ago + hero confirmation/saving labels checked: 184 checks, 0 missing
+- French immediate label: “Mis à jour à l'instant”
+- the previous “Mis à jour il y a À l'instant” composition is no longer used for <1 minute.
+
+7. Preserved components (byte-identical to V2.4.6)
+- api/scan.js: PASS
+- api/state.js: PASS
+- lib/heroes.js: PASS
+- lib/shop-catalog.js: PASS
+- lib/season6-awakening.js: PASS
+- lib/meta-intel.js: PASS
+- lib/alliance-activity.js: PASS
+- lib/data-freshness.js: PASS
+- styles.css: PASS
+- publisher-ui.js / publisher-ui.css: PASS
+- supabase/schema.sql: PASS
+
+8. Structural regression
+- hero catalogue portraits: 31
+- API modules: 12
+- Season 6 Awakening / Reshape logic unchanged
+- Boutique IA catalogue/scoring unchanged
+- Diagnostic PRO decision engine unchanged except version identifier
+- Alliance activity model unchanged
+
+9. Data integrity rule
+- V2.4.7 never invents a previously lost hero value.
+- already-erased EX/level data must be recovered from a reliable new scan or confirmed Last War data.
+
+10. Version alignment
+- app: 2.4.7
+- API advice engine: 2.4.7
+- health endpoint: 2.4.7
+- normalized state: 2.4.7
+- manifest/package/index/i18n/service-worker cache: 2.4.7
+
+PATCH SURFACE
+ROOT (10): app.js, BUILD_VERIFICATION_V2_4_7.txt, i18n.js, index.html,
+manifest.webmanifest, package.json, PATCH_MANIFEST_V2_4_7.txt, README.md,
+sw.js, WARBOOST_V2_4_7_RELEASE.md
+api/ (2): advice.js, health.js
+lib/ (2): normalize.js, squad-identity.js

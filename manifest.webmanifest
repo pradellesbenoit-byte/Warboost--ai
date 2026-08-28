@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.4.6",
+  "name": "WarBoost V2.4.7",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.4.6 — Identity-safe squad scans, anti-duplicate hero migration, Season 6 Awakening/Reshape and Boutique IA integrity. Hero attributes stay bound to hero identity, never to squad slot position.",
+  "description": "WarBoost V2.4.7 — Persistent hero identity memory across squad moves, identity-safe scans, Season 6 Awakening/Reshape and Boutique IA integrity. Hero progression stays bound to the hero, never to a squad slot.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

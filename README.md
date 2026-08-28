@@ -1,7 +1,26 @@
-# WarBoost V2.4.6 — Local-first Squad Synchronisation
+# WarBoost V2.4.7 — Hero Identity Memory
 
-V2.4.6 corrige le blocage observé sur le bouton de confirmation/synchronisation après un scan d’escouade. Le clic enregistre maintenant immédiatement la composition et les identités de héros dans le stockage WarBoost local ; la sauvegarde cloud est ensuite déclenchée en arrière-plan sans bloquer l’utilisateur.
+WarBoost V2.4.7 ajoute un registre persistant de progression par héros afin que les données restent attachées à l’identité du héros lorsqu’il change d’escouade.
 
-Le modèle d’identité introduit en V2.4.5 est conservé : les données suivent le héros canonique, jamais le numéro de slot. Le déplacement d’un héros entre Escouade 1–4 est un déplacement, pas une copie. Les garde-fous Saison 6 Awakening/Reshape, Boutique IA, Diagnostic PRO et Alliance restent inchangés.
+## Ce que corrige V2.4.7
 
-Voir `WARBOOST_V2_4_6_RELEASE.md` et `BUILD_VERIFICATION_V2_4_6.txt`.
+- niveau, étoiles, puissance, arme exclusive, équipement et Éveil suivent le héros ;
+- aucun champ ne suit une position 1–5 ;
+- un héros déplacé n’est pas dupliqué dans deux escouades ;
+- un scan partiel n’efface pas les champs non lus ;
+- le registre est sauvegardé dans l’état WarBoost local/cloud via le JSON existant, sans modification du schéma Supabase ;
+- « Mis à jour il y a À l’instant » devient « Mis à jour à l’instant » et l’équivalent est traduit dans toutes les langues de l’interface.
+
+## Prudence sur les anciennes données
+
+V2.4.7 conserve et protège les valeurs encore disponibles au moment de la migration. Une ancienne valeur déjà supprimée par une version précédente n’est pas reconstruite artificiellement : elle doit être confirmée par un nouveau scan/donnée Last War.
+
+## Garanties conservées
+
+- 31 héros / 31 portraits ;
+- Diagnostic PRO et paliers EX 10/20/30 ;
+- Saison 6 Awakening / Reshape ;
+- Boutique IA ;
+- Alliance R5/R4 ;
+- 22 langues + variantes anglais UK/US ;
+- architecture indépendante, API-ready et sans accès Last War non autorisé.
