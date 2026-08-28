@@ -18,7 +18,7 @@ export default function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.4.9",
+    version:"2.5.0",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -49,6 +49,9 @@ export default function handler(req,res){
       hero_names_staged_until_confirmation:true,
       hero_attributes_bound_to_identity:true,
       diagnostic_reads_hero_profile_registry:true,
+      hero_history_snapshot_recovery:true,
+      hero_history_identity_only_recovery:true,
+      prewrite_hero_snapshot:true,
       adaptive_candidate_pool_preserved:true,
       missing_exclusive_data_blocks_false_drone_priority:true,
       nonhero_mobile_card_reliability:true,
@@ -63,7 +66,7 @@ export default function handler(req,res){
       dated_shop_reference_catalog:true,
       reference_catalog_never_claims_live_availability:true,
       diagnostic_shop_priority_alignment:true,
-      shop_alignment_labels_22_languages:true,
+      shop_alignment_labels_23_languages:true,
       opaque_container_direct_resource_guard:true,
       situational_utility_priority_guard:true,
       shop_offer_deduplication:true,
@@ -76,7 +79,7 @@ export default function handler(req,res){
       season6_hybrid_synergy_guard:true,
       awakening_swap_safety:true,
       no_exact_reshape_power_without_source:true,
-      awakening_labels_22_languages:true,
+      awakening_labels_23_languages:true,
       adaptive_player_context:true,
       contextual_marginal_value_scoring:true,
       conditional_dated_recommendations:true,

@@ -5,7 +5,7 @@ import {freshnessInfo,refreshBeforePaidText} from '../lib/data-freshness.js';
 import {canonicalShopStore,findShopReference,referenceCategoryForItem,referenceItemsForStrategy,shopReferenceStats,SHOP_REFERENCE_DATE} from '../lib/shop-catalog.js';
 import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScore,heroReshapeDecisionValue,season6TechPriorities,awakeningSwapAssessment,S6_AWAKENING_HEROES} from '../lib/season6-awakening.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
-const ENGINE_VERSION="2.4.9";
+const ENGINE_VERSION="2.5.0";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
