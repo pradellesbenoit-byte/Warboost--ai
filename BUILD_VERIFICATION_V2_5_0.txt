@@ -1,0 +1,90 @@
+WarBoost V2.5.0 — BUILD VERIFICATION
+Legacy Hero Data Recovery
+
+1. Hero-history unit tests
+- trusted historical hero_profiles recover by canonical hero identity
+- controlled recovered values: Carlie EX5, Morrison EX10, Lucius EX1
+- DVA/Skyler remain unknown when no reliable value exists
+- current values are never overwritten by older history
+- PASS
+
+2. Slot inheritance protection
+- Kimberly EX19 remains on Kimberly
+- a different hero placed in the old slot does not inherit EX19
+- wb10_profile alone cannot enrich an already named modern hero without corroboration
+- needs_rescan historical squad rows are excluded from recovery
+- PASS
+
+3. Historical corroboration / conflicts
+- two independent historical squad observations with same identity/value can corroborate recovery
+- equal-trust + equal-time contradictory values produce equal_trust_conflict and no recovered value
+- low-trust uncorroborated source produces low_trust_needs_corroboration and no guessed value
+- source trust is ranked before recency
+- PASS
+
+4. Legacy player imports
+- wb19_imported_players only contributes when stored player name exactly matches the current WarBoost player name
+- another player's hero values are ignored
+- PASS
+
+5. Future data preservation
+- heroDataSignature ignores timestamp-only changes
+- heroDataSignature changes when hero identity/progression facts change
+- api/state.js creates a best-effort warboost-prewrite snapshot before overwriting a materially different hero state
+- GET reads up to 100 wb1_snapshots and attempts identity-only recovery before returning state
+- Supabase snapshot query URL/order/limit/auth headers tested with mocked fetch
+- PASS (unit + mocked Supabase query + structural path verification)
+
+6. Diagnostic PRO integration
+- recovered hero_profiles are consumed by api/advice.js
+- controlled account state: Squad 1 Carlie/Lucius/DVA/Morrison/Skyler, Drone Nv157 / 8.84 M, VS context, Season 6
+- recovered EX: Morrison 10, Carlie 5, Lucius 1
+- Diagnostic produces >=3 priorities and includes recovered same-hero EX candidates
+- engine: warboost-ai-core-v2.5.0
+- PASS
+
+7. Static project checks
+- npm run check: PASS
+- API module count: 12
+- hero catalogue: 31
+- hero portrait assets: 31
+- 23 explicit language choices + Auto
+- all explicit language taglines resolve V2.5.0
+- Supabase schema byte-for-byte unchanged from V2.4.9
+- PASS
+
+8. Preserved safeguards
+- V2.4.9 adaptive ranking remains present
+- V2.4.7 squad identity / anti-slot behavior remains present
+- Season 6 Awakening/Reshape module unchanged
+- Boutique IA catalogue module unchanged
+- Alliance activity module unchanged
+- api/scan.js and api/sync.js unchanged
+- no invented EX or fragment quantity introduced
+- PASS
+
+9. Version alignment
+- app.js: 2.5.0
+- api/advice.js engine: 2.5.0
+- api/health.js: 2.5.0
+- lib/normalize.js state: 2.5.0
+- package.json: 2.5.0
+- manifest.webmanifest: 2.5.0 / Legacy Hero Data Recovery
+- index.html: 2.5.0
+- service worker: warboost-v2-5-0-legacy-hero-data-recovery
+- PASS
+
+10. Real-account limitation
+- recovery can only restore values that actually exist in browser legacy data or Supabase snapshots
+- if the required old value was never stored, was already corrupted, or conflicts without sufficient corroboration, WarBoost deliberately keeps it unknown
+- PASS: no-invention policy preserved
+
+11. Patch reproducibility
+- exact patch diff from V2.4.9: 16 files
+- patch applied to a clean V2.4.9 copy
+- applied tree matches V2.5.0 full tree
+- npm run check passes on the patch-applied copy
+- PASS
+
+RESULT: PASS FOR PUBLISHER-DEMO TESTING
+Do not merge to main until V2.5.0 Preview is validated with the user's real saved history.

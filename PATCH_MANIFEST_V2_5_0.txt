@@ -1,0 +1,40 @@
+WarBoost V2.5.0 PATCH — Legacy Hero Data Recovery
+
+ROOT — 10 files
+- app.js
+- BUILD_VERIFICATION_V2_5_0.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_5_0.txt
+- README.md
+- sw.js
+- WARBOOST_V2_5_0_RELEASE.md
+
+api/ — 3 files
+- advice.js
+- health.js
+- state.js
+
+lib/ — 3 files
+- hero-history.js (NEW)
+- normalize.js
+- supabase.js
+
+TOTAL: 16 files
+
+UNCHANGED / DO NOT RE-UPLOAD FOR THIS PATCH
+- styles.css
+- publisher-ui.js
+- api/scan.js
+- api/sync.js
+- lib/adaptive-context.js
+- lib/squad-identity.js
+- lib/season6-awakening.js
+- lib/shop-catalog.js
+- lib/heroes.js
+- lib/alliance-activity.js
+- lib/data-freshness.js
+- supabase/schema.sql
+- portraits/assets

@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.4.9",
+  "name": "WarBoost V2.5.0",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.4.9 — Adaptive Ranking Reliability: hero-keyed progression recovery, complete reliable candidate ranking, explicit data-gap safeguards, robust mobile non-hero cards, conditional contextual recommendations, and preserved Season 6 Awakening/Reshape plus Boutique IA integrity.",
+  "description": "WarBoost V2.5.0 — Legacy Hero Data Recovery: identity-only recovery from saved hero history and Supabase snapshots, pre-write hero snapshots, conflict-safe migration, preserved adaptive Diagnostic PRO, Season 6 Awakening/Reshape and Boutique IA integrity.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -3,12 +3,13 @@ import {HERO_CATALOG,canonicalHeroName,isGenericHeroName,heroPresentation} from 
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
 import {canonicalShopStore} from "./lib/shop-catalog.js";
 import {reconcileConfirmedSquad,repairLegacySquadIdentity} from "./lib/squad-identity.js";
+import {recoverHeroData} from "./lib/hero-history.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.4.9";
+const APP_VERSION="2.5.0";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const LEGACY_LANGUAGE_KEYS=["wb17_language","wb171_language","warboost_language"];
-const LEGACY_DATA_KEYS=["wb12_account","wb11_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster"];
+const LEGACY_DATA_KEYS=["wb12_account","wb11_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster","wb19_imported_players"];
 
 function uid(){return crypto.randomUUID?.()||`wb-${Date.now()}-${Math.random().toString(16).slice(2)}`}
 function clientId(){let id=localStorage.getItem(CLIENT_KEY);if(!id){id=uid();localStorage.setItem(CLIENT_KEY,id)}return id}
@@ -113,14 +114,31 @@ function migrateLegacyLocalState(seed){
   const r=legacyRole(account.role);if(r&&(!out.player.role||out.player.role==='R1')){out.player.role=r;changed=true}
   setIfEmpty(out.alliance,'tag',alliance.alliance);
   if(r&&(!out.alliance.role||out.alliance.role==='R1')){out.alliance.role=r;changed=true}
-  const sq=out.squads?.[0];if(sq){setIfEmpty(sq,'power',profile.squadPower?Number(String(profile.squadPower).replace(',','.'))||profile.squadPower:null);for(let i=0;i<5;i++){const h=sq.heroes[i];setIfEmpty(h,'name',canonicalStoredHeroName(profile[`heroName${i+1}`]));setIfEmpty(h,'level',profile[`heroLevel${i+1}`]?Number(profile[`heroLevel${i+1}`])||profile[`heroLevel${i+1}`]:null);setIfEmpty(h,'stars',profile[`heroStars${i+1}`]?Number(profile[`heroStars${i+1}`])||profile[`heroStars${i+1}`]:null);setIfEmpty(h,'exclusive',profile[`heroWeapon${i+1}`]?Number(profile[`heroWeapon${i+1}`])||profile[`heroWeapon${i+1}`]:null);setIfEmpty(h,'gear',profile[`heroGear${i+1}`]||null)}}
+  const sq=out.squads?.[0];if(sq){
+    setIfEmpty(sq,'power',profile.squadPower?Number(String(profile.squadPower).replace(',','.'))||profile.squadPower:null);
+    for(let i=0;i<5;i++){
+      const h=sq.heroes[i],legacyName=canonicalStoredHeroName(profile[`heroName${i+1}`]),currentName=canonicalStoredHeroName(h?.name);
+      // V2.5.0: legacy slot fields may only be imported during an empty first-time migration.
+      // Once a hero identity already exists in core state, never enrich it directly from wb10_profile.
+      const emptyIdentity=Boolean(legacyName&&!currentName);
+      if(emptyIdentity)setIfEmpty(h,'name',legacyName);
+      // Existing named heroes are never enriched directly from the slot-based legacy profile.
+      // They are handled later by the identity-aware recovery engine, which can require corroboration.
+      if(!emptyIdentity)continue;
+      setIfEmpty(h,'level',profile[`heroLevel${i+1}`]?Number(profile[`heroLevel${i+1}`])||profile[`heroLevel${i+1}`]:null);
+      setIfEmpty(h,'stars',profile[`heroStars${i+1}`]?Number(profile[`heroStars${i+1}`])||profile[`heroStars${i+1}`]:null);
+      setIfEmpty(h,'exclusive',profile[`heroWeapon${i+1}`]?Number(profile[`heroWeapon${i+1}`])||profile[`heroWeapon${i+1}`]:null);
+      setIfEmpty(h,'gear',profile[`heroGear${i+1}`]||null);
+    }
+  }
   setIfEmpty(out.drone,'level',profile.droneLevel?Number(profile.droneLevel)||profile.droneLevel:null);setIfEmpty(out.drone,'power_m',profile.drone?Number(String(profile.drone).replace(',','.'))||profile.drone:null);
   setIfEmpty(out.vs,'day',simple.vsDay?Number(simple.vsDay)||simple.vsDay:null);setIfEmpty(out.season,'name',simple.season);setIfEmpty(out.season,'profession',simple.profession);
   if(Array.isArray(roster)&&roster.length&&!(out.alliance.members||[]).length){out.alliance.members=roster.slice(0,100).map(m=>({name:String(m?.name||'').trim(),role:legacyRole(m?.rank)||'R1',power_m:Number(m?.power)||0,updated_at:null})).filter(m=>m.name);changed=Boolean(out.alliance.members.length)||changed}
   if(changed){out.updated_at=out.updated_at||new Date().toISOString();out.migration={...(out.migration||{}),legacy_local_imported_at:new Date().toISOString(),legacy_keys:LEGACY_DATA_KEYS.filter(k=>localStorage.getItem(k)!==null)}}
   out.version=APP_VERSION;return {state:out,changed};
 }
-function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const base=raw?mergeState(initialState(),JSON.parse(raw)):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state);const next=repaired.state;next.version=APP_VERSION;if(migrated.changed||repaired.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));return next}catch{return initialState()}}
+function recoverLocalHeroHistory(input){const legacyProfile=readLegacyJson("wb10_profile")||null,legacyImportedPlayers=readLegacyJson("wb19_imported_players")||[];return recoverHeroData(input,{legacyProfile,legacyImportedPlayers,currentPlayerName:input?.player?.name||""});}
+function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const base=raw?mergeState(initialState(),JSON.parse(raw)):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state);const next=finalRepair.state;next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));return next}catch{return initialState()}}
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,suppressPush=false,cloud=null,cloudSession=null,proState={active:false,status:"free",configured:false,plan:null},scanImageData=null;
 const openRosterRoles=new Set();
@@ -206,7 +224,7 @@ async function applySession(session){cloudSession=session||null;if(cloudSession?
 function renderAuth(){const logged=Boolean(cloudSession?.user);$("#authLoggedOut")?.classList.toggle("hidden",logged);$("#authLoggedIn")?.classList.toggle("hidden",!logged);if($("#authPill"))$("#authPill").textContent=logged?t("connected"):(cloud?t("ready"):t("local"));if(logged&&$("#authIdentity"))$("#authIdentity").textContent=`WarBoost · ${cloudSession.user.email||""}`;renderPro()}
 function authMessage(text,ok=false){const el=$("#authMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
 async function pushServerState(){if(!cloudSession?.access_token)return;try{const r=await fetch("/api/state",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state})});if(!r.ok)return;const j=await r.json().catch(()=>({}));if(j?.updated_at){state.sync.last_sync=state.sync.last_sync||j.updated_at;localStorage.setItem(STORE_KEY,JSON.stringify(state))}}catch{}}
-async function pullServerState(){if(!cloudSession?.access_token)return;try{const r=await fetch("/api/state",{cache:"no-store",headers:authHeaders()});if(!r.ok)return;const j=await r.json();if(j?.state){const localTs=Date.parse(state?.updated_at||"")||0,cloudTs=Date.parse(j.updated_at||j.state?.updated_at||"")||0,preferLocal=Boolean(localTs&&cloudTs&&localTs>cloudTs);suppressPush=true;state=repairLegacySquadIdentity(mergeStateProtected(state,j.state,{preferBase:preferLocal})).state;state.updated_at=preferLocal?(state.updated_at||new Date().toISOString()):(j.state?.updated_at||j.updated_at||state.updated_at);localStorage.setItem(STORE_KEY,JSON.stringify(state));render();suppressPush=false}}catch{}}
+async function pullServerState(){if(!cloudSession?.access_token)return;try{const r=await fetch("/api/state",{cache:"no-store",headers:authHeaders()});if(!r.ok)return;const j=await r.json();if(j?.state){const localTs=Date.parse(state?.updated_at||"")||0,cloudTs=Date.parse(j.updated_at||j.state?.updated_at||"")||0,preferLocal=Boolean(localTs&&cloudTs&&localTs>cloudTs);suppressPush=true;const merged=mergeStateProtected(state,j.state,{preferBase:preferLocal}),localRecovered=recoverLocalHeroHistory(merged);state=repairLegacySquadIdentity(localRecovered.state).state;state.updated_at=preferLocal?(state.updated_at||new Date().toISOString()):(j.state?.updated_at||j.updated_at||state.updated_at);localStorage.setItem(STORE_KEY,JSON.stringify(state));render();suppressPush=false}}catch{}}
 
 async function refreshServerTime(){try{const r=await fetch("/api/health",{cache:"no-store"});if(!r.ok)throw new Error();const j=await r.json();serverNow=new Date(j.now);state.vs.week=j.iso_week;state.vs.day=j.vs_day;$("#syncPill").className="syncState good";$("#syncPill").textContent=t("server_ok")}catch{serverNow=new Date();state.vs.week=isoWeek(serverNow);state.vs.day=vsDayFromServer(serverNow);$("#syncPill").className="syncState";$("#syncPill").textContent=t("local_time")}renderClock();render()}
 function renderClock(){const d=serverNow;const clock=$("#serverClock"),day=$("#serverDay");if(clock)clock.textContent=d.toLocaleTimeString(locale,{hour:"2-digit",minute:"2-digit",second:"2-digit"});if(day)day.textContent=`${d.toLocaleDateString(locale,{weekday:"long",day:"2-digit",month:"short"})} · ${t("week")} ${isoWeek(d)}`}

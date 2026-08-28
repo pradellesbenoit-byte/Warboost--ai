@@ -1,66 +1,81 @@
-# WarBoost V2.4.9 — Adaptive Ranking Reliability
+# WarBoost V2.5.0 — Legacy Hero Data Recovery
 
-WarBoost V2.4.9 corrige les régressions observées sur la Preview V2.4.8 sans retirer le moteur contextuel introduit dans V2.4.8.
+WarBoost V2.5.0 termine le chantier de fiabilité commencé avec V2.4.7–V2.4.9 : les caractéristiques d'un héros doivent rester attachées à **son identité**, même lorsqu'il change d'escouade, et une ancienne donnée ne doit jamais être recopiée depuis un numéro de slot.
 
-## Correctif principal : le moteur adaptatif complète le Diagnostic PRO
+La Preview V2.4.9 avait correctement cessé d'inventer des armes exclusives inconnues, mais elle ne retrouvait pas encore toutes les anciennes valeurs fiables enregistrées auparavant. V2.5.0 ajoute donc une récupération historique prudente, sans supprimer le classement adaptatif V2.4.9.
 
-Le classement adaptatif intervient désormais **après** la reconstruction du pool fiable de candidats du Diagnostic PRO. Il ne doit plus réduire l'analyse à une seule famille simplement parce qu'une donnée héros n'est pas directement présente dans le slot courant.
+## Récupération par identité de héros
 
-Le Diagnostic compare, lorsqu'elles sont réellement documentées :
+Le nouveau module `lib/hero-history.js` construit un historique par nom canonique de héros. Il peut exploiter, lorsqu'ils existent réellement :
 
-- niveaux et étoiles des héros ;
-- armes exclusives et paliers EX10 / EX20 / EX30 ;
-- Éveil / Reshape de Saison 6 ;
-- équipement ;
-- technologies renseignées ;
-- Drone ;
-- timing VS / Saison ;
-- et, lorsqu'une donnée critique manque, une action explicite de vérification au lieu d'inventer une amélioration.
+- `hero_profiles` historiques du même héros ;
+- `hero_progression` du même héros ;
+- scans d'arme exclusive du même héros ;
+- états précédents enregistrés dans `wb1_snapshots` ;
+- ancien import joueur `wb19_imported_players`, uniquement lorsque le nom du joueur correspond ;
+- ancien `wb10_profile`, traité comme source de faible confiance car son ancien modèle était basé sur les slots.
 
-Le moteur contextuel conserve ensuite l'objectif Auto/Équilibré/PvP/PvE/VS/Saison, le contexte serveur/compte connu, le rendement marginal, la certitude et les conditions de dépense pour classer les candidats fiables.
+Une valeur connue dans l'état courant n'est pas remplacée par une valeur historique. Les champs historiques servent d'abord à **combler les trous**.
 
-## Mémoire héros réellement utilisée par le Diagnostic
+## Protection contre l'ancien bug de slot
 
-V2.4.9 branche le registre `hero_profiles` de V2.4.7 dans le Diagnostic PRO.
+V2.5.0 interdit la récupération d'un niveau, d'une EX, d'un équipement, d'une puissance ou d'un Éveil depuis la simple position 1–5.
 
-Ordre de récupération par **identité de héros** :
+Le vieux `wb10_profile` n'enrichit plus directement un héros déjà nommé dans l'état moderne. Il peut encore servir lors d'une toute première migration où l'identité moderne n'existe pas encore ; sinon il passe par le moteur de récupération prudent.
 
-1. mémoire `hero_profiles` du même héros ;
-2. données visibles du héros dans l'escouade courante ;
-3. progression héros enregistrée du même héros ;
-4. scan d'arme exclusive du même héros, lorsqu'il existe.
+Les lignes historiques d'une escouade marquée `needs_rescan` sont ignorées pour la récupération des caractéristiques héros.
 
-Les champs inconnus ne remplacent jamais une valeur connue. Aucun champ n'est récupéré par numéro de slot. Un héros nouvellement placé à une position ne peut donc pas hériter du niveau, de l'EX, de l'équipement ou de l'Éveil du héros précédent.
+Les anciennes sources de type slot / historique d'escouade ne sont pas acceptées seules pour remplir une donnée sensible : elles doivent être corroborées par une autre observation cohérente ou par une source plus fiable. En cas de conflit équivalent, WarBoost laisse le champ inconnu au lieu de choisir arbitrairement.
 
-Kimberly EX19 reste conservable comme donnée confirmée. Une valeur réellement absente de toutes les sources fiables reste inconnue : WarBoost ne l'invente pas.
+## Priorité à la fiabilité des sources
 
-## Garde-fou si les EX sont incomplètes
+La sélection historique favorise d'abord la **qualité de la source**, puis la récence à qualité égale. Un scan d'arme exclusive ou une progression héros explicitement enregistrée ne peut donc pas être écrasé par une ancienne donnée de slot simplement parce que cette dernière est plus récente.
 
-Si moins de trois améliorations héros fiables peuvent être construites et que certaines armes exclusives de l'escouade principale sont inconnues, WarBoost ajoute une action **Vérifier les armes exclusives**. Cette action empêche le Drone d'être présenté comme unique priorité certaine alors que les EX des héros n'ont pas encore été confirmées.
+Exemples de règle :
 
-Le Diagnostic peut donc afficher moins de trois améliorations uniquement lorsqu'il existe réellement moins de trois actions fiables. Il ne fabrique jamais un faux TOP 3.
+- une EX actuellement confirmée reste prioritaire ;
+- deux historiques de même confiance et même date qui se contredisent donnent un conflit, pas une valeur inventée ;
+- une ancienne donnée de faible confiance sans corroboration reste « à confirmer » ;
+- un héros placé dans l'ancien slot de Kimberly ne peut pas hériter de Kimberly EX19.
 
-## Correctif mobile des priorités non-héros
+## Historique cloud et protection avant écriture
 
-La carte Drone/Technologie/Scan de V2.4.8 pouvait placer son contenu dans la colonne réservée au portrait héros, ce qui comprimait le texte en une colonne étroite. V2.4.9 utilise une grille spécifique aux cartes sans héros : le titre, l'impact, l'efficacité ressources, le rendement marginal et l'action occupent à nouveau toute la largeur disponible sur mobile.
+`api/state.js` lit maintenant jusqu'à 100 snapshots du joueur dans `wb1_snapshots` lors du chargement cloud afin de tenter de restaurer uniquement les champs manquants.
 
-## Compteur traduit
+Avant une écriture qui modifie des faits héros, l'état précédent est sauvegardé dans un snapshot `warboost-prewrite` en best effort. Cela protège les futures migrations : une modification de composition ou un nouveau scan ne doit plus supprimer silencieusement le dernier état héros connu.
 
-Le résumé utilise désormais une formulation neutre de type **« Options comparées : 1 »** / **« Options comparées : 6 »**, ce qui évite l'erreur « 1 options comparées ». La chaîne est fournie dans les 23 choix de langue explicites de WarBoost, plus le mode Auto.
+Aucun changement de schéma Supabase n'est nécessaire : la table `wb1_snapshots` existante est réutilisée.
+
+## Diagnostic PRO V2.4.9 conservé
+
+Après récupération, le Diagnostic PRO continue d'utiliser le moteur adaptatif :
+
+- construction de toutes les options fiables avant classement ;
+- TOP 3 lorsque trois actions fiables existent ;
+- objectifs Auto / Équilibré / PvP / PvE / VS / Saison ;
+- rendement marginal et efficacité ressources ;
+- certitude Certain / Probable / Spéculatif ;
+- contexte VS / Saison 6 ;
+- action explicite de vérification lorsqu'une EX reste réellement inconnue.
+
+Dans le test d'intégration V2.5.0, la récupération de Carlie EX5, Morrison EX10 et Lucius EX1 depuis un historique fiable permet à nouveau au Diagnostic de construire un TOP 3 EX. Une EX absente des historiques reste inconnue.
 
 ## Protections conservées
 
-V2.4.9 conserve sans changement de principe :
+V2.5.0 conserve :
 
-- anti-doublon inter-escouades ;
-- confirmation des identités héros lors des scans ambigus ;
-- scan partiel sans effacement des anciennes valeurs fiables ;
-- 31 héros et leurs portraits ;
-- Saison 6 Awakening / Reshape et absence de projection exacte inventée ;
-- Boutique IA en catalogue partiel, cumul des scans, fusion des doublons, exclusion des articles vendus et disponibilité non affirmée sans preuve ;
+- 31 héros et 31 portraits ;
+- anti-doublon et confirmation des identités lors des scans ;
+- Kimberly EX19 lorsqu'elle est présente dans une source fiable du même héros ;
+- scan partiel sans effacement des champs fiables non lus ;
+- Saison 6 Awakening / Reshape sans projection exacte inventée ;
+- Boutique IA en catalogue partiel avec disponibilité non affirmée sans preuve ;
 - Alliance R5/R4 et fiabilité d'activité ;
+- 23 choix de langue explicites + mode Auto ;
 - intégration Last War approval-first / API-ready, sans automatisation de gameplay ni accès non autorisé.
 
 ## Déploiement
 
-Valider V2.4.9 sur `publisher-demo` avant toute fusion dans `main`. Le test prioritaire est le Diagnostic PRO avec l'Escouade 1 actuelle : vérifier que les données héroïques récupérables réapparaissent, que Kimberly EX19 reste attachée à Kimberly, qu'une donnée EX inconnue déclenche une vérification plutôt qu'une invention, et que les cartes Drone/Technologie ne sont plus comprimées sur mobile.
+Déployer uniquement sur `publisher-demo` pour le moment. Ne pas fusionner dans `main` avant validation sur les données réelles du compte.
+
+Le test réel prioritaire après déploiement est : ouvrir Joueur puis Diagnostic PRO et vérifier si les snapshots disponibles permettent de retrouver les anciennes EX de la même identité de héros. La récupération est volontairement prudente : si aucun historique fiable n'existe dans le navigateur ou dans Supabase, WarBoost n'inventera pas la valeur manquante.
