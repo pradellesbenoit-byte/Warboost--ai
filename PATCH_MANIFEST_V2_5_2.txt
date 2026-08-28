@@ -1,0 +1,24 @@
+WarBoost V2.5.2 — Primary Squad Reliability
+
+ROOT (10)
+app.js
+BUILD_VERIFICATION_V2_5_2.txt
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+PATCH_MANIFEST_V2_5_2.txt
+README.md
+sw.js
+WARBOOST_V2_5_2_RELEASE.md
+
+api/ (2)
+advice.js
+health.js
+
+lib/ (3)
+meta-intel.js
+normalize.js
+squad-identity.js
+
+TOTAL: 15 files

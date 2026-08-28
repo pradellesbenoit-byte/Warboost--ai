@@ -1,0 +1,32 @@
+WarBoost V2.5.2 — Build verification
+
+RESULT: PASS
+
+Checks executed on 2026-08-28:
+1. npm run check: PASS (app, service worker, 12 API modules and all lib modules parse).
+2. API handlers: 12/12 preserved.
+3. Hero registry: 31 heroes; hero portraits: 31/31.
+4. Primary-squad policy: PASS. If Squad 1 contains saved data, selectPrimarySquad always returns Squad 1 even when Squad 2 has higher power.
+5. Safe fallback: PASS. If Squad 1 has no data, WarBoost temporarily selects the strongest reliable configured squad.
+6. Diagnostic PRO after a lower-power Squad 1 / higher-power Squad 2 setup: PASS. focus_squad=1; summary names Escouade 1; strongest_squad is exposed separately as Squad 2 and is_focus=false.
+7. Diagnostic TOP candidates: PASS. Secondary-squad heroes do not leak into the main-squad TOP 3 merely because their squad has higher power.
+8. Coach IA home policy: structural test PASS. Home Coach calls selectPrimarySquad(state) and separately renders stronger_squad_note instead of silently replacing Squad 1.
+9. Boutique IA alignment: heroNeedSnapshot now uses the same centralized primary-squad selector, so hero/EX/gear needs follow Squad 1 when configured.
+10. Meta intelligence alignment: PASS. S6 EX/meta context reads heroes from the selected main squad; a stronger secondary squad no longer changes main_heroes_below_ex20.
+11. Whole-squad permutation regression: PASS. 1↔2 still moves complete squad payloads atomically and Squad 1 remains the selected main destination after the swap.
+12. Swap round trip: PASS. 1↔2 then 1↔2 restores compositions; Kimberly EX19 and Morrison EX10 remain attached to their identities.
+13. Duplicate audit after swap round trip: PASS.
+14. Hero-keyed memory protections: preserved. No slot-based characteristic transfer introduced.
+15. Stronger-secondary informational wording: translated and verified in all 23 explicit language choices (FR, en-GB, en-US, ES, IT, DE, PT, NL, ZH, JA, RU, AR, PL, TR, KO, VI, TH, ID, UK, RO, EL, CS, SV) plus Auto.
+16. Active interface taglines: verified as V2.5.2 in all 23 explicit languages.
+17. EX reasoning safety: unsupported wording « coût restant / remaining cost / coste restante / Restkosten » remains absent from active Diagnostic PRO code.
+18. Manifest/package JSON: PASS.
+19. Critical files verified byte-identical to V2.5.1: api/scan.js, api/state.js, api/sync.js, lib/hero-history.js, lib/adaptive-context.js, lib/season6-awakening.js, lib/shop-catalog.js, lib/alliance-activity.js, lib/data-freshness.js, supabase/schema.sql, publisher-ui.js, publisher-ui.css and styles.css.
+20. Version metadata: app, normalizeState, AI engine, health endpoint, index, manifest, package and service-worker cache aligned to V2.5.2.
+
+Safety model:
+- Squad 1 is the player's main squad by ordering once it contains data.
+- A stronger secondary squad is informational only; it never silently becomes the main squad.
+- Whole-squad swapping remains atomic.
+- Hero data remains identity-bound, not slot-bound.
+- Unknown fragment/material quantities are never invented.

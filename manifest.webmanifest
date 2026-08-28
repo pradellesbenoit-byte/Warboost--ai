@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.1",
+  "name": "WarBoost V2.5.2",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.1 — Squad Swap Reliability: safe whole-squad permutation with full hero data moving together, hero-keyed memory preserved, safer EX reasoning wording, adaptive Diagnostic PRO, Season 6 Awakening/Reshape and Boutique IA integrity.",
+  "description": "WarBoost V2.5.2 — Primary Squad Reliability: Squad 1 remains the player-selected main squad after safe whole-squad permutation; hero data remains identity-bound, adaptive Diagnostic PRO and Boutique IA follow the chosen main squad, with stronger secondary squads shown separately.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -403,6 +403,31 @@ Object.assign(EL,{squad_swap:"Ανταλλαγή ομάδας",squad_swap_with:"
 Object.assign(CS,{squad_swap:"Prohodit jednotku",squad_swap_with:"Prohodit s",squad_swap_aria:"Prohodit jednotku {squad}",squad_swap_done:"Jednotka {from} byla prohozena s jednotkou {to}. Všichni hrdinové a jejich uložená data se přesunuli společně.",squad_swap_failed:"Jednotky se nepodařilo prohodit. Uložená data hrdinů nebyla změněna."});
 Object.assign(SV,{squad_swap:"Byt trupp",squad_swap_with:"Byt med",squad_swap_aria:"Byt trupp {squad}",squad_swap_done:"Trupp {from} byttes med trupp {to}. Alla hjältar och deras sparade data flyttades tillsammans.",squad_swap_failed:"Trupperna kunde inte bytas. Inga sparade hjältedata ändrades."});
 
+// ===== V2.5.2 · Squad 1 remains the player-selected main squad =====
+Object.assign(EN,{stronger_squad_note:"{name} is currently stronger ({power}), but Squad 1 remains your selected main squad.",tagline:"V2.5.2 · Primary squad reliability · no player token"});
+Object.assign(EN_GB,EN);Object.assign(EN_US,EN);
+Object.assign(FR,{stronger_squad_note:"{name} est actuellement plus puissante ({power}), mais l’Escouade 1 reste ton escouade principale choisie.",tagline:"V2.5.2 · Fiabilité escouade principale · sans token joueur"});
+Object.assign(ES,{stronger_squad_note:"{name} es actualmente más potente ({power}), pero el Escuadrón 1 sigue siendo tu escuadrón principal elegido.",tagline:"V2.5.2 · Fiabilidad del escuadrón principal · sin token del jugador"});
+Object.assign(IT,{stronger_squad_note:"{name} è attualmente più potente ({power}), ma la Squadra 1 resta la tua squadra principale scelta.",tagline:"V2.5.2 · Affidabilità squadra principale · senza token giocatore"});
+Object.assign(DE,{stronger_squad_note:"{name} ist derzeit stärker ({power}), aber Trupp 1 bleibt dein ausgewählter Haupttrupp.",tagline:"V2.5.2 · Zuverlässigkeit Haupttrupp · ohne Spieler-Token"});
+Object.assign(PT,{stronger_squad_note:"{name} está atualmente mais forte ({power}), mas a Equipa 1 continua a ser a tua equipa principal escolhida.",tagline:"V2.5.2 · Fiabilidade da equipa principal · sem token do jogador"});
+Object.assign(NL,{stronger_squad_note:"{name} is momenteel sterker ({power}), maar Squad 1 blijft je gekozen hoofd-squad.",tagline:"V2.5.2 · Betrouwbaarheid hoofd-squad · zonder spelertoken"});
+Object.assign(ZH,{stronger_squad_note:"{name} 当前更强（{power}），但小队 1 仍是你选择的主力小队。",tagline:"V2.5.2 · 主力小队可靠性 · 无玩家令牌"});
+Object.assign(JA,{stronger_squad_note:"{name} は現在より強力です（{power}）が、部隊1が選択した主力部隊のままです。",tagline:"V2.5.2 · 主力部隊の信頼性 · プレイヤートークン不要"});
+Object.assign(RU,{stronger_squad_note:"{name} сейчас сильнее ({power}), но отряд 1 остаётся выбранным основным отрядом.",tagline:"V2.5.2 · Надёжность основного отряда · без токена игрока"});
+Object.assign(AR,{stronger_squad_note:"{name} أقوى حالياً ({power})، لكن الفريق 1 يبقى فريقك الرئيسي الذي اخترته.",tagline:"V2.5.2 · موثوقية الفريق الرئيسي · بدون رمز لاعب"});
+Object.assign(PL,{stronger_squad_note:"{name} jest obecnie silniejszy ({power}), ale Oddział 1 pozostaje wybranym oddziałem głównym.",tagline:"V2.5.2 · Niezawodność głównego oddziału · bez tokenu gracza"});
+Object.assign(TR,{stronger_squad_note:"{name} şu anda daha güçlü ({power}), ancak Takım 1 seçtiğin ana takım olarak kalır.",tagline:"V2.5.2 · Ana takım güvenilirliği · oyuncu belirteci yok"});
+Object.assign(KO,{stronger_squad_note:"{name}이 현재 더 강하지만({power}), 1번 부대가 선택한 주력 부대로 유지됩니다.",tagline:"V2.5.2 · 주력 부대 신뢰성 · 플레이어 토큰 없음"});
+Object.assign(VI,{stronger_squad_note:"{name} hiện mạnh hơn ({power}), nhưng Đội 1 vẫn là đội chính bạn đã chọn.",tagline:"V2.5.2 · Độ tin cậy đội chính · không cần token người chơi"});
+Object.assign(TH,{stronger_squad_note:"{name} แข็งแกร่งกว่าในขณะนี้ ({power}) แต่ทีม 1 ยังคงเป็นทีมหลักที่คุณเลือก",tagline:"V2.5.2 · ความน่าเชื่อถือทีมหลัก · ไม่ใช้โทเคนผู้เล่น"});
+Object.assign(ID,{stronger_squad_note:"{name} saat ini lebih kuat ({power}), tetapi Skuad 1 tetap menjadi skuad utama yang kamu pilih.",tagline:"V2.5.2 · Keandalan skuad utama · tanpa token pemain"});
+Object.assign(UK,{stronger_squad_note:"{name} зараз сильніший ({power}), але Загін 1 залишається обраним головним загоном.",tagline:"V2.5.2 · Надійність головного загону · без токена гравця"});
+Object.assign(RO,{stronger_squad_note:"{name} este momentan mai puternică ({power}), dar Echipa 1 rămâne echipa principală aleasă.",tagline:"V2.5.2 · Fiabilitatea echipei principale · fără token de jucător"});
+Object.assign(EL,{stronger_squad_note:"Η {name} είναι αυτή τη στιγμή ισχυρότερη ({power}), αλλά η Ομάδα 1 παραμένει η κύρια ομάδα που επέλεξες.",tagline:"V2.5.2 · Αξιοπιστία κύριας ομάδας · χωρίς token παίκτη"});
+Object.assign(CS,{stronger_squad_note:"{name} je nyní silnější ({power}), ale Jednotka 1 zůstává tebou zvolenou hlavní jednotkou.",tagline:"V2.5.2 · Spolehlivost hlavní jednotky · bez tokenu hráče"});
+Object.assign(SV,{stronger_squad_note:"{name} är för närvarande starkare ({power}), men Trupp 1 förblir din valda huvudtrupp.",tagline:"V2.5.2 · Tillförlitlighet för huvudtrupp · utan spelartoken"});
+
 const packs={fr:FR,"en-GB":EN_GB,"en-US":EN_US,es:ES,it:IT,de:DE,pt:PT,nl:NL,zh:ZH,ja:JA,ru:RU,ar:AR,pl:PL,tr:TR,ko:KO,vi:VI,th:TH,id:ID,uk:UK,ro:RO,el:EL,cs:CS,sv:SV};
 export const LANGUAGES=[
   ["auto","🌐 Auto"],
