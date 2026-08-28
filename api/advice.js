@@ -5,7 +5,7 @@ import {freshnessInfo,refreshBeforePaidText} from '../lib/data-freshness.js';
 import {canonicalShopStore,findShopReference,referenceCategoryForItem,referenceItemsForStrategy,shopReferenceStats,SHOP_REFERENCE_DATE} from '../lib/shop-catalog.js';
 import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScore,heroReshapeDecisionValue,season6TechPriorities,awakeningSwapAssessment,S6_AWAKENING_HEROES} from '../lib/season6-awakening.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
-const ENGINE_VERSION="2.4.8";
+const ENGINE_VERSION="2.4.9";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -33,6 +33,33 @@ function heroConfigured(h){
   return Boolean((name&&!/^(hero|héros)\s*\d+$/i.test(name))||num(h?.level)!==null||num(h?.stars)!==null||num(h?.power)!==null||cleanName(h?.exclusive)||cleanName(h?.gear));
 }
 function squadConfigured(s){return Boolean(num(s?.power)!==null||s?.updated_at||(s?.heroes||[]).some(heroConfigured))}
+const HERO_MEMORY_FIELDS=["level","stars","power","exclusive","gear","awakening"];
+function heroKey(v){return canonicalHeroName(v).toLowerCase()}
+function mergeHeroKnown(base={},extra={}){
+  const out={...base};
+  for(const f of HERO_MEMORY_FIELDS){const v=extra?.[f];if(v!==null&&v!==undefined&&v!=="")out[f]=v;}
+  if(extra?.name)out.name=canonicalHeroName(extra.name);
+  return out;
+}
+function newestByHero(list,name,nameFn){
+  const key=heroKey(name);if(!key)return null;
+  return (Array.isArray(list)?list:[]).filter(x=>heroKey(nameFn(x))===key).sort((a,b)=>(Date.parse(b?.updated_at||"")||0)-(Date.parse(a?.updated_at||"")||0))[0]||null;
+}
+function heroProfileByName(state,name){return newestByHero(state?.hero_profiles,name,x=>x?.hero_name||x?.name)}
+function heroProgressionByName(state,name){return newestByHero(state?.hero_progression,name,x=>x?.hero_name||x?.name)}
+function heroWeaponByName(state,name){return newestByHero(state?.exclusive_weapons,name,x=>x?.hero_name)}
+function hydrateHeroFromMemory(state,raw={}){
+  const name=canonicalHeroName(raw?.name||raw?.hero_name);if(!name)return {...raw};
+  const profile=heroProfileByName(state,name),progress=heroProgressionByName(state,name),weapon=heroWeaponByName(state,name);
+  let out=mergeHeroKnown({name},profile||{});
+  out=mergeHeroKnown(out,{...raw,name});
+  if(progress)out=mergeHeroKnown(out,{stars:progress.stars,exclusive:progress.exclusive,awakening:progress.awakening});
+  if(weapon&&num(weapon.level)!==null)out=mergeHeroKnown(out,{exclusive:String(num(weapon.level))});
+  out.name=name;return out;
+}
+function heroMemoryUpdatedAt(state,name,fallback=null){
+  return latestIso(heroWeaponByName(state,name)?.updated_at,heroProgressionByName(state,name)?.updated_at,heroProfileByName(state,name)?.updated_at,fallback);
+}
 function localePack(locale){
   const x=String(locale||"en").toLowerCase();
   if(x.startsWith("fr"))return "fr";if(x.startsWith("es"))return "es";if(x.startsWith("de"))return "de";if(x.startsWith("ja"))return "ja";if(x.startsWith("zh"))return "zh";if(x.startsWith("ar"))return "ar";return "en";
@@ -228,7 +255,7 @@ function heroImportance(h,heroes,type){const p=num(h?.power),known=heroes.map(x=
 function allHeroDecisionValues(state,mainSquadIndex=0){
   const rows=[],seen=new Set(),squads=Array.isArray(state?.squads)?state.squads:[],mainHeroes=squads[mainSquadIndex]?.heroes||[],mainType=mainSquadType(mainHeroes),mainBonus=formationBonusPct(mainHeroes),weapons=Array.isArray(state?.exclusive_weapons)?state.exclusive_weapons:[],progress=Array.isArray(state?.hero_progression)?state.hero_progression:[];
   const progressFor=n=>progress.find(x=>canonicalHeroName(x?.hero_name||x?.name).toLowerCase()===canonicalHeroName(n).toLowerCase());
-  const add=(raw,squad)=>{const name=canonicalHeroName(raw?.name||raw?.hero_name);if(!name||seen.has(name.toLowerCase()))return;seen.add(name.toLowerCase());const hp=progressFor(name),h={...raw,...(hp||{}),name,awakening:{...(raw?.awakening||{}),...(hp?.awakening||{})}},stars=num(h.stars),ex=metric(h.exclusive),gear=gearMetric(h.gear),type=heroType(name),isMain=squad===mainSquadIndex+1,fit=mainType&&type===mainType;let value=45+(isMain?28:0)+(fit?8:mainType&&type?-7:0);const power=num(h.power);if(power!==null)value+=Math.min(8,Math.max(0,power/10));let next='hold';if(stars!==null&&stars<5)next='stars';else if(Number(state?.season?.number)===6&&S6_AWAKENING_HEROES[name]&&stars>=5&&ex!==null&&ex>=20)next='awakening';else if(ex!==null&&nextKnownExBreakpoint(ex)!==null)next='exclusive';else if(gear!==null&&gear<40)next='gear';const aw=Number(state?.season?.number)===6?heroReshapeDecisionValue({hero:h,weapons,season:state?.season||{},mainType,formationBonus:mainBonus,importance:isMain?1.08:.88}):null;if(aw)value=Math.max(value,Math.round(aw.decision_value_index*(isMain?1:.82)));rows.push({hero:name,squad,type,main_squad:isMain,formation_fit:fit,strategic_value_index:Math.max(1,Math.min(100,Math.round(value))),next_upgrade_family:next,stars,exclusive:ex,gear,awakening:aw,exact_power_projected:false});};
+  const add=(raw,squad)=>{const name=canonicalHeroName(raw?.name||raw?.hero_name);if(!name||seen.has(name.toLowerCase()))return;seen.add(name.toLowerCase());const hp=progressFor(name),hydrated=hydrateHeroFromMemory(state,{...raw,name}),h={...hydrated,...(hp||{}),name,awakening:{...(hydrated?.awakening||{}),...(hp?.awakening||{})}},stars=num(h.stars),ex=metric(h.exclusive),gear=gearMetric(h.gear),type=heroType(name),isMain=squad===mainSquadIndex+1,fit=mainType&&type===mainType;let value=45+(isMain?28:0)+(fit?8:mainType&&type?-7:0);const power=num(h.power);if(power!==null)value+=Math.min(8,Math.max(0,power/10));let next='hold';if(stars!==null&&stars<5)next='stars';else if(Number(state?.season?.number)===6&&S6_AWAKENING_HEROES[name]&&stars>=5&&ex!==null&&ex>=20)next='awakening';else if(ex!==null&&nextKnownExBreakpoint(ex)!==null)next='exclusive';else if(gear!==null&&gear<40)next='gear';const aw=Number(state?.season?.number)===6?heroReshapeDecisionValue({hero:h,weapons,season:state?.season||{},mainType,formationBonus:mainBonus,importance:isMain?1.08:.88}):null;if(aw)value=Math.max(value,Math.round(aw.decision_value_index*(isMain?1:.82)));rows.push({hero:name,squad,type,main_squad:isMain,formation_fit:fit,strategic_value_index:Math.max(1,Math.min(100,Math.round(value))),next_upgrade_family:next,stars,exclusive:ex,gear,awakening:aw,exact_power_projected:false});};
   squads.forEach((sq,i)=>{if(sq?.needs_rescan===true)return;(sq?.heroes||[]).filter(heroConfigured).forEach(h=>add(h,i+1))});progress.forEach(h=>add(h,null));rows.sort((a,b)=>b.strategic_value_index-a.strategic_value_index||String(a.hero).localeCompare(String(b.hero)));return {scope:'all-configured-heroes-across-scanned-squads',main_type:mainType,formation_bonus_pct:mainBonus,heroes:rows,exact_power_projection:false};
 }
 function candidate(kind,title,reason,action,buyFree,buyPaid,target,impact,cost,state,lang,meta={}){
@@ -242,6 +269,17 @@ function candidate(kind,title,reason,action,buyFree,buyPaid,target,impact,cost,s
   return {kind,title,reason:[reason,...intel.reasons].filter(Boolean).join(' '),action,buy_free:buyFree,buy_paid:safePaid,target,severity:score,impact_score:Math.round(impact),impact_label:impactLabel(impact,lang),roi_score:roi,roi_label:roiLabel(roi,lang),resource_efficiency_score:roi,resource_efficiency_label:roiLabel(roi,lang),resource_family:resourceFamily(kind),relative_cost:{index:Math.round(cost*100)/100,band:costBand(cost),basis:"relative_index_no_official_quantity"},timing_adjustment:timing,timing_window:window,data_freshness:freshness,meta_adjustment:intel.bonus,evidence_ids:intel.evidence,presentation,...meta}
 }
 
+
+const MISSING_EXCLUSIVE_TEXT={
+  fr:(s,n)=>({title:"Vérifier les armes exclusives",target:`EX · ${s}`,reason:`WarBoost ne connaît pas encore l'EX fiable de ${n.join(", ")}. Tant que ces valeurs ne sont pas confirmées, il serait risqué de classer le Drone devant ces héros.`,action:"Scanne ou confirme les armes exclusives de l'escouade principale avant d'engager des fragments, composants rares ou un achat payant."}),
+  en:(s,n)=>({title:"Verify exclusive weapons",target:`EX · ${s}`,reason:`WarBoost does not yet have a reliable EX value for ${n.join(", ")}. Until those values are confirmed, ranking Drone ahead of these heroes would be unsafe.`,action:"Scan or confirm the main squad's exclusive weapons before committing shards, scarce components or a paid purchase."}),
+  es:(s,n)=>({title:"Verificar armas exclusivas",target:`EX · ${s}`,reason:`WarBoost aún no tiene un valor EX fiable para ${n.join(", ")}. Hasta confirmarlo, no es seguro colocar el Dron por delante de estos héroes.`,action:"Escanea o confirma las armas exclusivas del escuadrón principal antes de gastar fragmentos, componentes raros o dinero."}),
+  de:(s,n)=>({title:"Exklusive Waffen prüfen",target:`EX · ${s}`,reason:`Für ${n.join(", ")} fehlt WarBoost noch ein verlässlicher EX-Wert. Ohne diese Werte wäre es unsicher, die Drohne vor diesen Helden einzuordnen.`,action:"Scanne oder bestätige zuerst die exklusiven Waffen des Haupttrupps, bevor seltene Ressourcen oder Geld eingesetzt werden."}),
+  ja:(s,n)=>({title:"専用武器を確認",target:`EX · ${s}`,reason:`${n.join("、")} の信頼できるEX値がまだありません。確認前にドローンをこれらの英雄より上位にするのは安全ではありません。`,action:"希少資源や課金を使う前に、主力部隊の専用武器をスキャンまたは確認してください。"}),
+  zh:(s,n)=>({title:"核对专属武器",target:`EX · ${s}`,reason:`WarBoost 尚未获得 ${n.join("、")} 的可靠EX数值。在确认前，把无人机排在这些英雄之前并不安全。`,action:"在投入专武碎片、稀有组件或付费资源前，先扫描或确认主力小队的专属武器。"}),
+  ar:(s,n)=>({title:"تحقق من الأسلحة الحصرية",target:`EX · ${s}`,reason:`لا يملك WarBoost بعد قيمة EX موثوقة لـ ${n.join("، ")}. قبل تأكيدها، ليس من الآمن وضع الدرون قبل هؤلاء الأبطال.`,action:"امسح أو أكد الأسلحة الحصرية للفريق الرئيسي قبل إنفاق الشظايا أو المكونات النادرة أو المال."})
+};
+function missingExclusiveDataText(lang,squad,names){return (MISSING_EXCLUSIVE_TEXT[lang]||MISSING_EXCLUSIVE_TEXT.en)(squad,names)}
 
 function nextBreakpointWhy(heroCandidates,chosen,lang){
   if(!chosen||chosen.kind!=="exclusive")return "";
@@ -258,7 +296,7 @@ function selectSmartTop3(candidates,lang){
   const sorted=[...candidates].sort((a,b)=>(b.marginal_value_score??b.severity)-(a.marginal_value_score??a.severity)||b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
   const heroCandidates=sorted.filter(x=>bottleneckFamily(x.kind)==="hero");
   const topHero=heroCandidates[0];
-  // V2.4.8: no family is promoted or penalized just to diversify the Top 3.
+  // V2.4.9: construct every reliable candidate first, then rank by contextual marginal value; missing critical data becomes an explicit verification action.
   // Drone, technology and hero upgrades all compete on the same contextual marginal-value score.
   const adjusted=sorted;
 
@@ -323,10 +361,13 @@ function buildPlayerAnalysis(state,locale){
   const main=powered[0]||focusPool[0],mainPower=num(main.s.power),mainName=squadName(main.s,main.i,lang);
   const weaponList=Array.isArray(state?.exclusive_weapons)?state.exclusive_weapons:[];
   const progressionList=Array.isArray(state?.hero_progression)?state.hero_progression:[];
-  const progressionByHero=name=>progressionList.filter(x=>canonicalHeroName(x?.hero_name||x?.name).toLowerCase()===canonicalHeroName(name).toLowerCase()).sort((a,b)=>(Date.parse(b?.updated_at||"")||0)-(Date.parse(a?.updated_at||"")||0))[0];
-  const weaponByHero=name=>weaponList.filter(w=>canonicalHeroName(w?.hero_name).toLowerCase()===canonicalHeroName(name).toLowerCase()).sort((a,b)=>(Date.parse(b?.updated_at||"")||0)-(Date.parse(a?.updated_at||"")||0))[0];
-  const heroUpdatedAt=name=>latestIso(weaponByHero(name)?.updated_at,progressionByHero(name)?.updated_at,main.s.updated_at);
-  const enhancedHeroes=(main.s.heroes||[]).map(h=>{const w=weaponByHero(h?.name),hp=progressionByHero(h?.name);let x={...h};if(hp){if(num(hp.stars)!==null)x.stars=num(hp.stars);if(num(hp.exclusive)!==null)x.exclusive=String(num(hp.exclusive));if(hp.awakening)x.awakening={...(h?.awakening||{}),...hp.awakening}}if(w&&num(w.level)!==null)x.exclusive=String(w.level);return x});
+  const progressionByHero=name=>heroProgressionByName(state,name);
+  const weaponByHero=name=>heroWeaponByName(state,name);
+  const heroUpdatedAt=name=>heroMemoryUpdatedAt(state,name,main.s.updated_at);
+  // V2.4.9: Diagnostic PRO consumes the V2.4.7 hero-keyed memory registry.
+  // Squad slots provide identity/current visible data; hero_profiles, hero_progression and exclusive_weapons
+  // restore only the SAME hero's known fields. Nothing is ever inherited from a previous slot occupant.
+  const enhancedHeroes=(main.s.heroes||[]).map(h=>hydrateHeroFromMemory(state,h));
   const heroes=enhancedHeroes.map((h,i)=>({h,i})).filter(x=>heroConfigured(x.h));
   const coverage=heroDetailCoverage({...main.s,heroes:enhancedHeroes});
   const candidates=[];
@@ -343,6 +384,12 @@ function buildPlayerAnalysis(state,locale){
       if(awEligible&&st!==null&&st>=5&&ex!==null&&ex>=20){const awScore=awakeningDecisionScore({hero:h,weapons:weaponList,season:state?.season||{},mainType:squadType,formationBonus,importance}),shards=awReady?.awakening?.named_shards,reason=(shards===null?awTx.unknown(hn):shards>=50||awReady?.unlock_confirmed?awTx.ready(hn):awTx.shards(hn,shards))+` ${formationBonus>=20?awTx.mono(formationBonus):(!measuredHybrid&&formationBonus<20?awTx.hybrid:"")}`,cost=awReady?.unlock_confirmed?.82:shards===null?1.20:shards>=50?1.0:1.35;candidates.push(candidate("awakening",awTx.title,reason,awTx.action(hn),awTx.free,awTx.paid,hn,Math.max(58,awScore||58),cost,state,lang,{hero:hn,current:awReady?.awakening?.stars,current_label:awReady?.unlock_confirmed?(awReady?.awakening?.stars!==null?`Awakening ${awReady.awakening.stars}★`:awTx.title):"Awakening locked/unknown",next_target:awReady?.unlock_confirmed?"Next Awakening step":"Awakening unlock",named_shards:shards,fragment_cost_known:shards!==null,source_updated_at:latestIso(progressionByHero(hn)?.updated_at,weaponByHero(hn)?.updated_at,main.s.updated_at)}));}
       const gr=gearMetric(h.gear);if(gr!==null&&gearTarget!==null&&gearTarget-gr>=3){const gap=gearTarget-gr,impact=Math.min(94,(65+gap*1.7)*importance),cost=.68+gap/16;candidates.push(candidate("gear",p.titles.gear,p.gear(hn,Math.round(gap*10)/10,gearTarget),p.actionGear(hn),p.freeGear,p.paidGear,hn,impact,cost,state,lang,{hero:hn,current:gr,current_label:`Nv.${gr}`,next_target:`Nv.${gearTarget}`,source_updated_at:main.s.updated_at||null}));}
     }
+    const exUnknown=heroes.map(({h,i})=>({h,i,name:heroName(h,i,lang)})).filter(x=>metric(x.h.exclusive)===null).map(x=>x.name);
+    const reliableHeroCandidates=candidates.filter(x=>["level","stars","exclusive","awakening","gear"].includes(x.kind)).length;
+    if(exUnknown.length&&reliableHeroCandidates<3){
+      const gapText=missingExclusiveDataText(lang,mainName,exUnknown);
+      candidates.push(candidate("scan",gapText.title,gapText.reason,gapText.action,p.freeNone,p.paidNone,gapText.target,94,.22,state,lang,{missing_field:"exclusive",missing_heroes:exUnknown,source_updated_at:main.s.updated_at||null}));
+    }
     const dLevel=num(state?.drone?.level),dPower=num(state?.drone?.power_m);if(dLevel!==null||dPower!==null){const impact=dLevel===null?62:dLevel<100?84:dLevel<150?75:dLevel<200?66:58;candidates.push(candidate("drone",p.titles.drone,p.drone(dLevel,dPower!==null?fmt(dPower,loc):null),p.actionDrone,p.freeDrone,p.paidDrone,"Drone",impact,1.15,state,lang,{source_updated_at:state?.drone?.updated_at||null}));}
   }
   const missing=squads.map((s,i)=>i<3&&(!squadConfigured(s)||s?.needs_rescan===true)?squadName(s,i,lang):null).filter(Boolean);if(missing.length)candidates.push(candidate("scan",p.titles.scan,p.scanMissing(missing.join(", ")),p.actionScan,p.freeNone,p.paidNone,missing.join(", "),70,.3,state,lang));
@@ -351,7 +398,7 @@ function buildPlayerAnalysis(state,locale){
   const techOpp=technologyOpportunity(state,adaptiveContext);if(techOpp){const tt=technologyRecText(lang);candidates.push(candidate("technology",tt.title,tt.reason(techOpp.label,Math.round(techOpp.pct)),tt.action(techOpp.label),tt.free,tt.paid,techOpp.label,techOpp.impact,techOpp.cost,state,lang,{current:techOpp.pct,current_label:`${Math.round(techOpp.pct)}%`,technology_lane:techOpp.lane,source_updated_at:techOpp.source_updated_at}));}
   const scoredCandidates=applyAdaptiveScoring(candidates,adaptiveContext);
   scoredCandidates.sort((a,b)=>(b.marginal_value_score??b.severity)-(a.marginal_value_score??a.severity)||b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
-  // V2.4.8: all upgrade families compete on contextual marginal return; no category is forced into the Top 3.
+  // V2.4.9: adaptive scoring ranks the complete reliable candidate pool; it does not replace the underlying Diagnostic PRO candidate builders.
   const unique=selectSmartTop3(scoredCandidates,lang);
   unique.forEach((x,i)=>x.rank=i+1);
   const comparison=squads.map((s,i)=>{const power=num(s.power),configuredHere=squadConfigured(s),needsRescan=s?.needs_rescan===true,optional=i===3&&!configuredHere,isMain=i===main.i,ratio=mainPower&&power!==null?power/mainPower:null,dataQ=Math.round((configuredHere?20:0)+(power!==null?20:0)+heroDetailCoverage(s)*.6),detected=(s?.heroes||[]).filter(heroConfigured).length,complete=detected>=5;let status=optional?optionalSquadStatus(lang):p.squadStatusMissing;if(configuredHere&&!needsRescan)status=isMain?p.squadStatusMain:(ratio!==null&&ratio>=.75?p.squadStatusReady:p.squadStatusLow);if(needsRescan)status=p.squadStatusMissing;return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(needsRescan?45:100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional,needs_rescan:needsRescan,heroes_detected:detected,composition_complete:complete&&!needsRescan};});

@@ -18,7 +18,7 @@ export default function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.4.8",
+    version:"2.4.9",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -48,6 +48,10 @@ export default function handler(req,res){
       canonical_hero_aliases:true,
       hero_names_staged_until_confirmation:true,
       hero_attributes_bound_to_identity:true,
+      diagnostic_reads_hero_profile_registry:true,
+      adaptive_candidate_pool_preserved:true,
+      missing_exclusive_data_blocks_false_drone_priority:true,
+      nonhero_mobile_card_reliability:true,
       cross_squad_duplicate_guard:true,
       legacy_positional_merge_repair:true,
       localized_scan_rendering:true,
