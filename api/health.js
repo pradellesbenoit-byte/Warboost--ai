@@ -18,7 +18,7 @@ export default function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.4.7",
+    version:"2.4.8",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -72,7 +72,12 @@ export default function handler(req,res){
       season6_hybrid_synergy_guard:true,
       awakening_swap_safety:true,
       no_exact_reshape_power_without_source:true,
-      awakening_labels_22_languages:true
+      awakening_labels_22_languages:true,
+      adaptive_player_context:true,
+      contextual_marginal_value_scoring:true,
+      conditional_dated_recommendations:true,
+      certainty_tiers:true,
+      no_invented_server_or_account_age:true
     },
     hero_catalog_count:HERO_CATALOG.length,
     shop_reference_catalog:shopRef,

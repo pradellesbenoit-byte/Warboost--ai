@@ -4,7 +4,8 @@ import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} 
 import {freshnessInfo,refreshBeforePaidText} from '../lib/data-freshness.js';
 import {canonicalShopStore,findShopReference,referenceCategoryForItem,referenceItemsForStrategy,shopReferenceStats,SHOP_REFERENCE_DATE} from '../lib/shop-catalog.js';
 import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScore,heroReshapeDecisionValue,season6TechPriorities,awakeningSwapAssessment,S6_AWAKENING_HEROES} from '../lib/season6-awakening.js';
-const ENGINE_VERSION="2.4.7";
+import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
+const ENGINE_VERSION="2.4.8";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -167,7 +168,7 @@ function dataConfidence(squads,drone){
 function priority(kind,title,reason,action,buyFree,buyPaid,severity,target){return {kind,title,reason,action,buy_free:buyFree,buy_paid:buyPaid,severity:Math.round(severity),target}}
 function impactLabel(score,lang){const x=Math.round(score);const pack={fr:["Modéré","Élevé","Très élevé"],en:["Moderate","High","Very high"],es:["Moderado","Alto","Muy alto"],de:["Mittel","Hoch","Sehr hoch"],ja:["中","高","非常に高い"],zh:["中","高","很高"],ar:["متوسط","مرتفع","مرتفع جداً"]}[lang]||["Moderate","High","Very high"];return x>=88?pack[2]:x>=74?pack[1]:pack[0]}
 function roiLabel(score,lang){const x=Math.round(score);const pack={fr:["Moyenne","Bonne","Excellente"],en:["Average","Good","Excellent"],es:["Media","Buena","Excelente"],de:["Mittel","Gut","Sehr gut"],ja:["普通","良い","非常に良い"],zh:["一般","良好","优秀"],ar:["متوسطة","جيدة","ممتازة"]}[lang]||["Average","Good","Excellent"];return x>=86?pack[2]:x>=72?pack[1]:pack[0]}
-function resourceFamily(kind){return ({scan:"data",level:"hero_xp",stars:"hero_shards",exclusive:"exclusive_weapon_shards",awakening:"awakening_shards",gear:"gear_materials",drone:"drone_components"})[kind]||"other"}
+function resourceFamily(kind){return ({scan:"data",level:"hero_xp",stars:"hero_shards",exclusive:"exclusive_weapon_shards",awakening:"awakening_shards",gear:"gear_materials",drone:"drone_components",technology:"technology_materials"})[kind]||"other"}
 function costBand(cost){return cost<=.7?"low":cost<=1.05?"medium":cost<=1.4?"high":"very_high"}
 function timingAdjustment(kind,state,meta={}){
   const day=Number(state?.vs?.day);let x=0;
@@ -176,6 +177,8 @@ function timingAdjustment(kind,state,meta={}){
   else if(day>=1&&day<=6&&heroLane)x-=2;
   if(day===1&&kind==="drone")x+=9;
   else if(day>=1&&day<=6&&kind==="drone")x-=2;
+  if(day===3&&kind==="technology")x+=9;
+  else if(day>=1&&day<=6&&kind==="technology")x-=2;
   const sd=num(state?.season?.day),st=num(state?.season?.total_days);
   const late=sd!==null&&st!==null&&st>0&&sd/st>=.8;
   if(late&&kind==="exclusive"&&Number(meta?.breakpoint)===30)x-=3;
@@ -191,8 +194,17 @@ const VS_TIMING_TEXT={
   zh:{scan:"现在执行：更完整的数据能提高诊断可靠性。",heroNow:"时机良好：VS第4天更适合英雄强化。",heroBefore:d=>`如果VS优先，请把该资源留到本周期第4天（当前第${d}天）。`,heroAfter:d=>`本周期VS第4天已经过去（当前第${d}天）。如果VS优先，请留到下一个第4天；只有当赛季时机或账号瓶颈现在能带来明显更高ROI时才例外。`,droneNow:"时机良好：VS第1天更适合无人机成长。",droneAfter:d=>`本周期VS第1天已经过去（当前第${d}天）。如果VS优先，请把无人机组件留到下一个第1天；只有当前能带来明显更高ROI时才例外。`,late:"赛季后期：投入高成本EX30前先确认短期回报。",neutral:"时机中性：主要根据ROI和账号瓶颈决定。"},
   ar:{scan:"نفّذ الآن: البيانات الأفضل تفتح تشخيصاً أكثر موثوقية.",heroNow:"توقيت جيد: اليوم 4 من VS يعطي قيمة أعلى لترقيات الأبطال.",heroBefore:d=>`إذا كان VS هو الأولوية، احتفظ بهذا المورد لليوم 4 من الدورة الحالية (اليوم الحالي ${d}).`,heroAfter:d=>`اليوم 4 من VS مضى بالفعل في هذه الدورة (اليوم الحالي ${d}). إذا كان VS هو الأولوية، احتفظ بالمورد لليوم 4 القادم إلا إذا أعطى توقيت الموسم أو اختناق الحساب عائداً أفضل بوضوح الآن.`,droneNow:"توقيت جيد: اليوم 1 من VS يعطي قيمة أعلى لتطوير الدرون.",droneAfter:d=>`اليوم 1 من VS مضى بالفعل في هذه الدورة (اليوم الحالي ${d}). إذا كان VS هو الأولوية، احتفظ بمكونات الدرون لليوم 1 القادم إلا إذا كان العائد الآن أفضل بوضوح.`,late:"نهاية الموسم: تحقق من العائد القريب قبل استثمار EX30 مكلف.",neutral:"توقيت محايد: قرر أساساً حسب العائد واختناق الحساب."}
 };
+const TECH_TIMING_TEXT={
+  fr:{now:"Bon timing : le jour VS 3 valorise les améliorations de technologie.",before:d=>`Si le VS est prioritaire, conserve les ressources technologiques pour le jour 3 de ce cycle (actuellement jour ${d}).`,after:d=>`Le jour VS 3 est passé dans ce cycle (actuellement jour ${d}). Si le VS est prioritaire, garde-les pour le prochain jour 3 sauf si le goulot actuel offre un meilleur rendement maintenant.`},
+  en:{now:"Good timing: VS Day 3 rewards technology upgrades.",before:d=>`If VS is the priority, hold technology resources for Day 3 of this cycle (currently Day ${d}).`,after:d=>`VS Day 3 has passed in this cycle (currently Day ${d}). If VS is the priority, hold them for the next Day 3 unless the current bottleneck has materially better value now.`},
+  es:{now:"Buen momento: el Día 3 de VS premia las mejoras de tecnología.",before:d=>`Si VS es la prioridad, guarda los recursos tecnológicos para el Día 3 de este ciclo (ahora Día ${d}).`,after:d=>`El Día 3 de VS ya pasó (ahora Día ${d}). Si VS es la prioridad, guárdalos para el próximo Día 3 salvo que el cuello de botella actual aporte claramente más valor ahora.`},
+  de:{now:"Gutes Timing: VS-Tag 3 belohnt Technologie-Upgrades.",before:d=>`Wenn VS Priorität hat, halte Technologieressourcen bis Tag 3 dieses Zyklus zurück (aktuell Tag ${d}).`,after:d=>`VS-Tag 3 ist bereits vorbei (aktuell Tag ${d}). Halte die Ressourcen bis zum nächsten Tag 3 zurück, außer der aktuelle Engpass bringt jetzt deutlich mehr Nutzen.`},
+  ja:{now:"好タイミング：VS 3日目は技術強化の価値が高い日です。",before:d=>`VS優先なら技術資源をこのサイクルの3日目まで温存してください（現在${d}日目）。`,after:d=>`このサイクルのVS 3日目は終了しています（現在${d}日目）。現在のボトルネックが明確に高い価値を持つ場合を除き、次の3日目まで温存します。`},
+  zh:{now:"时机良好：VS第3天更适合科技升级。",before:d=>`如果VS优先，请把科技资源留到本周期第3天（当前第${d}天）。`,after:d=>`本周期VS第3天已经过去（当前第${d}天）。除非当前瓶颈现在具有明显更高价值，否则留到下一个第3天。`},
+  ar:{now:"توقيت جيد: اليوم 3 من VS يعطي قيمة أعلى لترقيات التقنية.",before:d=>`إذا كان VS هو الأولوية، احتفظ بموارد التقنية لليوم 3 من الدورة الحالية (اليوم ${d}).`,after:d=>`اليوم 3 من VS مضى في هذه الدورة (اليوم ${d}). احتفظ بها لليوم 3 القادم إلا إذا كان الاختناق الحالي يعطي قيمة أعلى بوضوح الآن.`}
+};
 function timingWindow(kind,state,lang,meta={}){
-  const day=Number(state?.vs?.day),heroLane=["level","stars","exclusive","awakening"].includes(kind),tx=VS_TIMING_TEXT[lang]||VS_TIMING_TEXT.en;
+  const day=Number(state?.vs?.day),heroLane=["level","stars","exclusive","awakening"].includes(kind),tx=VS_TIMING_TEXT[lang]||VS_TIMING_TEXT.en,tt=TECH_TIMING_TEXT[lang]||TECH_TIMING_TEXT.en;
   if(kind==="scan")return {status:"now",best_day:null,label:tx.scan};
   if(heroLane){
     if(day===4)return {status:"spend_now",best_day:4,label:tx.heroNow};
@@ -202,6 +214,11 @@ function timingWindow(kind,state,lang,meta={}){
   if(kind==="drone"){
     if(day===1)return {status:"spend_now",best_day:1,label:tx.droneNow};
     if(day>1&&day<=6)return {status:"hold_if_vs_priority",best_day:1,next_cycle:true,label:tx.droneAfter(day)};
+  }
+  if(kind==="technology"){
+    if(day===3)return {status:"spend_now",best_day:3,label:tt.now};
+    if(day>=1&&day<3)return {status:"hold_if_vs_priority",best_day:3,label:tt.before(day)};
+    if(day>3&&day<=6)return {status:"hold_if_vs_priority",best_day:3,next_cycle:true,label:tt.after(day)};
   }
   const sd=num(state?.season?.day),st=num(state?.season?.total_days),late=sd!==null&&st!==null&&st>0&&sd/st>=.8;
   if(late&&Number(meta?.breakpoint)===30)return {status:"check_payback",best_day:null,label:tx.late};
@@ -238,15 +255,12 @@ function nextBreakpointWhy(heroCandidates,chosen,lang){
 }
 function bottleneckFamily(kind){return kind==="level"||kind==="stars"||kind==="exclusive"||kind==="gear"?"hero":kind}
 function selectSmartTop3(candidates,lang){
-  const sorted=[...candidates].sort((a,b)=>b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
+  const sorted=[...candidates].sort((a,b)=>(b.marginal_value_score??b.severity)-(a.marginal_value_score??a.severity)||b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
   const heroCandidates=sorted.filter(x=>bottleneckFamily(x.kind)==="hero");
   const topHero=heroCandidates[0];
-  // Drone must beat a hero upgrade on marginal value; it is no longer inserted just to diversify categories.
-  const adjusted=sorted.map(x=>{
-    if(x.kind!=="drone"||!topHero)return x;
-    const heroPressure=heroCandidates.filter(h=>h.kind==="exclusive"&&h.severity>=x.severity-8).length;
-    return heroPressure>=2?{...x,severity:Math.max(1,x.severity-12),resource_efficiency_score:Math.max(1,x.resource_efficiency_score-10),roi_score:Math.max(1,x.roi_score-10)}:x;
-  }).sort((a,b)=>b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
+  // V2.4.8: no family is promoted or penalized just to diversify the Top 3.
+  // Drone, technology and hero upgrades all compete on the same contextual marginal-value score.
+  const adjusted=sorted;
 
   const out=[],seen=new Set();
   for(const x of adjusted){
@@ -270,15 +284,25 @@ function selectSmartTop3(candidates,lang){
   return out;
 }
 
+const TECHNOLOGY_REC_TEXT={
+  fr:{title:"Technologie",reason:(l,p)=>`${l} est à ${p}%. WarBoost compare son rendement marginal aux héros, EX, équipement, Éveil et Drone au lieu d'appliquer une priorité fixe.`,action:l=>`Investis dans ${l} seulement si son rendement marginal reste devant les autres goulots détectés.`,free:"Événements et boutiques gratuites : ressources technologiques adaptées à cette branche, si disponibles.",paid:"Évite les packs génériques ; un achat payant n'est conseillé que s'il accélère directement cette branche prioritaire."},
+  en:{title:"Technology",reason:(l,p)=>`${l} is at ${p}%. WarBoost compares its marginal return with heroes, EX, gear, Awakening and Drone instead of using a fixed priority.`,action:l=>`Invest in ${l} only while its marginal return remains above the other detected bottlenecks.`,free:"Events and free shops: technology resources for this branch, if available.",paid:"Avoid generic packs; a paid purchase is advised only when it directly accelerates this priority branch."},
+  es:{title:"Tecnología",reason:(l,p)=>`${l} está al ${p}%. WarBoost compara su rendimiento marginal con héroes, EX, equipo, Despertar y Dron, sin una prioridad fija.`,action:l=>`Invierte en ${l} solo mientras su rendimiento marginal supere los demás cuellos de botella.`,free:"Eventos y tiendas gratuitas: recursos tecnológicos para esta rama, si están disponibles.",paid:"Evita packs genéricos; paga solo si acelera directamente esta rama prioritaria."},
+  de:{title:"Technologie",reason:(l,p)=>`${l} liegt bei ${p}%. WarBoost vergleicht den Grenznutzen mit Helden, EX, Ausrüstung, Awakening und Drohne statt einer festen Priorität.`,action:l=>`Investiere nur in ${l}, solange der Grenznutzen über den anderen erkannten Engpässen liegt.`,free:"Events und Gratis-Shops: passende Technologieressourcen, falls verfügbar.",paid:"Generische Pakete vermeiden; nur zahlen, wenn diese Prioritätsbranche direkt beschleunigt wird."},
+  ja:{title:"技術",reason:(l,p)=>`${l} は ${p}%です。固定順位ではなく、英雄・EX・装備・覚醒・ドローンとの限界効率を比較します。`,action:l=>`${l} の限界効率が他のボトルネックを上回る間だけ投資します。`,free:"イベント／無料ショップ：対象技術向け資源（表示される場合）。",paid:"汎用パックは避け、この優先技術を直接加速する場合だけ課金を検討。"},
+  zh:{title:"科技",reason:(l,p)=>`${l} 当前为 ${p}%。WarBoost 会与英雄、专武、装备、觉醒和无人机比较边际收益，而不是使用固定优先级。`,action:l=>`仅当 ${l} 的边际收益仍高于其他已发现瓶颈时投入。`,free:"活动／免费商店：该科技分支所需资源（如有）。",paid:"避免通用礼包；只有能直接加速当前优先科技分支时才考虑付费。"},
+  ar:{title:"التقنية",reason:(l,p)=>`${l} عند ${p}%. يقارن WarBoost العائد الهامشي مع الأبطال وEX والمعدات والإيقاظ والدرون بدلاً من أولوية ثابتة.`,action:l=>`استثمر في ${l} فقط ما دام عائده الهامشي أعلى من الاختناقات الأخرى المكتشفة.`,free:"الأحداث والمتاجر المجانية: موارد التقنية المناسبة لهذا الفرع عند توفرها.",paid:"تجنب الحزم العامة؛ الشراء المدفوع فقط إذا سرّع هذا الفرع ذي الأولوية مباشرة."}
+};
+function technologyRecText(lang){return TECHNOLOGY_REC_TEXT[lang]||TECHNOLOGY_REC_TEXT.en}
 function avoidNowText(lang,mainName,topKinds){
   const packs={
     fr:[
-      `N'investis pas dans les escouades secondaires tant que les 3 priorités de ${mainName} ne sont pas sécurisées.`,
+      `Évite de disperser les ressources sur les escouades secondaires tant que les priorités de ${mainName} offrent un meilleur rendement marginal, sauf objectif VS/Saison contraire.`,
       `Évite les packs de ressources génériques : privilégie uniquement un achat qui résout un goulot détecté.`,
       `Ne dépense pas une ressource rare juste pour gagner de la puissance si le jour VS ou la Saison donne un meilleur timing.`
     ],
     en:[
-      `Do not invest in secondary squads until the top priorities for ${mainName} are secured.`,
+      `Avoid spreading resources across secondary squads while ${mainName} has higher marginal-value priorities, unless VS/Season context makes another squad more valuable now.`,
       `Avoid generic resource packs: only buy something that directly fixes a detected bottleneck.`,
       `Do not spend a scarce resource just for power if VS or Season timing gives better value.`
     ]
@@ -322,24 +346,27 @@ function buildPlayerAnalysis(state,locale){
     const dLevel=num(state?.drone?.level),dPower=num(state?.drone?.power_m);if(dLevel!==null||dPower!==null){const impact=dLevel===null?62:dLevel<100?84:dLevel<150?75:dLevel<200?66:58;candidates.push(candidate("drone",p.titles.drone,p.drone(dLevel,dPower!==null?fmt(dPower,loc):null),p.actionDrone,p.freeDrone,p.paidDrone,"Drone",impact,1.15,state,lang,{source_updated_at:state?.drone?.updated_at||null}));}
   }
   const missing=squads.map((s,i)=>i<3&&(!squadConfigured(s)||s?.needs_rescan===true)?squadName(s,i,lang):null).filter(Boolean);if(missing.length)candidates.push(candidate("scan",p.titles.scan,p.scanMissing(missing.join(", ")),p.actionScan,p.freeNone,p.paidNone,missing.join(", "),70,.3,state,lang));
-  candidates.sort((a,b)=>b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
-  // V2.3.2: choose the real top marginal-value actions. We no longer force one
-  // recommendation per category, because that could push Drone above a stronger hero breakpoint.
-  const unique=selectSmartTop3(candidates,lang);
+  const formationBonus=formationBonusPct(enhancedHeroes),mainType=mainSquadType(enhancedHeroes);
+  const adaptiveContext=buildAdaptiveContext(state,{mainType,formationBonusPct:formationBonus,locale:loc});
+  const techOpp=technologyOpportunity(state,adaptiveContext);if(techOpp){const tt=technologyRecText(lang);candidates.push(candidate("technology",tt.title,tt.reason(techOpp.label,Math.round(techOpp.pct)),tt.action(techOpp.label),tt.free,tt.paid,techOpp.label,techOpp.impact,techOpp.cost,state,lang,{current:techOpp.pct,current_label:`${Math.round(techOpp.pct)}%`,technology_lane:techOpp.lane,source_updated_at:techOpp.source_updated_at}));}
+  const scoredCandidates=applyAdaptiveScoring(candidates,adaptiveContext);
+  scoredCandidates.sort((a,b)=>(b.marginal_value_score??b.severity)-(a.marginal_value_score??a.severity)||b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
+  // V2.4.8: all upgrade families compete on contextual marginal return; no category is forced into the Top 3.
+  const unique=selectSmartTop3(scoredCandidates,lang);
   unique.forEach((x,i)=>x.rank=i+1);
   const comparison=squads.map((s,i)=>{const power=num(s.power),configuredHere=squadConfigured(s),needsRescan=s?.needs_rescan===true,optional=i===3&&!configuredHere,isMain=i===main.i,ratio=mainPower&&power!==null?power/mainPower:null,dataQ=Math.round((configuredHere?20:0)+(power!==null?20:0)+heroDetailCoverage(s)*.6),detected=(s?.heroes||[]).filter(heroConfigured).length,complete=detected>=5;let status=optional?optionalSquadStatus(lang):p.squadStatusMissing;if(configuredHere&&!needsRescan)status=isMain?p.squadStatusMain:(ratio!==null&&ratio>=.75?p.squadStatusReady:p.squadStatusLow);if(needsRescan)status=p.squadStatusMissing;return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(needsRescan?45:100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional,needs_rescan:needsRescan,heroes_detected:detected,composition_complete:complete&&!needsRescan};});
   const mainHeroesDetected=heroes.length,compositionComplete=mainHeroesDetected>=5;
-  let conf=dataConfidence(squads,state?.drone||{});if(coverage<60)conf=Math.min(conf,82);if(!compositionComplete)conf=Math.min(conf,72);if(weaponList.length)conf=Math.min(96,conf+3);
+  let conf=dataConfidence(squads,state?.drone||{});if(coverage<60)conf=Math.min(conf,82);if(!compositionComplete)conf=Math.min(conf,72);if(weaponList.length)conf=Math.min(96,conf+3);conf=Math.round(conf*.85+adaptiveContext.confidence*.15);
   const top=unique[0];
   const decisionFreshness=top?.data_freshness||freshnessInfo(main.s.updated_at||null,"player",lang);
   conf=Math.max(0,Math.min(96,conf-(decisionFreshness?.confidence_penalty||0)));
   const incompleteNote=!compositionComplete?(lang==="fr"?` Composition incomplète : ${mainHeroesDetected}/5 héros détectés, les recommandations restent prudentes.`:` Incomplete composition: ${mainHeroesDetected}/5 heroes detected; recommendations remain cautious.`):"";
   const summary=(top?p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",top.reason):p.main(mainName,mainPower!==null?fmt(mainPower,loc):"—"))+incompleteNote;
-  const bottleneck=top?{kind:top.kind,target:top.target||null,hero:top.hero||null,next_target:top.next_target||null,resource_family:top.resource_family||resourceFamily(top.kind),severity:top.severity,impact_score:top.impact_score,roi_score:top.roi_score,timing_window:top.timing_window||null,data_freshness:top.data_freshness||null}:null;
-  const decisionTrace=candidates.slice(0,6).map(x=>({kind:x.kind,target:x.target||null,hero:x.hero||null,next_target:x.next_target||null,breakpoint:x.breakpoint||null,severity:x.severity,impact_score:x.impact_score,roi_score:x.roi_score,relative_cost:x.relative_cost,resource_family:x.resource_family,timing_adjustment:x.timing_adjustment,timing_window:x.timing_window,evidence_ids:x.evidence_ids||[],data_freshness:x.data_freshness||null}));
-  const resourcePlan=unique.map((x,i)=>({rank:i+1,resource_family:x.resource_family,target:x.target||null,spend_timing:x.timing_window?.status||"neutral",best_vs_day:x.timing_window?.best_day??null,relative_cost:x.relative_cost}));
-  const formationBonus=formationBonusPct(enhancedHeroes),mainType=mainSquadType(enhancedHeroes),reshapeValues=enhancedHeroes.map(h=>heroReshapeDecisionValue({hero:h,weapons:weaponList,season:state?.season||{},mainType,formationBonus,importance:heroImportance(h,heroes,mainType)})).filter(Boolean).sort((a,b)=>b.decision_value_index-a.decision_value_index),tech=season6TechPriorities(state?.technology||{},{offense:/pvp|offen|siege|attack/i.test(String(state?.season?.focus||"")),defense:/defen|garrison|protect/i.test(String(state?.season?.focus||""))}),swap=awakeningSwapAssessment({swap:state?.season?.awakening_swap||{},heroes:[...enhancedHeroes,...(state?.hero_progression||[]).map(x=>({name:x.hero_name,stars:x.stars,exclusive:x.exclusive,awakening:x.awakening}))],weapons:weaponList});
-  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,bottleneck,resource_plan:resourcePlan,decision_trace:decisionTrace,squads:comparison,focus_squad:main.i+1,candidates_evaluated:candidates.length,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,main_type:mainType,formation_bonus_pct:formationBonus,measured_hybrid_synergy:state?.season?.measured_hybrid_synergy===true,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},season6_awakening:{active:Number(state?.season?.number)===6,eligible_heroes:Object.keys(S6_AWAKENING_HEROES),hero_value_model:reshapeValues,exact_power_projection:false,model:"relative-decision-value-only",tech_priorities:tech,awakening_swap:swap},all_hero_value_model:allHeroDecisionValues(state,main.i),avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"global bottleneck arbitration: all heroes + Awakening/Reshape relative value + EX breakpoints + formation synergy + gear + technology + marginal Drone ROI + VS/Season timing + dated multi-source evidence",cost_policy:"No exact shard/material quantity or post-Awakening combat power is invented without a validated visible/official source; relative decision values are used otherwise.",meta_intelligence:metaContext(state),data_freshness:decisionFreshness,engine:`warboost-ai-smart-v${ENGINE_VERSION}`};
+  const bottleneck=top?{kind:top.kind,target:top.target||null,hero:top.hero||null,next_target:top.next_target||null,resource_family:top.resource_family||resourceFamily(top.kind),severity:top.severity,impact_score:top.impact_score,roi_score:top.roi_score,marginal_value_score:top.marginal_value_score,certainty:top.certainty,condition_key:top.condition_key,timing_window:top.timing_window||null,data_freshness:top.data_freshness||null}:null;
+  const decisionTrace=scoredCandidates.slice(0,6).map(x=>({kind:x.kind,target:x.target||null,hero:x.hero||null,next_target:x.next_target||null,breakpoint:x.breakpoint||null,severity:x.severity,impact_score:x.impact_score,roi_score:x.roi_score,marginal_value_score:x.marginal_value_score,context_adjustment:x.context_adjustment,certainty:x.certainty,condition_key:x.condition_key,calculated_at:x.calculated_at,relative_cost:x.relative_cost,resource_family:x.resource_family,timing_adjustment:x.timing_adjustment,timing_window:x.timing_window,evidence_ids:x.evidence_ids||[],data_freshness:x.data_freshness||null}));
+  const resourcePlan=unique.map((x,i)=>({rank:i+1,resource_family:x.resource_family,target:x.target||null,spend_timing:x.timing_window?.status||"neutral",best_vs_day:x.timing_window?.best_day??null,relative_cost:x.relative_cost,marginal_value_score:x.marginal_value_score,certainty:x.certainty,condition_key:x.condition_key}));
+  const reshapeValues=enhancedHeroes.map(h=>heroReshapeDecisionValue({hero:h,weapons:weaponList,season:state?.season||{},mainType,formationBonus,importance:heroImportance(h,heroes,mainType)})).filter(Boolean).sort((a,b)=>b.decision_value_index-a.decision_value_index),tech=season6TechPriorities(state?.technology||{},{offense:/pvp|offen|siege|attack/i.test(String(state?.season?.focus||"")),defense:/defen|garrison|protect/i.test(String(state?.season?.focus||""))}),swap=awakeningSwapAssessment({swap:state?.season?.awakening_swap||{},heroes:[...enhancedHeroes,...(state?.hero_progression||[]).map(x=>({name:x.hero_name,stars:x.stars,exclusive:x.exclusive,awakening:x.awakening}))],weapons:weaponList});
+  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,bottleneck,resource_plan:resourcePlan,decision_trace:decisionTrace,squads:comparison,focus_squad:main.i+1,candidates_evaluated:scoredCandidates.length,adaptive_context:adaptiveContext,generated_at:adaptiveContext.generated_at,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,main_type:mainType,formation_bonus_pct:formationBonus,measured_hybrid_synergy:state?.season?.measured_hybrid_synergy===true,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},season6_awakening:{active:Number(state?.season?.number)===6,eligible_heroes:Object.keys(S6_AWAKENING_HEROES),hero_value_model:reshapeValues,exact_power_projection:false,model:"relative-decision-value-only",tech_priorities:tech,awakening_swap:swap},all_hero_value_model:allHeroDecisionValues(state,main.i),avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"adaptive global bottleneck arbitration: complete player context + all heroes + Awakening/Reshape relative value + EX breakpoints + formation synergy + gear + technology + Drone + explicit/inferred objective + account/server context + conditional VS/Season timing + dated multi-source evidence + certainty tiers",cost_policy:"No exact shard/material quantity or post-Awakening combat power is invented without a validated visible/official source; relative decision values are used otherwise.",meta_intelligence:metaContext(state),data_freshness:decisionFreshness,engine:`warboost-ai-smart-v${ENGINE_VERSION}`};
 }
 
 // ===== V1.4 · Last War Shop Advisor =====
@@ -367,7 +394,7 @@ const SHOP_STORES={fr:{honor:"Boutique Honneur",campaign:"Boutique Campagne",all
 function shopStores(locale){return SHOP_STORES[localePack(locale)]||SHOP_STORES.en}
 function heroNeedSnapshot(state){
   const squads=Array.from({length:4},(_,i)=>state?.squads?.[i]||{heroes:[]});
-  const trusted=squads.map((s,i)=>({s,i,p:num(s?.power)})).filter(x=>s?.needs_rescan!==true&&squadConfigured(s));
+  const trusted=squads.map((s,i)=>({s,i,p:num(s?.power)})).filter(x=>x.s?.needs_rescan!==true&&squadConfigured(x.s));
   const pool=trusted.length?trusted:squads.map((s,i)=>({s,i,p:num(s?.power)})).filter(x=>squadConfigured(x.s));
   const powered=pool.filter(x=>x.p!==null).sort((a,b)=>b.p-a.p);
   const main=powered[0]||pool[0];
@@ -874,8 +901,8 @@ function buildCrossDomain(state,locale,player){
   const vs=buildVsAdvice(state,locale),season=buildSeasonAdvice(state,locale),top=player?.priorities?.[0]||null;
   const tw=top?.timing_window||null;
   const conflict=tw?.status==="hold_if_vs_priority"?"timing_check":tw?.status==="check_payback"?"season_payback_check":null;
-  const spendDecision=!top?"insufficient_data":top?.data_freshness?.blocks_paid?"refresh_before_spend":tw?.status==="spend_now"||tw?.status==="now"?"spend_now":tw?.status==="hold_if_vs_priority"?"hold_for_vs":tw?.status==="check_payback"?"validate_payback":"roi_driven";
-  return {player_top:top?{kind:top.kind,target:top.target||null,title:top.title,reason:top.reason,resource_family:top.resource_family||resourceFamily(top.kind),timing_window:tw}:null,vs:{confidence:vs.confidence,day:vs.day||null,top:vs.priorities?.[0]?.text||vs.advice},season:{confidence:season.confidence,day:season.day||null,total_days:season.total_days||null,top:season.priorities?.[0]?.text||season.advice},conflict,spend_decision:spendDecision,rule:"Do not spend a scarce resource solely for power if VS or Season timing gives materially better value."};
+  const spendDecision=!top?"insufficient_data":top?.data_freshness?.blocks_paid?"refresh_before_spend":tw?.status==="spend_now"||tw?.status==="now"?"spend_now":tw?.status==="hold_if_vs_priority"?"hold_for_vs":tw?.status==="check_payback"?"validate_payback":"marginal_value_driven";
+  return {player_top:top?{kind:top.kind,target:top.target||null,title:top.title,reason:top.reason,resource_family:top.resource_family||resourceFamily(top.kind),timing_window:tw}:null,vs:{confidence:vs.confidence,day:vs.day||null,top:vs.priorities?.[0]?.text||vs.advice},season:{confidence:season.confidence,day:season.day||null,total_days:season.total_days||null,top:season.priorities?.[0]?.text||season.advice},conflict,spend_decision:spendDecision,rule:"Use the highest contextual marginal value; defer scarce spending when VS/Season timing or another detected bottleneck has materially better value."};
 }
 export default function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
