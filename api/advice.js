@@ -5,7 +5,7 @@ import {freshnessInfo,refreshBeforePaidText} from '../lib/data-freshness.js';
 import {canonicalShopStore,findShopReference,referenceCategoryForItem,referenceItemsForStrategy,shopReferenceStats,SHOP_REFERENCE_DATE} from '../lib/shop-catalog.js';
 import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScore,heroReshapeDecisionValue,season6TechPriorities,awakeningSwapAssessment,S6_AWAKENING_HEROES} from '../lib/season6-awakening.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
-const ENGINE_VERSION="2.5.0";
+const ENGINE_VERSION="2.5.1";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -281,15 +281,36 @@ const MISSING_EXCLUSIVE_TEXT={
 };
 function missingExclusiveDataText(lang,squad,names){return (MISSING_EXCLUSIVE_TEXT[lang]||MISSING_EXCLUSIVE_TEXT.en)(squad,names)}
 
+const EX_COMPARISON_TEXT={
+  fr:(o,c)=>`Comparé à ${o}, ${c} offre actuellement le meilleur compromis entre distance au prochain palier, rôle dans l'escouade et timing.`,
+  en:(o,c)=>`Compared with ${o}, ${c} currently has the best balance of distance to the next breakpoint, squad role and timing.`,
+  es:(o,c)=>`Frente a ${o}, ${c} ofrece ahora el mejor equilibrio entre distancia al próximo hito, rol en el escuadrón y timing.`,
+  it:(o,c)=>`Rispetto a ${o}, ${c} offre al momento il miglior equilibrio tra distanza dal prossimo traguardo, ruolo nella squadra e tempistica.`,
+  de:(o,c)=>`Im Vergleich zu ${o} bietet ${c} aktuell das beste Verhältnis aus Abstand zum nächsten Meilenstein, Rolle im Trupp und Timing.`,
+  pt:(o,c)=>`Comparado com ${o}, ${c} oferece agora o melhor equilíbrio entre distância ao próximo marco, função na equipa e timing.`,
+  nl:(o,c)=>`Vergeleken met ${o} biedt ${c} nu de beste balans tussen afstand tot de volgende mijlpaal, rol in de squad en timing.`,
+  zh:(o,c)=>`与 ${o} 相比，${c} 目前在距离下一个关键等级、小队作用和时机之间取得了最佳平衡。`,
+  ja:(o,c)=>`${o} と比較すると、${c} は次の節目までの距離、部隊内での役割、タイミングのバランスが現在最も良好です。`,
+  ru:(o,c)=>`По сравнению с ${o}, ${c} сейчас даёт лучший баланс между расстоянием до следующего порога, ролью в отряде и таймингом.`,
+  ar:(o,c)=>`مقارنةً بـ ${o}، يحقق ${c} حالياً أفضل توازن بين المسافة إلى المستوى الفاصل التالي ودوره في الفريق والتوقيت.`,
+  pl:(o,c)=>`W porównaniu z ${o}, ${c} ma obecnie najlepszy balans między dystansem do kolejnego progu, rolą w oddziale i timingiem.`,
+  tr:(o,c)=>`${o} ile karşılaştırıldığında ${c}, bir sonraki eşiğe olan mesafe, takımdaki rol ve zamanlama arasında şu anda en iyi dengeyi sunuyor.`,
+  ko:(o,c)=>`${o}와 비교하면 ${c}는 다음 핵심 구간까지의 거리, 부대 내 역할, 타이밍의 균형이 현재 가장 좋습니다.`,
+  vi:(o,c)=>`So với ${o}, ${c} hiện có sự cân bằng tốt nhất giữa khoảng cách tới mốc tiếp theo, vai trò trong đội và thời điểm.`,
+  th:(o,c)=>`เมื่อเทียบกับ ${o} ตอนนี้ ${c} ให้สมดุลดีที่สุดระหว่างระยะถึงจุดคุ้มค่าถัดไป บทบาทในทีม และจังหวะเวลา`,
+  id:(o,c)=>`Dibandingkan ${o}, ${c} saat ini memberi keseimbangan terbaik antara jarak ke ambang berikutnya, peran dalam skuad, dan timing.`,
+  uk:(o,c)=>`Порівняно з ${o}, ${c} зараз має найкращий баланс між відстанню до наступного порогу, роллю в загоні та таймінгом.`,
+  ro:(o,c)=>`Comparativ cu ${o}, ${c} oferă acum cel mai bun echilibru între distanța până la următorul prag, rolul în echipă și momentul ales.`,
+  el:(o,c)=>`Σε σύγκριση με ${o}, ο/η ${c} προσφέρει τώρα την καλύτερη ισορροπία ανάμεσα στην απόσταση από το επόμενο ορόσημο, τον ρόλο στην ομάδα και το timing.`,
+  cs:(o,c)=>`Ve srovnání s ${o} má ${c} nyní nejlepší rovnováhu mezi vzdáleností k dalšímu milníku, rolí v jednotce a načasováním.`,
+  sv:(o,c)=>`Jämfört med ${o} har ${c} just nu bäst balans mellan avståndet till nästa brytpunkt, rollen i truppen och tajmingen.`
+};
 function nextBreakpointWhy(heroCandidates,chosen,lang){
   if(!chosen||chosen.kind!=="exclusive")return "";
   const others=heroCandidates.filter(x=>x!==chosen&&x.kind==="exclusive").slice(0,3);
   if(!others.length)return "";
-  const label=x=>`${x.target} ${x.current!=null?`EX${x.current}→${x.next_target||"?"}`:""}`.trim();
-  if(lang==="fr")return `Comparé à ${others.map(label).join(", ")}, ${chosen.target} offre actuellement le meilleur compromis entre palier, coût restant, rôle dans l'escouade et timing.`;
-  if(lang==="es")return `Frente a ${others.map(label).join(", ")}, ${chosen.target} ofrece ahora el mejor equilibrio entre hito, coste restante, rol y timing.`;
-  if(lang==="de")return `Im Vergleich zu ${others.map(label).join(", ")} bietet ${chosen.target} aktuell das beste Verhältnis aus Meilenstein, Restkosten, Rolle und Timing.`;
-  return `Compared with ${others.map(label).join(", ")}, ${chosen.target} currently has the best balance of breakpoint value, remaining cost, squad role and timing.`;
+  const label=x=>`${x.target} ${x.current!=null?`EX${x.current}→${x.next_target||"?"}`:""}`.trim(),otherText=others.map(label).join(", "),raw=String(lang||"en").toLowerCase(),key=raw.split("-")[0],fn=EX_COMPARISON_TEXT[raw]||EX_COMPARISON_TEXT[key]||EX_COMPARISON_TEXT.en;
+  return fn(otherText,chosen.target);
 }
 function bottleneckFamily(kind){return kind==="level"||kind==="stars"||kind==="exclusive"||kind==="gear"?"hero":kind}
 function selectSmartTop3(candidates,lang){
