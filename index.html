@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.4.7 — Hero Identity Memory</title>
+  <title>WarBoost V2.4.8 — Adaptive Context Intelligence</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -16,7 +16,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V2.4.7 Hero Identity Memory · official integration pending</small></div>
+        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V2.4.8 Adaptive Context Intelligence · official integration pending</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -24,7 +24,7 @@
 
 
     <section class="publisherStrip" aria-label="Publisher demo status">
-      <div><b>WarBoost V2.4.7</b><span data-i18n="publisher_edition">Publisher Edition</span></div>
+      <div><b>WarBoost V2.4.8</b><span data-i18n="publisher_edition">Publisher Edition</span></div>
       <span class="publisherPill" data-i18n="official_pending">Official integration pending</span>
     </section>
 
@@ -81,7 +81,7 @@
     <div id="playerSyncInfo" class="notice" style="margin-top:10px" data-i18n="player_sync_note">Tes valeurs manuelles restent protégées. Un scan plus récent remplace uniquement les champs qu'il peut lire avec confiance.</div>
     <section id="proPriorityPanel" class="section proPriorityPanel hidden" style="margin-top:10px">
       <div class="sectionTitle"><h3 data-i18n="pro_diagnostic">Diagnostic PRO</h3><span id="proConfidence" class="pill">—</span></div>
-      <p id="proPrioritySummary" class="heroText" style="margin:0 0 10px"></p>
+      <p id="proPrioritySummary" class="heroText" style="margin:0 0 10px"></p><div id="proAdaptiveContext" class="notice proContextSummary" style="margin:0 0 12px"></div>
       <div class="proSubTitle" data-i18n="pro_top_actions">Priorités d'action</div>
       <div id="proPriorityList" class="priorityList"></div><div id="proAvoidList" class="avoidList"></div>
       <details class="compactDetails"><summary data-i18n="pro_squad_compare">Comparaison des escouades</summary><div id="proSquadCompare" class="squadCompare"></div></details>
@@ -140,7 +140,7 @@
       <div id="authLoggedOut" class="settingsForm"><div class="field"><label data-i18n="email">E-mail</label><input id="authEmail" type="email" autocomplete="email" /></div><div class="field"><label data-i18n="password">Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" /></div><div class="buttonRow"><button id="loginBtn" class="secondaryBtn" data-i18n="login">Se connecter</button><button id="signupBtn" class="secondaryBtn" data-i18n="create_account">Créer un compte</button></div><div id="otpBox" class="hidden"><div class="field" style="margin-top:9px"><label data-i18n="email_code">Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" maxlength="8" /></div><button id="verifyOtpBtn" class="primaryAction" style="margin-top:9px" data-i18n="validate_code">Valider le code</button></div><div id="authMessage" class="notice hidden"></div></div>
       <div id="authLoggedIn" class="hidden"><div id="authIdentity" class="notice"></div><button id="logoutBtn" class="dangerBtn" style="width:100%;margin-top:9px" data-i18n="logout">Se déconnecter</button></div>
     </div>
-    <div class="section"><div class="sectionTitle"><h3 data-i18n="lastwar_identity">Identité Last War</h3><span class="pill" data-i18n="account">Compte</span></div><div class="settingsForm"><div class="field"><label data-i18n="nickname">Pseudo Last War</label><input id="fName" /></div><div class="field"><label data-i18n="server">Serveur</label><input id="fServer" inputmode="numeric" /></div><div class="field"><label data-i18n="hq">QG</label><input id="fHq" inputmode="numeric" /></div><div class="field"><label data-i18n="alliance">Alliance</label><input id="fAlliance" /></div><div class="field"><label data-i18n="role">Rôle</label><input id="fRole" /></div><button id="saveProfileBtn" class="primaryAction" data-i18n="save">Enregistrer</button></div></div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="lastwar_identity">Identité Last War</h3><span class="pill" data-i18n="account">Compte</span></div><div class="settingsForm"><div class="field"><label data-i18n="nickname">Pseudo Last War</label><input id="fName" /></div><div class="field"><label data-i18n="server">Serveur</label><input id="fServer" inputmode="numeric" /></div><div class="field"><label data-i18n="hq">QG</label><input id="fHq" inputmode="numeric" /></div><div class="field"><label data-i18n="alliance">Alliance</label><input id="fAlliance" /></div><div class="field"><label data-i18n="role">Rôle</label><input id="fRole" /></div><div class="sectionTitle" style="margin-top:8px"><h4 data-i18n="pro_context_title">Contexte IA PRO</h4><span class="pill" data-i18n="adaptive">Adaptatif</span></div><div class="field"><label data-i18n="objective_label">Objectif principal</label><select id="fObjective"><option value="auto" data-i18n="objective_auto">Auto</option><option value="balanced" data-i18n="objective_balanced">Équilibré</option><option value="pvp" data-i18n="objective_pvp">PvP</option><option value="pve" data-i18n="objective_pve">PvE</option><option value="vs" data-i18n="objective_vs">VS</option><option value="season" data-i18n="objective_season">Saison</option></select></div><div class="field"><label data-i18n="account_age_days">Âge du compte (jours)</label><input id="fAccountAge" type="number" inputmode="numeric" min="0" max="5000" placeholder="—" /></div><div class="field"><label data-i18n="server_profile_label">Profil du serveur</label><select id="fServerProfile"><option value="auto" data-i18n="server_profile_auto">Auto / inconnu</option><option value="new" data-i18n="server_profile_new">Récent</option><option value="mature" data-i18n="server_profile_mature">Mature</option><option value="competitive" data-i18n="server_profile_competitive">Compétitif</option><option value="mixed" data-i18n="server_profile_mixed">Mixte</option></select></div><div class="notice" data-i18n="pro_context_note">Ces champs sont optionnels. En Auto, WarBoost utilise uniquement les données réellement disponibles et baisse la confiance si le contexte manque.</div><button id="saveProfileBtn" class="primaryAction" data-i18n="save">Enregistrer</button></div></div>
     <div id="proSection" class="section proSection"><div class="sectionTitle"><h3>💎 <span data-i18n="pro">WarBoost PRO</span></h3><span id="proPill" class="pill proPill">FREE</span></div><div class="proHero"><div><b id="proTitle">WarBoost PRO</b><small id="proPrice">—</small></div><span class="proDiamond">💎</span></div><div class="proFeatures"><div data-i18n="pro_feature1">✓ Priorités IA détaillées pour tes escouades</div><div data-i18n="pro_feature2">✓ Plans de guerre IA pour R5/R4</div><div data-i18n="pro_feature3">✓ Plans VS adaptés au jour réel</div><div data-i18n="pro_feature4">✓ Conseils Saison avancés</div></div><div id="proMessage" class="notice hidden"></div><button id="proActionBtn" class="primaryAction proAction" type="button" data-i18n="go_pro">Passer PRO</button></div>
     <div class="section hybridSection"><div class="sectionTitle"><h3 data-i18n="hybrid_sync">Synchronisation hybride WarBoost</h3><span id="providerPill" class="pill">—</span></div><div class="sourceGrid"><div class="sourceCard"><span>🌐</span><b data-i18n="public_source">Accès officiel Last War</b><small id="publicSourceState">—</small></div><div class="sourceCard"><span>📷</span><b data-i18n="scan_source">WarBoost Scan</b><small id="scanSourceState">—</small></div><div class="sourceCard"><span>🛡️</span><b data-i18n="alliance_cloud">Cloud alliance</b><small id="allianceCloudState">—</small></div></div><div id="providerStatus" class="notice warn"></div><div class="buttonRow"><button id="openScanBtn" class="secondaryBtn" data-i18n="scan_account">Scanner mon compte</button><button id="syncAllBtn" class="secondaryBtn" data-i18n="public_refresh">Synchroniser WarBoost</button></div><div class="privacyText" data-i18n="hybrid_note">WarBoost n’utilise aucun accès Last War non autorisé. Tant que l’autorisation officielle est en attente, Scan et cloud restent actifs.</div></div>
   </section>

@@ -1,0 +1,120 @@
+WarBoost V2.4.8 — BUILD VERIFICATION
+
+RESULT: PASS
+
+1. JavaScript syntax
+- npm run check: PASS
+- app.js, i18n.js, sw.js, 12 API modules and all lib modules parse successfully.
+
+2. Adaptive Context Intelligence
+Scenario tested with a fully populated player context:
+- explicit objective: PvP
+- account age: 230 days
+- server profile: competitive
+- Season 6: day 36/42
+- VS: day 4
+- Drone: Nv.157 / 8.84 M
+- five technology lanes populated
+Assertions:
+- engine reports warboost-ai-core-v2.4.8: PASS
+- adaptive context is generated: PASS
+- explicit objective is preserved: PASS
+- account age and server profile are preserved only when supplied: PASS
+- Top 3 priorities carry marginal_value_score: PASS
+- Top 3 priorities carry certainty tier: PASS
+- Top 3 priorities carry conditional recommendation key: PASS
+- Top 3 priorities carry calculation timestamp: PASS
+
+3. No invented context
+- unknown account age remains null: PASS
+- invalid/negative account age becomes null: PASS
+- unknown server profile remains auto: PASS
+- invalid objective becomes auto: PASS
+- Auto mode infers only from available VS/Season context and marks certainty accordingly: PASS
+
+4. Contextual marginal-return ranking
+- PvP/competitive context gives more weight to EX/technology than Drone in the controlled equal-base test: PASS
+- PvE/new-account context gives more weight to Drone than EX in the controlled equal-base test: PASS
+- no category is forced into the Top 3 solely for diversity: PASS
+
+5. Technology bottleneck selection
+- technologyOpportunity() selects among incomplete known lanes using remaining gap + objective relevance: PASS
+- a 100% known lane is not recommended as an unfinished bottleneck: PASS
+- no exact target cost is invented: PASS
+
+6. V2.4.7 Hero Identity Memory regression
+Scenario:
+- Squad 1: Carlie / Lucius / DVA / Morrison / Skyler
+- Squad 2: Murphy / Williams / Stetmann / Marshall / Kimberly
+- known progression: Murphy EX21, Williams EX10, Stetmann EX1, Marshall EX1, Kimberly EX19
+- move Squad 2 heroes into Squad 1, restore aircraft heroes, then rebuild Squad 2
+Assertions:
+- Murphy restores EX21: PASS
+- Williams restores EX10: PASS
+- Stetmann restores EX1: PASS
+- Marshall restores EX1: PASS
+- Kimberly restores EX19: PASS
+- no inter-squad hero duplicate: PASS
+- replacing Kimberly with Tesla does not transfer EX19: PASS
+- a partial scan that reads only level does not erase Kimberly EX19: PASS
+
+7. Season 6 Awakening / Reshape regression
+- Season 6 Awakening context remains active when Season 6 data is present: PASS
+- exact post-Reshape power projection remains disabled without a validated source: PASS
+- lib/season6-awakening.js is byte-identical to V2.4.7: PASS
+
+8. Boutique IA regression + V2.4.8 correction
+- player analysis with a visible Honor-shop offer returns Boutique IA recommendations: PASS
+- partial/reference/official catalogue status remains explicit: PASS
+- configured trusted squads are filtered using the squad object correctly (x.s), fixing the inherited shop-squad selection defect: PASS
+- lib/shop-catalog.js remains byte-identical to V2.4.7: PASS
+
+9. Translation coverage
+- explicit UI language options: 23 (22 target-language set with separate English UK/US variants)
+- new V2.4.8 keys tested per language: 37
+- total new-label checks: 851
+- every explicit language tagline reports V2.4.8: PASS
+- adaptive context / objective / server profile / resource efficiency / marginal return / certainty / conditions / date labels: PASS
+
+10. Preserved critical components (byte-identical to V2.4.7)
+- api/scan.js: PASS
+- api/state.js: PASS
+- api/sync.js: PASS
+- lib/squad-identity.js: PASS
+- lib/data-freshness.js: PASS
+- lib/heroes.js: PASS
+- lib/shop-catalog.js: PASS
+- lib/season6-awakening.js: PASS
+- lib/meta-intel.js: PASS
+- lib/alliance-activity.js: PASS
+- styles.css: PASS
+- publisher-ui.js / publisher-ui.css: PASS
+- supabase/schema.sql: PASS
+
+11. Structural regression
+- API modules: 12
+- hero catalogue portraits: 31
+- Supabase schema change required: NO
+- WarBoost remains approval-first / API-ready: YES
+
+12. Version alignment
+- app.js: 2.4.8
+- api/advice.js engine: 2.4.8
+- api/health.js: 2.4.8
+- lib/normalize.js state version: 2.4.8
+- package.json: 2.4.8
+- manifest.webmanifest: 2.4.8
+- index.html: 2.4.8
+- service-worker cache: 2.4.8
+
+PATCH SURFACE
+ROOT (10): app.js, BUILD_VERIFICATION_V2_4_8.txt, i18n.js, index.html,
+manifest.webmanifest, package.json, PATCH_MANIFEST_V2_4_8.txt, README.md,
+sw.js, WARBOOST_V2_4_8_RELEASE.md
+api/ (2): advice.js, health.js
+lib/ (2): adaptive-context.js, normalize.js
+
+DEPLOYMENT RULE
+- upload/test on publisher-demo first
+- validate Vercel Preview
+- do not merge to main until functional validation is complete
