@@ -1,0 +1,36 @@
+WarBoost V2.4.9 PATCH — Adaptive Ranking Reliability
+
+ROOT — 11 files
+- app.js
+- BUILD_VERIFICATION_V2_4_9.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_4_9.txt
+- README.md
+- styles.css
+- sw.js
+- WARBOOST_V2_4_9_RELEASE.md
+
+api/ — 2 files
+- advice.js
+- health.js
+
+lib/ — 1 file
+- normalize.js
+
+TOTAL: 14 files
+
+UNCHANGED / DO NOT RE-UPLOAD FOR THIS PATCH
+- api/scan.js
+- api/state.js
+- api/sync.js
+- lib/adaptive-context.js
+- lib/squad-identity.js
+- lib/season6-awakening.js
+- lib/shop-catalog.js
+- lib/heroes.js
+- lib/alliance-activity.js
+- supabase/schema.sql
+- portraits/assets

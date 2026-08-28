@@ -1,86 +1,66 @@
-# WarBoost V2.4.8 — Adaptive Context Intelligence
+# WarBoost V2.4.9 — Adaptive Ranking Reliability
 
-WarBoost V2.4.8 fait évoluer le Diagnostic PRO vers un moteur **adaptatif et contextuel** tout en conservant les protections de fiabilité introduites dans V2.4.0–V2.4.7.
+WarBoost V2.4.9 corrige les régressions observées sur la Preview V2.4.8 sans retirer le moteur contextuel introduit dans V2.4.8.
 
-## Nouveauté principale : contexte joueur adaptatif
+## Correctif principal : le moteur adaptatif complète le Diagnostic PRO
 
-Le Diagnostic PRO peut désormais tenir compte de trois informations de contexte enregistrées dans le profil WarBoost :
+Le classement adaptatif intervient désormais **après** la reconstruction du pool fiable de candidats du Diagnostic PRO. Il ne doit plus réduire l'analyse à une seule famille simplement parce qu'une donnée héros n'est pas directement présente dans le slot courant.
 
-- objectif principal : Auto, Équilibré, PvP, PvE, VS ou Saison ;
-- âge du compte en jours, uniquement s'il est réellement renseigné ;
-- profil serveur : Auto/inconnu, Récent, Mature, Compétitif ou Mixte.
+Le Diagnostic compare, lorsqu'elles sont réellement documentées :
 
-Ces champs restent optionnels. En mode **Auto**, WarBoost utilise seulement les données réellement disponibles dans le compte, les scans, le VS et la Saison. Il n'invente ni l'âge du compte ni le profil du serveur.
-
-## Diagnostic PRO V2.4.8
-
-Le moteur compare maintenant les goulots disponibles avec un **rendement marginal contextuel** :
-
-- héros et armes exclusives ;
-- Éveil / Reshape Saison 6 ;
+- niveaux et étoiles des héros ;
+- armes exclusives et paliers EX10 / EX20 / EX30 ;
+- Éveil / Reshape de Saison 6 ;
 - équipement ;
-- technologies ;
+- technologies renseignées ;
 - Drone ;
-- niveaux / étoiles ;
-- timing VS et Saison.
+- timing VS / Saison ;
+- et, lorsqu'une donnée critique manque, une action explicite de vérification au lieu d'inventer une amélioration.
 
-Chaque priorité peut afficher :
+Le moteur contextuel conserve ensuite l'objectif Auto/Équilibré/PvP/PvE/VS/Saison, le contexte serveur/compte connu, le rendement marginal, la certitude et les conditions de dépense pour classer les candidats fiables.
 
-- impact ;
-- efficacité ressources ;
-- rendement marginal /100 ;
-- niveau de certitude : Certain, Probable ou Spéculatif ;
-- condition d'utilisation ;
-- date du calcul.
+## Mémoire héros réellement utilisée par le Diagnostic
 
-Les recommandations restent conditionnelles : WarBoost peut demander de rafraîchir les données, de conserver une ressource pour le VS, ou de vérifier le retour à court terme avant de dépenser.
+V2.4.9 branche le registre `hero_profiles` de V2.4.7 dans le Diagnostic PRO.
 
-## Technologie adaptative
+Ordre de récupération par **identité de héros** :
 
-V2.4.8 ne choisit plus simplement la première technologie connue. Le moteur recherche parmi les branches réellement renseignées une **technologie incomplète présentant le meilleur compromis entre écart restant et pertinence pour l'objectif actuel**.
+1. mémoire `hero_profiles` du même héros ;
+2. données visibles du héros dans l'escouade courante ;
+3. progression héros enregistrée du même héros ;
+4. scan d'arme exclusive du même héros, lorsqu'il existe.
 
-Aucun objectif de niveau ou coût exact n'est inventé lorsqu'il n'est pas confirmé par les données visibles/fiables.
+Les champs inconnus ne remplacent jamais une valeur connue. Aucun champ n'est récupéré par numéro de slot. Un héros nouvellement placé à une position ne peut donc pas hériter du niveau, de l'EX, de l'équipement ou de l'Éveil du héros précédent.
 
-## Boutique IA
+Kimberly EX19 reste conservable comme donnée confirmée. Une valeur réellement absente de toutes les sources fiables reste inconnue : WarBoost ne l'invente pas.
 
-Le conseiller Boutique continue de fonctionner en catalogue partiel tant qu'aucun catalogue officiel Last War n'est disponible.
+## Garde-fou si les EX sont incomplètes
 
-Correctif V2.4.8 : la sélection de l'escouade de référence du conseiller Boutique utilise correctement les escouades configurées et fiables. Les protections précédentes restent actives :
+Si moins de trois améliorations héros fiables peuvent être construites et que certaines armes exclusives de l'escouade principale sont inconnues, WarBoost ajoute une action **Vérifier les armes exclusives**. Cette action empêche le Drone d'être présenté comme unique priorité certaine alors que les EX des héros n'ont pas encore été confirmées.
 
-- scans de boutiques cumulés au lieu d'écraser l'historique récent ;
-- doublons fusionnés ;
-- articles vendus exclus ;
-- prix ambigus non inventés ;
-- coffres opaques plafonnés ;
-- ressources situationnelles dépendantes du contexte VS/Saison ;
-- disponibilité actuelle jamais affirmée sans preuve ;
-- réserve diamant conservée dans la logique d'achat.
+Le Diagnostic peut donc afficher moins de trois améliorations uniquement lorsqu'il existe réellement moins de trois actions fiables. Il ne fabrique jamais un faux TOP 3.
 
-## Saison 6 — Awakening / Reshape
+## Correctif mobile des priorités non-héros
 
-La logique V2.4.4 reste conservée :
+La carte Drone/Technologie/Scan de V2.4.8 pouvait placer son contenu dans la colonne réservée au portrait héros, ce qui comprimait le texte en une colonne étroite. V2.4.9 utilise une grille spécifique aux cartes sans héros : le titre, l'impact, l'efficacité ressources, le rendement marginal et l'action occupent à nouveau toute la largeur disponible sur mobile.
 
-- prérequis visibles d'Éveil ;
-- comparaison relative Éveil / EX / équipement / technologie / Drone ;
-- bonus de formation mono-type pris en compte ;
-- prudence sur les compositions hybrides sans synergie mesurée ;
-- aucune projection exacte de puissance post-Reshape sans source fiable.
+## Compteur traduit
 
-## Mémoire par identité de héros
+Le résumé utilise désormais une formulation neutre de type **« Options comparées : 1 »** / **« Options comparées : 6 »**, ce qui évite l'erreur « 1 options comparées ». La chaîne est fournie dans les 23 choix de langue explicites de WarBoost, plus le mode Auto.
 
-Le registre `hero_profiles` de V2.4.7 est conservé sans modification fonctionnelle :
+## Protections conservées
 
-- les valeurs restent attachées au héros et non au slot ;
-- déplacer un héros ne copie pas ses données sur un autre héros ;
-- un scan partiel n'efface pas une ancienne valeur fiable ;
-- les doublons inter-escouades restent bloqués ;
-- Kimberly EX19 reste conservable comme donnée confirmée ;
-- une valeur déjà perdue avant le registre n'est jamais reconstruite artificiellement.
+V2.4.9 conserve sans changement de principe :
 
-## Multilingue
+- anti-doublon inter-escouades ;
+- confirmation des identités héros lors des scans ambigus ;
+- scan partiel sans effacement des anciennes valeurs fiables ;
+- 31 héros et leurs portraits ;
+- Saison 6 Awakening / Reshape et absence de projection exacte inventée ;
+- Boutique IA en catalogue partiel, cumul des scans, fusion des doublons, exclusion des articles vendus et disponibilité non affirmée sans preuve ;
+- Alliance R5/R4 et fiabilité d'activité ;
+- intégration Last War approval-first / API-ready, sans automatisation de gameplay ni accès non autorisé.
 
-Les nouveaux libellés V2.4.8 du contexte adaptatif, de l'efficacité ressources, du rendement marginal, de la certitude, des conditions et de la date de recommandation sont couverts dans les **23 choix de langue explicites** de l'interface WarBoost (les 22 langues prévues avec les variantes anglais UK/US), en plus du mode Auto.
+## Déploiement
 
-## Intégration officielle
-
-WarBoost reste un compagnon indépendant et **approval-first / API-ready**. Aucune automatisation de gameplay ni accès non autorisé n'est ajouté. Une intégration officielle Last War pourra être branchée si l'autorisation correspondante est obtenue.
+Valider V2.4.9 sur `publisher-demo` avant toute fusion dans `main`. Le test prioritaire est le Diagnostic PRO avec l'Escouade 1 actuelle : vérifier que les données héroïques récupérables réapparaissent, que Kimberly EX19 reste attachée à Kimberly, qu'une donnée EX inconnue déclenche une vérification plutôt qu'une invention, et que les cartes Drone/Technologie ne sont plus comprimées sur mobile.

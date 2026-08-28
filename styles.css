@@ -81,7 +81,7 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
 /* ===== V2.3.6 • Alliance Reliability + roster by rank ===== */
 .activitySummary small{line-height:1.2}.rosterOverview{display:grid;gap:9px;margin-bottom:10px;padding:10px;border:1px solid #20344f;background:#0a1321;border-radius:14px}.rosterOverview>div:first-child b{display:block;font-size:12px}.rosterOverview>div:first-child small{display:block;margin-top:3px;color:#8494ad;font-size:9px;line-height:1.35}.roleCountRow{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}.roleCountChip{display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 4px;border-radius:10px;background:#101c2e;border:1px solid #263b59}.roleCountChip b{font-size:10px;color:#e8f4ff}.roleCountChip small{font-size:9px;color:#77d8ff}.roleRosterList{display:grid;gap:7px}.roleRosterGroup{border:1px solid #253956;border-radius:14px;background:#0a1321;overflow:hidden}.roleRosterGroup>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 13px;min-height:48px;user-select:none}.roleRosterGroup>summary::-webkit-details-marker{display:none}.roleRosterTitle{display:flex;align-items:center;gap:8px}.roleRosterTitle b{display:grid;place-items:center;min-width:34px;height:30px;padding:0 7px;border-radius:9px;background:#142541;color:#7edfff;font-size:12px}.roleRosterTitle small{font-size:10px;color:#9aabc2}.roleRosterChevron{font-size:18px;color:#8ea5c5;transition:transform .16s ease}.roleRosterGroup[open] .roleRosterChevron{transform:rotate(180deg)}.roleRosterBody{padding:0 9px 9px;border-top:1px solid #1d3049}.compactMember{padding:10px 6px;margin:0;border:0;border-bottom:1px solid #172840;background:transparent;border-radius:0}.compactMember:last-child{border-bottom:0}.compactMember b{font-size:11px}.compactMember small{font-size:9px}.compactMember .activityLine{font-size:8.5px;line-height:1.35}.emptyRole{padding:12px 4px;color:#7d8ca2;font-size:10px}.activitySection .activitySummary>div:nth-child(2){border-color:#5b481c;background:#171409}.activitySection .activitySummary>div:nth-child(3){border-color:#59303a;background:#170d12}@media(max-width:390px){.roleCountRow{grid-template-columns:repeat(5,minmax(0,1fr));gap:3px}.roleCountChip{padding:5px 2px;gap:2px}.roleCountChip b{font-size:9px}.roleCountChip small{font-size:8px}}
 
-/* ===== V2.3.7 • Mobile Finish — no AI decision logic change ===== */
+/* ===== V2.3.8 • Diagnostic Badge Reliability — no AI decision logic change ===== */
 .warPlanCopy{font-size:12.5px;line-height:1.48;white-space:pre-line;color:#c7d1e2}
 .roleRosterBody{max-height:min(360px,48vh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;padding-right:7px}
 .roleRosterBody::-webkit-scrollbar{width:5px}.roleRosterBody::-webkit-scrollbar-thumb{background:#263c5a;border-radius:999px}.roleRosterBody::-webkit-scrollbar-track{background:transparent}
@@ -95,3 +95,15 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
   .proPriorityPanel .priorityCard.compactDecision{grid-template-columns:34px 46px minmax(0,1fr);gap:8px}
 }
 @media(max-width:360px){.roleRosterBody{max-height:42vh}.warPlanCopy{font-size:12px}.roleCountChip{min-width:0}}
+
+
+/* ===== V2.4.9 • Adaptive Ranking Reliability ===== */
+.proPriorityPanel .priorityCard.compactDecision.noHeroDecision{grid-template-columns:34px minmax(0,1fr);align-items:start}
+.proPriorityPanel .priorityCard.compactDecision.noHeroDecision .priorityMain{grid-column:2;min-width:0;width:100%}
+.proPriorityPanel .priorityCard.compactDecision.noHeroDecision .decisionHead{min-width:0;width:100%}
+.proPriorityPanel .priorityCard.compactDecision.noHeroDecision .decisionMetric{max-width:100%;overflow-wrap:anywhere}
+@media(max-width:480px){
+  .proPriorityPanel .priorityCard.compactDecision.noHeroDecision{grid-template-columns:34px minmax(0,1fr);gap:8px}
+  .proPriorityPanel .priorityCard.compactDecision.noHeroDecision .decisionHead{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+  .proPriorityPanel .priorityCard.compactDecision.noHeroDecision .decisionMetric{justify-self:start;text-align:left;white-space:normal}
+}

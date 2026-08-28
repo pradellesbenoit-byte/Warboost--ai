@@ -1,0 +1,91 @@
+WarBoost V2.4.9 — BUILD VERIFICATION
+Adaptive Ranking Reliability
+
+1. Regression reproduced before fix
+- V2.4.8 test state matching the observed Preview shape:
+  * Squad 1 configured, heroes Lv150 / 5★ / gear Nv40
+  * EX fields absent from current squad slots
+  * reliable same-hero EX history present in hero_profiles
+  * Drone Nv157 / 8.84 M
+- V2.4.8 result: 1 candidate, Drone only
+- PASS: regression reproduced deterministically
+
+2. Candidate-pool recovery after fix
+- same test state on V2.4.9
+- hero_profiles is consumed by Diagnostic PRO by canonical hero identity
+- recovered EX candidates: Carlie EX5, Morrison EX10, Lucius EX1
+- candidate pool: 4
+- Top 3: Carlie / Morrison / Lucius exclusive-weapon breakpoints in the test context
+- PASS
+
+3. No-invention fallback
+- removed reliable EX memory for current Squad 1
+- V2.4.9 does not fabricate EX values
+- explicit 'verify exclusive weapons' candidate is created
+- Drone is no longer the only apparent action
+- PASS
+
+4. Hero identity / slot inheritance
+- Kimberly EX19 remains attached to Kimberly through squad moves
+- Tesla placed in Kimberly's former slot does not inherit EX19
+- cross-squad uniqueness audit: PASS
+- partial/identity-safe model from V2.4.7 remains active
+- PASS
+
+5. Adaptive engine preservation
+- objective/context scoring remains active after complete candidate construction
+- marginal_value_score, certainty and calculated_at present on ranked priorities
+- contextual PvP weighting still ranks direct progression over Drone in the controlled sample
+- technology opportunity logic still works when technology data exists
+- PASS
+
+6. Mobile card reliability
+- non-hero priorities now receive class noHeroDecision
+- dedicated grid: rank + full-width content, no empty portrait column
+- mobile breakpoint keeps full-width decision metric/action text
+- PASS (structural CSS/render-path verification)
+
+7. Option count / translations
+- summary uses neutral key options_compared_count
+- 23 explicit language choices resolve a translated value
+- all 23 explicit language taglines report V2.4.9
+- avoids '1 options comparées'
+- PASS
+
+8. Static project checks
+- npm run check: PASS
+- JavaScript syntax: PASS for app, publisher UI, 12 API modules and all lib modules in package check
+- API module count: 12
+- hero catalogue: 31
+- hero asset paths: 31
+- Season 6 Awakening/Reshape module present
+- Boutique IA catalogue module present
+- Alliance activity module present
+- PASS
+
+9. Version alignment
+- app.js: 2.4.9
+- api/advice.js engine: 2.4.9
+- api/health.js: 2.4.9
+- lib/normalize.js state: 2.4.9
+- package.json: 2.4.9
+- manifest.webmanifest: 2.4.9
+- index.html: 2.4.9
+- service-worker cache: warboost-v2-4-9-adaptive-ranking-reliability
+- PASS
+
+10. Files intentionally unchanged in patch
+- api/scan.js
+- api/state.js
+- api/sync.js
+- lib/adaptive-context.js
+- lib/squad-identity.js
+- lib/season6-awakening.js
+- lib/shop-catalog.js
+- lib/heroes.js
+- lib/alliance-activity.js
+- supabase/schema.sql
+- hero portrait assets
+
+RESULT: PASS FOR PUBLISHER-DEMO TESTING
+Do not merge to main until the V2.4.9 Preview is visually/functionally validated on the real saved account state.

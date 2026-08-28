@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.4.8",
+  "name": "WarBoost V2.4.9",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.4.8 — Adaptive Context Intelligence: complete player context, contextual marginal-return ranking, conditional dated recommendations and certainty tiers, while preserving hero identity, Season 6 Awakening/Reshape and Boutique IA integrity.",
+  "description": "WarBoost V2.4.9 — Adaptive Ranking Reliability: hero-keyed progression recovery, complete reliable candidate ranking, explicit data-gap safeguards, robust mobile non-hero cards, conditional contextual recommendations, and preserved Season 6 Awakening/Reshape plus Boutique IA integrity.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
