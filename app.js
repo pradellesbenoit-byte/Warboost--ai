@@ -2,11 +2,11 @@ import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {HERO_CATALOG,canonicalHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
 import {canonicalShopStore} from "./lib/shop-catalog.js";
-import {reconcileConfirmedSquad,repairLegacySquadIdentity} from "./lib/squad-identity.js";
+import {reconcileConfirmedSquad,repairLegacySquadIdentity,swapSquads} from "./lib/squad-identity.js";
 import {recoverHeroData} from "./lib/hero-history.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.5.0";
+const APP_VERSION="2.5.1";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const LEGACY_LANGUAGE_KEYS=["wb17_language","wb171_language","warboost_language"];
 const LEGACY_DATA_KEYS=["wb12_account","wb11_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster","wb19_imported_players"];
@@ -235,7 +235,31 @@ function squadHasSavedData(sq){return Boolean(sq?.updated_at||Number(sq?.power)>
 function formatGear(raw){const s=String(raw||"").trim();if(!s)return "";const localizeRarities=value=>String(value||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean).map(x=>{const k=`rarity_${x}`;return t(k)===k?x:t(k)}).join("/");let m=s.match(/^count=(\d+);level=(\d+);rarity=([a-z,]+)$/i);if(!m)m=s.match(/^(\d+)\s+gear items?,\s*Lv\.?\s*(\d+),\s*([a-z]+)\s+rarity$/i);if(m)return `${m[1]} ${t("gear_items")} · ${t("level")}${m[2]} · ${t("rarity")} ${localizeRarities(m[3])}`;const ml=s.match(/^count=(\d+);levels=([0-9,]+);rarity=([a-z,]+)$/i);if(ml){const levels=ml[2].split(",").map(x=>Number(x)).filter(Number.isFinite),levelText=levels.map(x=>`${t("level")}${x}`).join("/");return `${ml[1]} ${t("gear_items")} · ${levelText} · ${t("rarity")} ${localizeRarities(ml[3])}`}const lv=s.match(/^Lv\.?\s*(\d+)$/i);if(lv)return `${t("level")}${lv[1]}`;return s}
 function weaponStatsLine(w){if(!w)return "";const bits=[w.hero_hp_bonus!=null?`${t("exclusive_hp")} +${new Intl.NumberFormat(locale).format(Number(w.hero_hp_bonus))}`:null,w.hero_atk_bonus!=null?`${t("exclusive_atk")} +${new Intl.NumberFormat(locale).format(Number(w.hero_atk_bonus))}`:null,w.hero_def_bonus!=null?`${t("exclusive_def")} +${new Intl.NumberFormat(locale).format(Number(w.hero_def_bonus))}`:null,w.all_damage_resistance_pct!=null?`${t("exclusive_resistance")} ${new Intl.NumberFormat(locale,{maximumFractionDigits:2}).format(Number(w.all_damage_resistance_pct))}%`:null,w.max_skill_level!=null?`${t("exclusive_skill_cap")} ${new Intl.NumberFormat(locale,{maximumFractionDigits:0}).format(Number(w.max_skill_level))}`:null].filter(Boolean);return bits.join(" · ")}
 function heroDetailLine(h,heroName){const bits=[h.level?`${t("level")}${h.level}`:`${t("level")}—`,h.stars?`${h.stars}★`:"★—"];const w=weaponForHero(heroName);if(w){const weaponTitle=w.weapon_name||t("exclusive_weapon");bits.push(`${weaponTitle}${w.level?` ${t("level")}${w.level}`:""}`);if(w.power)bits.push(`${t("exclusive_power")} ${fmtWeaponPower(w.power)}`)}else if(h.exclusive){bits.push(`${t("exclusive_short")} ${h.exclusive}`)}if(h.gear)bits.push(formatGear(h.gear));return {main:bits.join(" · "),stats:weaponStatsLine(w)}}
-function renderSquads(){const box=$("#squadList");if(!box)return;box.innerHTML="";state.squads.forEach((sq,i)=>{const el=document.createElement("div");el.className="squad";const name=`${t("squad")} ${i+1}`;const optional4=i===3&&!squadHasSavedData(sq);const freshness=optional4?t("optional_squad4"):(sq.needs_rescan?t("sync_needed"):(sq.updated_at?updatedLabel(sq.updated_at):t("not_synced")));const needsHeroConfirm=!optional4&&(sq.heroes||[]).some(h=>isGenericHeroName(h?.name))&&squadHasSavedData(sq);el.innerHTML=`<button class="squadHead"><span class="squadNo">${i+1}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${fmtPower(sq.power)}</span><span class="chev">⌄</span></button><div class="squadBody">${(sq.heroes||[]).map((h,j)=>{const hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}"`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${fmtPower(h.power)}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,i+1):""}</div>`;el.querySelector(".squadHead").addEventListener("click",()=>el.classList.toggle("open"));box.appendChild(el)})}
+function performSquadSwap(fromId,toId){
+  const from=Number(fromId),to=Number(toId),note=$("#playerSyncInfo");
+  try{
+    state=swapSquads(state,{fromSquadId:from,toSquadId:to,updatedAt:new Date().toISOString()}).state;
+    saveState();
+    if(note){note.className="notice";note.classList.remove("hidden");note.textContent=t("squad_swap_done",{from,to})}
+    requestAnimationFrame(()=>{document.querySelector(`#squadList .squad[data-squad-id="${from}"]`)?.classList.add("open");document.querySelector(`#squadList .squad[data-squad-id="${to}"]`)?.classList.add("open")});
+  }catch{if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("squad_swap_failed")}}
+}
+function renderSquads(){
+  const box=$("#squadList");if(!box)return;box.innerHTML="";
+  state.squads.forEach((sq,i)=>{
+    const id=i+1,el=document.createElement("div");el.className="squad";el.dataset.squadId=String(id);
+    const name=`${t("squad")} ${id}`,optional4=i===3&&!squadHasSavedData(sq),freshness=optional4?t("optional_squad4"):(sq.needs_rescan?t("sync_needed"):(sq.updated_at?updatedLabel(sq.updated_at):t("not_synced")));
+    const needsHeroConfirm=!optional4&&(sq.heroes||[]).some(h=>isGenericHeroName(h?.name))&&squadHasSavedData(sq);
+    const swapTargets=squadHasSavedData(sq)?state.squads.map((target,ti)=>({id:ti+1,target})).filter(x=>x.id!==id&&squadHasSavedData(x.target)):[];
+    const swapButton=swapTargets.length?`<button class="squadSwapBtn" type="button" data-squad-swap-toggle="${id}" aria-label="${esc(t("squad_swap_aria",{squad:id}))}" title="${esc(t("squad_swap"))}">⇄</button>`:"";
+    const swapMenu=swapTargets.length?`<div class="squadSwapMenu hidden" data-squad-swap-menu="${id}"><span>${esc(t("squad_swap_with"))}</span>${swapTargets.map(x=>`<button type="button" class="squadSwapTarget" data-squad-swap-target="${x.id}">${esc(t("squad"))} ${x.id}</button>`).join("")}</div>`:"";
+    el.innerHTML=`<div class="squadHeaderRow"><button class="squadHead"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${fmtPower(sq.power)}</span><span class="chev">⌄</span></button>${swapButton}</div>${swapMenu}<div class="squadBody">${(sq.heroes||[]).map((h,j)=>{const hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}"`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${fmtPower(h.power)}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div>`;
+    el.querySelector(".squadHead")?.addEventListener("click",()=>el.classList.toggle("open"));
+    el.querySelector(".squadSwapBtn")?.addEventListener("click",e=>{e.stopPropagation();const menu=el.querySelector(".squadSwapMenu"),willOpen=menu?.classList.contains("hidden");document.querySelectorAll("#squadList .squadSwapMenu").forEach(x=>x.classList.add("hidden"));if(willOpen)menu?.classList.remove("hidden")});
+    el.querySelectorAll(".squadSwapTarget").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();performSquadSwap(id,Number(btn.dataset.squadSwapTarget))}));
+    box.appendChild(el);
+  });
+}
 
 function fmtWeaponPower(v){
   const n=Number(v);if(!Number.isFinite(n))return "—";

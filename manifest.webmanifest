@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.0",
+  "name": "WarBoost V2.5.1",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.0 — Legacy Hero Data Recovery: identity-only recovery from saved hero history and Supabase snapshots, pre-write hero snapshots, conflict-safe migration, preserved adaptive Diagnostic PRO, Season 6 Awakening/Reshape and Boutique IA integrity.",
+  "description": "WarBoost V2.5.1 — Squad Swap Reliability: safe whole-squad permutation with full hero data moving together, hero-keyed memory preserved, safer EX reasoning wording, adaptive Diagnostic PRO, Season 6 Awakening/Reshape and Boutique IA integrity.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

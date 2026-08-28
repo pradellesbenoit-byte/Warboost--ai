@@ -1,0 +1,28 @@
+WarBoost V2.5.1 — Build verification
+
+RESULT: PASS
+
+Checks executed on 2026-08-28:
+1. npm run check: PASS (app, service worker, 12 API modules and all lib modules parse).
+2. API handlers: 12/12 preserved.
+3. Hero registry: 31 heroes; hero portraits: 31/31.
+4. Whole-squad swap 1↔2: PASS. Squad power and complete hero objects move together.
+5. Hero payload preservation: PASS for level, stars, power, EX, gear and Awakening.
+6. Identity memory: hero_profiles, exclusive_weapons and hero_progression are unchanged by the permutation.
+7. Duplicate audit after swap: PASS.
+8. Round trip 1↔2 then 1↔2: PASS; original compositions and EX values restored.
+9. Cloud merge test: PASS. Both destination squads receive a fresh updated_at, so mergeNewest accepts the permutation instead of restoring older destination data.
+10. Hero-history recovery after swap: PASS. Historical recovery does not revert squad order or move values by slot; Kimberly EX19, Morrison EX10 and Carlie EX5 remain attached to their identities.
+11. Invalid/same-squad protections: PASS.
+12. Mobile UI: side ⇄ control, explicit target chooser and full-width squad header structure present. Empty optional Squad 4 is excluded by the UI target filter because only squads with saved data are proposed.
+13. EX reasoning wording: PASS. Unsupported claims « coût restant / remaining cost / coste restante / Restkosten » removed from the active comparison note and replaced by distance-to-next-breakpoint wording.
+14. Translations: PASS for 23 explicit language choices (FR, en-GB, en-US, ES, IT, DE, PT, NL, ZH, JA, RU, AR, PL, TR, KO, VI, TH, ID, UK, RO, EL, CS, SV) plus Auto.
+15. Manifest/package JSON: PASS.
+16. Critical unchanged files verified byte-identical to V2.5.0: api/scan.js, api/state.js, api/sync.js, lib/hero-history.js, lib/adaptive-context.js, lib/season6-awakening.js, lib/shop-catalog.js, lib/alliance-activity.js, lib/data-freshness.js, supabase/schema.sql, publisher-ui.js and publisher-ui.css.
+17. Patch application onto a clean V2.5.0 tree: verified before packaging.
+
+Safety model:
+- Swap is whole-squad, never slot-to-slot hero attribute copying.
+- Destination IDs/names stay fixed as Squad 1..4.
+- Hero-keyed global memory remains identity-bound.
+- No real fragment quantity/cost is invented by the EX comparison wording.

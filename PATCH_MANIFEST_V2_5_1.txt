@@ -1,0 +1,24 @@
+WarBoost V2.5.1 — Squad Swap Reliability
+
+ROOT (11)
+app.js
+BUILD_VERIFICATION_V2_5_1.txt
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+PATCH_MANIFEST_V2_5_1.txt
+README.md
+styles.css
+sw.js
+WARBOOST_V2_5_1_RELEASE.md
+
+api/ (2)
+advice.js
+health.js
+
+lib/ (2)
+normalize.js
+squad-identity.js
+
+TOTAL: 15 files

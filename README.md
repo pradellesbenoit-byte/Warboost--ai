@@ -1,3 +1,25 @@
+# WarBoost V2.5.1 — Squad Swap Reliability
+
+WarBoost V2.5.1 conserve tous les correctifs V2.5.0 et ajoute une permutation sûre des escouades depuis le panneau Joueur. Le bouton `⇄` placé sur le côté d'une escouade permet de choisir une autre escouade enregistrée et d'échanger **l'ensemble des données** des deux formations en une seule opération.
+
+## Permutation complète, jamais par emplacement de héros
+
+La permutation déplace ensemble la puissance d'escouade, les cinq héros, leurs niveaux, étoiles, puissance, arme exclusive, équipement, Éveil et les indicateurs de fiabilité associés. Les numéros d'escouade restent 1–4 : c'est le contenu complet qui change de place. Les mémoires globales `hero_profiles`, `exclusive_weapons` et `hero_progression` restent attachées à l'identité du héros et ne sont jamais recopiées depuis un slot.
+
+Les deux escouades permutées reçoivent un `updated_at` commun au moment de l'action afin que la permutation soit conservée lors du push/pull cloud et ne soit pas annulée par une ancienne date de scan. `composition_changed_at` est également mis à jour.
+
+L'interface n'affiche comme cibles que les escouades déjà enregistrées : une Escouade 4 optionnelle et vide ne peut donc pas être choisie accidentellement. Après permutation, le Diagnostic PRO utilise immédiatement la nouvelle Escouade 1 comme escouade principale.
+
+## Correction du raisonnement EX
+
+Le détail `Pourquoi` ne parle plus de « coût restant » lorsqu'aucune quantité officielle de fragments n'est connue. Il compare maintenant la **distance au prochain palier**, le rôle dans l'escouade et le timing. Cette formulation est fournie dans toutes les langues proposées par l'interface.
+
+## Fiabilité conservée
+
+V2.5.1 conserve la mémoire héros V2.5.0, l'anti-transfert de statistiques par slot, le scan EX persistant, le moteur adaptatif VS/PvP/PvE/Saison, Saison 6 Awakening/Reshape, Boutique IA, Alliance et l'absence d'invention de valeurs inconnues.
+
+---
+
 # WarBoost V2.5.0 — Legacy Hero Data Recovery
 
 WarBoost V2.5.0 termine le chantier de fiabilité commencé avec V2.4.7–V2.4.9 : les caractéristiques d'un héros doivent rester attachées à **son identité**, même lorsqu'il change d'escouade, et une ancienne donnée ne doit jamais être recopiée depuis un numéro de slot.
