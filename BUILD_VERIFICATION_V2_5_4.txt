@@ -1,0 +1,39 @@
+WarBoost V2.5.4 — Build verification
+
+RESULT: PASS
+
+Checks executed on 2026-08-29:
+1. npm run check: PASS.
+2. All 12 serverless API functions parse successfully.
+3. npm run verify: PASS.
+4. Player AI: Squad 1 remains the selected focus even when Squad 2 is stronger.
+5. Player plan: 7 days returned; exact_quantities=false; no invented quantities.
+6. Alliance AI: R5/R4 guard, rally/defense/mobile/reserve groups and Plan B: PASS.
+7. VS and Season structured advice: PASS on V2.5.4 engine.
+8. Legacy/partial state normalization to 2.5.4 preserves known player/hero data.
+9. Missing wb1_* schema -> database_schema_missing: PASS.
+10. PostgreSQL 42501 / permission denied -> database_permissions_missing: PASS.
+11. Roster import and cloud roster refresh preserve existing/manual members: PASS.
+12. 23 explicit language choices + Auto: PASS for structured labels.
+13. Hero catalog: 31 unique canonical identities; Skyler present; no generic placeholder identities.
+14. Static migration safety: no DROP TABLE / TRUNCATE / DELETE FROM.
+15. Static service-role grants: PASS for profiles, snapshots, alliances and alliance members.
+16. Static direct-browser Alliance access revocation: PASS.
+17. Optimized `(select auth.uid())` RLS present for wb1_profiles/wb1_snapshots.
+18. Health endpoint contains live database_service_probe using probeServiceAccess().
+19. Manifest/service worker/package/app/health/normalize/advice metadata aligned to V2.5.4.
+20. Production Supabase migration `warboost_v2_5_4_cloud_alliance_access_reliability`: APPLIED SUCCESSFULLY.
+21. Production data after migration: 2 wb1_profiles and 9 wb1_snapshots preserved.
+22. Production service_role real-role read test: PASS on all four wb1_* tables.
+23. Production required service_role table privileges: PASS.
+24. Production anon SELECT on wb1_profiles: FALSE as intended.
+25. Production authenticated SELECT on wb1_alliances: FALSE as intended.
+26. Supabase performance advisor no longer reports auth_rls_initplan warnings for wb1_profiles or wb1_snapshots.
+
+Known separate Supabase advisories intentionally not changed in this migration:
+- legacy public SECURITY DEFINER functions;
+- older non-wb1 RLS performance warnings;
+- leaked-password protection setting.
+These require separate controlled changes because some legacy functions are still referenced by older R4/R5 policies.
+
+Official Last War / FirstFun integration remains pending authorization.

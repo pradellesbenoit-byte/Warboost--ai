@@ -1,0 +1,32 @@
+WarBoost V2.5.4 — GitHub / Vercel upload guide
+
+RECOMMENDED: use WarBoost_V2.5.4_FULL.zip.
+
+1. Extract the ZIP.
+2. Open the folder WarBoost_V2.5.4.
+3. Upload/replace THE CONTENTS of that folder at the ROOT of the WarBoost GitHub repository.
+   Root examples: index.html, app.js, package.json, vercel.json, manifest.webmanifest.
+4. Keep these folders at root exactly as supplied:
+   api/
+   assets/
+   lib/
+   scripts/
+   supabase/
+5. Do not put the whole WarBoost_V2.5.4 folder inside the repository as an extra nested folder.
+6. Do not publish any .env file or SUPABASE_SERVICE_ROLE_KEY in GitHub/client code.
+7. The production Supabase V2.5.4 migration was already applied on 2026-08-29. Keep migration_v2_5_4.sql in GitHub for reproducibility; do not delete it.
+8. After GitHub commit, let the existing Vercel project redeploy from the repository.
+9. Check /api/health after deployment. Expected when Vercel environment variables are correct:
+   - version: 2.5.4
+   - database: ready
+   - database_access: service+user-rls
+   - database_service_probe: ready
+10. Then test in WarBoost:
+   - login/reconnect without data loss;
+   - Player diagnostic;
+   - Scan;
+   - one cloud save/sync;
+   - R5/R4 Alliance functions if an alliance is configured;
+   - VS and Season.
+
+If database_service_probe is not "ready", do not erase or rescan player data. The health value will identify a cloud configuration/permission issue while local data remains protected.

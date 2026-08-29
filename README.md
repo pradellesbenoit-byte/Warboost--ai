@@ -1,44 +1,56 @@
-# WarBoost V2.5.3 — Audit Completion
+# WarBoost V2.5.4 — Cloud & Alliance Access Reliability
 
-WarBoost V2.5.3 termine les points de fiabilité identifiés avant la fabrication d’une **Last War Demo séparée**. Cette version continue directement V2.5.2 et conserve sa règle essentielle : **si l’Escouade 1 contient des données, elle reste l’escouade principale choisie**, même lorsqu’une escouade secondaire affiche une puissance supérieure.
+WarBoost V2.5.4 continue directement V2.5.3 et corrige le point de fiabilité cloud découvert pendant l’audit Supabase : les fonctions serveur utilisaient bien `SUPABASE_SERVICE_ROLE_KEY`, mais les tables `wb1_*` ne donnaient pas au rôle `service_role` les droits SQL nécessaires. Cette version corrige le projet et la base de production sans supprimer aucune donnée joueur.
 
-## Ce que V2.5.3 ajoute
+## Correctif principal V2.5.4
 
-### 1. Données joueur protégées pendant les migrations / reconnexions
-- la clé de données principale reste `warboost_v1_core_state` afin de ne pas casser les sauvegardes existantes ;
-- une copie stable `warboost_last_good_state` est maintenue avant/après les opérations sensibles ;
-- la reconnexion WarBoost protège l’état local avant de lire le cloud ;
-- une réponse cloud vide ne remplace pas un compte local déjà renseigné ;
-- les listes Alliance locales/cloud sont fusionnées sans effacer les membres importés manuellement ;
-- l’absence des tables `wb1_*` est détectée explicitement comme `database_schema_missing` ;
-- `supabase/migration_v2_5_3.sql` crée les tables manquantes de façon idempotente, sans `DROP TABLE`, `TRUNCATE` ni `DELETE FROM`.
+- `service_role` reçoit les droits minimaux réellement utilisés par les API WarBoost :
+  - `wb1_profiles` : SELECT / INSERT / UPDATE ;
+  - `wb1_snapshots` : SELECT / INSERT ;
+  - `wb1_alliances` : SELECT / INSERT / UPDATE ;
+  - `wb1_alliance_members` : SELECT / INSERT / UPDATE.
+- `anon` n’a aucun accès aux quatre tables `wb1_*`.
+- `authenticated` garde uniquement l’accès direct à son propre profil et à ses propres snapshots ; les tables Alliance restent serveur uniquement.
+- les politiques RLS profil/snapshot utilisent `(select auth.uid())` pour éviter la réévaluation par ligne signalée par Supabase.
+- la migration est idempotente et ne contient aucun `DROP TABLE`, `TRUNCATE` ou `DELETE FROM`.
 
-### 2. IA structurée multilingue
-WarBoost garde les copies IA détaillées natives lorsqu’elles existent et utilise une couche structurée locale pour les autres langues afin d’éviter d’afficher par défaut un long texte IA anglais. Les priorités Joueur, les groupes Alliance, le VS, la Saison, les statuts d’activité et les types d’unité sont couverts dans les **23 choix de langue explicites** (22 familles linguistiques avec en-GB et en-US séparés), plus Auto.
+## Surveillance cloud ajoutée
 
-### 3. Plan Joueur 7 jours
-Le Diagnostic PRO renvoie maintenant un plan de 7 jours : priorité principale, priorité secondaire, mesure de progression, alignement Boutique, timing VS et revue hebdomadaire. Le plan applique une règle de sécurité : **aucune quantité exacte de fragments ou matériaux n’est inventée** lorsque WarBoost ne possède pas de source fiable.
+`lib/supabase.js` distingue maintenant :
+- `database_schema_missing` : schéma `wb1_*` absent ;
+- `database_permissions_missing` : droits SQL incomplets.
 
-### 4. R5/R4 complété
-- import de roster par copier-coller CSV/Excel (`nom, grade, QG, puissance`) ;
-- fusion sans suppression des membres cloud existants ;
-- les membres manuels survivent à une actualisation du roster cloud ;
-- plan de guerre structuré en **rally, défense, groupe mobile et réserve** ;
-- **Plan B** selon fraîcheur/activité des données ;
-- modification d’un grade membre exposée uniquement au R5 vérifié lorsqu’un `player_id` cloud existe ;
-- l’IA ne supprime jamais automatiquement un membre incertain : elle demande d’abord une actualisation.
+`/api/health` exécute également un contrôle de lecture non destructif sur les quatre tables serveur et expose `database_service_probe`. Cela permet de détecter immédiatement une future régression de permissions au lieu de laisser les fonctions Cloud/Alliance échouer silencieusement.
 
-### 5. Voix par grade
-Une salutation vocale est disponible à la première ouverture Joueur / Alliance, avec sélection de voix du navigateur, activation/désactivation persistante et test manuel. En français, la formulation distingue R5, R4, R3, R2 et R1 ; dans les autres langues la salutation est localisée et annonce le grade WarBoost.
+## Garanties de données
 
-## Garanties conservées de V2.5.2
-- Escouade 1 prioritaire lorsqu’elle est renseignée ;
-- permutation atomique de deux escouades complètes ;
-- données héros attachées à l’identité et non à la position ;
-- 31 héros dans la source d’identité partagée ;
-- Scan/OCR, Drone, armes exclusives, Boutique IA, VS, Saison et Alliance conservés ;
-- Saison 6 Awakening / Reshape et contexte adaptatif conservés ;
-- aucune intégration Last War non autorisée.
+La V2.5.4 conserve les protections de V2.5.3 :
+- clé locale principale inchangée (`warboost_v1_core_state`) ;
+- sauvegarde `warboost_last_good_state` ;
+- fusion cloud/local protégée ;
+- aucune réponse cloud vide ne doit écraser un compte local renseigné ;
+- historique héros et snapshots conservés ;
+- import roster manuel conservé lors des synchronisations cloud ;
+- aucune migration ne doit obliger le joueur à rescanner son compte après une mise à jour.
+
+## Fonctions conservées
+
+- Diagnostic PRO IA avec Escouade 1 prioritaire lorsqu’elle est renseignée ;
+- plan Joueur 7 jours sans quantités inventées ;
+- 31 héros canoniques et armes exclusives ;
+- Scan/OCR, Drone, Boutique IA, VS, Saison 6 et contexte adaptatif ;
+- R5/R4 avec import roster, actions immédiates, Plan B et changements de grade contrôlés ;
+- salutation vocale par grade ;
+- 23 choix de langue explicites (22 familles + en-GB/en-US séparés), plus Auto ;
+- intégration Last War officielle toujours désactivée tant que Last War / FirstFun n’a pas donné son autorisation.
+
+## Supabase
+
+Migration de référence :
+
+`supabase/migration_v2_5_4.sql`
+
+Elle peut être relancée sans effacer les lignes existantes. Le fichier `supabase/schema.sql` est maintenant aligné sur les mêmes permissions pour éviter que le défaut soit recréé lors d’une nouvelle installation.
 
 ## Vérification locale
 
@@ -47,17 +59,10 @@ npm run check
 npm run verify
 ```
 
-`npm run check` contrôle la syntaxe de l’application, des 12 fonctions API et des bibliothèques critiques. `npm run verify` exécute les tests de non-régression V2.5.3 : escouade principale, plan 7 jours, Alliance R5/R4, VS/Saison, migration de données, schéma cloud manquant, import roster, multilingue structuré, catalogue héros et garde-fous d’autorisation.
+V2.5.4 ajoute notamment un test simulant une erreur PostgreSQL `42501` afin de vérifier qu’une perte de droits `service_role` est détectée comme `database_permissions_missing`.
 
-## Supabase
-Si un environnement de test plus ancien ne possède pas les tables `wb1_*`, exécuter **une fois** le contenu de :
+## Déploiement
 
-`supabase/migration_v2_5_3.sql`
+Pour une mise à jour complète, remplacer les fichiers du projet par le contenu du dossier V2.5.4 en conservant les variables d’environnement Vercel existantes. Ne jamais placer `SUPABASE_SERVICE_ROLE_KEY` dans le navigateur, dans GitHub public ou dans un fichier client.
 
-Le script est conçu pour pouvoir être relancé sans effacer les lignes existantes.
-
-## Accès Last War
-L’intégration officielle Last War / FirstFun reste **en attente d’autorisation**. V2.5.3 continue avec les scans fournis volontairement, la saisie/import WarBoost et le cloud WarBoost autorisé. Elle ne contourne pas le jeu et ne demande pas de token joueur Last War.
-
-## Étape suivante
-Après validation de V2.5.3 sur la branche de test, la **Last War Demo** doit être fabriquée séparément, sans toucher à `main`, avec une configuration de démonstration stable et uniquement des fonctions déjà fiabilisées.
+La migration V2.5.4 a été appliquée à la base WarBoost de production le 29 août 2026 et les contrôles post-migration ont confirmé que les profils et snapshots existants étaient toujours présents.

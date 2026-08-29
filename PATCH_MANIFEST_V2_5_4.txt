@@ -1,0 +1,40 @@
+WarBoost V2.5.4 — Cloud & Alliance Access Reliability
+Patch base required: WarBoost V2.5.3 FULL
+
+ROOT (13)
+app.js
+BUILD_VERIFICATION_V2_5_4.txt
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+PATCH_MANIFEST_V2_5_4.txt
+README.md
+styles.css
+sw.js
+WARBOOST_V2_5_4_RELEASE.md
+SHA256SUMS_V2_5_4.txt
+UPLOAD_GUIDE_V2_5_4.txt
+
+api/ (2)
+health.js
+advice.js
+
+lib/ (2)
+normalize.js
+supabase.js
+
+scripts/ (1)
+verify-v2.5.4.mjs
+
+supabase/ (2)
+migration_v2_5_4.sql
+schema.sql
+
+TOTAL PATCH FILES: 20
+
+Important:
+- Full V2.5.4 also retains every file from V2.5.3.
+- No file or database row is intentionally deleted by this patch.
+- migration_v2_5_4.sql is safe/idempotent and fixes production service_role grants.
+- Do not put SUPABASE_SERVICE_ROLE_KEY in browser/client code.
