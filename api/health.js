@@ -1,4 +1,4 @@
-import {configured,userConfigured} from "../lib/supabase.js";
+import {configured,userConfigured,probeServiceAccess} from "../lib/supabase.js";
 import {providerConfig} from "../lib/provider.js";
 import {HERO_CATALOG} from "../lib/heroes.js";
 import {shopReferenceStats} from "../lib/shop-catalog.js";
@@ -10,15 +10,16 @@ function isoWeek(d){
   return Math.ceil((((x-y)/86400000)+1)/7)
 }
 
-export default function handler(req,res){
+export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
   const providers=providerConfig(),serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats();
+  const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
   const now=new Date(),dow=now.getUTCDay();
 
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.3",
+    version:"2.5.4",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -29,8 +30,9 @@ export default function handler(req,res){
     vs_day:dow===0?6:dow,
     weekday_utc:dow,
 
-    database:(serviceDb||userDb)?"ready":"local-fallback",
-    database_access:serviceDb?"service+user-rls":userDb?"user-rls":"local-only",
+    database:serviceProbe.ok?"ready":(serviceDb||userDb)?"degraded":"local-fallback",
+    database_access:serviceProbe.ok?"service+user-rls":userDb?"user-rls":"local-only",
+    database_service_probe:serviceProbe.code,
     lastwar_official_access:providers.official?"configured":providers.approved?"approved-connector":"pending-approval",
     legacy_provider:providers.legacy?"explicitly-enabled":"disabled",
     vision:Boolean(process.env.OPENAI_API_KEY||process.env.WARBOOST_VISION_ENDPOINT)?"configured":"optional",
@@ -90,6 +92,8 @@ export default function handler(req,res){
       protected_local_last_good_backup:true,
       cloud_schema_missing_is_explicit:true,
       safe_idempotent_cloud_migration:true,
+      cloud_service_role_grant_guard:true,
+      live_cloud_permission_probe:true,
       multilingual_structured_ai_23_choices:true,
       player_seven_day_plan:true,
       seven_day_plan_no_invented_quantities:true,
