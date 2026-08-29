@@ -18,7 +18,7 @@ export default function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.2",
+    version:"2.5.3",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -86,7 +86,16 @@ export default function handler(req,res){
       contextual_marginal_value_scoring:true,
       conditional_dated_recommendations:true,
       certainty_tiers:true,
-      no_invented_server_or_account_age:true
+      no_invented_server_or_account_age:true,
+      protected_local_last_good_backup:true,
+      cloud_schema_missing_is_explicit:true,
+      safe_idempotent_cloud_migration:true,
+      multilingual_structured_ai_23_choices:true,
+      player_seven_day_plan:true,
+      seven_day_plan_no_invented_quantities:true,
+      alliance_manual_roster_import_preserved:true,
+      alliance_immediate_actions_and_plan_b:true,
+      rank_aware_voice_greeting:true
     },
     hero_catalog_count:HERO_CATALOG.length,
     shop_reference_catalog:shopRef,

@@ -2,6 +2,7 @@ import {mergeNewest,normalizeState} from "../lib/normalize.js";
 import {configured,userConfigured,getProfile,upsertProfile,getProfileForUser,upsertProfileForUser,insertSnapshot,insertSnapshotForUser,getAllianceRoster} from "../lib/supabase.js";
 import {fetchLastWarState,providerConfig} from "../lib/provider.js";
 import {requireUser} from "../lib/auth.js";
+import {mergeCloudRosterPreservingManual} from "../lib/alliance-roster-merge.js";
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   try{
@@ -18,7 +19,9 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
       if(userMode)await upsertProfileForUser(playerId,merged,access);else await upsertProfile(playerId,merged);
       if(configured()){
         const ctx=await getAllianceRoster(playerId).catch(()=>null);
-        if(ctx){const prev=new Map((merged.alliance?.members||[]).map(m=>[m.player_id||m.name,m]));const roster=ctx.roster.map(m=>{const old=prev.get(m.player_id)||prev.get(m.name),delta=Number.isFinite(Number(m.power_m))&&Number.isFinite(Number(old?.power_m))?Number((Number(m.power_m)-Number(old.power_m)).toFixed(2)):null;return {...m,delta_m:delta}});merged.alliance={...merged.alliance,id:ctx.alliance.id,tag:ctx.alliance.tag||merged.alliance.tag,name:ctx.alliance.name||merged.alliance.name,invite_code:ctx.alliance.invite_code||merged.alliance.invite_code,role:ctx.membership.role||merged.alliance.role,members:roster,updated_at:now};merged.sync.sources.alliance=true;await upsertProfile(playerId,merged)}
+        if(ctx){
+          const roster=mergeCloudRosterPreservingManual(merged.alliance?.members,ctx.roster);
+          merged.alliance={...merged.alliance,id:ctx.alliance.id,tag:ctx.alliance.tag||merged.alliance.tag,name:ctx.alliance.name||merged.alliance.name,invite_code:ctx.alliance.invite_code||merged.alliance.invite_code,role:ctx.membership.role||merged.alliance.role,members:roster,updated_at:now};merged.sync.sources.alliance=true;await upsertProfile(playerId,merged)}
         await insertSnapshot(playerId,merged,remoteOk?provider:"warboost-local");
       }else if(userMode){await insertSnapshotForUser(playerId,merged,access,remoteOk?provider:"warboost-local")}
     }

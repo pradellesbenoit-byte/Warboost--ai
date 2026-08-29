@@ -6,7 +6,7 @@ import {canonicalShopStore,findShopReference,referenceCategoryForItem,referenceI
 import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScore,heroReshapeDecisionValue,season6TechPriorities,awakeningSwapAssessment,S6_AWAKENING_HEROES} from '../lib/season6-awakening.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
-const ENGINE_VERSION="2.5.2";
+const ENGINE_VERSION="2.5.3";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -870,13 +870,29 @@ const ALLIANCE_AI={
 };
 function buildAllianceAdvice(state,locale){
   const lang=localePack(locale),pack=ALLIANCE_AI[lang]||ALLIANCE_AI.en,members=Array.isArray(state?.alliance?.members)?state.alliance.members:[];
-  if(!members.length)return {advice:pack.empty,confidence:20,activity:{active:0,refresh:0,inactive:0,unknown:0},roles:{R5:0,R4:0,R3:0,R2:0,R1:0}};
+  if(!members.length)return {advice:pack.empty,confidence:20,activity:{active:0,refresh:0,inactive:0,unknown:0},roles:{R5:0,R4:0,R3:0,R2:0,R1:0},immediate_actions:[],plan_b:[]};
   const summary=summarizeAllianceActivity(members),counts=summary.counts;
-  const activeRows=summary.rows.filter(r=>r.activity.key==="active").map(r=>r.member);
-  const core=activeRows.sort((a,b)=>(num(b.power_m)||0)-(num(a.power_m)||0)).slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
+  const byPower=rows=>rows.map(r=>r.member||r).filter(Boolean).sort((a,b)=>(num(b.power_m)||0)-(num(a.power_m)||0));
+  const active=byPower(summary.rows.filter(r=>r.activity.key==="active"));
+  const usable=byPower(summary.rows.filter(r=>["active","refresh","unknown"].includes(r.activity.key)));
+  const core=active.slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
+  const rally=active.slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
+  const defense=usable.filter(m=>!rally.includes(cleanName(m.name))).slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
+  const mobile=usable.filter(m=>!rally.includes(cleanName(m.name))&&!defense.includes(cleanName(m.name))).slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
+  const reserve=usable.filter(m=>!rally.includes(cleanName(m.name))&&!defense.includes(cleanName(m.name))&&!mobile.includes(cleanName(m.name))).map(m=>cleanName(m.name)).filter(Boolean);
   const needsRefresh=counts.refresh>0;
+  const immediate=[
+    {rank:1,kind:"rally",action_key:"alliance_rally_core",members:rally,count:rally.length},
+    {rank:2,kind:"defense",action_key:"alliance_defense_group",members:defense,count:defense.length},
+    {rank:3,kind:"mobile",action_key:"alliance_mobile_group",members:mobile,count:mobile.length},
+    {rank:4,kind:"reserve",action_key:"alliance_reserve_group",members:reserve,count:reserve.length}
+  ];
+  const planB=[];
+  if(needsRefresh)planB.push({rank:1,kind:"refresh",action_key:"alliance_plan_b_refresh",count:counts.refresh});
+  if(active.length<5)planB.push({rank:planB.length+1,kind:"defensive",action_key:"alliance_plan_b_defensive",count:active.length});
+  if(!planB.length)planB.push({rank:1,kind:"stable",action_key:"alliance_plan_b_stable",count:active.length});
   const advice=[pack.line(counts.active,counts.refresh,counts.inactive),allianceRoleLine(summary.roleCounts,lang),needsRefresh?pack.refresh:"",core.length?pack.core(core.join(" / ")):"",pack.action].filter(Boolean).join("\n");
-  return {advice,confidence:summary.confidence,activity:counts,roles:summary.roleCounts,core,reliability:needsRefresh?"refresh_required":"usable"};
+  return {advice,confidence:summary.confidence,activity:counts,roles:summary.roleCounts,core,reliability:needsRefresh?"refresh_required":"usable",immediate_actions:immediate,plan_b:planB,policy:"No member is removed by this advice; uncertain activity stays marked for refresh."};
 }
 
 const CONTEXT_AI={
@@ -964,6 +980,23 @@ function buildSeasonAdvice(state,locale){
   const advice=[pack.head(day,total),progress!==null?pack.progress(progress):"",s.profession?pack.profession(s.profession):"",resistance!==null?pack.resistance(resistance):"",s6ctx?.target?`${s6ctx.title} · ${s6ctx.target}: ${s6ctx.text}`:"",s6ctx?.tech_priority?`${s6ctx.tech_priority.label}: ${s6ctx.tech_priority.pct}%`:"",pack.unlock,resistance!==null?pack.resist:"",late?pack.late:"",pt?pack.player(pt):"",pack.confidence(confidence)].filter(Boolean).join(" ");
   return {advice,confidence,priorities:priorities.slice(0,4),day,total_days:total,progress_pct:progress,profession:s.profession||null,resistance,season6_awakening:s6ctx,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",data_freshness:freshness,engine:`warboost-season-ai-v${ENGINE_VERSION}`};
 }
+function buildSevenDayPlan(state,analysis){
+  const priorities=Array.isArray(analysis?.priorities)?analysis.priorities:[],top=priorities[0]||null,second=priorities[1]||null;
+  const confidence=Number(analysis?.confidence)||0,needsData=confidence<60||analysis?.composition?.complete===false||analysis?.data_freshness?.blocks_paid===true;
+  const topKind=top?.kind||"scan",topTarget=top?.target||top?.hero||null,secondKind=second?.kind||null,secondTarget=second?.target||second?.hero||null;
+  const day=(n,mode,action_key,kind=null,target=null,rule_key="hold_unrelated")=>({day:n,mode,action_key,kind,target,rule_key,no_exact_quantity:true});
+  const plan=[];
+  plan.push(needsData?day(1,"scan","refresh_data","scan",null,"verify_before_spend"):day(1,"focus","top_priority",topKind,topTarget,"hold_unrelated"));
+  plan.push(day(2,"focus","top_priority",topKind,topTarget,"hold_unrelated"));
+  plan.push(second?day(3,"focus","secondary_priority",secondKind,secondTarget,"hold_unrelated"):day(3,"hold","protect_resources",topKind,topTarget,"hold_unrelated"));
+  plan.push(day(4,"scan","measure_progress","scan",topTarget,"verify_progress"));
+  plan.push(day(5,"shop","shop_alignment",topKind,topTarget,"buy_only_if_aligned"));
+  const vsDay=Number(state?.vs?.day);
+  plan.push(Number.isInteger(vsDay)&&vsDay>=1&&vsDay<=6?day(6,"timing","vs_alignment",topKind,topTarget,"score_only_when_active"):day(6,"hold","protect_resources",topKind,topTarget,"hold_unrelated"));
+  plan.push(day(7,"review","weekly_review",topKind,topTarget,"recalculate_after_new_data"));
+  return {days:plan,top_kind:topKind,top_target:topTarget,generated_at:new Date().toISOString(),policy:"relative-priority-only",exact_quantities:false,rule:"Never invent exact shard/material quantities; spend only against confirmed account data and active timing."};
+}
+
 function buildCrossDomain(state,locale,player){
   const vs=buildVsAdvice(state,locale),season=buildSeasonAdvice(state,locale),top=player?.priorities?.[0]||null;
   const tw=top?.timing_window||null;
@@ -977,6 +1010,7 @@ export default function handler(req,res){
   if(scope==="player"){
     const analysis=buildPlayerAnalysis(s,loc);
     analysis.shop=buildShopAdvice(s,loc,analysis);
+    analysis.seven_day_plan=buildSevenDayPlan(s,analysis);
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
