@@ -1,0 +1,39 @@
+WarBoost V2.5.3 — Audit Completion
+Patch base required: WarBoost V2.5.2 FULL
+
+ROOT (11)
+app.js
+BUILD_VERIFICATION_V2_5_3.txt
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+PATCH_MANIFEST_V2_5_3.txt
+README.md
+styles.css
+sw.js
+WARBOOST_V2_5_3_RELEASE.md
+
+api/ (3)
+advice.js
+health.js
+sync.js
+
+lib/ (4)
+alliance-roster-merge.js
+normalize.js
+roster-import.js
+supabase.js
+
+scripts/ (1)
+verify-v2.5.3.mjs
+
+supabase/ (1)
+migration_v2_5_3.sql
+
+TOTAL: 20 files
+
+Notes:
+- api/alliance-role.js is already present in V2.5.2 FULL and is now included in npm run check; it does not need replacement in the V2.5.3 patch.
+- The patch does not delete any V2.5.2 file.
+- Run supabase/migration_v2_5_3.sql only on environments where wb1_* tables are missing; the migration is idempotent and preserves existing rows.

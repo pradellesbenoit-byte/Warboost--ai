@@ -1,0 +1,39 @@
+WarBoost V2.5.3 — Build verification
+
+RESULT: PASS
+
+Checks executed on 2026-08-29:
+1. npm run check: PASS.
+2. Syntax coverage: app, i18n, service worker, publisher UI, all 12 serverless API functions and the reliability libraries parse successfully.
+3. npm run verify: PASS.
+4. Primary-squad regression: PASS. Squad 1 remains focus_squad=1 even when Squad 2 has higher power.
+5. Strongest secondary remains informational: PASS. strongest_squad=2 and is_focus=false in the test fixture.
+6. Player 7-day plan: PASS. Exactly 7 dated sequence slots are returned.
+7. No invented quantities in 7-day plan: PASS. exact_quantities=false and every day has no_exact_quantity=true.
+8. Alliance R5/R4 access guard: PASS. R5 receives a plan; R1 receives HTTP 403 / manager_role_required.
+9. Alliance immediate actions: PASS. rally, defense, mobile and reserve groups are returned.
+10. Alliance Plan B: PASS. refresh contingency is generated when stale members exist.
+11. VS advice: PASS on V2.5.3 engine.
+12. Season advice: PASS on V2.5.3 engine.
+13. Legacy/partial state normalization: PASS. Known player and DVA data survive normalization to version 2.5.3 and a partial newer merge.
+14. Missing Supabase schema handling: PASS. Simulated 42P01 is surfaced as database_schema_missing with status 503.
+15. Manual roster import: PASS. CSV header/rows parse; cloud player_id is preserved on update; unmatched existing member is not deleted; new manual member is added.
+16. Cloud roster refresh: PASS. manual-only roster rows remain after a cloud refresh and cloud power delta is computed.
+17. Explicit language choices: 23 + Auto confirmed.
+18. Structured V2.5.3 labels: PASS for Player plan, Alliance actions/Plan B, voice, roster import, priority kinds, VS, Season, Alliance activity and unit types in every explicit language choice.
+19. Non-English structured fallback: PASS. tested activity reliability and VS hold text do not inherit the English string for non-English packs.
+20. Hero registry: 31 unique names; no generic placeholder hero identities; Skyler present.
+21. Stable backup key: PASS. app uses warboost_last_good_state; no volatile warboost_v253_* storage key is present.
+22. Protected cloud merge guards: structurally present (last-good backup, database_schema_missing handling, protected Alliance merge).
+23. UI audit elements: PASS. Player 7-day plan, immediate actions, Plan B, roster import and voice controls exist in index.html.
+24. Non-native AI leak guard: structured priority/plan fallback present; raw shop target is restricted to native-copy mode.
+25. Cloud roster preservation integration: api/sync.js uses mergeCloudRosterPreservingManual.
+26. Supabase migration safety: creates all four wb1_* tables if missing; no DROP TABLE, TRUNCATE or DELETE FROM.
+27. Authorization guard: health endpoint still reports pending-approval when no approved/official provider is configured and unauthorized_source_default=false.
+28. Manifest/service worker/package/app/health/normalize/advice metadata aligned to V2.5.3.
+29. npm run check contains every api/*.js file (12/12) and both new roster reliability modules.
+
+Scope note:
+- These are local source/runtime verification checks, not a claim that the current Vercel/Supabase production deployment has been exercised end-to-end.
+- An environment missing wb1_* tables must run supabase/migration_v2_5_3.sql before cloud sync can become operational.
+- Official Last War integration remains pending authorization.
