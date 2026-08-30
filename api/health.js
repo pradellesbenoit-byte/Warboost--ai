@@ -22,7 +22,7 @@ export default async function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.7",
+    version:"2.5.8",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -110,6 +110,9 @@ export default async function handler(req,res){
       seven_day_plan_shop_timing_account_wide:true,
       alliance_manual_roster_import_preserved:true,
       alliance_single_cloud_membership:true,
+      alliance_confirmed_activity_only_tactical_roles:true,
+      alliance_stale_roster_never_assigned_tactical_role:true,
+      alliance_compact_mobile_action_lists:true,
       alliance_invite_owner_takeover_guard:true,
       alliance_owner_switch_guard:true,
       alliance_share_requires_server_invite:true,

@@ -6,7 +6,7 @@ import {canonicalShopStore,findShopReference,referenceCategoryForItem,referenceI
 import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScore,heroReshapeDecisionValue,season6TechPriorities,awakeningSwapAssessment,S6_AWAKENING_HEROES} from '../lib/season6-awakening.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
-const ENGINE_VERSION="2.5.7";
+const ENGINE_VERSION="2.5.8";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -874,22 +874,23 @@ function buildAllianceAdvice(state,locale){
   const summary=summarizeAllianceActivity(members),counts=summary.counts;
   const byPower=rows=>rows.map(r=>r.member||r).filter(Boolean).sort((a,b)=>(num(b.power_m)||0)-(num(a.power_m)||0));
   const active=byPower(summary.rows.filter(r=>r.activity.key==="active"));
-  const usable=byPower(summary.rows.filter(r=>["active","refresh","unknown"].includes(r.activity.key)));
   const core=active.slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
+  // V2.5.8: tactical roles are assigned ONLY from confirmed-active members.
+  // Stale/unknown members stay in refresh status and are never silently placed in rally/defense/mobile/reserve.
   const rally=active.slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
-  const defense=usable.filter(m=>!rally.includes(cleanName(m.name))).slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
-  const mobile=usable.filter(m=>!rally.includes(cleanName(m.name))&&!defense.includes(cleanName(m.name))).slice(0,5).map(m=>cleanName(m.name)).filter(Boolean);
-  const reserve=usable.filter(m=>!rally.includes(cleanName(m.name))&&!defense.includes(cleanName(m.name))&&!mobile.includes(cleanName(m.name))).map(m=>cleanName(m.name)).filter(Boolean);
-  const needsRefresh=counts.refresh>0;
+  const defense=active.slice(5,10).map(m=>cleanName(m.name)).filter(Boolean);
+  const mobile=active.slice(10,15).map(m=>cleanName(m.name)).filter(Boolean);
+  const reserve=active.slice(15).map(m=>cleanName(m.name)).filter(Boolean);
+  const needsRefresh=(counts.refresh||0)>0||(counts.unknown||0)>0;
   const immediate=[
     {rank:1,kind:"rally",action_key:"alliance_rally_core",members:rally,count:rally.length},
     {rank:2,kind:"defense",action_key:"alliance_defense_group",members:defense,count:defense.length},
     {rank:3,kind:"mobile",action_key:"alliance_mobile_group",members:mobile,count:mobile.length},
     {rank:4,kind:"reserve",action_key:"alliance_reserve_group",members:reserve,count:reserve.length}
-  ];
+  ].filter(x=>x.count>0);
   const planB=[];
-  if(needsRefresh)planB.push({rank:1,kind:"refresh",action_key:"alliance_plan_b_refresh",count:counts.refresh});
-  if(active.length<5)planB.push({rank:planB.length+1,kind:"defensive",action_key:"alliance_plan_b_defensive",count:active.length});
+  if(needsRefresh)planB.push({rank:1,kind:"refresh",action_key:"alliance_plan_b_refresh",count:(counts.refresh||0)+(counts.unknown||0)});
+  if(active.length>0&&active.length<5)planB.push({rank:planB.length+1,kind:"defensive",action_key:"alliance_plan_b_defensive",count:active.length});
   if(!planB.length)planB.push({rank:1,kind:"stable",action_key:"alliance_plan_b_stable",count:active.length});
   const advice=[pack.line(counts.active,counts.refresh,counts.inactive),allianceRoleLine(summary.roleCounts,lang),needsRefresh?pack.refresh:"",core.length?pack.core(core.join(" / ")):"",pack.action].filter(Boolean).join("\n");
   return {advice,confidence:summary.confidence,activity:counts,roles:summary.roleCounts,core,reliability:needsRefresh?"refresh_required":"usable",immediate_actions:immediate,plan_b:planB,policy:"No member is removed by this advice; uncertain activity stays marked for refresh."};
