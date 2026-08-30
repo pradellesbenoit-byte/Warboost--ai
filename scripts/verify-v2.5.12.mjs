@@ -285,17 +285,17 @@ const baseState={
   access=betaAccessForUser({email:'ONE@example.com'});assert.equal(access.allowed,true);assert.equal(access.access_status,'invited');
   access=betaAccessForUser({email:'outsider@example.com'});assert.equal(access.allowed,false);assert.equal(access.access_status,'invite-required');
   if(oldEmails===undefined)delete process.env.WARBOOST_BETA_EMAILS;else process.env.WARBOOST_BETA_EMAILS=oldEmails;
-  const app=read('app.js'),html=read('index.html'),pro=read('api/pro.js'),health=read('api/health.js'),betaApi=read('api/beta.js');
+  const app=read('app.js'),html=read('index.html'),pro=read('api/pro.js'),health=read('api/health.js');
   assert.match(app,/BETA_CONSENT_KEY/);assert.match(app,/x-warboost-beta-consent/);assert.match(app,/requireBetaAccess/);assert.match(app,/requireBetaConsent/);assert.match(app,/betaFeedbackReport/);
   assert.match(app,/function betaConsentStorageKey/);assert.match(app,/localStorage\.setItem\(key,"1"\)/);assert.doesNotMatch(app,/browser=\$\{navigator\.userAgent\}/);
   assert.match(app,/openScanBtn.*requireBetaAccess/s);assert.match(app,/shareInviteBtn.*requireBetaAccess\(\).*requireBetaConsent\(\)/s);
   assert.match(html,/id="betaHeaderBadge"/);assert.match(html,/id="betaAccessSection"/);assert.match(html,/id="betaConsent"/);assert.match(html,/id="betaFeedbackBtn"/);assert.match(html,/id="feedbackDrawer"/);
   assert.match(html,/data-i18n="beta_pro_title"/);assert.match(html,/data-i18n="beta_pro_included"[^>]*disabled/);assert.doesNotMatch(html,/>Passer PRO<|>Go PRO</);
-  assert.match(pro,/BETA_PAYMENT_DISABLED/);assert.match(pro,/payments_enabled:false/);assert.match(betaApi,/private-beta/);
+  assert.match(pro,/BETA_PAYMENT_DISABLED/);assert.match(pro,/payments_enabled:false/);assert.match(pro,/beta_configured:beta\.configured/);assert.match(pro,/allowed:beta\.allowed/);assert.match(app,/fetch\(\"\/api\/pro\"/);assert.doesNotMatch(app,/fetch\(\"\/api\/beta\"/);
   assert.ok(pro.indexOf('const user=await requireUser(req)')<pro.indexOf('String(req.query?.debug||"")==="1"'),'Payment diagnostics must authenticate before any debug response');
-  for(const flag of ['private_beta_badge','beta_email_invitation_allowlist','beta_access_enforced_when_allowlist_configured','beta_pro_free_for_invited_testers','beta_payments_disabled','beta_consent_required_before_cloud_ai_writes','beta_consent_revocable_on_device','beta_consent_account_scoped','beta_feedback_device_share_no_auto_personal_data','beta_feedback_no_full_user_agent','beta_existing_player_data_preserved']) assert.match(health,new RegExp(flag+':true'));
+  for(const flag of ['private_beta_badge','beta_email_invitation_allowlist','beta_access_enforced_when_allowlist_configured','beta_pro_free_for_invited_testers','beta_payments_disabled','beta_consent_required_before_cloud_ai_writes','beta_consent_revocable_on_device','beta_consent_account_scoped','beta_feedback_device_share_no_auto_personal_data','beta_feedback_no_full_user_agent','beta_existing_player_data_preserved','beta_status_reuses_pro_endpoint']) assert.match(health,new RegExp(flag+':true'));
   assert.equal(fs.existsSync(path.join(root,'supabase','migration_v2_5_12.sql')),false,'Private beta must not introduce an unnecessary database migration');
-  assert.equal(fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js')).length,13,'V2.5.12 must ship 13 serverless JS APIs including beta.js');
+  assert.equal(fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js')).length,12,'V2.5.12 must stay within the Vercel Hobby 12-function deployment limit');
   const readme=read('README.md'),guide=read('UPLOAD_GUIDE_V2_5_12.txt');assert.match(readme,/WARBOOST_BETA_EMAILS/);assert.match(guide,/beta\.access_enforced = true/);
   log('Private beta access, consent, free PRO, feedback privacy and payment lock safeguards are present');
 }
@@ -368,11 +368,11 @@ const baseState={
 {
   const pkg=JSON.parse(read('package.json'));
   const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js')).sort();
-  assert.equal(apiFiles.length,13);
+  assert.equal(apiFiles.length,12);
   for(const file of apiFiles)assert.ok(pkg.scripts.check.includes(`node --check api/${file}`),`api/${file} is missing from npm run check`);
   assert.ok(pkg.scripts.check.includes('node --check lib/roster-import.js'));
   assert.ok(pkg.scripts.check.includes('node --check lib/alliance-roster-merge.js'));
-  log('npm run check covers all 13 serverless API functions and the new reliability modules');
+  log('npm run check covers all 12 serverless API functions and the new reliability modules');
 }
 
 
