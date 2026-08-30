@@ -1,36 +1,31 @@
-# WarBoost V2.5.8
+# WarBoost V2.5.9
 
-V2.5.8 corrige le dernier défaut trouvé pendant le test réel R5/R4 : WarBoost ne doit jamais placer un membre ancien/inconnu dans un rôle tactique simplement parce qu'il est présent dans le roster.
+V2.5.9 corrige le dernier défaut observé dans la Boutique IA : un score `100/100` ne doit jamais ressembler à une certitude sur le prix ou la disponibilité d’une offre.
 
-## Correctifs V2.5.8
-- rally, défense, groupe mobile et réserve utilisent uniquement les membres **actifs confirmés** ;
-- si tout le roster est ancien/incomplet, aucune affectation tactique n'est inventée : le Plan B demande d'actualiser ;
-- un roster mixte peut produire des rôles uniquement avec le noyau confirmé actif, tandis que les autres restent « à actualiser » ;
-- les listes de noms des actions immédiates sont plafonnées sur mobile et indiquent `+N` pour le reste ;
-- séparation visuelle propre entre Rally / Défense / Groupe mobile / Réserve ;
-- le Plan B n'affiche plus un faux « Plan B · 0 » quand aucun actif confirmé n'existe ;
-- exemple d'import CSV neutralisé (`Joueur01`) ;
-- aucune migration Supabase requise et aucune donnée joueur/alliance supprimée.
+## Boutique IA — preuve, confiance et disponibilité
 
-## Correctifs principaux
+- le score est maintenant explicitement une **Pertinence / Relevance** pour le compte du joueur ;
+- la **Confiance données** est affichée séparément et dépend de la qualité du profil + du type de source ;
+- la **Disponibilité** est une troisième information indépendante : source officielle, offre observée dans un scan récent, ou disponibilité non vérifiée ;
+- un référentiel daté ne peut jamais être présenté comme une boutique live ;
+- les prix issus du référentiel affichent désormais leur date (`réf. 26/08/2026`) ;
+- les offres vendues restent exclues ;
+- les prix ambigus restent supprimés ;
+- une offre inconnue ne reçoit toujours aucune recommandation d’achat.
 
-- Invitation Alliance créée côté serveur : aucun code d’invitation fourni par le navigateur ne peut écraser une alliance existante.
-- Partage d’une invitation d’alliance existante réservé aux R5/R4.
-- Un joueur WarBoost cloud ne peut avoir qu’une appartenance Alliance active à la fois.
-- Un propriétaire R5 ne peut pas abandonner silencieusement son alliance en rejoignant une autre alliance.
-- Si une création d’alliance a été interrompue après l’insertion mais avant l’adhésion du propriétaire, WarBoost récupère l’alliance existante au lieu d’en créer une seconde.
-- Aucun faux code local n’est affiché/partagé : le code visible vient du serveur.
-- VS : dimanche = préparation, samedi = Jour 6 ; le changement de jour suit le reset serveur UTC-2.
-- Boutique IA : les offres vendues sont exclues, le scan reste déclaré catalogue partiel sans accès officiel.
-- Saison : les données absentes restent inconnues et aucune puissance exacte S6 n’est inventée.
-- Les 23 choix de langue contiennent les nouveaux messages Alliance et dimanche VS.
-- Les protections V2.5.4–V2.5.6, les données joueur, le Plan 7 jours, R5/R4, Plan B, Scan, Boutique IA, VS et Saison sont conservés.
+## Référence VIP 30 jours
+
+Le coût de 10 000 diamants pour 30 jours VIP a été recoupé le 30/08/2026 dans plusieurs sources publiques communautaires. WarBoost le conserve uniquement comme **référence datée**, jamais comme prix live garanti. L’interface exige toujours une vérification du coût actuel dans Last War avant achat.
+
+Références de contrôle utilisées pour cette version : Last War Vault — VIP Guide ; LastWarTutorial — VIP Program ; LDShop — Last War VIP Guide. Ces sources ne remplacent pas une donnée officielle Last War.
+
+## Régressions protégées
+
+V2.5.9 conserve les validations précédentes : Escouade 1 prioritaire, Plan Joueur 7 jours, 23 langues, 31 héros, Scan/OCR, Boutique IA, VS dimanche en préparation avec reset UTC-2, Saison, R5/R4, Plan B, rôles tactiques uniquement pour les actifs confirmés, invitation Alliance serveur, appartenance Alliance unique, cloud Supabase et sauvegarde locale.
 
 ## Supabase
 
-Migration : `supabase/migration_v2_5_7.sql`.
-
-Elle est non destructive : aucun `DROP`, `TRUNCATE` ou `DELETE`. Elle refuse de continuer si des doublons historiques d’appartenance Alliance sont détectés plutôt que de supprimer automatiquement des lignes.
+Aucune migration Supabase n’est requise en V2.5.9. Les migrations V2.5.4 et V2.5.7 restent la base active.
 
 ## Vérification
 
@@ -42,6 +37,7 @@ npm run verify
 Les deux commandes doivent retourner PASS.
 
 ## Notes héritées
+
 
 V2.5.5 corrige le Plan Joueur 7 jours sur mobile tout en conservant les protections Cloud/Alliance V2.5.4 et les données joueur existantes.
 

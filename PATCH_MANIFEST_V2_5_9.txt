@@ -1,0 +1,30 @@
+WARBOOST V2.5.9 PATCH MANIFEST
+===============================
+
+ROOT
+- app.js
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- README.md
+- styles.css
+- sw.js
+- WARBOOST_V2_5_9_RELEASE.md
+- BUILD_VERIFICATION_V2_5_9.txt
+- PATCH_MANIFEST_V2_5_9.txt
+- SHA256SUMS_V2_5_9.txt
+- UPLOAD_GUIDE_V2_5_9.txt
+
+api/
+- advice.js
+- health.js
+
+lib/
+- normalize.js
+
+scripts/
+- verify-v2.5.9.mjs
+
+supabase/
+- NO CHANGE for V2.5.9

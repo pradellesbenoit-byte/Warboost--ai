@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.8",
+  "name": "WarBoost V2.5.9",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.8 — R5/R4 Tactical Reliability: only confirmed-active members receive tactical roles; stale rosters stay refresh-only; player data remains protected and official Last War integration remains pending authorization.",
+  "description": "WarBoost V2.5.9 — Boutique IA Evidence & Confidence Reliability: relevance, data confidence and availability are separate; dated reference prices require in-game verification; player data remains protected.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

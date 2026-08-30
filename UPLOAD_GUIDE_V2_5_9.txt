@@ -1,0 +1,39 @@
+WARBOOST V2.5.9 — UPLOAD GUIDE
+
+Branch: publisher-demo
+Do not touch main.
+
+ROOT (13 files):
+- app.js
+- BUILD_VERIFICATION_V2_5_9.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_5_9.txt
+- README.md
+- SHA256SUMS_V2_5_9.txt
+- styles.css
+- sw.js
+- UPLOAD_GUIDE_V2_5_9.txt
+- WARBOOST_V2_5_9_RELEASE.md
+
+api/:
+- advice.js
+- health.js
+
+lib/:
+- normalize.js
+
+scripts/:
+- verify-v2.5.9.mjs
+
+supabase/:
+- NO CHANGE for V2.5.9
+
+Expected visual Boutique IA result:
+- Pertinence 100/100 (not certainty)
+- Confiance données shown separately
+- Disponibilité shown separately
+- Reference prices include a date
+- VIP 30-day exact value remains a dated reference requiring an in-game check

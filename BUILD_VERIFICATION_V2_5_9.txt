@@ -1,0 +1,29 @@
+WARBOOST V2.5.9 — BUILD VERIFICATION
+========================================
+
+Scope: Boutique IA Evidence & Confidence Reliability + full V2.5.8 regression coverage.
+
+PASS
+- npm run check
+- npm run verify
+- Squad 1 remains the player-selected primary squad
+- 7-day Player plan remains distinct and mobile-safe
+- 23 explicit language choices preserved
+- 31 canonical heroes preserved
+- R5/R4 confirmed-active-only tactical roles preserved
+- Alliance invite / single-membership safeguards preserved
+- VS Sunday preparation + UTC-2 reset preserved
+- Season unknown-data / no-invented-power safeguards preserved
+- sold shop offers excluded
+- ambiguous shop prices suppressed
+- unknown shop items receive no purchase recommendation
+- 100/100 is labeled Relevance / Pertinence, never certainty
+- per-item data confidence is separate from relevance
+- availability state is separate from relevance and confidence
+- reference catalogue availability remains unverified
+- recent user scans are marked observed_scan, not official live
+- reference prices are visibly dated
+- VIP 30-day / 10,000-diamond value is a dated cross-checked reference only
+- VIP reference requires an in-game price check
+- no Supabase migration required
+- protected cloud/local data behavior preserved
