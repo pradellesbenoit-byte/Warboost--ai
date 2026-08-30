@@ -22,7 +22,7 @@ export default async function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.10",
+    version:"2.5.11",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -99,6 +99,9 @@ export default async function handler(req,res){
       interseason_historical_profession_only:true,
       season_unknown_blocks_numeric_advice:true,
       season_manual_lifecycle_override:true,
+      season_ui_historical_profession_label:true,
+      season_ui_state_title_when_progress_not_applicable:true,
+      season_ui_labels_23_languages:true,
 
       awakening_swap_safety:true,
       no_exact_reshape_power_without_source:true,
