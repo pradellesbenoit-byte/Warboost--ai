@@ -1,42 +1,35 @@
-# WarBoost V2.5.14
+# WarBoost V2.5.15
 
-## Bêta privée — fiabilité Cloud/Auth
+## Bêta privée — fiabilité des explications IA PRO
 
-V2.5.14 conserve toutes les protections validées en V2.5.13 et corrige le défaut observé sur la Preview : `/api/cloud-config` était correctement configuré, mais la connexion pouvait afficher à tort « Cloud non configuré » lorsque le client Supabase chargé depuis un CDN externe n'était pas disponible.
+V2.5.15 conserve la base V2.5.14 et corrige la faiblesse observée dans Diagnostic PRO : plusieurs cartes d’armes exclusives pouvaient chacune affirmer être « le meilleur compromis », alors que l’interface les classait #1, #2 et #3.
 
-### Correctif V2.5.14
+### Correctifs V2.5.15
 
-- Suppression de la dépendance navigateur à `cdn.jsdelivr.net/@supabase/supabase-js` pour l'authentification.
-- Client d'authentification WarBoost local au dépôt, basé uniquement sur l'API Supabase Auth HTTPS.
-- Compatibilité avec la clé de session Supabase existante `sb-<project-ref>-auth-token` afin de préserver les sessions lorsque c'est possible.
-- Distinction claire entre : configuration cloud absente, endpoint de configuration inaccessible, initialisation du client impossible et service d'authentification/réseau inaccessible.
-- Les erreurs réseau de connexion, inscription et validation OTP sont interceptées proprement au lieu d'être confondues avec une configuration absente.
-- Le client renouvelle le jeton d'accès à partir du refresh token quand nécessaire.
-- Le cache Service Worker passe en V2.5.14 et inclut le nouveau module d'authentification local.
+- Les explications « Pourquoi » sont maintenant **liées au classement réel** : seul le n°1 peut être présenté comme leader ; les n°2/n°3 expliquent clairement pourquoi ils restent derrière.
+- En cas de score marginal arrondi identique, WarBoost indique explicitement le **départage** (sévérité, ROI, puis impact) au lieu d’inventer un écart.
+- Diagnostic PRO construit une **comparaison EX de tous les héros configurés de l’escouade principale**, y compris un héros déjà à EX30 ou un EX manquant.
+- Un héros à EX30 est affiché comme **palier 10/20/30 atteint** et n’est pas artificiellement poussé vers un niveau supérieur non modélisé.
+- Un EX non lu reste **à vérifier** et n’est jamais inventé.
+- Les quantités exactes de fragments restent non affichées tant qu’aucune source visible/officielle validée ne les fournit.
+- Les sources méta sont visibles avec leur **type, date, date de connaissance et niveau de confiance**.
+- La méta Air est actualisée avec des discussions communautaires datées jusqu’au 30/08/2026. Ces signaux ne sont qu’un ajustement secondaire : les données du compte, le coût relatif jusqu’au palier et le timing restent prioritaires.
+- « Profil serveur : Auto / inconnu » devient **« Données insuffisantes (Auto) »** afin de ne pas simuler une analyse serveur inexistante.
+- « Adversaire inconnu » devient **« Adversaire non encore disponible »**.
+- Le texte d’invitation Alliance précise que les membres rejoignent **l’espace WarBoost de l’alliance**, et non une alliance dans Last War.
 
-### Confidentialité et conservation des données
+### Protections conservées
 
-Les protections V2.5.13 restent inchangées : les données privées sont masquées hors session, pour un compte non invité ou sans consentement. Elles restent conservées et doivent réapparaître après reconnexion du bon compte. Les données d'un compte ne doivent jamais être exposées à un autre compte utilisé sur le même appareil.
-
-Aucune migration Supabase V2.5.14 n'est nécessaire. Aucun reset, `DROP`, `TRUNCATE` ou effacement de données n'est introduit.
+- Escouade 1 reste la principale lorsqu’elle est configurée par le joueur.
+- Les scans/migrations ne doivent jamais effacer les valeurs existantes à cause d’un champ non lu.
+- Bêta privée, consentement explicite, masquage des données hors session et paiements désactivés restent inchangés.
+- WarBoost n’active aucune source Last War non autorisée et n’automatise pas le gameplay.
+- Aucune migration Supabase V2.5.15 n’est nécessaire. Aucun `DROP`, `TRUNCATE`, reset ou suppression destructive n’est ajouté.
 
 ### Bêta privée
 
-- Badge BÊTA PRIVÉE.
-- Liste d'invitation serveur via `WARBOOST_BETA_EMAILS`.
-- PRO inclus gratuitement pour les bêta-testeurs admis.
-- Paiements désactivés pendant la bêta.
-- Consentement explicite avant cloud, scan et IA.
-- Toujours 12 fonctions API pour rester compatible avec le déploiement actuel.
-
-### Non-régression conservée
-
-Escouade 1 principale, Scan/OCR, Diagnostic PRO, Boutique IA prudente, Plan Joueur 7 jours sans quantités inventées, Alliance R5/R4, VS avec reset serveur UTC−2, Saison 6 terminée / entre-saisons, 31 héros, 23 choix de langue explicites + Auto, voix par grade et protections de migration/cloud.
-
-### Positionnement Last War
-
-WarBoost reste un compagnon indépendant. L'intégration officielle Last War reste en attente d'autorisation. Aucune fonction ne doit laisser croire à un accès officiel non accordé ou automatiser le gameplay.
+La liste d’invitation Preview reste configurée côté serveur via `WARBOOST_BETA_EMAILS`; si elle est active, seuls les comptes invités peuvent utiliser les fonctions bêta.
 
 ### Déploiement
 
-Cible actuelle : branche `publisher-demo` uniquement. Ne pas modifier `main`, `warboost.fr` ou la Production pendant les tests V2.5.14.
+Cible : Preview / branche de démonstration uniquement tant que les vérifications sont en cours. Ne pas modifier la Production sans validation explicite.

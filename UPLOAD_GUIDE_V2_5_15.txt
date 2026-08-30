@@ -1,0 +1,37 @@
+WARBOOST V2.5.15 — EXPLAINABLE AI RELIABILITY — UPLOAD GUIDE
+
+TARGET
+- GitHub branch: publisher-demo / Preview only.
+- DO NOT TOUCH main or Production until Preview is validated.
+
+PREVIEW ENVIRONMENT
+- Keep WARBOOST_BETA_EMAILS scoped to the Preview beta.
+- Keep existing Supabase environment variables unchanged.
+- No V2.5.15 database migration is required.
+
+AFTER DEPLOY
+1. Open /api/health and confirm:
+   - version = 2.5.15
+   - beta.mode = private
+   - beta.access_enforced = true
+   - beta.payments_enabled = false
+   - safeguards.exclusive_comparison_all_main_heroes = true
+   - safeguards.exclusive_rank_explanations_consistent = true
+   - safeguards.exclusive_model_cap_disclosed = true
+   - safeguards.exact_ex_fragment_quantities_never_invented = true
+   - safeguards.dated_meta_sources_visible = true
+   - safeguards.community_meta_secondary_to_account_data = true
+2. Sign in with the invited beta account and accept beta consent if requested.
+3. Do NOT clear local storage. Existing player/squad/alliance data must reappear.
+4. Open Player > Priorité IA PRO > Pourquoi.
+5. Confirm only the real EX rank #1 is described as leader; ranks #2/#3 must explain that they trail #1 or were tie-broken.
+6. Open “Comparaison EX · héros principaux”: all configured main-squad heroes must appear. EX30 must be shown as a model cap; missing EX must be marked for verification.
+7. Open “Sources méta et date”: knowledge date must be 2026-08-30 and sources must show type/date.
+8. Open VS: when no opponent is synchronized, show “Adversaire non encore disponible”.
+9. Open Alliance R5/R4: invite text must say members join the WarBoost space of the alliance, not a Last War alliance.
+
+DATA SAFETY
+- No reset, DROP, TRUNCATE or destructive migration.
+- Do not delete scripts/verify-v2.5.14.mjs or older verification history.
+- Exact EX shard quantities stay hidden unless a validated visible/official source supplies them.
+- Community meta is dated, advisory and secondary to account data.

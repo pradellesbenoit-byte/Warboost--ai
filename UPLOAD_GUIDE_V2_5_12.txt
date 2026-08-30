@@ -7,6 +7,7 @@ Upload the PATCH contents at the exact paths listed in PATCH_MANIFEST_V2_5_12.tx
 Do not upload WarBoost_V2.5.12_FULL.zip or WarBoost_V2.5.12_PATCH.zip into the repository.
 
 AFTER GITHUB UPLOAD, BEFORE SHARING THE BETA:
+0. Confirm api/beta.js is NOT present. V2.5.12 must remain at 12 serverless functions on Vercel Hobby.
 1. Open the Vercel project used by the publisher-demo Preview.
 2. Add environment variable:
    WARBOOST_BETA_EMAILS=email1@example.com,email2@example.com

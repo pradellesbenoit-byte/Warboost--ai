@@ -13,7 +13,7 @@ Préparer une bêta privée gratuite à partir de la V2.5.11 stable, sans commer
 - WarBoost PRO inclus gratuitement pour les bêta-testeurs admis.
 - Paiement et checkout bloqués côté serveur (`BETA_PAYMENT_DISABLED`).
 - Bouton de retour bêta utilisant le partage de l’appareil, sans ajout automatique du pseudo, e-mail, capture ou données de compte.
-- `/api/beta` pour l’état d’accès et `/api/health` enrichi avec les garde-fous bêta.
+- L’état d’accès bêta réutilise `/api/pro` afin de rester compatible avec la limite Vercel Hobby de 12 fonctions ; `/api/health` expose les garde-fous bêta.
 
 ## Sécurité / confidentialité
 
