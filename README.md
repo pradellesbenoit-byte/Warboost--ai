@@ -1,16 +1,35 @@
-# WarBoost V2.5.6
+# WarBoost V2.5.7
 
-V2.5.6 corrige la logique du Plan Joueur 7 jours tout en conservant les protections Cloud/Alliance V2.5.4, l'affichage mobile V2.5.5 et les données joueur existantes.
+V2.5.7 finalise l’audit de non-régression après le Plan Joueur 7 jours : sécurité des invitations Alliance, appartenance cloud unique, récupération d’une création interrompue, correction du dimanche VS et alignement sur l’heure serveur Last War UTC-2.
 
-## Correctif principal
+## Correctifs principaux
 
-- Jours 1–3 : le héros n'est affiché que lorsqu'une action héros est réellement concernée.
-- Jour 4 : actualisation des données, sans héros artificiel.
-- Jour 5 : Boutique / ressources, décision globale du compte, sans héros artificiel.
-- Jour 6 : Timing VS / Saison, décision globale du compte, sans héros artificiel.
-- Jour 7 : recalcul hebdomadaire, sans héros artificiel.
-- Aucune quantité de fragments, matériaux ou dépense n'est inventée.
-- Aucun changement Supabase n'est requis pour V2.5.6.
+- Invitation Alliance créée côté serveur : aucun code d’invitation fourni par le navigateur ne peut écraser une alliance existante.
+- Partage d’une invitation d’alliance existante réservé aux R5/R4.
+- Un joueur WarBoost cloud ne peut avoir qu’une appartenance Alliance active à la fois.
+- Un propriétaire R5 ne peut pas abandonner silencieusement son alliance en rejoignant une autre alliance.
+- Si une création d’alliance a été interrompue après l’insertion mais avant l’adhésion du propriétaire, WarBoost récupère l’alliance existante au lieu d’en créer une seconde.
+- Aucun faux code local n’est affiché/partagé : le code visible vient du serveur.
+- VS : dimanche = préparation, samedi = Jour 6 ; le changement de jour suit le reset serveur UTC-2.
+- Boutique IA : les offres vendues sont exclues, le scan reste déclaré catalogue partiel sans accès officiel.
+- Saison : les données absentes restent inconnues et aucune puissance exacte S6 n’est inventée.
+- Les 23 choix de langue contiennent les nouveaux messages Alliance et dimanche VS.
+- Les protections V2.5.4–V2.5.6, les données joueur, le Plan 7 jours, R5/R4, Plan B, Scan, Boutique IA, VS et Saison sont conservés.
+
+## Supabase
+
+Migration : `supabase/migration_v2_5_7.sql`.
+
+Elle est non destructive : aucun `DROP`, `TRUNCATE` ou `DELETE`. Elle refuse de continuer si des doublons historiques d’appartenance Alliance sont détectés plutôt que de supprimer automatiquement des lignes.
+
+## Vérification
+
+```bash
+npm run check
+npm run verify
+```
+
+Les deux commandes doivent retourner PASS.
 
 ## Notes héritées
 

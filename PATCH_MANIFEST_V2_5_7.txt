@@ -1,0 +1,20 @@
+WarBoost V2.5.7 PATCH FILES
+
+app.js
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+sw.js
+README.md
+WARBOOST_V2_5_7_RELEASE.md
+BUILD_VERIFICATION_V2_5_7.txt
+api/advice.js
+api/health.js
+api/invite.js
+api/join.js
+lib/normalize.js
+lib/supabase.js
+scripts/verify-v2.5.7.mjs
+supabase/migration_v2_5_7.sql
+supabase/schema.sql

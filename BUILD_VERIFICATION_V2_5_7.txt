@@ -1,0 +1,31 @@
+WarBoost V2.5.7 — BUILD VERIFICATION
+
+PASS npm run check
+PASS npm run verify
+
+Verified:
+- Squad 1 remains selected main squad
+- 7-day Player plan, no invented exact quantities
+- R5/R4 access + immediate groups + Plan B
+- manual/cloud roster preservation
+- 31 canonical heroes
+- 23 explicit language choices
+- cloud schema/permission error detection
+- server-created Alliance invite codes
+- R5/R4-only sharing for an existing alliance
+- interrupted alliance creation recovery
+- owner-safe alliance switching
+- one membership row per player_id
+- shop sold-offer exclusion + partial-catalog disclosure
+- Sunday VS preparation / Saturday Day 6
+- Last War server day boundary UTC-2
+- Season unknown-data preservation + no exact S6 power invention
+- PWA cache version V2.5.7
+
+Supabase post-migration check:
+- wb1_profiles: 2
+- wb1_snapshots: 9
+- duplicate alliance memberships: 0
+- unique membership index: present
+- service_role alliance SELECT/INSERT: true
+- anon/auth direct alliance SELECT: false

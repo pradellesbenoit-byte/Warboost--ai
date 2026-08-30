@@ -1,0 +1,24 @@
+WarBoost V2.5.7 — GitHub upload guide
+
+Branch: publisher-demo. Do not change main.
+
+ROOT:
+app.js
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+sw.js
+README.md
+WARBOOST_V2_5_7_RELEASE.md
+BUILD_VERIFICATION_V2_5_7.txt
+PATCH_MANIFEST_V2_5_7.txt
+SHA256SUMS_V2_5_7.txt
+UPLOAD_GUIDE_V2_5_7.txt
+
+api/: advice.js, health.js, invite.js, join.js
+lib/: normalize.js, supabase.js
+scripts/: verify-v2.5.7.mjs
+supabase/: migration_v2_5_7.sql, schema.sql
+
+The Supabase V2.5.7 migration has already been applied to the connected production project; upload it to GitHub for source alignment, do not run it manually again.

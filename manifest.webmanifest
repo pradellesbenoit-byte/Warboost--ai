@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.6",
+  "name": "WarBoost V2.5.7",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.6 — 7-Day Plan Logic Reliability: relevant hero binding only, account-wide shop/resources and VS/Season timing, protected player data, and official Last War integration still pending authorization.",
+  "description": "WarBoost V2.5.7 — Alliance Invite & Membership Reliability: secure alliance invites, one cloud alliance membership per player, protected player data, and official Last War integration still pending authorization.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
