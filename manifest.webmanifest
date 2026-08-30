@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.7",
+  "name": "WarBoost V2.5.8",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.7 — Alliance Invite & Membership Reliability: secure alliance invites, one cloud alliance membership per player, protected player data, and official Last War integration still pending authorization.",
+  "description": "WarBoost V2.5.8 — R5/R4 Tactical Reliability: only confirmed-active members receive tactical roles; stale rosters stay refresh-only; player data remains protected and official Last War integration remains pending authorization.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

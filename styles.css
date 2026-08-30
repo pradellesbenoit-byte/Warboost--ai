@@ -116,6 +116,11 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
 .plan7Day{font-weight:850}.plan7Main{min-width:0}.plan7Main b{display:block;line-height:1.3;overflow-wrap:anywhere}.plan7Policy{color:var(--muted);font-size:12px;line-height:1.45;border-left:3px solid #355071;padding:7px 10px;margin:2px 2px 0;overflow-wrap:anywhere}
 .rosterImportText{width:100%;resize:vertical;min-height:110px;background:#08111f;color:#fff;border:1px solid #304a6b;border-radius:12px;padding:10px;font:inherit;box-sizing:border-box;margin:8px 0 10px}
 .warPlanStructured{margin-top:10px;background:#08111f;border:1px solid #2d4668;border-radius:12px;padding:10px 12px;white-space:pre-line;line-height:1.45}
+.warPlanStructured>b{display:block;margin-bottom:8px}
+.warPlanStructured>.warPlanAction{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-top:1px solid #20344d;min-width:0}
+.warPlanStructured>.warPlanAction:first-of-type{border-top:0}
+.warPlanStructured>.warPlanAction strong,.warPlanStructured>.warPlanAction small{display:block;overflow-wrap:anywhere;word-break:break-word}
+.warPlanStructured>.warPlanAction small{color:var(--muted);line-height:1.4}
 .voiceToggle{display:flex;gap:9px;align-items:flex-start;color:#dbe6f4;line-height:1.35}.voiceToggle input{margin-top:3px}
 .voiceSection select{width:100%}
 @media(max-width:620px){.plan7Row{grid-template-columns:44px minmax(0,1fr);padding:10px}.plan7Day{font-size:15px}.plan7Main b{font-size:15px}}

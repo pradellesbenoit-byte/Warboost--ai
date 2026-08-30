@@ -7,7 +7,7 @@ import {recoverHeroData} from "./lib/hero-history.js";
 import {parseRosterImport,mergeRosterMembers} from "./lib/roster-import.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.5.7";
+const APP_VERSION="2.5.8";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const BACKUP_KEY="warboost_last_good_state", VOICE_ENABLED_KEY="warboost_voice_enabled", VOICE_ID_KEY="warboost_voice_id";
 const LEGACY_LANGUAGE_KEYS=["wb17_language","wb171_language","warboost_language"];
@@ -145,7 +145,7 @@ function migrateLegacyLocalState(seed){
   out.version=APP_VERSION;return {state:out,changed};
 }
 function recoverLocalHeroHistory(input){const legacyProfile=readLegacyJson("wb10_profile")||null,legacyImportedPlayers=readLegacyJson("wb19_imported_players")||[];return recoverHeroData(input,{legacyProfile,legacyImportedPlayers,currentPlayerName:input?.player?.name||""});}
-function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.7-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state);let next=finalRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.7-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
+function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.8-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state);let next=finalRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.8-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,suppressPush=false,cloud=null,cloudSession=null,proState={active:false,status:"free",configured:false,plan:null},scanImageData=null;
 let voiceGreetedSections=new Set(),availableVoices=[];
@@ -397,12 +397,12 @@ function renderMembers(){
   box.querySelectorAll("details[data-roster-role]").forEach(d=>d.addEventListener("toggle",()=>{const role=d.dataset.rosterRole;if(d.open)openRosterRoles.add(role);else openRosterRoles.delete(role)}));
   box.querySelectorAll("select[data-member-role-id]").forEach(sel=>sel.addEventListener("change",async()=>{const playerId=sel.dataset.memberRoleId,nextRole=sel.value,previous=(state.alliance.members||[]).find(m=>String(m.player_id)===String(playerId))?.role||"R1";sel.disabled=true;try{const r=await fetch("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({player_id:playerId,role:nextRole})}),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||"role_update_failed");const row=(state.alliance.members||[]).find(m=>String(m.player_id)===String(playerId));if(row){row.role=nextRole;row.updated_at=new Date().toISOString()}saveState()}catch{sel.value=previous;const status=$("#rosterImportStatus");if(status){status.className="notice warn";status.textContent=`⚠️ ${t("role")}`}}finally{sel.disabled=false}}));
 }
-function memberNames(items){return (Array.isArray(items)?items:[]).filter(Boolean).join(" / ")||"—"}
+function memberNames(items,limit=6){const rows=(Array.isArray(items)?items:[]).filter(Boolean),shown=rows.slice(0,limit),more=Math.max(0,rows.length-shown.length);return shown.length?`${shown.join(" / ")}${more?` · +${more}`:""}`:"—"}
 function renderAllianceStructured(j){
   const immediate=$("#allianceImmediate"),planB=$("#alliancePlanB");
   const actions=Array.isArray(j?.immediate_actions)?j.immediate_actions:[],fallback=Array.isArray(j?.plan_b)?j.plan_b:[];
-  if(immediate){immediate.classList.toggle("hidden",!actions.length);immediate.innerHTML=actions.length?`<b>⚡ ${esc(t("immediate_actions"))}</b>${actions.map(x=>`<div><strong>${esc(t(`alliance_group_${x.kind}`))}</strong><small>${esc(memberNames(x.members))}</small></div>`).join("")}`:""}
-  if(planB){planB.classList.toggle("hidden",!fallback.length);planB.innerHTML=fallback.length?`<b>🛡️ ${esc(t("plan_b"))}</b>${fallback.map(x=>{const icon=x.kind==="refresh"?"🟠":x.kind==="defensive"?"🛡️":"✅",label=x.kind==="refresh"?t("refresh"):t("plan_b");return `<div><strong>${icon} ${esc(label)} · ${esc(String(x.count??0))}</strong></div>`}).join("")}`:""}
+  if(immediate){immediate.classList.toggle("hidden",!actions.length);immediate.innerHTML=actions.length?`<b>⚡ ${esc(t("immediate_actions"))}</b>${actions.map(x=>`<div class="warPlanAction"><strong>${esc(t(`alliance_group_${x.kind}`))} · ${esc(String(x.count??0))}</strong><small>${esc(memberNames(x.members))}</small></div>`).join("")}`:""}
+  if(planB){planB.classList.toggle("hidden",!fallback.length);planB.innerHTML=fallback.length?`<b>🛡️ ${esc(t("plan_b"))}</b>${fallback.map(x=>{const icon=x.kind==="refresh"?"🟠":x.kind==="defensive"?"🛡️":"✅",label=x.kind==="refresh"?t("refresh"):x.kind==="defensive"?t("alliance_group_defense"):t("ready");return `<div class="warPlanAction"><strong>${icon} ${esc(label)} · ${esc(String(x.count??0))}</strong></div>`}).join("")}`:""}
 }
 function structuredAdviceText(scope,j){
   if(!j)return scope==="alliance"?t("war_plan_empty"):scope==="vs"?t("vs_empty"):t("season_empty");

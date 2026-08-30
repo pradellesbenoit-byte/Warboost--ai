@@ -1,0 +1,19 @@
+WARBOOST V2.5.8 PATCH MANIFEST
+===============================
+
+- app.js
+- api/advice.js
+- api/health.js
+- i18n.js
+- index.html
+- lib/normalize.js
+- manifest.webmanifest
+- package.json
+- README.md
+- styles.css
+- sw.js
+- WARBOOST_V2_5_8_RELEASE.md
+- scripts/verify-v2.5.8.mjs
+- BUILD_VERIFICATION_V2_5_8.txt
+
+No Supabase migration in V2.5.8.

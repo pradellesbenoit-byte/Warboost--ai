@@ -1,6 +1,16 @@
-# WarBoost V2.5.7
+# WarBoost V2.5.8
 
-V2.5.7 finalise l’audit de non-régression après le Plan Joueur 7 jours : sécurité des invitations Alliance, appartenance cloud unique, récupération d’une création interrompue, correction du dimanche VS et alignement sur l’heure serveur Last War UTC-2.
+V2.5.8 corrige le dernier défaut trouvé pendant le test réel R5/R4 : WarBoost ne doit jamais placer un membre ancien/inconnu dans un rôle tactique simplement parce qu'il est présent dans le roster.
+
+## Correctifs V2.5.8
+- rally, défense, groupe mobile et réserve utilisent uniquement les membres **actifs confirmés** ;
+- si tout le roster est ancien/incomplet, aucune affectation tactique n'est inventée : le Plan B demande d'actualiser ;
+- un roster mixte peut produire des rôles uniquement avec le noyau confirmé actif, tandis que les autres restent « à actualiser » ;
+- les listes de noms des actions immédiates sont plafonnées sur mobile et indiquent `+N` pour le reste ;
+- séparation visuelle propre entre Rally / Défense / Groupe mobile / Réserve ;
+- le Plan B n'affiche plus un faux « Plan B · 0 » quand aucun actif confirmé n'existe ;
+- exemple d'import CSV neutralisé (`Joueur01`) ;
+- aucune migration Supabase requise et aucune donnée joueur/alliance supprimée.
 
 ## Correctifs principaux
 

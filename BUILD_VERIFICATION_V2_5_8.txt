@@ -1,0 +1,24 @@
+WARBOOST V2.5.8 — BUILD VERIFICATION
+========================================
+
+Scope: R5/R4 Tactical Reliability + full V2.5.7 regression coverage.
+
+PASS
+- npm run check
+- npm run verify
+- Squad 1 remains the player-selected primary squad
+- 7-day Player plan preserved
+- 23 explicit language choices preserved
+- 31 canonical heroes preserved
+- Boutique IA / VS / Season regression coverage preserved
+- R5/R4 access control preserved
+- Alliance invite + single-membership reliability preserved
+- confirmed-active-only tactical assignment: PASS
+- stale-only roster => zero tactical assignments: PASS
+- stale-only roster => refresh-only Plan B: PASS
+- mixed roster => stale/unknown members excluded from tactical groups: PASS
+- mobile action lists capped to 6 visible names + +N: PASS
+- action group formatting separated on mobile: PASS
+- neutral CSV roster example: PASS
+- no Supabase migration required
+- protected cloud/local data behavior preserved

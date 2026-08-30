@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.7 — Alliance Invite & Membership Reliability</title>
+  <title>WarBoost V2.5.8 — R5/R4 Tactical Reliability</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -16,7 +16,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V2.5.7 Alliance fiable · official integration pending</small></div>
+        <div class="brandText"><h1>WarBoost</h1><small data-i18n="tagline">V2.5.8 R5/R4 fiable · official integration pending</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -24,7 +24,7 @@
 
 
     <section class="publisherStrip" aria-label="Publisher demo status">
-      <div><b>WarBoost V2.5.7</b><span data-i18n="publisher_edition">Publisher Edition</span></div>
+      <div><b>WarBoost V2.5.8</b><span data-i18n="publisher_edition">Publisher Edition</span></div>
       <span class="publisherPill" data-i18n="official_pending">Official integration pending</span>
     </section>
 
@@ -98,7 +98,7 @@
     <div class="summaryBar"><div class="stat"><span data-i18n="alliance">Alliance</span><b id="aTag">—</b></div><div class="stat"><span data-i18n="members">Membres</span><b id="aCount">0</b></div><div class="stat"><span data-i18n="role">Rôle</span><b id="aRole">R1</b></div></div>
     <div class="section"><div class="sectionTitle"><h3 data-i18n="invite_members">Faire venir les membres</h3><span class="pill" data-i18n="one_tap">Accès rapide</span></div><div class="inviteBox"><div id="inviteCode" class="inviteCode">—</div><button id="shareInviteBtn" class="smallBtn" data-i18n="share">Partager</button></div><div class="notice" style="margin-top:9px" data-i18n="invite_note">Les membres rejoignent l'alliance WarBoost après connexion. Leur progression enregistrée remonte ensuite automatiquement dans le roster R5/R4.</div><div id="inviteStatus" class="notice hidden" style="margin-top:9px"></div></div>
     <div class="section"><div class="sectionTitle"><h3 data-i18n="war_plan">Plan de guerre IA</h3><button id="warPlanBtn" class="smallBtn">💎 <span data-i18n="generate">Générer</span></button></div><p id="warPlanText" class="heroText warPlanCopy" style="margin:0" data-i18n="war_plan_empty">Invite les membres pour que WarBoost répartisse rally, défense, groupe mobile et réserves à partir de leur progression enregistrée.</p><div id="allianceImmediate" class="warPlanStructured hidden"></div><div id="alliancePlanB" class="warPlanStructured hidden"></div></div>
-    <div class="section"><div class="sectionTitle"><h3>📥 <span data-i18n="import_roster">Importer des membres</span></h3><span class="pill">R5/R4</span></div><p class="privacyText" data-i18n="import_roster_help">Colle une liste CSV/Excel : nom, rôle, QG, puissance. Les données cloud existantes ne sont jamais supprimées.</p><textarea id="rosterImportText" class="rosterImportText" rows="5" placeholder="Benoit,R4,30,65.2"></textarea><button id="rosterImportBtn" class="secondaryBtn wideBtn" type="button" data-i18n="import_roster">Importer des membres</button><div id="rosterImportStatus" class="notice hidden" style="margin-top:9px"></div></div>
+    <div class="section"><div class="sectionTitle"><h3>📥 <span data-i18n="import_roster">Importer des membres</span></h3><span class="pill">R5/R4</span></div><p class="privacyText" data-i18n="import_roster_help">Colle une liste CSV/Excel : nom, rôle, QG, puissance. Les données cloud existantes ne sont jamais supprimées.</p><textarea id="rosterImportText" class="rosterImportText" rows="5" placeholder="Joueur01,R4,30,65.2"></textarea><button id="rosterImportBtn" class="secondaryBtn wideBtn" type="button" data-i18n="import_roster">Importer des membres</button><div id="rosterImportStatus" class="notice hidden" style="margin-top:9px"></div></div>
     <div class="section activitySection"><div class="sectionTitle"><h3>🧠 <span data-i18n="alliance_activity">Activité alliance</span></h3><span class="pill" data-i18n="ai_estimate">Estimation IA</span></div><div id="activitySummary" class="activitySummary"><div><b>🟢 0</b><small data-i18n="activity_active_confirmed">Actifs confirmés</small></div><div><b>🟠 0</b><small data-i18n="activity_refresh">À actualiser</small></div><div><b>🔴 0</b><small data-i18n="activity_inactive_probable">Inactifs probables</small></div></div><p id="activityNote" class="activityNote" data-i18n="activity_no_data">Données insuffisantes.</p></div>
     <div class="section"><div class="sectionTitle"><h3 data-i18n="members">Membres</h3><span id="rosterFresh" class="pill">—</span></div><div id="memberList" class="list"></div></div>
   </section>
