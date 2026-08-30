@@ -6,7 +6,7 @@ import {canonicalShopStore,findShopReference,referenceCategoryForItem,referenceI
 import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScore,heroReshapeDecisionValue,season6TechPriorities,awakeningSwapAssessment,S6_AWAKENING_HEROES} from '../lib/season6-awakening.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
-const ENGINE_VERSION="2.5.4";
+const ENGINE_VERSION="2.5.5";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -987,13 +987,13 @@ function buildSevenDayPlan(state,analysis){
   const day=(n,mode,action_key,kind=null,target=null,rule_key="hold_unrelated")=>({day:n,mode,action_key,kind,target,rule_key,no_exact_quantity:true});
   const plan=[];
   plan.push(needsData?day(1,"scan","refresh_data","scan",null,"verify_before_spend"):day(1,"focus","top_priority",topKind,topTarget,"hold_unrelated"));
-  plan.push(day(2,"focus","top_priority",topKind,topTarget,"hold_unrelated"));
-  plan.push(second?day(3,"focus","secondary_priority",secondKind,secondTarget,"hold_unrelated"):day(3,"hold","protect_resources",topKind,topTarget,"hold_unrelated"));
-  plan.push(day(4,"scan","measure_progress","scan",topTarget,"verify_progress"));
+  plan.push(day(2,"checkpoint","checkpoint_top",topKind,topTarget,"verify_progress"));
+  plan.push(second?day(3,"focus","secondary_priority",secondKind,secondTarget,"hold_unrelated"):day(3,"hold","protect_resources",null,null,"hold_unrelated"));
+  plan.push(day(4,"scan","measure_progress","scan",null,"verify_progress"));
   plan.push(day(5,"shop","shop_alignment",topKind,topTarget,"buy_only_if_aligned"));
   const vsDay=Number(state?.vs?.day);
-  plan.push(Number.isInteger(vsDay)&&vsDay>=1&&vsDay<=6?day(6,"timing","vs_alignment",topKind,topTarget,"score_only_when_active"):day(6,"hold","protect_resources",topKind,topTarget,"hold_unrelated"));
-  plan.push(day(7,"review","weekly_review",topKind,topTarget,"recalculate_after_new_data"));
+  plan.push(Number.isInteger(vsDay)&&vsDay>=1&&vsDay<=6?day(6,"timing","vs_alignment",topKind,topTarget,"score_only_when_active"):day(6,"hold","protect_resources",null,null,"hold_unrelated"));
+  plan.push(day(7,"review","weekly_review",null,null,"recalculate_after_new_data"));
   return {days:plan,top_kind:topKind,top_target:topTarget,generated_at:new Date().toISOString(),policy:"relative-priority-only",exact_quantities:false,rule:"Never invent exact shard/material quantities; spend only against confirmed account data and active timing."};
 }
 
