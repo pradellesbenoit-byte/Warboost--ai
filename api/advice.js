@@ -8,7 +8,7 @@ import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScor
 import {seasonLifecycle,seasonIsActive,activeSeasonProgress} from '../lib/season-lifecycle.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
-const ENGINE_VERSION="2.5.16";
+const ENGINE_VERSION="2.5.17";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -346,7 +346,7 @@ function rankAwareExclusiveWhy(comparison,chosen,lang){
 function bottleneckFamily(kind){return kind==="level"||kind==="stars"||kind==="exclusive"||kind==="gear"?"hero":kind}
 function selectSmartTop3(candidates,lang){
   const sorted=[...candidates].sort((a,b)=>(b.marginal_value_score??b.severity)-(a.marginal_value_score??a.severity)||b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
-  // V2.5.16: construct every reliable candidate first, then rank by contextual marginal value.
+  // V2.5.17: construct every reliable candidate first, then rank by contextual marginal value.
   // No explanatory card is allowed to call itself "best" independently of the actual ranking.
   const out=[],seen=new Set();
   for(const x of sorted){
@@ -451,7 +451,11 @@ function buildPlayerAnalysis(state,locale){
   const mainHeroesDetected=heroes.length,compositionComplete=mainHeroesDetected>=5;
   let conf=dataConfidence(squads,state?.drone||{});if(coverage<60)conf=Math.min(conf,82);if(!compositionComplete)conf=Math.min(conf,72);if(weaponList.length)conf=Math.min(96,conf+3);conf=Math.round(conf*.85+adaptiveContext.confidence*.15);
   const top=unique[0];
-  const metaInfo=metaContext(state);
+  const metaTopicForKind=k=>k==="exclusive"?"exclusive":k==="gear"?"gear":k==="drone"?"drone":null;
+  const metaTopics=[...new Set(unique.map(x=>metaTopicForKind(x?.kind)).filter(Boolean))];
+  // V2.5.17: source cards follow the domains of the current top recommendations.
+  // Example: an EX-only TOP 3 cannot display a Drone article merely to increase source count.
+  const metaInfo=metaContext(state,{topics:metaTopics});
   const usedEvidenceIds=[...new Set(unique.flatMap(x=>Array.isArray(x?.evidence_ids)?x.evidence_ids:[]))];
   metaInfo.used_evidence_ids=usedEvidenceIds;
   if(Array.isArray(metaInfo.evidence)&&usedEvidenceIds.length){
