@@ -23,7 +23,7 @@ export default async function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.14",
+    version:"2.5.15",
     mode:"private-beta-approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -85,6 +85,12 @@ export default async function handler(req,res){
       localized_scan_rendering:true,
       exclusive_breakpoints_10_20_30:true,
       exclusive_ui_ex_only:true,
+      exclusive_comparison_all_main_heroes:true,
+      exclusive_rank_explanations_consistent:true,
+      exclusive_model_cap_disclosed:true,
+      exact_ex_fragment_quantities_never_invented:true,
+      dated_meta_sources_visible:true,
+      community_meta_secondary_to_account_data:true,
       partial_shop_catalog_disclosure:true,
       no_unknown_offer_recommendation:true,
       multi_shop_scan_accumulation:true,

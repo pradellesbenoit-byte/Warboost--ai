@@ -8,7 +8,7 @@ import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScor
 import {seasonLifecycle,seasonIsActive,activeSeasonProgress} from '../lib/season-lifecycle.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
-const ENGINE_VERSION="2.5.14";
+const ENGINE_VERSION="2.5.15";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -285,61 +285,82 @@ const MISSING_EXCLUSIVE_TEXT={
 function missingExclusiveDataText(lang,squad,names){return (MISSING_EXCLUSIVE_TEXT[lang]||MISSING_EXCLUSIVE_TEXT.en)(squad,names)}
 
 const EX_COMPARISON_TEXT={
-  fr:(o,c)=>`Comparé à ${o}, ${c} offre actuellement le meilleur compromis entre distance au prochain palier, rôle dans l'escouade et timing.`,
-  en:(o,c)=>`Compared with ${o}, ${c} currently has the best balance of distance to the next breakpoint, squad role and timing.`,
-  es:(o,c)=>`Frente a ${o}, ${c} ofrece ahora el mejor equilibrio entre distancia al próximo hito, rol en el escuadrón y timing.`,
-  it:(o,c)=>`Rispetto a ${o}, ${c} offre al momento il miglior equilibrio tra distanza dal prossimo traguardo, ruolo nella squadra e tempistica.`,
-  de:(o,c)=>`Im Vergleich zu ${o} bietet ${c} aktuell das beste Verhältnis aus Abstand zum nächsten Meilenstein, Rolle im Trupp und Timing.`,
-  pt:(o,c)=>`Comparado com ${o}, ${c} oferece agora o melhor equilíbrio entre distância ao próximo marco, função na equipa e timing.`,
-  nl:(o,c)=>`Vergeleken met ${o} biedt ${c} nu de beste balans tussen afstand tot de volgende mijlpaal, rol in de squad en timing.`,
-  zh:(o,c)=>`与 ${o} 相比，${c} 目前在距离下一个关键等级、小队作用和时机之间取得了最佳平衡。`,
-  ja:(o,c)=>`${o} と比較すると、${c} は次の節目までの距離、部隊内での役割、タイミングのバランスが現在最も良好です。`,
-  ru:(o,c)=>`По сравнению с ${o}, ${c} сейчас даёт лучший баланс между расстоянием до следующего порога, ролью в отряде и таймингом.`,
-  ar:(o,c)=>`مقارنةً بـ ${o}، يحقق ${c} حالياً أفضل توازن بين المسافة إلى المستوى الفاصل التالي ودوره في الفريق والتوقيت.`,
-  pl:(o,c)=>`W porównaniu z ${o}, ${c} ma obecnie najlepszy balans między dystansem do kolejnego progu, rolą w oddziale i timingiem.`,
-  tr:(o,c)=>`${o} ile karşılaştırıldığında ${c}, bir sonraki eşiğe olan mesafe, takımdaki rol ve zamanlama arasında şu anda en iyi dengeyi sunuyor.`,
-  ko:(o,c)=>`${o}와 비교하면 ${c}는 다음 핵심 구간까지의 거리, 부대 내 역할, 타이밍의 균형이 현재 가장 좋습니다.`,
-  vi:(o,c)=>`So với ${o}, ${c} hiện có sự cân bằng tốt nhất giữa khoảng cách tới mốc tiếp theo, vai trò trong đội và thời điểm.`,
-  th:(o,c)=>`เมื่อเทียบกับ ${o} ตอนนี้ ${c} ให้สมดุลดีที่สุดระหว่างระยะถึงจุดคุ้มค่าถัดไป บทบาทในทีม และจังหวะเวลา`,
-  id:(o,c)=>`Dibandingkan ${o}, ${c} saat ini memberi keseimbangan terbaik antara jarak ke ambang berikutnya, peran dalam skuad, dan timing.`,
-  uk:(o,c)=>`Порівняно з ${o}, ${c} зараз має найкращий баланс між відстанню до наступного порогу, роллю в загоні та таймінгом.`,
-  ro:(o,c)=>`Comparativ cu ${o}, ${c} oferă acum cel mai bun echilibru între distanța până la următorul prag, rolul în echipă și momentul ales.`,
-  el:(o,c)=>`Σε σύγκριση με ${o}, ο/η ${c} προσφέρει τώρα την καλύτερη ισορροπία ανάμεσα στην απόσταση από το επόμενο ορόσημο, τον ρόλο στην ομάδα και το timing.`,
-  cs:(o,c)=>`Ve srovnání s ${o} má ${c} nyní nejlepší rovnováhu mezi vzdáleností k dalšímu milníku, rolí v jednotce a načasováním.`,
-  sv:(o,c)=>`Jämfört med ${o} har ${c} just nu bäst balans mellan avståndet till nästa brytpunkt, rollen i truppen och tajmingen.`
+  fr:{leader:(c,cs,n,ns,d)=>`Classé n°1 parmi les armes exclusives analysées : ${c} (${cs}/100) devance ${n} (${ns}/100) de ${d} point${d>1?"s":""}. Le classement combine rendement marginal, coût relatif jusqu’au prochain palier, rôle dans l’escouade, contexte/méta datée et timing.`,follower:(r,c,cs,l,ls,d)=>`Classé n°${r} parmi les armes exclusives : ${c} (${cs}/100) reste derrière ${l} (${ls}/100) de ${d} point${d>1?"s":""} après comparaison du rendement marginal, du coût relatif, du rôle, du contexte/méta datée et du timing.`,solo:(c,cs)=>`${c} est la seule arme exclusive avec un prochain palier fiable actuellement classable (${cs}/100).`},
+  en:{leader:(c,cs,n,ns,d)=>`Ranked #1 among analyzed exclusive weapons: ${c} (${cs}/100) leads ${n} (${ns}/100) by ${d} point${d===1?"":"s"}. Ranking combines marginal return, relative cost to the next breakpoint, squad role, dated context/meta and timing.`,follower:(r,c,cs,l,ls,d)=>`Ranked #${r} among exclusive weapons: ${c} (${cs}/100) trails ${l} (${ls}/100) by ${d} point${d===1?"":"s"} after comparing marginal return, relative cost, role, dated context/meta and timing.`,solo:(c,cs)=>`${c} is the only exclusive weapon with a reliable next breakpoint that can currently be ranked (${cs}/100).`},
+  es:{leader:(c,cs,n,ns,d)=>`N.º 1 entre las armas exclusivas analizadas: ${c} (${cs}/100) supera a ${n} (${ns}/100) por ${d} punto${d===1?"":"s"}. La clasificación combina rendimiento marginal, coste relativo al próximo hito, rol, contexto/meta fechado y timing.`,follower:(r,c,cs,l,ls,d)=>`N.º ${r} entre las armas exclusivas: ${c} (${cs}/100) queda detrás de ${l} (${ls}/100) por ${d} punto${d===1?"":"s"}, tras comparar rendimiento marginal, coste relativo, rol, contexto/meta fechado y timing.`,solo:(c,cs)=>`${c} es la única arma exclusiva con un próximo hito fiable que puede clasificarse ahora (${cs}/100).`},
+  de:{leader:(c,cs,n,ns,d)=>`Platz 1 der analysierten Exklusivwaffen: ${c} (${cs}/100) liegt ${d} Punkt${d===1?"":"e"} vor ${n} (${ns}/100). Gewertet werden Grenznutzen, relative Kosten bis zum nächsten Meilenstein, Trupprolle, datierter Kontext/Meta und Timing.`,follower:(r,c,cs,l,ls,d)=>`Platz ${r} der Exklusivwaffen: ${c} (${cs}/100) liegt nach Vergleich von Grenznutzen, relativen Kosten, Rolle, datiertem Kontext/Meta und Timing ${d} Punkt${d===1?"":"e"} hinter ${l} (${ls}/100).`,solo:(c,cs)=>`${c} ist derzeit die einzige Exklusivwaffe mit einem zuverlässig bewertbaren nächsten Meilenstein (${cs}/100).`},
+  ja:{leader:(c,cs,n,ns,d)=>`専用武器の分析順位1位：${c}（${cs}/100）は ${n}（${ns}/100）を${d}点上回ります。限界効率、次の節目までの相対コスト、部隊内役割、日付付きメタ/状況、タイミングを合算した順位です。`,follower:(r,c,cs,l,ls,d)=>`専用武器の分析順位${r}位：${c}（${cs}/100）は、限界効率・相対コスト・役割・日付付きメタ/状況・タイミングの比較後、${l}（${ls}/100）より${d}点下です。`,solo:(c,cs)=>`${c} は現在、信頼できる次の節目を順位付けできる唯一の専用武器です（${cs}/100）。`},
+  zh:{leader:(c,cs,n,ns,d)=>`专属武器分析排名第1：${c}（${cs}/100）领先 ${n}（${ns}/100）${d}分。排名综合边际收益、到下一节点的相对成本、队伍角色、带日期的情境/Meta与时机。`,follower:(r,c,cs,l,ls,d)=>`专属武器排名第${r}：${c}（${cs}/100）在综合边际收益、相对成本、角色、带日期的情境/Meta与时机后，落后 ${l}（${ls}/100）${d}分。`,solo:(c,cs)=>`${c} 是当前唯一具有可靠下一节点、可进行排名的专属武器（${cs}/100）。`},
+  ar:{leader:(c,cs,n,ns,d)=>`المرتبة 1 بين الأسلحة الحصرية المحللة: ${c} (${cs}/100) يتقدم على ${n} (${ns}/100) بـ ${d} نقطة. يجمع الترتيب العائد الهامشي والتكلفة النسبية حتى العتبة التالية ودور البطل والسياق/الميتا المؤرخ والتوقيت.`,follower:(r,c,cs,l,ls,d)=>`المرتبة ${r} بين الأسلحة الحصرية: ${c} (${cs}/100) يتأخر عن ${l} (${ls}/100) بـ ${d} نقطة بعد مقارنة العائد الهامشي والتكلفة النسبية والدور والسياق/الميتا المؤرخ والتوقيت.`,solo:(c,cs)=>`${c} هو السلاح الحصري الوحيد الذي يملك حالياً عتبة تالية موثوقة قابلة للترتيب (${cs}/100).`}
 };
-function nextBreakpointWhy(heroCandidates,chosen,lang){
+const EX_STATUS_TEXT={
+  fr:{eligible:"Classable",cap:"EX30 atteint · aucun palier 10/20/30 supérieur modélisé",missing:"EX à vérifier",other:"Pas de palier classable"},
+  en:{eligible:"Rankable",cap:"EX30 reached · no higher 10/20/30 breakpoint modeled",missing:"EX needs verification",other:"No rankable breakpoint"},
+  es:{eligible:"Clasificable",cap:"EX30 alcanzado · no hay otro hito 10/20/30 modelado",missing:"EX por verificar",other:"Sin hito clasificable"},
+  de:{eligible:"Bewertbar",cap:"EX30 erreicht · kein höherer 10/20/30-Meilenstein modelliert",missing:"EX prüfen",other:"Kein bewertbarer Meilenstein"},
+  ja:{eligible:"順位付け可能",cap:"EX30到達・10/20/30モデル上これ以上の節目なし",missing:"EX要確認",other:"順位付けできる節目なし"},
+  zh:{eligible:"可排名",cap:"已达EX30 · 10/20/30模型无更高节点",missing:"EX待核对",other:"无可排名节点"},
+  ar:{eligible:"قابل للترتيب",cap:"تم بلوغ EX30 · لا توجد عتبة 10/20/30 أعلى في النموذج",missing:"يجب التحقق من EX",other:"لا توجد عتبة قابلة للترتيب"}
+};
+function exComparisonPack(lang){return EX_COMPARISON_TEXT[localePack(lang)]||EX_COMPARISON_TEXT.en}
+function exStatusPack(lang){return EX_STATUS_TEXT[localePack(lang)]||EX_STATUS_TEXT.en}
+function buildExclusiveComparison(mainHeroes,scoredCandidates,lang){
+  const ranked=(Array.isArray(scoredCandidates)?scoredCandidates:[]).filter(x=>x.kind==="exclusive").sort((a,b)=>(b.marginal_value_score??b.severity)-(a.marginal_value_score??a.severity)||b.severity-a.severity||b.roi_score-a.roi_score);
+  const rankByHero=new Map(ranked.map((x,i)=>[canonicalHeroName(x.hero||x.target).toLowerCase(),{candidate:x,rank:i+1}]));
+  const tx=exStatusPack(lang);
+  const rows=(Array.isArray(mainHeroes)?mainHeroes:[]).filter(heroConfigured).map((h,i)=>{
+    const hero=canonicalHeroName(h?.name)||heroName(h,i,localePack(lang));
+    const current=metric(h?.exclusive),hit=rankByHero.get(hero.toLowerCase()),c=hit?.candidate||null,next=c?Number(c.breakpoint||String(c.next_target||"").replace(/\D/g,""))||null:nextKnownExBreakpoint(current);
+    const status=current===null?"missing":c?"eligible":current>=30?"model_cap":"not_ranked";
+    return {hero,current,current_label:current===null?null:`EX${current}`,next_target:next===null?null:`EX${next}`,progress_needed_levels:c&&next!==null?Math.max(0,next-current):null,exclusive_rank:hit?.rank||null,marginal_value_score:c?.marginal_value_score??null,impact_score:c?.impact_score??null,resource_efficiency_score:c?.resource_efficiency_score??c?.roi_score??null,relative_cost:c?.relative_cost||null,meta_adjustment:c?.meta_adjustment??0,evidence_ids:c?.evidence_ids||[],status,status_label:status==="eligible"?tx.eligible:status==="model_cap"?tx.cap:status==="missing"?tx.missing:tx.other,fragment_cost_known:false,squad_position:i+1};
+  });
+  rows.sort((a,b)=>(a.exclusive_rank??999)-(b.exclusive_rank??999)||a.squad_position-b.squad_position);
+  return {model_breakpoints:[10,20,30],fragment_cost_known:false,exact_fragment_quantities:false,heroes:rows,all_main_heroes_included:rows.length===(Array.isArray(mainHeroes)?mainHeroes.filter(heroConfigured).length:0)};
+}
+function exclusiveComparisonTail(comparison,lang){
+  const rows=comparison?.heroes||[],caps=rows.filter(x=>x.status==="model_cap").map(x=>x.hero),missing=rows.filter(x=>x.status==="missing").map(x=>x.hero),l=localePack(lang);
+  const bits=[];
+  if(caps.length)bits.push(l==="fr"?`${caps.join(", ")} : EX30 déjà atteint dans le modèle 10/20/30, donc aucune dépense EX supplémentaire n’est classée.`:l==="es"?`${caps.join(", ")}: EX30 ya alcanzado en el modelo 10/20/30; no se clasifica gasto EX adicional.`:l==="de"?`${caps.join(", ")}: EX30 im 10/20/30-Modell bereits erreicht; keine weitere EX-Ausgabe wird bewertet.`:l==="ja"?`${caps.join("、")}：10/20/30モデルでEX30到達済みのため、追加EX投資は順位付けしません。`:l==="zh"?`${caps.join("、")}：10/20/30模型中已达EX30，因此不对额外EX投入排名。`:l==="ar"?`${caps.join("، ")}: تم بلوغ EX30 في نموذج 10/20/30، لذلك لا يتم ترتيب إنفاق EX إضافي.`:`${caps.join(", ")}: EX30 already reached in the 10/20/30 model, so no additional EX spend is ranked.`);
+  if(missing.length)bits.push(l==="fr"?`EX de ${missing.join(", ")} à confirmer avant comparaison complète.`:l==="es"?`Confirma el EX de ${missing.join(", ")} antes de una comparación completa.`:l==="de"?`EX von ${missing.join(", ")} vor einem vollständigen Vergleich bestätigen.`:l==="ja"?`完全比較の前に ${missing.join("、")} のEXを確認してください。`:l==="zh"?`完整比较前请确认 ${missing.join("、")} 的EX。`:l==="ar"?`أكد EX لـ ${missing.join("، ")} قبل المقارنة الكاملة.`:`Verify ${missing.join(", ")} EX before a complete comparison.`);
+  return bits.join(" ");
+}
+const EX_TIE_TEXT={
+  fr:{leader:(c,n,s)=>`Classé n°1 après départage : ${c} et ${n} ont le même score marginal arrondi (${s}/100) ; la sévérité, le ROI puis l’impact servent de critères de départage.`,follower:(r,c,l,s)=>`Classé n°${r} après départage : ${c} et ${l} ont le même score marginal arrondi (${s}/100) ; la sévérité, le ROI puis l’impact placent ${l} devant.`},
+  en:{leader:(c,n,s)=>`Ranked #1 after tie-break: ${c} and ${n} have the same rounded marginal score (${s}/100); severity, ROI, then impact break the tie.`,follower:(r,c,l,s)=>`Ranked #${r} after tie-break: ${c} and ${l} have the same rounded marginal score (${s}/100); severity, ROI, then impact place ${l} ahead.`},
+  es:{leader:(c,n,s)=>`N.º 1 tras desempate: ${c} y ${n} tienen el mismo score marginal redondeado (${s}/100); severidad, ROI e impacto desempatan.`,follower:(r,c,l,s)=>`N.º ${r} tras desempate: ${c} y ${l} tienen el mismo score marginal redondeado (${s}/100); severidad, ROI e impacto colocan a ${l} delante.`},
+  de:{leader:(c,n,s)=>`Platz 1 nach Tie-Break: ${c} und ${n} haben denselben gerundeten Grenznutzen (${s}/100); Schweregrad, ROI und danach Wirkung entscheiden.`,follower:(r,c,l,s)=>`Platz ${r} nach Tie-Break: ${c} und ${l} haben denselben gerundeten Grenznutzen (${s}/100); Schweregrad, ROI und Wirkung setzen ${l} nach vorn.`},
+  ja:{leader:(c,n,s)=>`同点判定後1位：${c} と ${n} の丸めた限界スコアは同じ（${s}/100）で、重要度、ROI、影響度の順で判定します。`,follower:(r,c,l,s)=>`同点判定後${r}位：${c} と ${l} の丸めた限界スコアは同じ（${s}/100）で、重要度、ROI、影響度により ${l} が上位です。`},
+  zh:{leader:(c,n,s)=>`并列分判定后第1：${c} 与 ${n} 的四舍五入边际分相同（${s}/100），依次用严重度、ROI、影响分判定。`,follower:(r,c,l,s)=>`并列分判定后第${r}：${c} 与 ${l} 的四舍五入边际分相同（${s}/100），严重度、ROI、影响分使 ${l} 排在前面。`},
+  ar:{leader:(c,n,s)=>`المرتبة 1 بعد كسر التعادل: لدى ${c} و${n} نفس الدرجة الهامشية المقربة (${s}/100)، ويُحسم التعادل بالشدة ثم ROI ثم التأثير.`,follower:(r,c,l,s)=>`المرتبة ${r} بعد كسر التعادل: لدى ${c} و${l} نفس الدرجة الهامشية المقربة (${s}/100)، وتضع الشدة ثم ROI ثم التأثير ${l} في المقدمة.`}
+};
+function rankAwareExclusiveWhy(comparison,chosen,lang){
   if(!chosen||chosen.kind!=="exclusive")return "";
-  const others=heroCandidates.filter(x=>x!==chosen&&x.kind==="exclusive").slice(0,3);
-  if(!others.length)return "";
-  const label=x=>`${x.target} ${x.current!=null?`EX${x.current}→${x.next_target||"?"}`:""}`.trim(),otherText=others.map(label).join(", "),raw=String(lang||"en").toLowerCase(),key=raw.split("-")[0],fn=EX_COMPARISON_TEXT[raw]||EX_COMPARISON_TEXT[key]||EX_COMPARISON_TEXT.en;
-  return fn(otherText,chosen.target);
+  const rows=comparison?.heroes||[],hero=canonicalHeroName(chosen.hero||chosen.target),row=rows.find(x=>x.hero.toLowerCase()===hero.toLowerCase()),leader=rows.find(x=>x.exclusive_rank===1),next=rows.find(x=>x.exclusive_rank===2),tx=exComparisonPack(lang);
+  if(!row||!row.exclusive_rank)return exclusiveComparisonTail(comparison,lang);
+  const score=Math.round(Number(row.marginal_value_score)||0);let text="";
+  const tie=EX_TIE_TEXT[localePack(lang)]||EX_TIE_TEXT.en;
+  if(row.exclusive_rank===1){if(next){const ns=Math.round(Number(next.marginal_value_score)||0),d=Math.max(0,score-ns);text=d===0?tie.leader(row.hero,next.hero,score):tx.leader(row.hero,score,next.hero,ns,d)}else text=tx.solo(row.hero,score)}
+  else if(leader){const ls=Math.round(Number(leader.marginal_value_score)||0),d=Math.max(0,ls-score);text=d===0?tie.follower(row.exclusive_rank,row.hero,leader.hero,score):tx.follower(row.exclusive_rank,row.hero,score,leader.hero,ls,d)}
+  const tail=exclusiveComparisonTail(comparison,lang);return [text,tail].filter(Boolean).join(" ");
 }
 function bottleneckFamily(kind){return kind==="level"||kind==="stars"||kind==="exclusive"||kind==="gear"?"hero":kind}
 function selectSmartTop3(candidates,lang){
   const sorted=[...candidates].sort((a,b)=>(b.marginal_value_score??b.severity)-(a.marginal_value_score??a.severity)||b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
-  const heroCandidates=sorted.filter(x=>bottleneckFamily(x.kind)==="hero");
-  const topHero=heroCandidates[0];
-  // V2.4.9: construct every reliable candidate first, then rank by contextual marginal value; missing critical data becomes an explicit verification action.
-  // Drone, technology and hero upgrades all compete on the same contextual marginal-value score.
-  const adjusted=sorted;
-
+  // V2.5.15: construct every reliable candidate first, then rank by contextual marginal value.
+  // No explanatory card is allowed to call itself "best" independently of the actual ranking.
   const out=[],seen=new Set();
-  for(const x of adjusted){
+  for(const x of sorted){
     const key=`${x.kind}:${x.target}`;
     if(seen.has(key))continue;
     seen.add(key);out.push(x);
     if(out.length>=3)break;
   }
-  // Explain the exclusive-weapon choice without cluttering the main card.
-  const exclusivePool=adjusted.filter(x=>x.kind==="exclusive");
   out.forEach(x=>{
     x.hero=canonicalHeroName(x.hero||x.presentation?.hero||"")||null;
     if(x.presentation){x.presentation.hero=x.hero;x.presentation.progress_label=x.presentation.progress_label||((x.presentation.current_label&&x.presentation.next_target)?`${x.presentation.current_label} → ${x.presentation.next_target}`:null)}
     x.progress_label=x.presentation?.progress_label||null;
     if(x.kind==="exclusive"){
-      x.comparison_note=nextBreakpointWhy(exclusivePool,x,lang);
-      x.progress_needed_levels=(Number(x.breakpoint)||0)-(Number(x.current)||0);
+      x.progress_needed_levels=Math.max(0,(Number(x.breakpoint)||0)-(Number(x.current)||0));
       x.fragment_cost_known=false;
     }
   });
@@ -424,7 +445,8 @@ function buildPlayerAnalysis(state,locale){
   scoredCandidates.sort((a,b)=>(b.marginal_value_score??b.severity)-(a.marginal_value_score??a.severity)||b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
   // V2.4.9: adaptive scoring ranks the complete reliable candidate pool; it does not replace the underlying Diagnostic PRO candidate builders.
   const unique=selectSmartTop3(scoredCandidates,lang);
-  unique.forEach((x,i)=>x.rank=i+1);
+  const exclusiveComparison=buildExclusiveComparison(enhancedHeroes,scoredCandidates,lang);
+  unique.forEach((x,i)=>{x.rank=i+1;if(x.kind==="exclusive")x.comparison_note=rankAwareExclusiveWhy(exclusiveComparison,x,lang)});
   const comparison=squads.map((s,i)=>{const power=num(s.power),configuredHere=squadConfigured(s),needsRescan=s?.needs_rescan===true,optional=i===3&&!configuredHere,isMain=i===main.i,ratio=mainPower&&power!==null?power/mainPower:null,dataQ=Math.round((configuredHere?20:0)+(power!==null?20:0)+heroDetailCoverage(s)*.6),detected=(s?.heroes||[]).filter(heroConfigured).length,complete=detected>=5;let status=optional?optionalSquadStatus(lang):p.squadStatusMissing;if(configuredHere&&!needsRescan)status=isMain?p.squadStatusMain:(ratio!==null&&ratio>=.75?p.squadStatusReady:p.squadStatusLow);if(needsRescan)status=p.squadStatusMissing;return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(needsRescan?45:100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional,needs_rescan:needsRescan,heroes_detected:detected,composition_complete:complete&&!needsRescan};});
   const mainHeroesDetected=heroes.length,compositionComplete=mainHeroesDetected>=5;
   let conf=dataConfidence(squads,state?.drone||{});if(coverage<60)conf=Math.min(conf,82);if(!compositionComplete)conf=Math.min(conf,72);if(weaponList.length)conf=Math.min(96,conf+3);conf=Math.round(conf*.85+adaptiveContext.confidence*.15);
@@ -437,7 +459,7 @@ function buildPlayerAnalysis(state,locale){
   const decisionTrace=scoredCandidates.slice(0,6).map(x=>({kind:x.kind,target:x.target||null,hero:x.hero||null,next_target:x.next_target||null,breakpoint:x.breakpoint||null,severity:x.severity,impact_score:x.impact_score,roi_score:x.roi_score,marginal_value_score:x.marginal_value_score,context_adjustment:x.context_adjustment,certainty:x.certainty,condition_key:x.condition_key,calculated_at:x.calculated_at,relative_cost:x.relative_cost,resource_family:x.resource_family,timing_adjustment:x.timing_adjustment,timing_window:x.timing_window,evidence_ids:x.evidence_ids||[],data_freshness:x.data_freshness||null}));
   const resourcePlan=unique.map((x,i)=>({rank:i+1,resource_family:x.resource_family,target:x.target||null,spend_timing:x.timing_window?.status||"neutral",best_vs_day:x.timing_window?.best_day??null,relative_cost:x.relative_cost,marginal_value_score:x.marginal_value_score,certainty:x.certainty,condition_key:x.condition_key}));
   const activeS6=seasonIsActive(state?.season||{})&&Number(state?.season?.number)===6,reshapeValues=activeS6?enhancedHeroes.map(h=>heroReshapeDecisionValue({hero:h,weapons:weaponList,season:state?.season||{},mainType,formationBonus,importance:heroImportance(h,heroes,mainType)})).filter(Boolean).sort((a,b)=>b.decision_value_index-a.decision_value_index):[],tech=activeS6?season6TechPriorities(state?.technology||{},{offense:/pvp|offen|siege|attack/i.test(String(state?.season?.focus||"")),defense:/defen|garrison|protect/i.test(String(state?.season?.focus||""))}):{known:false,priorities:[]},swap=activeS6?awakeningSwapAssessment({swap:state?.season?.awakening_swap||{},heroes:[...enhancedHeroes,...(state?.hero_progression||[]).map(x=>({name:x.hero_name,stars:x.stars,exclusive:x.exclusive,awakening:x.awakening}))],weapons:weaponList}):null;
-  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,bottleneck,resource_plan:resourcePlan,decision_trace:decisionTrace,squads:comparison,focus_squad:main.i+1,primary_squad_policy:selected?.selection||"fallback",strongest_squad:{id:strongestConfigured.i+1,power:num(strongestConfigured.s.power),is_focus:strongestConfigured.i===main.i},candidates_evaluated:scoredCandidates.length,adaptive_context:adaptiveContext,generated_at:adaptiveContext.generated_at,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,main_type:mainType,formation_bonus_pct:formationBonus,measured_hybrid_synergy:state?.season?.measured_hybrid_synergy===true,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},season6_awakening:{active:activeS6,eligible_heroes:Object.keys(S6_AWAKENING_HEROES),hero_value_model:reshapeValues,exact_power_projection:false,model:"relative-decision-value-only",tech_priorities:tech,awakening_swap:swap},all_hero_value_model:allHeroDecisionValues(state,main.i),avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"adaptive global bottleneck arbitration: Squad 1 is the player-selected main squad when configured; complete player context + all heroes + Awakening/Reshape relative value + EX breakpoints + formation synergy + gear + technology + Drone + explicit/inferred objective + account/server context + conditional VS/Season timing + dated multi-source evidence + certainty tiers",cost_policy:"No exact shard/material quantity or post-Awakening combat power is invented without a validated visible/official source; relative decision values are used otherwise.",meta_intelligence:metaContext(state),data_freshness:decisionFreshness,engine:`warboost-ai-smart-v${ENGINE_VERSION}`};
+  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,bottleneck,resource_plan:resourcePlan,decision_trace:decisionTrace,squads:comparison,focus_squad:main.i+1,primary_squad_policy:selected?.selection||"fallback",strongest_squad:{id:strongestConfigured.i+1,power:num(strongestConfigured.s.power),is_focus:strongestConfigured.i===main.i},candidates_evaluated:scoredCandidates.length,adaptive_context:adaptiveContext,generated_at:adaptiveContext.generated_at,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,main_type:mainType,formation_bonus_pct:formationBonus,measured_hybrid_synergy:state?.season?.measured_hybrid_synergy===true,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},season6_awakening:{active:activeS6,eligible_heroes:Object.keys(S6_AWAKENING_HEROES),hero_value_model:reshapeValues,exact_power_projection:false,model:"relative-decision-value-only",tech_priorities:tech,awakening_swap:swap},all_hero_value_model:allHeroDecisionValues(state,main.i),exclusive_comparison:exclusiveComparison,avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"adaptive global bottleneck arbitration: Squad 1 is the player-selected main squad when configured; complete player context + all heroes + Awakening/Reshape relative value + EX breakpoints + formation synergy + gear + technology + Drone + explicit/inferred objective + account/server context + conditional VS/Season timing + dated multi-source evidence + certainty tiers",cost_policy:"No exact shard/material quantity or post-Awakening combat power is invented without a validated visible/official source; relative decision values are used otherwise.",meta_intelligence:metaContext(state),data_freshness:decisionFreshness,engine:`warboost-ai-smart-v${ENGINE_VERSION}`};
 }
 
 // ===== V1.4 · Last War Shop Advisor =====
