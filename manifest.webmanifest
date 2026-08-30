@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.14 Beta",
+  "name": "WarBoost V2.5.15 Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.14 — Cloud Auth Reliability Fix: private beta with protected player data, direct browser-to-Supabase Auth transport, no third-party auth CDN dependency, explicit consent, invitation access and safe cloud diagnostics.",
+  "description": "WarBoost V2.5.15 — Explainable AI Reliability: private beta with protected player data, rank-aware PRO recommendations, all-main-hero EX comparison and dated meta evidence.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

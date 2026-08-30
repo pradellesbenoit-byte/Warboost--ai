@@ -1,6 +1,6 @@
 WARBOOST V2.5.12 — PATCH MANIFEST
 Base: V2.5.11
-Changed/new files: 26
+Changed/new files: 25
 
 ROOT (13)
 app.js
@@ -17,10 +17,9 @@ sw.js
 UPLOAD_GUIDE_V2_5_12.txt
 WARBOOST_V2_5_12_RELEASE.md
 
-api/ (10)
+api/ (9)
 api/advice.js
 api/alliance-role.js
-api/beta.js
 api/health.js
 api/invite.js
 api/join.js

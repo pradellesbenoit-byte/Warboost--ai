@@ -1,0 +1,32 @@
+WARBOOST V2.5.15 — PATCH MANIFEST
+Base: V2.5.14 FULL / Explainable AI Reliability
+Changed/new files: 18
+
+ROOT (13)
+app.js
+BUILD_VERIFICATION_V2_5_15.txt
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+PATCH_MANIFEST_V2_5_15.txt
+README.md
+SHA256SUMS_V2_5_15.txt
+styles.css
+sw.js
+UPLOAD_GUIDE_V2_5_15.txt
+WARBOOST_V2_5_15_RELEASE.md
+
+api/ (2)
+api/advice.js
+api/health.js
+
+lib/ (2)
+lib/meta-intel.js
+lib/normalize.js
+
+scripts/ (1)
+scripts/verify-v2.5.15.mjs
+
+supabase/
+NO V2.5.15 MIGRATION

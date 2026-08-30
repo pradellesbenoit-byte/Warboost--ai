@@ -1,0 +1,24 @@
+WARBOOST V2.3.3 — BUILD VERIFICATION
+Date: 2026-08-25
+
+Base:
+- Full V2.3.1 serverless-fix application
+- V2.3.2 Diagnostic PRO patch overlaid
+
+Verified:
+- package version: 2.3.3
+- active JS syntax: npm run check OK
+- serverless functions: 12
+- api/time.js absent (time merged in api/health.js)
+- target language selector: 22 languages + English (US) variant
+- PWA cache: warboost-v2-3-3
+- no .env / .pem / .key packaged
+- Player AI engine: warboost-ai-core-v2.3.3
+- VS AI engine: warboost-vs-ai-v2.3.3
+- Season AI engine: warboost-season-ai-v2.3.3
+- Alliance AI engine: warboost-alliance-ai-v2.3.3
+- EX tests: EX9→10, EX10→20, EX19→20, EX20→30, EX29→30
+- incomplete-data test: asks for scan instead of inventing advice
+- exact shard/material quantities are not invented without a validated official cost table
+- legacy local state migration is additive and does not delete legacy keys
+- older/empty cloud values are prevented from wiping newer local values

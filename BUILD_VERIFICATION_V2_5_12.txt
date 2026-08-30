@@ -8,7 +8,7 @@ main: must remain untouched
 LOCAL CHECKS REQUIRED BEFORE RELEASE:
 - npm run check: PASS
 - npm run verify: PASS
-- 13 serverless JS APIs syntax-checked
+- 12 serverless JS APIs syntax-checked (Vercel Hobby compatible)
 - 23 explicit languages + Auto: beta labels resolved
 - 31-hero canonical catalog preserved
 - Squad 1 primary-selection reliability preserved
@@ -34,5 +34,7 @@ DATABASE:
 - No destructive SQL introduced
 
 DEPLOYMENT GATE:
+- Vercel Hobby function limit respected: exactly 12 top-level JS APIs
+- Beta status reuses /api/pro; no standalone /api/beta function
 Local PASS does not prove the Vercel beta is private.
 Before external sharing, the deployed Preview MUST report beta.access_enforced=true on /api/health after WARBOOST_BETA_EMAILS is configured in Vercel.
