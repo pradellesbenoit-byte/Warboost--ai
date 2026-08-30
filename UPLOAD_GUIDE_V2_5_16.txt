@@ -1,0 +1,55 @@
+WARBOOST V2.5.16 — PREVIEW UPLOAD GUIDE
+
+BASE
+- Apply to the current V2.5.15 publisher-demo / Preview branch.
+- Do NOT touch main/Production until Preview is validated.
+- No Supabase migration is required.
+- Do NOT clear localStorage, cloud data, scans or saved player data.
+
+RECOMMENDED METHOD
+1. Extract WarBoost_V2.5.16_FULL.zip.
+2. Upload the complete extracted CONTENT to the root of the publisher-demo branch (not the outer folder itself).
+3. Keep index.html at repository root.
+4. Commit directly to publisher-demo.
+5. Wait for the green Vercel Preview deployment.
+6. Open the new Preview URL and confirm `WarBoost V2.5.16` at the top.
+
+IF UPLOADING THE PATCH MANUALLY
+ROOT FILES
+- app.js
+- BUILD_VERIFICATION_V2_5_16.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_5_16.txt
+- README.md
+- SHA256SUMS_V2_5_16.txt
+- styles.css
+- sw.js
+- UPLOAD_GUIDE_V2_5_16.txt
+- WARBOOST_V2_5_16_RELEASE.md
+
+SUBFOLDERS
+api/
+- api/advice.js
+- api/health.js
+
+lib/
+- lib/meta-intel.js
+- lib/normalize.js
+
+scripts/
+- scripts/verify-v2.5.16.mjs
+
+NO CHANGES REQUIRED
+- assets/
+- supabase/ (no V2.5.16 migration)
+
+PREVIEW CHECKS
+- Diagnostic PRO > Sources méta et date: source cards are clickable and show real publisher/date.
+- No `Ajustement méta +4/+3/-5` should appear in the EX comparison.
+- With the current account values and DVA EX still unknown, WarBoost must not invent DVA data.
+- Community text may explain context but must not claim it directly changed the numeric score.
+- `Pourquoi` must remain rank-aware.
+- Player data, squads, Drone and Alliance data must still reload after login without rescanning.

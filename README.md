@@ -1,22 +1,21 @@
-# WarBoost V2.5.15
+# WarBoost V2.5.16
 
-## Bêta privée — fiabilité des explications IA PRO
+## Bêta privée — intégrité des sources et classement compte-first
 
-V2.5.15 conserve la base V2.5.14 et corrige la faiblesse observée dans Diagnostic PRO : plusieurs cartes d’armes exclusives pouvaient chacune affirmer être « le meilleur compromis », alors que l’interface les classait #1, #2 et #3.
+V2.5.16 conserve les corrections de V2.5.15 et corrige le problème détecté dans « Sources méta et date » : certaines cartes utilisaient des intitulés synthétiques, des dates non fiables et des coefficients communautaires opaques capables de modifier trop fortement le classement EX.
 
-### Correctifs V2.5.15
+### Correctifs V2.5.16
 
-- Les explications « Pourquoi » sont maintenant **liées au classement réel** : seul le n°1 peut être présenté comme leader ; les n°2/n°3 expliquent clairement pourquoi ils restent derrière.
-- En cas de score marginal arrondi identique, WarBoost indique explicitement le **départage** (sévérité, ROI, puis impact) au lieu d’inventer un écart.
-- Diagnostic PRO construit une **comparaison EX de tous les héros configurés de l’escouade principale**, y compris un héros déjà à EX30 ou un EX manquant.
-- Un héros à EX30 est affiché comme **palier 10/20/30 atteint** et n’est pas artificiellement poussé vers un niveau supérieur non modélisé.
-- Un EX non lu reste **à vérifier** et n’est jamais inventé.
-- Les quantités exactes de fragments restent non affichées tant qu’aucune source visible/officielle validée ne les fournit.
-- Les sources méta sont visibles avec leur **type, date, date de connaissance et niveau de confiance**.
-- La méta Air est actualisée avec des discussions communautaires datées jusqu’au 30/08/2026. Ces signaux ne sont qu’un ajustement secondaire : les données du compte, le coût relatif jusqu’au palier et le timing restent prioritaires.
-- « Profil serveur : Auto / inconnu » devient **« Données insuffisantes (Auto) »** afin de ne pas simuler une analyse serveur inexistante.
-- « Adversaire inconnu » devient **« Adversaire non encore disponible »**.
-- Le texte d’invitation Alliance précise que les membres rejoignent **l’espace WarBoost de l’alliance**, et non une alliance dans Last War.
+- Les cartes de sources utilisent désormais un **titre réel, un éditeur, une date et une URL vérifiable**.
+- Une source n’est étiquetée **Officiel** que si elle pointe vers un support officiel Last War vérifié.
+- L’ancienne carte « Official Drone development guidance » est remplacée par l’article réel du support Last War sur les coffres de composants Drone de niveau 6/7 ; sa portée est limitée à ce qu’il affirme réellement.
+- Les discussions Reddit utilisées comme signaux communautaires restent clairement marquées **Communauté** et sont cliquables depuis WarBoost.
+- Les signaux communautaires **n’ajoutent et ne retirent plus directement de points** au score Diagnostic PRO. Ils expliquent le contexte, mais les données du compte, le palier EX, le coût relatif, le rôle, le timing VS/Saison et les mesures enregistrées décident du classement numérique.
+- Les coefficients opaques `+4`, `+3`, `-5` qui pouvaient faire basculer artificiellement Lucius/Morrison/Skyler/Carlie sont supprimés du score.
+- Les sources réellement utilisées par les priorités affichées remontent en tête de la liste.
+- DVA reste explicitement **EX à vérifier** tant qu’aucune valeur fiable n’est enregistrée ; WarBoost ne lui invente ni niveau ni score.
+- La confiance « Méta » décrit désormais surtout la **traçabilité des preuves**, pas une certitude universelle sur les opinions communautaires.
+- Les protections de V2.5.15 restent présentes : explications « Pourquoi » liées au vrai rang, comparaison des 5 héros, aucune quantité exacte inventée, serveur inconnu non simulé, VS non spéculatif et invitation Alliance non ambiguë.
 
 ### Protections conservées
 
@@ -24,7 +23,7 @@ V2.5.15 conserve la base V2.5.14 et corrige la faiblesse observée dans Diagnost
 - Les scans/migrations ne doivent jamais effacer les valeurs existantes à cause d’un champ non lu.
 - Bêta privée, consentement explicite, masquage des données hors session et paiements désactivés restent inchangés.
 - WarBoost n’active aucune source Last War non autorisée et n’automatise pas le gameplay.
-- Aucune migration Supabase V2.5.15 n’est nécessaire. Aucun `DROP`, `TRUNCATE`, reset ou suppression destructive n’est ajouté.
+- Aucune migration Supabase V2.5.16 n’est nécessaire. Aucun `DROP`, `TRUNCATE`, reset ou suppression destructive n’est ajouté.
 
 ### Bêta privée
 
