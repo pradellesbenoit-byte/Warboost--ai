@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.9",
+  "name": "WarBoost V2.5.10",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.9 — Boutique IA Evidence & Confidence Reliability: relevance, data confidence and availability are separate; dated reference prices require in-game verification; player data remains protected.",
+  "description": "WarBoost V2.5.10 — Season Lifecycle Reliability: active, ended, inter-season and unknown states are separated; missing progress is never forced to 0; ended seasons cannot drive S6 advice; player data remains protected.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

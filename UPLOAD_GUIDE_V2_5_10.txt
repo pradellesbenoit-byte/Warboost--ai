@@ -1,0 +1,44 @@
+WARBOOST V2.5.10 — UPLOAD GUIDE
+
+Branch: publisher-demo
+Do not touch main.
+
+ROOT (12 files):
+- app.js
+- BUILD_VERIFICATION_V2_5_10.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_5_10.txt
+- README.md
+- SHA256SUMS_V2_5_10.txt
+- sw.js
+- UPLOAD_GUIDE_V2_5_10.txt
+- WARBOOST_V2_5_10_RELEASE.md
+
+api/ (3 files):
+- advice.js
+- health.js
+- scan.js
+
+lib/ (5 files):
+- adaptive-context.js
+- meta-intel.js
+- normalize.js
+- season-lifecycle.js
+- season6-awakening.js
+
+scripts/:
+- verify-v2.5.10.mjs
+
+supabase/:
+- NO SCHEMA MIGRATION for V2.5.10
+
+Expected Season result after the confirmed S6 end state is synchronized:
+- Saison 6 · Terminée
+- Jour —
+- Chef de guerre preserved as last known profession
+- Progression = Entre-saisons / non applicable, never 0%
+- no active S6 Awakening advice
+- advice asks to refresh when the next season opens

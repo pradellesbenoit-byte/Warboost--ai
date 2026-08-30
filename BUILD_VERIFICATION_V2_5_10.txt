@@ -1,0 +1,29 @@
+WARBOOST V2.5.10 — BUILD VERIFICATION
+========================================
+
+Scope: Season Lifecycle Reliability + full V2.5.9 regression coverage.
+
+PASS
+- npm run check
+- npm run verify
+- missing season progress stays null / unknown
+- legacy V2.5.9 season progress 0 with no day/length is repaired to unknown
+- a real active Day 1 / 0% value remains valid
+- active / ended / interseason / unknown lifecycle states are separated
+- ended/interseason S6 disables Awakening / Reshape recommendations
+- ended/interseason S6 returns no active S6 hero-value model
+- historical profession remains visible without forcing an active season objective
+- unknown lifecycle blocks numeric season advice
+- Season UI hides the progress bar when progress is unknown/non-applicable
+- manual Season lifecycle selector is present
+- Season scan contract accepts lifecycle only when visibly confirmed
+- 23 explicit language choices include Season lifecycle labels
+- 31 canonical heroes preserved
+- Squad 1 remains the player-selected primary squad
+- 7-day Player plan preserved
+- Boutique IA relevance / confidence / availability safeguards preserved
+- R5/R4 confirmed-active-only tactical roles preserved
+- Alliance invite / single-membership safeguards preserved
+- VS Sunday preparation + UTC-2 reset preserved
+- no Supabase schema migration required
+- protected cloud/local data behavior preserved
