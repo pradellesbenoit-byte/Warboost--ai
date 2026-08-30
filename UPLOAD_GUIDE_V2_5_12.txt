@@ -1,0 +1,30 @@
+WARBOOST V2.5.12 — PRIVATE BETA UPLOAD GUIDE
+
+Branch: publisher-demo
+DO NOT TOUCH main.
+
+Upload the PATCH contents at the exact paths listed in PATCH_MANIFEST_V2_5_12.txt.
+Do not upload WarBoost_V2.5.12_FULL.zip or WarBoost_V2.5.12_PATCH.zip into the repository.
+
+AFTER GITHUB UPLOAD, BEFORE SHARING THE BETA:
+1. Open the Vercel project used by the publisher-demo Preview.
+2. Add environment variable:
+   WARBOOST_BETA_EMAILS=email1@example.com,email2@example.com
+3. Redeploy the publisher-demo Preview after the environment variable is saved.
+4. Open /api/health on that exact Preview.
+5. Confirm:
+   - version = 2.5.12
+   - beta.mode = private
+   - beta.access_enforced = true
+   - beta.payments_enabled = false
+6. Test one invited account and one non-invited account.
+7. Test consent ON/OFF and confirm cloud/scan/AI are blocked without consent.
+8. Confirm PRO is included and no payment/checkout is possible.
+9. Confirm existing player squads/history are still present.
+
+If beta.access_enforced = false, the Preview is still in setup mode and MUST NOT be shared externally.
+
+SUPABASE:
+- NO V2.5.12 schema migration.
+- Do not run schema.sql again.
+- Do not reset or delete player data.

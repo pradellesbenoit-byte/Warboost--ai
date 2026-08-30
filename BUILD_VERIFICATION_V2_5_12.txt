@@ -1,0 +1,38 @@
+WARBOOST V2.5.12 — BUILD VERIFICATION
+Private Beta Reliability
+
+Base: WarBoost V2.5.11 stable
+Target branch: publisher-demo
+main: must remain untouched
+
+LOCAL CHECKS REQUIRED BEFORE RELEASE:
+- npm run check: PASS
+- npm run verify: PASS
+- 13 serverless JS APIs syntax-checked
+- 23 explicit languages + Auto: beta labels resolved
+- 31-hero canonical catalog preserved
+- Squad 1 primary-selection reliability preserved
+- Player 7-day plan no-invented-quantity policy preserved
+- Boutique AI relevance / evidence confidence / availability separation preserved
+- Alliance R5/R4 authorization and stale-roster reliability preserved
+- VS Sunday / UTC-2 reset reliability preserved
+- Season active/ended/interseason/unknown lifecycle reliability preserved
+
+PRIVATE BETA GUARDS:
+- Invitation allowlist supported by WARBOOST_BETA_EMAILS
+- Server-side outsider rejection when allowlist is configured
+- Explicit beta consent required for cloud/scan/AI data APIs
+- Consent storage is account-scoped on device
+- PRO included for admitted beta users
+- Payment checkout disabled server-side
+- Payment diagnostics disabled during beta
+- Feedback does not auto-attach nickname, email, screenshot, account data or full User-Agent
+- Existing player data preservation mechanisms remain enabled
+
+DATABASE:
+- No V2.5.12 Supabase migration required
+- No destructive SQL introduced
+
+DEPLOYMENT GATE:
+Local PASS does not prove the Vercel beta is private.
+Before external sharing, the deployed Preview MUST report beta.access_enforced=true on /api/health after WARBOOST_BETA_EMAILS is configured in Vercel.

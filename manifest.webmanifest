@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.11",
+  "name": "WarBoost V2.5.12 Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.11 — Season UI Final Reliability: ended/inter-season views show the last profession as historical and use Season state instead of Progress when seasonal progress is not applicable; V2.5.10 lifecycle safeguards and player-data protections remain intact.",
+  "description": "WarBoost V2.5.12 — Private Beta Reliability: invitation-controlled beta access, free PRO for invited testers, payments disabled, explicit consent before cloud/AI writes, privacy-safe feedback, and protected player data.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
