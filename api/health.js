@@ -57,7 +57,7 @@ export default async function handler(req,res){
       beta_consent_required_before_cloud_ai_writes:true,
       beta_consent_revocable_on_device:true,beta_consent_account_scoped:true,
       beta_feedback_device_share_no_auto_personal_data:true,beta_feedback_no_full_user_agent:true,
-      beta_existing_player_data_preserved:true,
+      beta_existing_player_data_preserved:true,beta_status_reuses_pro_endpoint:true,
       unauthorized_source_default:false,
       user_scoped_cloud:true,
       no_placeholder_hero_names:true,
@@ -150,6 +150,6 @@ export default async function handler(req,res){
     hero_catalog_count:HERO_CATALOG.length,
     shop_reference_catalog:shopRef,
     hero_catalog_identity_source:"shared-single-source",
-    serverless_functions:13
+    serverless_functions:12
   })
 }

@@ -122,7 +122,7 @@ export default async function handler(req,res){
     const configured=Boolean(stripeKey()&&priceId());
 
     if(beta.release){
-      if(req.method==="GET")return res.status(200).json({ok:true,beta:true,configured:false,active:Boolean(beta.allowed),status:beta.allowed?"beta":"invite_required",plan:null,payments_enabled:false,beta_access:beta.access_status,beta_enforced:beta.enforced,pro_included:Boolean(beta.allowed)});
+      if(req.method==="GET")return res.status(200).json({ok:true,beta:true,release:beta.release,configured:false,beta_configured:beta.configured,enforced:beta.enforced,allowed:beta.allowed,invited_count:beta.invited_count,consent_version:beta.consent_version,access_status:beta.access_status,active:Boolean(beta.allowed),status:beta.allowed?"beta":"invite_required",plan:null,payments_enabled:false,beta_access:beta.access_status,beta_enforced:beta.enforced,pro_included:Boolean(beta.allowed)});
       if(req.method==="POST")return res.status(403).json({ok:false,error:"BETA_PAYMENT_DISABLED",message:"Les paiements sont désactivés pendant la bêta privée WarBoost."});
     }
 
