@@ -1,48 +1,61 @@
-# WarBoost V2.5.12
+# WarBoost V2.5.13
 
-## Private Beta Reliability
+## Private Beta Privacy Fix
 
-V2.5.12 transforme la base stable V2.5.11 en **bêta privée gratuite**, sans ouvrir la commercialisation et sans modifier les données joueur existantes.
+V2.5.13 part de la V2.5.12 validée et renforce la bêta privée **sans supprimer ni réinitialiser les données joueur**.
 
-### Accès bêta
+### Confidentialité bêta
 
-- Badge **BÊTA PRIVÉE** visible dans l’interface.
-- Connexion WarBoost obligatoire pour les modules de bêta.
-- Liste d’invitation serveur par e-mail via `WARBOOST_BETA_EMAILS`.
-- Si la liste est configurée, un compte non invité est bloqué côté interface **et côté API**.
-- Tant que `WARBOOST_BETA_EMAILS` n’est pas configuré, la Preview reste volontairement en mode de préparation : les comptes connectés peuvent tester, mais **le lien ne doit pas être partagé avec des bêta-testeurs externes**. `/api/health` indique alors `beta.access_enforced: false`.
+- Les données privées du joueur (identité Last War, QG, puissance, Drone, escouades, Alliance, roster, VS, Saison et Diagnostic PRO) restent enregistrées mais sont **masquées** tant que les trois conditions ne sont pas réunies :
+  1. session WarBoost connectée ;
+  2. compte autorisé par la bêta privée ;
+  3. consentement bêta accepté pour ce compte.
+- Une déconnexion ne supprime aucune donnée : elle ferme seulement l'affichage privé.
+- Le consentement reste enregistré par compte WarBoost sur l'appareil.
+- Les états locaux sont isolés par compte : les données d'un ancien utilisateur du même navigateur ne peuvent pas être adoptées par un autre compte.
+- Les anciennes données locales non encore rattachées à un compte restent migrables au premier compte légitime, afin de préserver la compatibilité des versions antérieures.
 
-Exemple Vercel :
+### Corrections d'interface
 
-```text
-WARBOOST_BETA_EMAILS=testeur1@example.com,testeur2@example.com
-```
+- Accueil Saison : une Saison 6 terminée affiche désormais **Saison 6 terminée / Entre-saisons** au lieu de laisser croire que la saison est active.
+- Diagnostic PRO : les clés internes comme `season_phase_interseason` ne sont plus affichées au joueur.
+- VS le dimanche : lundi Jour 1 est présenté comme le **prochain** jour de score, pas comme le jour courant.
 
-Les doublons et différences de casse sont neutralisés. Aucun e-mail d’invitation n’est stocké dans le dépôt GitHub.
+### Bêta privée conservée
 
-### PRO pendant la bêta
+- `WARBOOST_BETA_EMAILS` reste la liste d'autorisation serveur.
+- WarBoost PRO reste inclus gratuitement pour les bêta-testeurs admis.
+- Paiement / checkout restent désactivés pendant la bêta.
+- Consentement obligatoire avant cloud, scan et IA utilisant les données du compte.
+- Retour bêta sans ajout automatique du pseudo, de l'e-mail, des captures ou des données du compte.
+- Exactement **12 fonctions API** : compatible avec la limite Vercel Hobby utilisée par cette Preview.
 
-- **WarBoost PRO est inclus gratuitement** pour les comptes admis à la bêta.
-- Le paiement est désactivé dans l’interface et côté serveur.
-- Toute tentative de checkout API renvoie `BETA_PAYMENT_DISABLED`.
-- Les diagnostics Stripe sont également indisponibles pendant cette bêta.
+### Fonctions validées conservées
 
-### Consentement et données
+Escouade 1 principale, 4 escouades, Drone, armes exclusives, Scan/OCR, Diagnostic PRO, Boutique IA, Plan Joueur 7 jours sans quantités inventées, Alliance R5/R4 et roster prudent, VS avec reset serveur UTC−2, cycle Saison active/terminée/entre-saisons/inconnue, 31 héros, 23 langues explicites + Auto, voix par grade et protections cloud.
 
-- Consentement bêta explicite avant les lectures/écritures cloud, scans et appels IA qui utilisent les données du compte.
-- Consentement enregistré localement **par compte WarBoost**, afin qu’un autre utilisateur du même appareil n’hérite jamais du consentement précédent.
-- Consentement révocable depuis la case de l’interface.
-- Les mécanismes historiques de sauvegarde, récupération locale/cloud et migration restent actifs : une mise à jour ne doit jamais forcer le joueur à rescanner ou ressaisir ses données.
-- **Aucune migration Supabase V2.5.12** n’est nécessaire.
+### Données / Supabase
 
-### Retours bêta
+**Aucune migration Supabase V2.5.13 n'est nécessaire.**
 
-Un bouton **Retour bêta** permet au testeur de partager volontairement un bug, une idée, un écran peu clair ou une donnée incorrecte via les applications de son appareil. WarBoost ne joint automatiquement ni pseudo, ni e-mail, ni capture, ni données de compte, ni User-Agent complet. Les diagnostics optionnels sont limités à la version, langue, écran, état d’accès bêta et état du consentement.
+Ne pas relancer `schema.sql`, ne pas vider les tables et ne pas effacer le stockage local pour installer cette version.
 
-### Non-régression conservée
+### Déploiement
 
-V2.5.12 conserve les fonctions validées auparavant : Escouade 1 principale, Scan/OCR, Diagnostic PRO et Plan Joueur 7 jours sans quantités inventées, Boutique IA Pertinence/Confiance/Disponibilité, Alliance R5/R4, VS avec reset serveur UTC−2, Saison 6 terminée / entre-saisons, 31 héros, 23 choix de langue explicites + Auto, voix par grade et protections cloud.
+Cible : branche GitHub **`publisher-demo` uniquement**. Ne pas modifier `main` ni `warboost.fr`.
+
+Après déploiement de la Preview, vérifier `/api/health` :
+
+- `version: "2.5.13"`
+- `beta.mode: "private"`
+- `beta.access_enforced: true`
+- `beta.payments_enabled: false`
+- `serverless_functions: 12`
+- `safeguards.signed_out_private_data_masked: true`
+- `safeguards.invited_without_consent_private_data_masked: true`
+- `safeguards.private_state_preserved_not_deleted: true`
+- `safeguards.cross_account_local_state_isolated: true`
 
 ### Positionnement Last War
 
-WarBoost reste un compagnon indépendant. L’intégration officielle Last War reste **en attente d’autorisation** et aucune fonction ne doit laisser croire à un accès officiel non accordé.
+WarBoost reste un compagnon indépendant. L'intégration officielle Last War reste **en attente d'autorisation**. Aucune fonction ne doit laisser croire qu'un accès officiel a été obtenu.

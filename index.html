@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.12 — Private Beta Reliability</title>
+  <title>WarBoost V2.5.13 — Private Beta Privacy Fix</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -16,7 +16,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BETA PRIVÉE</span></div><small data-i18n="tagline">V2.5.12 · Private Beta · official integration pending</small></div>
+        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BETA PRIVÉE</span></div><small data-i18n="tagline">V2.5.13 · Private Beta · official integration pending</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -24,7 +24,7 @@
 
 
     <section class="publisherStrip" aria-label="Publisher demo status">
-      <div><b>WarBoost V2.5.12</b><span data-i18n="beta_release_label">Private Beta</span></div>
+      <div><b>WarBoost V2.5.13</b><span data-i18n="beta_release_label">Private Beta</span></div>
       <span class="publisherPill" data-i18n="official_pending">Official integration pending</span>
     </section>
 
@@ -60,7 +60,7 @@
       <button class="moduleCard" data-open="player"><span class="moduleMeta" id="playerMeta">—</span><span class="moduleIcon">👤</span><h2 data-i18n="player">Joueur</h2><p data-i18n="player_desc">4 escouades, Drone, progression et priorités.</p></button>
       <button class="moduleCard" data-open="alliance"><span class="moduleMeta" id="allianceMeta">—</span><span class="moduleIcon">🛡️</span><h2 data-i18n="alliance">Alliance</h2><p data-i18n="alliance_desc">Membres, R5/R4 et plans de guerre.</p></button>
       <button class="moduleCard" data-open="vs"><span class="moduleMeta" id="vsMeta">—</span><span class="moduleIcon">⚔️</span><h2 data-i18n="vs">VS</h2><p data-i18n="vs_desc">Adversaire de la semaine, jour actuel et plan.</p></button>
-      <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
+      <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p id="seasonDesc" data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
     </section>
     <div class="footerNote publisherFooter"><b data-i18n="publisher_footer_title">Built for an authorized companion model.</b><span data-i18n="footer">WarBoost Scan + alliance cloud today; official Last War integration can be connected after authorization.</span></div>
   </main>
@@ -154,7 +154,7 @@
 
   <section id="feedbackDrawer" class="drawer" aria-hidden="true">
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>🧪 <span data-i18n="beta_feedback_title">Retour bêta</span></h2><button class="closeBtn" data-close>×</button></div>
-    <div class="section"><div class="sectionTitle"><h3 data-i18n="beta_feedback_kind">Type de retour</h3><span class="pill">V2.5.12</span></div><select id="betaFeedbackKind" class="fieldSelect"><option value="bug" data-i18n="beta_feedback_bug">Bug</option><option value="idea" data-i18n="beta_feedback_idea">Idée</option><option value="confusing" data-i18n="beta_feedback_confusing">Écran peu clair</option><option value="data" data-i18n="beta_feedback_data">Donnée incorrecte</option></select><textarea id="betaFeedbackText" class="rosterImportText" rows="6" data-i18n-placeholder="beta_feedback_placeholder" placeholder="Décris ce qui s’est passé, ce que tu attendais et l’écran concerné."></textarea><label class="betaConsentRow"><input id="betaFeedbackDiagnostics" type="checkbox" checked /> <span data-i18n="beta_feedback_diagnostics">Inclure uniquement les diagnostics techniques non personnels (version, langue, navigateur et écran).</span></label><div class="privacyText" data-i18n="beta_feedback_privacy">WarBoost ne joint ni pseudo, e-mail, captures ni données de compte automatiquement. Le retour est partagé via les applications de ton téléphone.</div><button id="betaFeedbackShareBtn" class="primaryAction" type="button" data-i18n="beta_feedback_share">Partager le retour</button><div id="betaFeedbackStatus" class="notice hidden" style="margin-top:9px"></div></div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="beta_feedback_kind">Type de retour</h3><span class="pill">V2.5.13</span></div><select id="betaFeedbackKind" class="fieldSelect"><option value="bug" data-i18n="beta_feedback_bug">Bug</option><option value="idea" data-i18n="beta_feedback_idea">Idée</option><option value="confusing" data-i18n="beta_feedback_confusing">Écran peu clair</option><option value="data" data-i18n="beta_feedback_data">Donnée incorrecte</option></select><textarea id="betaFeedbackText" class="rosterImportText" rows="6" data-i18n-placeholder="beta_feedback_placeholder" placeholder="Décris ce qui s’est passé, ce que tu attendais et l’écran concerné."></textarea><label class="betaConsentRow"><input id="betaFeedbackDiagnostics" type="checkbox" checked /> <span data-i18n="beta_feedback_diagnostics">Inclure uniquement les diagnostics techniques non personnels (version, langue, navigateur et écran).</span></label><div class="privacyText" data-i18n="beta_feedback_privacy">WarBoost ne joint ni pseudo, e-mail, captures ni données de compte automatiquement. Le retour est partagé via les applications de ton téléphone.</div><button id="betaFeedbackShareBtn" class="primaryAction" type="button" data-i18n="beta_feedback_share">Partager le retour</button><div id="betaFeedbackStatus" class="notice hidden" style="margin-top:9px"></div></div>
   </section>
 
   <script type="module" src="/app.js"></script>

@@ -1,12 +1,12 @@
 {
   "name": "warboost-v2-publisher-edition",
-  "version": "2.5.12",
+  "version": "2.5.13",
   "private": true,
-  "description": "WarBoost V2.5.12 — Private Beta Reliability: invitation-controlled beta access, free PRO for invited testers, payments disabled, explicit beta consent before cloud/AI writes, privacy-safe feedback sharing, and full V2.5.11 data-preservation safeguards.",
+  "description": "WarBoost V2.5.13 — Private Beta Privacy Fix: preserves all V2.5.12 beta safeguards while masking saved player/alliance/squad data until an invited session is active and consented; also finalizes inter-season and Sunday-prep UI wording.",
   "type": "module",
   "scripts": {
     "check": "node --check app.js && node --check publisher-ui.js && node --check i18n.js && node --check sw.js && node --check api/state.js && node --check api/sync.js && node --check api/scan.js && node --check api/advice.js && node --check api/alliance-role.js && node --check api/invite.js && node --check api/join.js && node --check api/ingest.js && node --check api/health.js && node --check api/cloud-config.js && node --check api/cron-sync.js && node --check api/pro.js && node --check lib/supabase.js && node --check lib/normalize.js && node --check lib/provider.js && node --check lib/auth.js && node --check lib/meta-intel.js && node --check lib/heroes.js && node --check lib/alliance-activity.js && node --check lib/data-freshness.js && node --check lib/shop-catalog.js && node --check lib/season6-awakening.js && node --check lib/season-lifecycle.js && node --check lib/squad-identity.js && node --check lib/adaptive-context.js && node --check lib/hero-history.js && node --check lib/roster-import.js && node --check lib/alliance-roster-merge.js && node --check lib/beta-access.js",
     "serve": "npx serve .",
-    "verify": "node scripts/verify-v2.5.12.mjs"
+    "verify": "node scripts/verify-v2.5.13.mjs"
   }
 }

@@ -1,0 +1,54 @@
+WARBOOST V2.5.13 — BUILD VERIFICATION
+Private Beta Privacy Fix
+
+Base: WarBoost V2.5.12 FULL / verification deploy fix
+Target branch: publisher-demo
+main: MUST remain untouched
+
+LOCAL VALIDATION
+- npm run check: PASS
+- npm run verify: PASS
+- WarBoost V2.5.13 verification: PASS
+- Exactly 12 top-level serverless JS APIs preserved
+- 31 canonical heroes preserved
+- 23 explicit languages + Auto preserved
+
+PRIVACY REGRESSIONS COVERED
+- Signed-out private data is masked
+- Invited account without consent has private data masked
+- Saved state is preserved, never deleted to achieve masking
+- Local state is isolated by authenticated account
+- A different account cannot claim the previous authenticated account's local state
+- Auth transitions fail closed while beta allowlist is being rechecked
+- Consent change rerenders the privacy boundary immediately
+- Logout preserves the account ownership marker instead of converting private state back to unclaimed legacy state
+
+UI REGRESSIONS COVERED
+- Home Season reports ended/interseason state correctly
+- Internal season lifecycle keys are not rendered to players
+- Sunday VS labels Monday Day 1 as next, not current
+- Service Worker cache bumped to V2.5.13
+
+NON-REGRESSION COVERED
+- Squad 1 primary-selection reliability
+- Player PRO + 7-day plan without invented quantities
+- Shop relevance / confidence / availability separation
+- Alliance R5/R4 permissions and stale-roster Plan B
+- VS UTC-2 reset boundaries
+- Season active / ended / interseason / unknown lifecycle
+- Cloud data preservation / roster merge safeguards
+- Private beta outsider rejection, consent enforcement, free PRO and payment lock
+
+DATABASE
+- No V2.5.13 Supabase migration required
+- No destructive SQL introduced
+
+DEPLOYMENT GATE
+Local PASS does not prove the live Preview is private.
+Before inviting testers, the exact publisher-demo Preview must report:
+- version 2.5.13
+- beta.access_enforced true
+- beta.payments_enabled false
+- serverless_functions 12
+- cross_account_local_state_isolated true
+Then run the logout / consent OFF / consent ON privacy tests without clearing local storage.

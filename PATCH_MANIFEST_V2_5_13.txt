@@ -1,0 +1,31 @@
+WARBOOST V2.5.13 — PATCH MANIFEST
+Base: V2.5.12 FULL / verification deploy fix
+Changed/new files: 17
+
+ROOT (13)
+app.js
+BUILD_VERIFICATION_V2_5_13.txt
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+PATCH_MANIFEST_V2_5_13.txt
+README.md
+SHA256SUMS_V2_5_13.txt
+styles.css
+sw.js
+UPLOAD_GUIDE_V2_5_13.txt
+WARBOOST_V2_5_13_RELEASE.md
+
+api/ (2)
+api/advice.js
+api/health.js
+
+lib/ (1)
+lib/normalize.js
+
+scripts/ (1)
+scripts/verify-v2.5.13.mjs
+
+supabase/
+NO V2.5.13 MIGRATION

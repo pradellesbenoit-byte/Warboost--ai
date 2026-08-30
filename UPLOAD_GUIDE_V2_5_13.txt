@@ -1,0 +1,67 @@
+WARBOOST V2.5.13 — PRIVATE BETA PRIVACY FIX — UPLOAD GUIDE
+
+TARGET
+- GitHub branch: publisher-demo
+- DO NOT TOUCH main.
+- DO NOT deploy these files to Production / warboost.fr.
+
+UPLOAD THE PATCH FILES AT THEIR EXACT PATHS:
+
+ROOT
+- app.js
+- BUILD_VERIFICATION_V2_5_13.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_5_13.txt
+- README.md
+- SHA256SUMS_V2_5_13.txt
+- styles.css
+- sw.js
+- UPLOAD_GUIDE_V2_5_13.txt
+- WARBOOST_V2_5_13_RELEASE.md
+
+api/
+- api/advice.js
+- api/health.js
+
+lib/
+- lib/normalize.js
+
+scripts/
+- scripts/verify-v2.5.13.mjs
+
+DO NOT DELETE scripts/verify-v2.5.12.mjs. The new package.json simply uses verify-v2.5.13.mjs.
+
+VERCEL
+1. Let GitHub create a new Preview from publisher-demo.
+2. Keep WARBOOST_BETA_EMAILS scoped to Preview branch publisher-demo only.
+3. Do NOT redeploy Production / main.
+4. Open /api/health on the new publisher-demo Preview and confirm:
+   - version = 2.5.13
+   - beta.mode = private
+   - beta.access_enforced = true
+   - beta.payments_enabled = false
+   - serverless_functions = 12
+   - safeguards.signed_out_private_data_masked = true
+   - safeguards.invited_without_consent_private_data_masked = true
+   - safeguards.private_state_preserved_not_deleted = true
+   - safeguards.cross_account_local_state_isolated = true
+
+PRIVACY TEST — DO NOT CLEAR LOCAL STORAGE
+1. Invited account + consent ON: existing profile/squads/alliance must reappear.
+2. Log out: nickname, server, QG, alliance, squad power and other private state must be hidden.
+3. Signed out/private window: private modules stay masked.
+4. Invited account + consent OFF: private state stays masked.
+5. Consent ON again: the same saved data must reappear without rescan/re-entry.
+
+UI TEST
+- Home Season: ended/interseason wording, not “current season”.
+- PRO context: no raw season_phase_interseason key.
+- Sunday VS: Monday Day 1 is shown as NEXT, not current.
+
+SUPABASE
+- NO V2.5.13 schema migration.
+- Do not run schema.sql again.
+- Do not reset/delete player data.

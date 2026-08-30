@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.12 Beta",
+  "name": "WarBoost V2.5.13 Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.12 — Private Beta Reliability: invitation-controlled beta access, free PRO for invited testers, payments disabled, explicit consent before cloud/AI writes, privacy-safe feedback, and protected player data.",
+  "description": "WarBoost V2.5.13 — Private Beta Privacy Fix: invitation-controlled beta access, free PRO for invited testers, payments disabled, explicit consent before cloud/AI writes, privacy-safe feedback, and protected player data.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
