@@ -1,8 +1,17 @@
-# WarBoost V2.5.16
+# WarBoost V2.5.17
 
-## Bêta privée — intégrité des sources et classement compte-first
+## Bêta privée — pertinence des sources et classement compte-first
 
-V2.5.16 conserve les corrections de V2.5.15 et corrige le problème détecté dans « Sources méta et date » : certaines cartes utilisaient des intitulés synthétiques, des dates non fiables et des coefficients communautaires opaques capables de modifier trop fortement le classement EX.
+V2.5.17 conserve l’intégrité des sources de V2.5.16 et ajoute un filtrage par sujet : seules les références réellement pertinentes pour les priorités courantes sont affichées et comptées.
+
+
+### Correctif V2.5.17 — pertinence par sujet
+
+- Le panneau « Sources méta et date » ne mélange plus les domaines : un diagnostic EX affiche uniquement des sources `exclusive`, un diagnostic Drone uniquement des sources `drone`, et l’équipement uniquement des sources `gear`.
+- Le compteur `Sources IA` correspond uniquement aux sources pertinentes réellement affichées.
+- Une source valide mais hors sujet ne peut plus gonfler le compteur ni la confiance du diagnostic courant.
+- Si aucune source n’est pertinente pour les priorités courantes, WarBoost retourne zéro source plutôt que de remplir la liste avec des références sans rapport.
+- Les données du compte restent prioritaires et les sources communautaires restent explicatives, sans bonus/malus numérique opaque.
 
 ### Correctifs V2.5.16
 
@@ -23,7 +32,7 @@ V2.5.16 conserve les corrections de V2.5.15 et corrige le problème détecté da
 - Les scans/migrations ne doivent jamais effacer les valeurs existantes à cause d’un champ non lu.
 - Bêta privée, consentement explicite, masquage des données hors session et paiements désactivés restent inchangés.
 - WarBoost n’active aucune source Last War non autorisée et n’automatise pas le gameplay.
-- Aucune migration Supabase V2.5.16 n’est nécessaire. Aucun `DROP`, `TRUNCATE`, reset ou suppression destructive n’est ajouté.
+- Aucune migration Supabase V2.5.17 n’est nécessaire. Aucun `DROP`, `TRUNCATE`, reset ou suppression destructive n’est ajouté.
 
 ### Bêta privée
 
