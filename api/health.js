@@ -23,7 +23,7 @@ export default async function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.13",
+    version:"2.5.14",
     mode:"private-beta-approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -59,6 +59,7 @@ export default async function handler(req,res){
       beta_feedback_device_share_no_auto_personal_data:true,beta_feedback_no_full_user_agent:true,
       beta_existing_player_data_preserved:true,beta_status_reuses_pro_endpoint:true,
       signed_out_private_data_masked:true,invited_without_consent_private_data_masked:true,private_state_preserved_not_deleted:true,cross_account_local_state_isolated:true,
+      browser_auth_direct_supabase_transport:true,browser_auth_no_external_cdn:true,cloud_config_error_distinguished:true,auth_network_error_distinguished:true,auth_client_start_error_distinguished:true,legacy_supabase_session_storage_compatible:true,
       season_home_interseason_label:true,pro_context_internal_season_key_hidden:true,vs_sunday_next_monday_label:true,
       unauthorized_source_default:false,
       user_scoped_cloud:true,
