@@ -1,0 +1,73 @@
+WARBOOST V2.5.14 — CLOUD AUTH RELIABILITY FIX — UPLOAD GUIDE
+
+TARGET
+- GitHub branch: publisher-demo
+- DO NOT TOUCH main.
+- DO NOT deploy these files to Production / warboost.fr yet.
+
+UPLOAD THE PATCH FILES AT THEIR EXACT PATHS:
+
+ROOT
+- app.js
+- BUILD_VERIFICATION_V2_5_14.txt
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- PATCH_MANIFEST_V2_5_14.txt
+- README.md
+- SHA256SUMS_V2_5_14.txt
+- sw.js
+- UPLOAD_GUIDE_V2_5_14.txt
+- WARBOOST_V2_5_14_RELEASE.md
+
+api/
+- api/advice.js
+- api/health.js
+
+lib/
+- lib/browser-auth.js
+- lib/normalize.js
+
+scripts/
+- scripts/verify-v2.5.14.mjs
+
+DO NOT DELETE scripts/verify-v2.5.13.mjs or scripts/verify-v2.5.12.mjs.
+The new package.json uses verify-v2.5.14.mjs.
+
+VERCEL
+1. Let GitHub create a new Preview from publisher-demo.
+2. Keep WARBOOST_BETA_EMAILS scoped to Preview branch publisher-demo only.
+3. Do NOT redeploy Production / main.
+4. Open /api/cloud-config?debug=1 on the new Preview and confirm configured = true.
+5. Open /api/health and confirm:
+   - version = 2.5.14
+   - beta.mode = private
+   - beta.access_enforced = true
+   - beta.payments_enabled = false
+   - serverless_functions = 12
+   - safeguards.browser_auth_direct_supabase_transport = true
+   - safeguards.browser_auth_no_external_cdn = true
+   - safeguards.cloud_config_error_distinguished = true
+   - safeguards.auth_network_error_distinguished = true
+   - safeguards.signed_out_private_data_masked = true
+   - safeguards.private_state_preserved_not_deleted = true
+
+AUTH TEST — DO NOT CLEAR LOCAL STORAGE
+1. Signed out: private player/alliance/squad data must stay hidden.
+2. Open Account: no old nickname/server/QG/alliance/role may be visible.
+3. Sign in with the invited beta account.
+4. If consent is required, accept it.
+5. Existing player/squad/alliance data must reappear without rescan/re-entry.
+6. Log out, then verify the data are masked again rather than deleted.
+7. If the network is unavailable, the UI must say authentication is unreachable — not “Cloud not configured”.
+
+IMPORTANT
+- V2.5.14 no longer loads @supabase/supabase-js from a third-party browser CDN.
+- Browser auth uses the Supabase Auth HTTPS API directly through lib/browser-auth.js.
+- Existing Supabase session storage key format is preserved when possible.
+
+SUPABASE
+- NO V2.5.14 schema migration.
+- Do not run schema.sql again.
+- Do not reset/delete player data.

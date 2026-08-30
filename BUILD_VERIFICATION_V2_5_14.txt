@@ -1,0 +1,61 @@
+WARBOOST V2.5.14 — BUILD VERIFICATION
+Date: 2026-08-30
+Base: WarBoost V2.5.13 FULL / Private Beta Privacy Fix
+Target branch: publisher-demo only
+Production/main: NOT TOUCHED
+
+RESULT: PASS
+
+AUTOMATED CHECKS
+- npm run check: PASS
+- npm run verify: PASS
+- WarBoost V2.5.14 verification: PASS
+- 12 serverless API functions: PASS
+- 31 canonical hero assets/catalog: PASS
+- 23 explicit language choices + Auto preserved: PASS
+- no V2.5.14 Supabase migration: PASS
+
+V2.5.14 CLOUD/AUTH FIXES VERIFIED
+- Browser auth no longer depends on jsDelivr/unpkg/esm.sh or @supabase/supabase-js CDN script: PASS
+- Local repository module lib/browser-auth.js provides direct Supabase Auth HTTPS transport: PASS
+- Password sign-in mocked transport test: PASS
+- Email signup without fabricated session: PASS
+- OTP verification mocked transport test: PASS
+- Existing project-scoped Supabase storage key sb-<project-ref>-auth-token preserved: PASS
+- Expired stored session refresh-token flow: PASS
+- Logout clears only the auth session token and does not delete WarBoost player state: PASS
+- Network failure returns auth_network_unavailable instead of “Cloud not configured”: PASS
+- cloud-config unavailable / missing / client error / auth unreachable states are distinguished: PASS
+- renderAuth() is explicitly present in deployed source: PASS
+- service-worker cache updated and includes /lib/browser-auth.js: PASS
+
+PATCH / FULL PACKAGE TESTS
+- PATCH file count = 17: PASS
+- V2.5.13 base + V2.5.14 PATCH matches V2.5.14 FULL source exactly: PASS
+- extracted FULL ZIP matches V2.5.14 FULL source exactly: PASS
+- npm run check on patch-applied tree: PASS
+- npm run verify on patch-applied tree: PASS
+
+PRIVACY / DATA NON-REGRESSION
+- Signed-out private player/alliance/squad data masked: PASS
+- Unconsented private data masked: PASS
+- Cross-account local-state isolation preserved: PASS
+- Saved state is preserved rather than deleted on logout: PASS
+- Legacy/partial player and hero data normalization preserved: PASS
+- Squad 1 remains player-selected primary squad: PASS
+- 7-day plan never invents exact resource quantities: PASS
+- stale alliance members are never auto-assigned to tactical groups: PASS
+- Sunday VS remains preparation day, with Monday Day 1 shown as next: PASS
+- ended/inter-season Season state remains historical, not active S6 advice: PASS
+
+SECURITY / POSITIONING
+- Private beta email allowlist and consent safeguards preserved: PASS
+- PRO remains free/included during beta; payment checkout blocked: PASS
+- No unauthorized Last War access introduced: PASS
+- No SQL DROP/TRUNCATE/DELETE migration added: PASS
+
+FULL TREE
+- Total files in verified FULL tree before packaging: 225
+
+NOTE
+The live Vercel Preview must still be tested after upload because local verification cannot prove the real browser/network path. Required live checks are documented in UPLOAD_GUIDE_V2_5_14.txt.

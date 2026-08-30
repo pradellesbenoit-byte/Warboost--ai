@@ -6,9 +6,10 @@ import {reconcileConfirmedSquad,repairLegacySquadIdentity,swapSquads,selectPrima
 import {recoverHeroData} from "./lib/hero-history.js";
 import {parseRosterImport,mergeRosterMembers} from "./lib/roster-import.js";
 import {repairSeasonState,seasonLifecycle,seasonIsActive,activeSeasonProgress} from "./lib/season-lifecycle.js";
+import {createWarBoostSupabaseAuthClient} from "./lib/browser-auth.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.5.13";
+const APP_VERSION="2.5.14";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const BACKUP_KEY="warboost_last_good_state", ACCOUNT_STATE_PREFIX="warboost_account_state:", VOICE_ENABLED_KEY="warboost_voice_enabled", VOICE_ID_KEY="warboost_voice_id";
 const BETA_CONSENT_KEY="warboost_beta_consent_2026_08_30_v1", BETA_CONSENT_VERSION="2026-08-30-v1";
@@ -158,9 +159,9 @@ function migrateLegacyLocalState(seed){
   out.version=APP_VERSION;return {state:out,changed};
 }
 function recoverLocalHeroHistory(input){const legacyProfile=readLegacyJson("wb10_profile")||null,legacyImportedPlayers=readLegacyJson("wb19_imported_players")||[];return recoverHeroData(input,{legacyProfile,legacyImportedPlayers,currentPlayerName:input?.player?.name||""});}
-function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.13-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state);let next=finalRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.13-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
+function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.14-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state);let next=finalRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.14-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
 
-let state=loadState(),serverNow=new Date(),pushTimer=null,suppressPush=false,cloud=null,cloudSession=null,proState={active:false,status:"free",configured:false,plan:null,beta:false},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null;
+let state=loadState(),serverNow=new Date(),pushTimer=null,suppressPush=false,cloud=null,cloudSession=null,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null;
 let voiceGreetedSections=new Set(),availableVoices=[];
 const openRosterRoles=new Set();
 let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[];
@@ -255,7 +256,28 @@ function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(l
 function saveState(){state=repairLegacySquadIdentity(state).state;state.updated_at=new Date().toISOString();state.version=APP_VERSION;localStorage.setItem(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"save");if(cloudSession?.user?.id&&String(state.player_id||"")===String(cloudSession.user.id))rememberAccountState(cloudSession.user.id,state);render();if(!suppressPush)scheduleServerSave()}
 function scheduleServerSave(){clearTimeout(pushTimer);pushTimer=setTimeout(pushServerState,700)}
 
-async function initCloudAuth(){try{const r=await fetch("/api/cloud-config",{cache:"no-store"});const cfg=await r.json();if(!r.ok||!cfg.configured||!window.supabase?.createClient)throw new Error();cloud=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data}=await cloud.auth.getSession();await applySession(data?.session||null);cloud.auth.onAuthStateChange((_event,session)=>applySession(session||null))}catch{renderAuth();renderBeta()}}
+async function initCloudAuth(){
+  cloud=null;cloudSession=null;cloudInit={status:"loading-config",configured:false,transport:"direct-supabase-auth-api",error:null};renderAuth();
+  let cfg;
+  try{
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
+    const r=await fetch("/api/cloud-config",{cache:"no-store",signal:controller.signal});clearTimeout(timer);
+    cfg=await r.json().catch(()=>({}));
+    if(!r.ok)throw Object.assign(new Error("cloud-config request failed"),{code:"cloud_config_unreachable"});
+  }catch(error){cloudInit={status:"config-unreachable",configured:false,transport:"direct-supabase-auth-api",error:error?.code||error?.name||"network"};renderAuth();renderBeta();return}
+  if(!cfg?.configured||!cfg?.url||!cfg?.key){cloudInit={status:"config-missing",configured:false,transport:"direct-supabase-auth-api",error:"missing_config"};renderAuth();renderBeta();return}
+  cloudInit={status:"client-starting",configured:true,transport:"direct-supabase-auth-api",error:null};
+  try{
+    cloud=createWarBoostSupabaseAuthClient({url:cfg.url,key:cfg.key});
+  }catch(error){cloud=null;cloudInit={status:"client-error",configured:true,transport:"direct-supabase-auth-api",error:error?.code||"client_error"};renderAuth();renderBeta();return}
+  try{
+    const {data,error}=await cloud.auth.getSession();
+    if(error)throw error;
+    cloudInit={status:"ready",configured:true,transport:cloud.diagnostics?.transport||"direct-supabase-auth-api",error:null};
+    await applySession(data?.session||null);
+    cloud.auth.onAuthStateChange((_event,session)=>applySession(session||null));
+  }catch(error){cloudInit={status:"auth-unreachable",configured:true,transport:"direct-supabase-auth-api",error:error?.code||"auth_unreachable"};renderAuth();renderBeta()}
+}
 async function refreshBeta(){if(!cloudSession?.access_token){betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};renderBeta();return betaState}try{const r=await fetch("/api/pro",{cache:"no-store",headers:authHeaders()}),j=await r.json().catch(()=>({}));if(r.ok&&j.beta){betaState={...betaState,release:j.release!==false,enforced:Boolean(j.enforced??j.beta_enforced),configured:Boolean(j.beta_configured??j.enforced??j.beta_enforced),allowed:Boolean(j.allowed??j.active),access_status:j.access_status||j.beta_access||(j.active?"invited":"invite-required"),consent_version:j.consent_version||BETA_CONSENT_VERSION,payments_enabled:false,pro_included:Boolean(j.pro_included)}}else betaState={...betaState,allowed:false,access_status:j.access_status||j.beta_access||j.error||"beta-status-error"}}catch{betaState={...betaState,allowed:false,access_status:"beta-status-error"}}renderBeta();return betaState}
 async function applySession(session){
   cloudSession=session||null;
@@ -286,6 +308,23 @@ async function applySession(session){
   }
   render();renderAuth();renderBeta();renderPro();
 }
+function cloudAuthFailureMessage(){
+  if(cloudInit.status==="config-missing")return t("auth_cloud_missing");
+  if(cloudInit.status==="config-unreachable")return t("auth_cloud_config_unreachable");
+  if(cloudInit.status==="client-error")return t("auth_client_unavailable");
+  if(cloudInit.status==="auth-unreachable")return t("auth_cloud_unreachable");
+  return t("auth_cloud_unreachable");
+}
+function renderAuth(){
+  const logged=Boolean(cloudSession?.user);
+  $("#authLoggedOut")?.classList.toggle("hidden",logged);
+  $("#authLoggedIn")?.classList.toggle("hidden",!logged);
+  if($("#authPill"))$("#authPill").textContent=logged?t("connected"):(cloudInit.status==="ready"?t("ready"):t("local"));
+  if(logged&&$("#authIdentity"))$("#authIdentity").textContent=`WarBoost · ${cloudSession.user.email||""}`;
+  const msg=$("#authMessage");
+  if(!logged&&msg&&["config-missing","config-unreachable","client-error","auth-unreachable"].includes(cloudInit.status)){msg.className="notice warn";msg.textContent=cloudAuthFailureMessage()}
+  renderBeta();renderPro();
+}
 function renderBeta(){const pill=$("#betaAccessPill"),status=$("#betaAccessStatus"),row=$("#betaConsentRow"),checkbox=$("#betaConsent");if(pill){const invited=Boolean(cloudSession?.user&&betaAccessAllowed());pill.textContent=!cloudSession?.user?t("beta_signin_short"):betaState.enforced&&!betaState.allowed?t("beta_invite_short"):betaState.enforced?t("beta_invited_short"):t("beta_setup_short");pill.className=`pill ${invited?"active":"warn"}`}if(status){status.className=`notice${cloudSession?.user&&betaAccessAllowed()?"":" warn"}`;status.textContent=betaAccessMessage()}if(row)row.classList.toggle("hidden",!cloudSession?.user||!betaAccessAllowed());if(checkbox)checkbox.checked=betaConsentAccepted();$$('.moduleCard').forEach(x=>{const locked=Boolean(!cloudSession?.user||(betaState.enforced&&!betaState.allowed));x.classList.toggle("betaLocked",locked);x.setAttribute("aria-disabled",locked?"true":"false")});const fab=$("#betaFeedbackBtn");if(fab)fab.classList.toggle("hidden",Boolean(!cloudSession?.user||(betaState.enforced&&!betaState.allowed)))}
 function authMessage(text,ok=false){const el=$("#authMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
 function inviteMessage(text,ok=false){const el=$("#inviteStatus");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text;el.classList.remove("hidden")}
@@ -300,7 +339,7 @@ function render(){
   const p=state.player,a=state.alliance,v=state.vs,s=state.season,d=state.drone||{},reveal=betaPrivateDataVisible();
   if(!$("#playerMeta"))return;
 
-  // V2.5.13 privacy boundary: saved local/cloud data is preserved in state but is never rendered
+  // V2.5.14 privacy boundary: saved local/cloud data is preserved in state but is never rendered
   // until an invited WarBoost session is active and beta consent is accepted.
   if(!reveal){
     $("#playerMeta").textContent=t("to_connect");
@@ -569,9 +608,9 @@ $("#voiceTestBtn")?.addEventListener("click",()=>speakGreeting("test",true));
 if("speechSynthesis" in window){window.speechSynthesis.addEventListener?.("voiceschanged",refreshVoices);setTimeout(refreshVoices,100)}
 $("#proActionBtn")?.addEventListener("click",openProAction);const proReturn=new URLSearchParams(location.search).get("pro");if(proReturn){setTimeout(()=>{openDrawer("account");if(proReturn==="success")setTimeout(refreshPro,900)},500);history.replaceState({},"",location.pathname)}
 
-$("#loginBtn")?.addEventListener("click",async()=>{if(!cloud)return authMessage(t("auth_cloud_missing"));const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value,{error}=await cloud.auth.signInWithPassword({email,password});if(error)return authMessage(error.message);authMessage(t("auth_success"),true)});
-$("#signupBtn")?.addEventListener("click",async()=>{if(!cloud)return authMessage(t("auth_cloud_missing"));const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value;if(!email||password.length<6)return authMessage(t("auth_invalid"));const {error}=await cloud.auth.signUp({email,password});if(error)return authMessage(error.message);localStorage.setItem("warboost_v1_pending_email",email);$("#otpBox").classList.remove("hidden");authMessage(t("signup_sent"),true)});
-$("#verifyOtpBtn")?.addEventListener("click",async()=>{if(!cloud)return;const email=localStorage.getItem("warboost_v1_pending_email")||$("#authEmail").value.trim().toLowerCase(),token=$("#authOtp").value.replace(/\D/g,"");if(token.length<6||token.length>8)return authMessage(t("otp_full"));const {error}=await cloud.auth.verifyOtp({email,token,type:"email"});if(error)return authMessage(error.message);localStorage.removeItem("warboost_v1_pending_email");authMessage(t("email_confirmed"),true)});
+$("#loginBtn")?.addEventListener("click",async()=>{if(!cloud)return authMessage(cloudAuthFailureMessage());const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value;try{const {error}=await cloud.auth.signInWithPassword({email,password});if(error)return authMessage(error.code==="auth_network_unavailable"?t("auth_cloud_unreachable"):error.message);authMessage(t("auth_success"),true)}catch{return authMessage(t("auth_cloud_unreachable"))}});
+$("#signupBtn")?.addEventListener("click",async()=>{if(!cloud)return authMessage(cloudAuthFailureMessage());const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value;if(!email||password.length<6)return authMessage(t("auth_invalid"));try{const {error}=await cloud.auth.signUp({email,password});if(error)return authMessage(error.code==="auth_network_unavailable"?t("auth_cloud_unreachable"):error.message);localStorage.setItem("warboost_v1_pending_email",email);$("#otpBox").classList.remove("hidden");authMessage(t("signup_sent"),true)}catch{return authMessage(t("auth_cloud_unreachable"))}});
+$("#verifyOtpBtn")?.addEventListener("click",async()=>{if(!cloud)return authMessage(cloudAuthFailureMessage());const email=localStorage.getItem("warboost_v1_pending_email")||$("#authEmail").value.trim().toLowerCase(),token=$("#authOtp").value.replace(/\D/g,"");if(token.length<6||token.length>8)return authMessage(t("otp_full"));try{const {error}=await cloud.auth.verifyOtp({email,token,type:"email"});if(error)return authMessage(error.code==="auth_network_unavailable"?t("auth_cloud_unreachable"):error.message);localStorage.removeItem("warboost_v1_pending_email");authMessage(t("email_confirmed"),true)}catch{return authMessage(t("auth_cloud_unreachable"))}});
 $("#logoutBtn")?.addEventListener("click",async()=>{const signedOutUserId=String(cloudSession?.user?.id||"");if(signedOutUserId&&String(state?.player_id||"")===signedOutUserId)rememberAccountState(signedOutUserId,state);if(cloud)await cloud.auth.signOut();cloudSession=null;proState={active:false,status:"free",configured:false,plan:null,beta:true};betaState={...betaState,allowed:false,access_status:"sign-in-required"};render();renderAuth();renderBeta()});
 
 document.addEventListener("click",e=>{const btn=e.target.closest?.("[data-inline-hero-save]");if(!btn)return;e.preventDefault();e.stopPropagation();const container=btn.closest?.("[data-inline-confirm]");saveInlineHeroNames(btn.dataset.inlineHeroSave,container,btn)});
