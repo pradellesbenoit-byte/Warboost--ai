@@ -1,5 +1,5 @@
 import {configured,getAllianceMembership,getAllianceById,setAllianceMemberRole} from "../lib/supabase.js";
-import {requireUser} from "../lib/auth.js";
+import {requireBetaUser} from "../lib/beta-access.js";
 
 function role(v){const r=String(v||"R1").toUpperCase();return /^R[1-5]$/.test(r)?r:"R1"}
 
@@ -8,7 +8,7 @@ export default async function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   if(!configured())return res.status(503).json({error:"database_not_configured"});
   try{
-    const user=await requireUser(req);
+    const {user}=await requireBetaUser(req,{consent:true});
     const actor=await getAllianceMembership(user.id);
     if(!actor)return res.status(403).json({error:"alliance_membership_required"});
     const alliance=await getAllianceById(actor.alliance_id);

@@ -1,6 +1,6 @@
 import {randomBytes} from "node:crypto";
 import {configured,createAlliance,findInvite,getAllianceMembership,getAllianceById,getOwnedAlliance,joinAlliance} from "../lib/supabase.js";
-import {requireUser} from "../lib/auth.js";
+import {requireBetaUser} from "../lib/beta-access.js";
 
 function cleanTag(v){return String(v||"WB").replace(/[^A-Z0-9]/gi,"").toUpperCase().slice(0,8)||"WB"}
 function cleanName(v,fallback){return String(v||fallback||"WarBoost").trim().slice(0,80)||fallback||"WarBoost"}
@@ -12,7 +12,7 @@ export default async function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   if(!configured())return res.status(503).json({error:"database_not_configured"});
   try{
-    const user=await requireUser(req);
+    const {user}=await requireBetaUser(req,{consent:true});
     const current=await getAllianceMembership(user.id);
     if(current){
       const alliance=await getAllianceById(current.alliance_id);

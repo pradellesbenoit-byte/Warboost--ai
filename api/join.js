@@ -1,5 +1,5 @@
 import {configured,findInvite,getAllianceMembership,getAllianceById,joinAlliance} from "../lib/supabase.js";
-import {requireUser} from "../lib/auth.js";
+import {requireBetaUser} from "../lib/beta-access.js";
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
@@ -8,7 +8,7 @@ export default async function handler(req,res){
   if(!code)return res.status(400).json({error:"invite_code_required"});
   if(!configured())return res.status(503).json({error:"database_not_configured"});
   try{
-    const user=await requireUser(req),target=await findInvite(code);
+    const {user}=await requireBetaUser(req,{consent:true}),target=await findInvite(code);
     if(!target)return res.status(404).json({error:"invite_not_found"});
     const current=await getAllianceMembership(user.id);
     if(current?.alliance_id===target.id){

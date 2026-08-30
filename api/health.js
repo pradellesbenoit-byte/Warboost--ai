@@ -2,6 +2,7 @@ import {configured,userConfigured,probeServiceAccess} from "../lib/supabase.js";
 import {providerConfig} from "../lib/provider.js";
 import {HERO_CATALOG} from "../lib/heroes.js";
 import {shopReferenceStats} from "../lib/shop-catalog.js";
+import {betaConfig} from "../lib/beta-access.js";
 
 export function lastWarServerClock(d){return new Date(d.getTime()-2*60*60*1000)}
 export function lastWarVsDay(d){const day=lastWarServerClock(d).getUTCDay();return day===0?0:day}
@@ -15,15 +16,15 @@ function isoWeek(d){
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
-  const providers=providerConfig(),serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats();
+  const providers=providerConfig(),serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=betaConfig();
   const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
   const now=new Date(),serverClock=lastWarServerClock(now),dow=lastWarVsDay(now);
 
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.11",
-    mode:"approval-first-api-ready",
+    version:"2.5.12",
+    mode:"private-beta-approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
     now:now.toISOString(),
@@ -44,9 +45,19 @@ export default async function handler(req,res){
     legacy_provider:providers.legacy?"explicitly-enabled":"disabled",
     vision:Boolean(process.env.OPENAI_API_KEY||process.env.WARBOOST_VISION_ENDPOINT)?"configured":"optional",
     languages:["fr","en-GB","en-US","es","it","de","pt","nl","zh","ja","ru","ar","pl","tr","ko","vi","th","id","uk","ro","el","cs","sv"],
+    beta:{mode:"private",release:beta.release,access_enforced:beta.enforced,invited_count:beta.invited_count,pro_included:beta.pro_included,payments_enabled:beta.payments_enabled,consent_version:beta.consent_version,feedback_mode:"device-share"},
     safeguards:{
       read_only:true,
       player_consent:true,
+      private_beta_badge:true,
+      beta_email_invitation_allowlist:true,
+      beta_access_enforced_when_allowlist_configured:true,
+      beta_pro_free_for_invited_testers:true,
+      beta_payments_disabled:true,
+      beta_consent_required_before_cloud_ai_writes:true,
+      beta_consent_revocable_on_device:true,beta_consent_account_scoped:true,
+      beta_feedback_device_share_no_auto_personal_data:true,beta_feedback_no_full_user_agent:true,
+      beta_existing_player_data_preserved:true,
       unauthorized_source_default:false,
       user_scoped_cloud:true,
       no_placeholder_hero_names:true,
@@ -139,6 +150,6 @@ export default async function handler(req,res){
     hero_catalog_count:HERO_CATALOG.length,
     shop_reference_catalog:shopRef,
     hero_catalog_identity_source:"shared-single-source",
-    serverless_functions:12
+    serverless_functions:13
   })
 }

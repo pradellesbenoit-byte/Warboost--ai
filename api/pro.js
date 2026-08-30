@@ -1,3 +1,5 @@
+import {requireUser} from "../lib/auth.js";
+import {betaAccessForUser} from "../lib/beta-access.js";
 function pick(...names){
   for(const name of names){
     const value=process.env[name];
@@ -8,30 +10,6 @@ function pick(...names){
 
 function stripeKey(){ return pick("STRIPE_SECRET_KEY"); }
 function priceId(){ return pick("STRIPE_PRO_PRICE_ID","STRIPE_PRICE_ID_PRO","STRIPE_PRICE_ID"); }
-
-function token(req){
-  return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim();
-}
-
-async function requireUser(req){
-  const access=token(req);
-  if(!access) throw Object.assign(new Error("Connexion WarBoost requise"),{status:401,code:"AUTH_REQUIRED"});
-
-  const url=pick("SUPABASE_URL","NEXT_PUBLIC_SUPABASE_URL","VITE_SUPABASE_URL").replace(/\/$/,"");
-  const publicKey=pick(
-    "SUPABASE_ANON_KEY",
-    "SUPABASE_PUBLISHABLE_KEY",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-    "VITE_SUPABASE_ANON_KEY"
-  );
-  if(!url||!publicKey) throw Object.assign(new Error("Authentification serveur non configurée"),{status:503,code:"AUTH_NOT_CONFIGURED"});
-
-  const r=await fetch(`${url}/auth/v1/user`,{headers:{apikey:publicKey,authorization:`Bearer ${access}`}});
-  const body=await r.json().catch(()=>({}));
-  if(!r.ok||!body?.id) throw Object.assign(new Error("Session WarBoost invalide ou expirée"),{status:401,code:"AUTH_INVALID"});
-  return body;
-}
 
 function origin(req){
   const explicit=String(process.env.WARBOOST_APP_URL||"").trim().replace(/\/$/,"");
@@ -134,12 +112,19 @@ async function planInfo(){
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store, max-age=0");
   try{
+    const user=await requireUser(req);
+    const beta=betaAccessForUser(user);
     if(req.method==="GET" && String(req.query?.debug||"")==="1"){
+      if(beta.release)return res.status(403).json({ok:false,error:"BETA_PAYMENT_DISABLED",message:"Les diagnostics de paiement sont désactivés pendant la bêta privée WarBoost."});
       return res.status(200).json(await stripeDiagnostic());
     }
 
-    const user=await requireUser(req);
     const configured=Boolean(stripeKey()&&priceId());
+
+    if(beta.release){
+      if(req.method==="GET")return res.status(200).json({ok:true,beta:true,configured:false,active:Boolean(beta.allowed),status:beta.allowed?"beta":"invite_required",plan:null,payments_enabled:false,beta_access:beta.access_status,beta_enforced:beta.enforced,pro_included:Boolean(beta.allowed)});
+      if(req.method==="POST")return res.status(403).json({ok:false,error:"BETA_PAYMENT_DISABLED",message:"Les paiements sont désactivés pendant la bêta privée WarBoost."});
+    }
 
     if(req.method==="GET"){
       if(!stripeKey()) return res.status(200).json({ok:true,configured:false,active:false,status:"free",plan:null});
