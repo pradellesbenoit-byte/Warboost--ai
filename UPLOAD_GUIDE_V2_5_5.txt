@@ -1,0 +1,7 @@
+WarBoost V2.5.5 upload guide
+
+Root: app.js, i18n.js, index.html, manifest.webmanifest, package.json, styles.css, README.md, WARBOOST_V2_5_5_RELEASE.md, BUILD_VERIFICATION_V2_5_5.txt, PATCH_MANIFEST_V2_5_5.txt, UPLOAD_GUIDE_V2_5_5.txt
+api/: advice.js, health.js
+lib/: normalize.js
+scripts/: verify-v2.5.5.mjs
+No Supabase file change is required. Keep V2.5.4 migration/schema as-is.

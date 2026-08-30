@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.4",
+  "name": "WarBoost V2.5.5",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.4 — Cloud & Alliance Access Reliability: protected local/cloud migration, corrected server permissions, live access monitoring, multilingual structured AI, 7-day Player planning and R5/R4 reliability, with official Last War integration still pending authorization.",
+  "description": "WarBoost V2.5.5 — 7-Day Plan Mobile Reliability: distinct day-by-day PRO actions, clean mobile layout, protected player data, cloud/alliance reliability, and official Last War integration still pending authorization.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

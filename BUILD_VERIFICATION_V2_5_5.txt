@@ -1,0 +1,13 @@
+WarBoost V2.5.5 — BUILD VERIFICATION
+
+- Base: V2.5.4 FULL
+- Player data migration/protection: preserved
+- Supabase V2.5.4 permissions: preserved; no new migration
+- 7-day plan: distinct day-by-day action keys
+- Refresh/review days: no misleading hero target
+- Exact invented quantities: forbidden
+- Repeated long condition badge: removed
+- Mobile layout: minmax(0,1fr) + overflow-wrap:anywhere
+- 23 explicit languages: plan labels verified
+- npm run check: PASS
+- npm run verify: PASS

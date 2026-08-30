@@ -1,3 +1,7 @@
+# WarBoost V2.5.5
+
+V2.5.5 corrige le Plan Joueur 7 jours sur mobile tout en conservant les protections Cloud/Alliance V2.5.4 et les données joueur existantes.
+
 # WarBoost V2.5.4 — Cloud & Alliance Access Reliability
 
 WarBoost V2.5.4 continue directement V2.5.3 et corrige le point de fiabilité cloud découvert pendant l’audit Supabase : les fonctions serveur utilisaient bien `SUPABASE_SERVICE_ROLE_KEY`, mais les tables `wb1_*` ne donnaient pas au rôle `service_role` les droits SQL nécessaires. Cette version corrige le projet et la base de production sans supprimer aucune donnée joueur.

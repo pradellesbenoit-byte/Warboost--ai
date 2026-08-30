@@ -111,14 +111,14 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
 /* ===== V2.5.4 · Audit completion: 7-day plan / roster import / voice ===== */
 .plan7Header{margin-top:16px}
 .sevenDayPlan{display:grid;gap:8px;margin-top:8px}
-.plan7Row{display:grid;grid-template-columns:74px 1fr auto;gap:10px;align-items:center;background:#091321;border:1px solid #2a4260;border-radius:12px;padding:10px 11px}
+.plan7Row{display:grid;grid-template-columns:58px minmax(0,1fr);gap:10px;align-items:center;background:#091321;border:1px solid #2a4260;border-radius:12px;padding:11px 12px;min-width:0}
 .plan7Row.today{border-color:#5f86b8;box-shadow:0 0 0 1px #5f86b833 inset}
-.plan7Day{font-weight:850}.plan7Main b{display:block}.plan7Main small{display:block;color:var(--muted);margin-top:3px}.plan7Rule{font-size:12px;border:1px solid #355071;border-radius:999px;padding:5px 8px;white-space:nowrap}
+.plan7Day{font-weight:850}.plan7Main{min-width:0}.plan7Main b{display:block;line-height:1.3;overflow-wrap:anywhere}.plan7Policy{color:var(--muted);font-size:12px;line-height:1.45;border-left:3px solid #355071;padding:7px 10px;margin:2px 2px 0;overflow-wrap:anywhere}
 .rosterImportText{width:100%;resize:vertical;min-height:110px;background:#08111f;color:#fff;border:1px solid #304a6b;border-radius:12px;padding:10px;font:inherit;box-sizing:border-box;margin:8px 0 10px}
 .warPlanStructured{margin-top:10px;background:#08111f;border:1px solid #2d4668;border-radius:12px;padding:10px 12px;white-space:pre-line;line-height:1.45}
 .voiceToggle{display:flex;gap:9px;align-items:flex-start;color:#dbe6f4;line-height:1.35}.voiceToggle input{margin-top:3px}
 .voiceSection select{width:100%}
-@media(max-width:620px){.plan7Row{grid-template-columns:58px 1fr}.plan7Rule{grid-column:2;justify-self:start}}
+@media(max-width:620px){.plan7Row{grid-template-columns:44px minmax(0,1fr);padding:10px}.plan7Day{font-size:15px}.plan7Main b{font-size:15px}}
 /* V2.5.4 · R5 role controls */
 .memberRight{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .memberRoleSelect{min-width:72px;border:1px solid #355071;background:#0b1728;color:inherit;border-radius:9px;padding:6px 8px;font-weight:800}
