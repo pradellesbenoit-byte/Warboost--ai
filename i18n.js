@@ -803,7 +803,7 @@ for(const [code,labels] of Object.entries(AUTH514_LABELS)){
 }
 
 
-// ===== V2.5.15 · Explainable ranking + dated meta sources =====
+// ===== V2.5.16 · Explainable ranking + dated meta sources =====
 const V2515_LABELS={
   en:{pro_exclusive_compare:"EX comparison · main heroes",pro_meta_sources:"Meta sources & date",server_profile_insufficient:"Insufficient data (Auto)",server_profile_auto:"Auto · insufficient data",ex_missing:"EX needs verification",ex_not_ranked:"Not rankable",meta_adjustment:"Meta adjustment",ex_exact_cost_unknown:"Exact shard quantities are not shown unless WarBoost has a validated visible/official source.",ex_compare_unavailable:"Exclusive-weapon comparison is unavailable until the main squad is scanned.",meta_updated:"Meta updated",meta_source_count:"Sources",meta_secondary_policy:"Dated community signals are secondary to your saved/scanned account data.",meta_source_official:"Official",meta_source_guide:"Guide",meta_source_community:"Community",unknown_opponent:"Opponent not yet available",invite_note:"Members join the WarBoost space for alliance {alliance} after signing in. Their saved progress is then refreshed in the R5/R4 roster."},
   fr:{pro_exclusive_compare:"Comparaison EX · héros principaux",pro_meta_sources:"Sources méta et date",server_profile_insufficient:"Données insuffisantes (Auto)",server_profile_auto:"Auto · données insuffisantes",ex_missing:"EX à vérifier",ex_not_ranked:"Non classable",meta_adjustment:"Ajustement méta",ex_exact_cost_unknown:"Les quantités exactes de fragments ne sont pas affichées tant que WarBoost ne dispose pas d’une source visible/officielle validée.",ex_compare_unavailable:"La comparaison des armes exclusives sera disponible après un scan fiable de l’escouade principale.",meta_updated:"Méta mise à jour",meta_source_count:"Sources",meta_secondary_policy:"Les signaux communautaires datés restent secondaires par rapport aux données enregistrées/scannées de ton compte.",meta_source_official:"Officiel",meta_source_guide:"Guide",meta_source_community:"Communauté",unknown_opponent:"Adversaire non encore disponible",invite_note:"Les membres rejoignent l’espace WarBoost de l’alliance {alliance} après connexion. Leur progression enregistrée remonte ensuite automatiquement dans le roster R5/R4."},
@@ -834,5 +834,5 @@ for(const [code,values] of Object.entries(V2515_LABELS)){
 }
 // Keep the existing localized private-beta tagline wording, but expose the current build number.
 for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){
-  if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.14/g,"V2.5.15");
+  if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.14/g,"V2.5.16");
 }

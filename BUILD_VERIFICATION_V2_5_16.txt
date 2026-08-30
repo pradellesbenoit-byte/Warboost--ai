@@ -1,0 +1,65 @@
+WARBOOST V2.5.16 — BUILD VERIFICATION
+Date: 2026-08-30
+Base: WarBoost V2.5.15 FULL / Explainable AI Reliability
+Target: private beta preview package
+Production/main: NOT TOUCHED
+
+RESULT: PASS
+
+AUTOMATED SOURCE CHECKS
+- npm run check: PASS
+- npm run verify: PASS
+- WarBoost V2.5.16 verification: PASS
+- 12 serverless API functions syntax-covered: PASS
+- 31 canonical heroes preserved: PASS
+- 23 explicit language choices + Auto preserved: PASS
+- no V2.5.16 Supabase migration: PASS
+
+SOURCE INTEGRITY FIXES VERIFIED
+- every displayed meta evidence row carries a concrete URL: PASS
+- `Official` label requires a verified official source entry: PASS
+- former synthetic Drone source replaced by a real Last War Support article and claim scope narrowed: PASS
+- community sources keep original titles/publisher/date metadata: PASS
+- source cards are clickable from the PRO panel: PASS
+- sources used by current priorities are sorted first: PASS
+- community evidence is explanatory only and cannot directly add/subtract opaque score points: PASS
+- old Air meta score modifiers (+4/+3/-5) removed from numeric EX ranking: PASS
+- meta confidence describes traceability/context rather than universal community certainty: PASS
+
+PRO / PLAYER NON-REGRESSION
+- rank-aware `Pourquoi` explanations preserved: PASS
+- all five configured main-squad heroes stay visible in EX comparison: PASS
+- missing DVA EX stays missing/unranked and cannot receive invented score/quantity: PASS
+- exact fragment/material quantities remain unknown without validated account/official evidence: PASS
+- account data, breakpoint distance, role, ROI and timing remain numeric ranking inputs: PASS
+- Squad 1 remains the player-selected main squad when configured: PASS
+
+VS / SEASON / ALLIANCE NON-REGRESSION
+- Sunday remains preparation for Monday VS Day 1: PASS
+- unknown VS opponent remains non-speculative: PASS
+- ended/inter-season Season logic remains historical/non-active: PASS
+- R5/R4 stale roster members are never assigned invented tactical roles: PASS
+- Alliance WarBoost-space wording remains non-ambiguous: PASS
+
+DATA / PRIVACY NON-REGRESSION
+- saved player data is preserved through normalization: PASS
+- signed-out/unconsented/cross-account private-state isolation preserved: PASS
+- private beta allowlist/consent and free-PRO/payment-lock safeguards preserved: PASS
+- no unauthorized Last War integration introduced: PASS
+- no SQL DROP/TRUNCATE/DELETE migration added: PASS
+
+PACKAGE VERIFICATION
+- PATCH file count = 18: PASS
+- V2.5.15 base + V2.5.16 PATCH matches V2.5.16 FULL source exactly: PASS
+- extracted FULL ZIP matches V2.5.16 FULL source exactly: PASS
+- npm run check on patch-applied tree: PASS
+- npm run verify on patch-applied tree: PASS
+- npm run check on extracted FULL ZIP: PASS
+- npm run verify on extracted FULL ZIP: PASS
+- ZIP integrity tests: PASS
+
+FULL TREE
+- Total files in verified V2.5.16 FULL tree: 237
+
+NOTE
+V2.5.16 is intended for publisher-demo / Preview validation first. Do not clear existing player data and do not deploy to main/Production before Preview verification.
