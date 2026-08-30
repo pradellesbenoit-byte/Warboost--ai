@@ -1,0 +1,61 @@
+WARBOOST V2.5.17 — BUILD VERIFICATION
+Date: 2026-08-30
+Base: WarBoost V2.5.16 FULL / Source Integrity Reliability
+Target: private beta preview package
+Production/main: NOT TOUCHED
+
+RESULT: PASS
+
+AUTOMATED SOURCE CHECKS
+- npm run check: PASS
+- npm run verify: PASS
+- WarBoost V2.5.17 verification: PASS
+- 12 serverless API functions syntax-covered: PASS
+- 31 canonical heroes preserved: PASS
+- 23 explicit language choices + Auto preserved: PASS
+- no V2.5.17 Supabase migration: PASS
+
+SOURCE RELEVANCE FIXES VERIFIED
+- EX-only Diagnostic PRO returns only `exclusive` evidence rows: PASS
+- Drone-only meta context returns only `drone` evidence rows: PASS
+- Gear-only meta context returns only `gear` evidence rows: PASS
+- irrelevant Drone/Gear rows are excluded from EX source count: PASS
+- empty diagnostic topic scope returns zero source rows and zero meta confidence: PASS
+- exact source URLs/titles/publishers/dates remain visible: PASS
+- community evidence remains explanatory only with zero direct score bonus: PASS
+
+PRO / PLAYER NON-REGRESSION
+- rank-aware `Pourquoi` explanations preserved: PASS
+- all five configured main-squad heroes stay visible in EX comparison: PASS
+- missing DVA EX stays missing/unranked and cannot receive invented score/quantity: PASS
+- exact fragment/material quantities remain unknown without validated evidence: PASS
+- Squad 1 remains the player-selected main squad when configured: PASS
+
+VS / SEASON / ALLIANCE NON-REGRESSION
+- Sunday remains preparation for Monday VS Day 1: PASS
+- unknown VS opponent remains non-speculative: PASS
+- ended/inter-season Season logic remains historical/non-active: PASS
+- stale R5/R4 roster members are never assigned invented tactical roles: PASS
+
+DATA / PRIVACY NON-REGRESSION
+- saved player data is preserved through normalization: PASS
+- signed-out/unconsented/cross-account private-state isolation preserved: PASS
+- private beta allowlist/consent and free-PRO/payment-lock safeguards preserved: PASS
+- no unauthorized Last War integration introduced: PASS
+- no SQL DROP/TRUNCATE/DELETE migration added: PASS
+
+PACKAGE VERIFICATION
+- PATCH file count = 18: PASS
+- V2.5.16 base + V2.5.17 PATCH matches V2.5.17 FULL source exactly: PASS
+- extracted FULL ZIP matches V2.5.17 FULL source exactly: PASS
+- npm run check on patch-applied tree: PASS
+- npm run verify on patch-applied tree: PASS
+- npm run check on extracted FULL ZIP: PASS
+- npm run verify on extracted FULL ZIP: PASS
+- ZIP integrity tests: PASS
+
+FULL TREE
+- Total files in verified V2.5.17 FULL tree: 243
+
+NOTE
+V2.5.17 is intended for publisher-demo / Preview validation first. Do not clear existing player data and do not deploy to main/Production before Preview verification.

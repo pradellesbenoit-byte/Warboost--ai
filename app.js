@@ -9,7 +9,7 @@ import {repairSeasonState,seasonLifecycle,seasonIsActive,activeSeasonProgress} f
 import {createWarBoostSupabaseAuthClient} from "./lib/browser-auth.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.5.16";
+const APP_VERSION="2.5.17";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const BACKUP_KEY="warboost_last_good_state", ACCOUNT_STATE_PREFIX="warboost_account_state:", VOICE_ENABLED_KEY="warboost_voice_enabled", VOICE_ID_KEY="warboost_voice_id";
 const BETA_CONSENT_KEY="warboost_beta_consent_2026_08_30_v1", BETA_CONSENT_VERSION="2026-08-30-v1";
@@ -159,7 +159,7 @@ function migrateLegacyLocalState(seed){
   out.version=APP_VERSION;return {state:out,changed};
 }
 function recoverLocalHeroHistory(input){const legacyProfile=readLegacyJson("wb10_profile")||null,legacyImportedPlayers=readLegacyJson("wb19_imported_players")||[];return recoverHeroData(input,{legacyProfile,legacyImportedPlayers,currentPlayerName:input?.player?.name||""});}
-function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.16-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state);let next=finalRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.16-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
+function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.17-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state);let next=finalRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.17-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,suppressPush=false,cloud=null,cloudSession=null,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null;
 let voiceGreetedSections=new Set(),availableVoices=[];
@@ -339,7 +339,7 @@ function render(){
   const p=state.player,a=state.alliance,v=state.vs,s=state.season,d=state.drone||{},reveal=betaPrivateDataVisible();
   if(!$("#playerMeta"))return;
 
-  // V2.5.16 privacy boundary: saved local/cloud data is preserved in state but is never rendered
+  // V2.5.17 privacy boundary: saved local/cloud data is preserved in state but is never rendered
   // until an invited WarBoost session is active and beta consent is accepted.
   if(!reveal){
     $("#playerMeta").textContent=t("to_connect");
