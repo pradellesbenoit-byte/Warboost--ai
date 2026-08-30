@@ -1,0 +1,9 @@
+WarBoost V2.5.6 upload guide
+
+PATCH recommandé sur publisher-demo :
+ROOT: app.js, i18n.js, index.html, manifest.webmanifest, package.json, README.md, sw.js, WARBOOST_V2_5_6_RELEASE.md, BUILD_VERIFICATION_V2_5_6.txt, PATCH_MANIFEST_V2_5_6.txt, SHA256SUMS_V2_5_6.txt, UPLOAD_GUIDE_V2_5_6.txt
+api/: advice.js, health.js
+lib/: normalize.js
+scripts/: verify-v2.5.6.mjs
+
+Aucun fichier Supabase à modifier en V2.5.6. Ne pas supprimer les migrations V2.5.3/V2.5.4 existantes.

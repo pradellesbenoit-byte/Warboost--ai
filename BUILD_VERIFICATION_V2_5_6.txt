@@ -1,0 +1,38 @@
+WarBoost V2.5.6 — BUILD VERIFICATION
+Date: 2026-08-30
+Release: 7-Day Plan Logic Reliability
+
+RESULT: PASS
+
+Automated checks:
+- npm run check: PASS
+- npm run verify: PASS
+- 12 API serverless functions syntax-checked
+- Player AI keeps Squad 1 as player-selected main squad
+- 7-day plan returns exactly 7 ordered actions
+- No exact shard/material/resource quantity is invented
+- Day 4 refresh is account-wide (no hero target)
+- Day 5 Shop / resources is account-wide (no hero target or forced kind)
+- Day 6 VS / Season timing is account-wide (no hero target or forced kind)
+- Day 7 weekly review is account-wide (no hero target)
+- Only Days 1–3 may carry a hero target when a real hero action/checkpoint exists
+- 23 explicit language choices resolve the new Shop/resources and VS/Season timing labels
+- Mobile 7-day plan wrapping and single policy note preserved
+- R5/R4 access control, immediate actions and Plan B preserved
+- Manual roster import/cloud merge preservation checks PASS
+- VS and Season endpoints PASS
+- 31-hero canonical catalog check PASS
+- Legacy/partial player data normalization preservation PASS
+- Missing cloud schema and missing service-role grant detection PASS
+- PWA service-worker cache bumped to V2.5.6 to avoid stale client logic
+
+Production Supabase read-only verification before release packaging:
+- wb1_profiles: 2 rows
+- wb1_snapshots: 9 rows
+- service_role SELECT on wb1_profiles: true
+- service_role SELECT on wb1_snapshots: true
+- service_role SELECT on wb1_alliances: true
+- service_role SELECT on wb1_alliance_members: true
+
+Database changes in V2.5.6: NONE
+No Supabase migration is required. Existing V2.5.3/V2.5.4 migrations remain unchanged.

@@ -1,4 +1,18 @@
-# WarBoost V2.5.5
+# WarBoost V2.5.6
+
+V2.5.6 corrige la logique du Plan Joueur 7 jours tout en conservant les protections Cloud/Alliance V2.5.4, l'affichage mobile V2.5.5 et les données joueur existantes.
+
+## Correctif principal
+
+- Jours 1–3 : le héros n'est affiché que lorsqu'une action héros est réellement concernée.
+- Jour 4 : actualisation des données, sans héros artificiel.
+- Jour 5 : Boutique / ressources, décision globale du compte, sans héros artificiel.
+- Jour 6 : Timing VS / Saison, décision globale du compte, sans héros artificiel.
+- Jour 7 : recalcul hebdomadaire, sans héros artificiel.
+- Aucune quantité de fragments, matériaux ou dépense n'est inventée.
+- Aucun changement Supabase n'est requis pour V2.5.6.
+
+## Notes héritées
 
 V2.5.5 corrige le Plan Joueur 7 jours sur mobile tout en conservant les protections Cloud/Alliance V2.5.4 et les données joueur existantes.
 
