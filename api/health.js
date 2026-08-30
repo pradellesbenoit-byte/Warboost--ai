@@ -22,7 +22,7 @@ export default async function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.8",
+    version:"2.5.9",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -76,6 +76,11 @@ export default async function handler(req,res){
       multi_shop_scan_accumulation:true,
       dated_shop_reference_catalog:true,
       reference_catalog_never_claims_live_availability:true,
+      shop_relevance_score_not_certainty:true,
+      shop_data_confidence_separate_from_relevance:true,
+      shop_availability_separate_from_relevance:true,
+      dated_reference_prices_require_in_game_check:true,
+      vip30_reference_cross_checked_not_live:true,
       diagnostic_shop_priority_alignment:true,
       shop_alignment_labels_23_languages:true,
       opaque_container_direct_resource_guard:true,
