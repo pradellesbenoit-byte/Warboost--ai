@@ -1,4 +1,4 @@
--- WarBoost V2.5.4 — Cloud & Alliance Access Reliability
+-- WarBoost V2.5.7 — Cloud, Alliance & Membership Reliability
 -- Safe/idempotent migration. It never drops/truncates/deletes player data.
 -- Goals:
 --   1) preserve/create the wb1_* cloud schema,
@@ -40,6 +40,8 @@ create table if not exists public.wb1_alliance_members (
   updated_at timestamptz not null default now(),
   primary key (alliance_id, player_id)
 );
+create unique index if not exists wb1_alliance_members_player_unique_idx
+  on public.wb1_alliance_members(player_id);
 
 alter table public.wb1_profiles enable row level security;
 alter table public.wb1_snapshots enable row level security;
