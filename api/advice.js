@@ -6,7 +6,7 @@ import {canonicalShopStore,findShopReference,referenceCategoryForItem,referenceI
 import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScore,heroReshapeDecisionValue,season6TechPriorities,awakeningSwapAssessment,S6_AWAKENING_HEROES} from '../lib/season6-awakening.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
-const ENGINE_VERSION="2.5.6";
+const ENGINE_VERSION="2.5.7";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -926,12 +926,30 @@ const CONTEXT_AI={
  }
 };
 function contextPack(locale){return CONTEXT_AI[localePack(locale)]||CONTEXT_AI.en}
+
+function vsPrepText(locale){
+  const k=localePack(locale);
+  const packs={
+    fr:{head:"VS · Préparation du dimanche",focus:"Prépare le Jour 1 : empile les tâches Radar à collecter après le reset de lundi et lance les récoltes pour qu’elles se terminent après le reset. N’utilise pas les ressources réservées aux autres jours VS.",hold:"Dimanche n’est pas un jour de score VS : conserve les accélérateurs, fragments héros et ressources de combat pour leur journée dédiée.",avoid:"À éviter : traiter le dimanche comme le Jour 6 Enemy Buster."},
+    en:{head:"VS · Sunday preparation",focus:"Prepare Day 1: stack Radar tasks to collect after Monday reset and send gathers that finish after reset. Do not spend resources reserved for other VS days.",hold:"Sunday is not a VS scoring day: keep speed-ups, hero shards and combat resources for their matching day.",avoid:"Avoid: treating Sunday as Day 6 Enemy Buster."},
+    es:{head:"VS · Preparación del domingo",focus:"Prepara el Día 1: acumula tareas de Radar para recoger tras el reinicio del lunes y envía recolecciones que terminen después del reinicio. No gastes recursos de otros días VS.",hold:"El domingo no puntúa en VS: guarda aceleradores, fragmentos de héroe y recursos de combate para su día.",avoid:"Evita tratar el domingo como el Día 6 Enemy Buster."},
+    de:{head:"VS · Sonntagsvorbereitung",focus:"Bereite Tag 1 vor: Radar-Aufgaben zum Einsammeln nach dem Montagsreset stapeln und Sammelmärsche so senden, dass sie nach dem Reset enden. Ressourcen anderer VS-Tage nicht ausgeben.",hold:"Sonntag ist kein VS-Wertungstag: Beschleuniger, Heldensplitter und Kampfressourcen für den passenden Tag sparen.",avoid:"Vermeide, Sonntag als Tag 6 Enemy Buster zu behandeln."},
+    ja:{head:"VS・日曜準備",focus:"1日目の準備：月曜リセット後に回収できるレーダー任務を貯め、リセット後に完了する採集を出します。他のVS日用の資源は使いません。",hold:"日曜はVS得点日ではありません。加速、英雄欠片、戦闘資源は対応する日に温存します。",avoid:"日曜を6日目 Enemy Buster として扱わないでください。"},
+    zh:{head:"VS · 周日准备",focus:"准备第1天：积攒雷达任务到周一重置后领取，并派出在重置后完成的采集。不要消耗其他VS日期专用资源。",hold:"周日不是VS计分日：保留加速、英雄碎片和战斗资源到对应日期。",avoid:"不要把周日当成第6天 Enemy Buster。"},
+    ar:{head:"VS · تحضير الأحد",focus:"حضّر اليوم 1: خزّن مهام الرادار لجمعها بعد إعادة ضبط الاثنين وأرسل جمع الموارد لينتهي بعد إعادة الضبط. لا تنفق موارد أيام VS الأخرى.",hold:"الأحد ليس يوم تسجيل نقاط VS: احتفظ بالتسريعات وشظايا الأبطال وموارد القتال ليومها المناسب.",avoid:"تجنب اعتبار الأحد هو اليوم 6 Enemy Buster."}
+  };
+  return packs[k]||packs.en;
+}
 function playerTopLine(state,locale){
   const a=buildPlayerAnalysis(state,locale),p=a?.priorities?.[0];
   return p?`${p.title}: ${p.target||p.reason||""}`.trim():a?.summary||"";
 }
 function buildVsAdvice(state,locale){
   const v=state?.vs||{},pack=contextPack(locale).vs,day=Number(v.day),freshness=freshnessInfo(v.updated_at||null,"vs",locale);
+  if(day===0){
+    const prep=vsPrepText(locale),confidence=Math.max(35,Math.min(82,55+(state?.updated_at||state?.sync?.last_sync?10:0)-(freshness?.confidence_penalty||0))),priorities=[{rank:1,kind:"prep",text:prep.focus},{rank:2,kind:"keep",text:prep.hold},{rank:3,kind:"avoid",text:prep.avoid}];
+    return {advice:priorities.map(x=>x.text).join(" "),confidence,priorities,day:0,week:v.week||null,opponent:v.opponent||null,score_gap:null,prep_day:true,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",data_freshness:freshness,engine:`warboost-vs-ai-v${ENGINE_VERSION}`};
+  }
   if(!Number.isInteger(day)||day<1||day>6)return {advice:pack.missing,confidence:25,priorities:[],data_quality:"low"};
   const priorities=[];
   const task=pack.days[day]||pack.hold;
@@ -1002,7 +1020,7 @@ function buildCrossDomain(state,locale,player){
   const tw=top?.timing_window||null;
   const conflict=tw?.status==="hold_if_vs_priority"?"timing_check":tw?.status==="check_payback"?"season_payback_check":null;
   const spendDecision=!top?"insufficient_data":top?.data_freshness?.blocks_paid?"refresh_before_spend":tw?.status==="spend_now"||tw?.status==="now"?"spend_now":tw?.status==="hold_if_vs_priority"?"hold_for_vs":tw?.status==="check_payback"?"validate_payback":"marginal_value_driven";
-  return {player_top:top?{kind:top.kind,target:top.target||null,title:top.title,reason:top.reason,resource_family:top.resource_family||resourceFamily(top.kind),timing_window:tw}:null,vs:{confidence:vs.confidence,day:vs.day||null,top:vs.priorities?.[0]?.text||vs.advice},season:{confidence:season.confidence,day:season.day||null,total_days:season.total_days||null,top:season.priorities?.[0]?.text||season.advice},conflict,spend_decision:spendDecision,rule:"Use the highest contextual marginal value; defer scarce spending when VS/Season timing or another detected bottleneck has materially better value."};
+  return {player_top:top?{kind:top.kind,target:top.target||null,title:top.title,reason:top.reason,resource_family:top.resource_family||resourceFamily(top.kind),timing_window:tw}:null,vs:{confidence:vs.confidence,day:vs.day??null,prep_day:Boolean(vs.prep_day),top:vs.priorities?.[0]?.text||vs.advice},season:{confidence:season.confidence,day:season.day||null,total_days:season.total_days||null,top:season.priorities?.[0]?.text||season.advice},conflict,spend_decision:spendDecision,rule:"Use the highest contextual marginal value; defer scarce spending when VS/Season timing or another detected bottleneck has materially better value."};
 }
 export default function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});

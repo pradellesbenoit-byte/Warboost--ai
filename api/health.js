@@ -3,6 +3,9 @@ import {providerConfig} from "../lib/provider.js";
 import {HERO_CATALOG} from "../lib/heroes.js";
 import {shopReferenceStats} from "../lib/shop-catalog.js";
 
+export function lastWarServerClock(d){return new Date(d.getTime()-2*60*60*1000)}
+export function lastWarVsDay(d){const day=lastWarServerClock(d).getUTCDay();return day===0?0:day}
+
 function isoWeek(d){
   const x=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
   x.setUTCDate(x.getUTCDate()+4-(x.getUTCDay()||7));
@@ -14,21 +17,25 @@ export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
   const providers=providerConfig(),serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats();
   const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
-  const now=new Date(),dow=now.getUTCDay();
+  const now=new Date(),serverClock=lastWarServerClock(now),dow=lastWarVsDay(now);
 
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.6",
+    version:"2.5.7",
     mode:"approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
     now:now.toISOString(),
     unix_ms:now.getTime(),
     timezone:"UTC",
-    iso_week:isoWeek(now),
-    vs_day:dow===0?6:dow,
-    weekday_utc:dow,
+    lastwar_server_timezone:"UTC-02:00",
+    lastwar_server_time:serverClock.toISOString().replace("Z","-02:00"),
+    iso_week:isoWeek(serverClock),
+    vs_day:dow,
+    vs_phase:dow===0?"prep":"scoring",
+    weekday_utc:now.getUTCDay(),
+    weekday_lastwar_server:dow,
 
     database:serviceProbe.ok?"ready":(serviceDb||userDb)?"degraded":"local-fallback",
     database_access:serviceProbe.ok?"service+user-rls":userDb?"user-rls":"local-only",
@@ -102,6 +109,12 @@ export default async function handler(req,res){
       seven_day_plan_hero_binding_only_when_relevant:true,
       seven_day_plan_shop_timing_account_wide:true,
       alliance_manual_roster_import_preserved:true,
+      alliance_single_cloud_membership:true,
+      alliance_invite_owner_takeover_guard:true,
+      alliance_owner_switch_guard:true,
+      alliance_share_requires_server_invite:true,
+      vs_sunday_prep_not_day6:true,
+      vs_server_reset_utc_minus_2:true,
       alliance_immediate_actions_and_plan_b:true,
       rank_aware_voice_greeting:true
     },
