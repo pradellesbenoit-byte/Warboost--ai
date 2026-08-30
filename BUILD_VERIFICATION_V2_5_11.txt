@@ -1,0 +1,26 @@
+WARBOOST V2.5.11 — BUILD VERIFICATION
+========================================
+
+Scope: Season UI Final Reliability + full V2.5.10 regression coverage.
+
+PASS
+- npm run check
+- npm run verify
+- ended/inter-season summary uses a historical profession label
+- ended/inter-season section title uses Season state instead of Progress
+- active season still uses Profession + Progress
+- language changes rerender the dynamic Season labels
+- 23 explicit language choices include the historical profession label
+- all 21 non-English language choices use a non-English historical profession label
+- missing season progress remains null / unknown, never 0%
+- active / ended / interseason / unknown lifecycle logic preserved
+- ended/interseason S6 advice remains disabled
+- 31 canonical heroes preserved
+- Squad 1 remains the player-selected primary squad
+- 7-day Player plan preserved
+- Boutique IA relevance / confidence / availability safeguards preserved
+- R5/R4 confirmed-active-only tactical roles preserved
+- Alliance invite / single-membership safeguards preserved
+- VS Sunday preparation + UTC-2 reset preserved
+- no Supabase schema migration required
+- protected cloud/local data behavior preserved
