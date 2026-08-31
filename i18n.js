@@ -836,3 +836,36 @@ for(const [code,values] of Object.entries(V2515_LABELS)){
 for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){
   if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.14/g,"V2.5.17");
 }
+
+// ===== V2.5.18 · Shop Decision Integrity =====
+const V2518_SHOP_LABELS={
+  en:{shop_group_game:"In-game currencies",shop_group_diamonds:"Diamonds / premium",shop_group_paid:"Real-money purchases",shop_group_unknown:"Needs verification",shop_paid_guard:"Paid purchase: current price, current contents and cost/gain must all be verified before a strong buy recommendation."},
+  fr:{shop_group_game:"Monnaies du jeu",shop_group_diamonds:"Diamants / premium",shop_group_paid:"Achats en argent réel",shop_group_unknown:"À vérifier",shop_paid_guard:"Achat payant : le prix actuel, le contenu actuel et le rapport coût/gain doivent tous être vérifiés avant une recommandation forte d’achat."},
+  es:{shop_group_game:"Monedas del juego",shop_group_diamonds:"Diamantes / premium",shop_group_paid:"Compras con dinero real",shop_group_unknown:"Por verificar",shop_paid_guard:"Compra de pago: el precio actual, el contenido actual y la relación coste/beneficio deben verificarse antes de una recomendación fuerte de compra."},
+  it:{shop_group_game:"Valute di gioco",shop_group_diamonds:"Diamanti / premium",shop_group_paid:"Acquisti con denaro reale",shop_group_unknown:"Da verificare",shop_paid_guard:"Acquisto a pagamento: prezzo attuale, contenuto attuale e rapporto costo/beneficio devono essere verificati prima di una forte raccomandazione d’acquisto."},
+  de:{shop_group_game:"Spielwährungen",shop_group_diamonds:"Diamanten / Premium",shop_group_paid:"Echtgeldkäufe",shop_group_unknown:"Zu prüfen",shop_paid_guard:"Bezahlter Kauf: aktueller Preis, aktueller Inhalt und Kosten/Nutzen müssen vor einer starken Kaufempfehlung verifiziert sein."},
+  pt:{shop_group_game:"Moedas do jogo",shop_group_diamonds:"Diamantes / premium",shop_group_paid:"Compras com dinheiro real",shop_group_unknown:"A verificar",shop_paid_guard:"Compra paga: preço atual, conteúdo atual e custo/benefício devem ser verificados antes de uma recomendação forte de compra."},
+  nl:{shop_group_game:"In-game valuta",shop_group_diamonds:"Diamanten / premium",shop_group_paid:"Aankopen met echt geld",shop_group_unknown:"Te controleren",shop_paid_guard:"Betaalde aankoop: huidige prijs, huidige inhoud en kosten/baten moeten zijn geverifieerd vóór een sterke koopaanbeveling."},
+  zh:{shop_group_game:"游戏内货币",shop_group_diamonds:"钻石 / 高级货币",shop_group_paid:"真钱购买",shop_group_unknown:"需要核实",shop_paid_guard:"付费购买：只有当前价格、当前内容和成本/收益均已验证后，才可给出强购买建议。"},
+  ja:{shop_group_game:"ゲーム内通貨",shop_group_diamonds:"ダイヤ / プレミアム",shop_group_paid:"現金購入",shop_group_unknown:"要確認",shop_paid_guard:"有料購入：現在価格・現在内容・費用対効果のすべてを確認できた場合のみ、強い購入推奨を出します。"},
+  ru:{shop_group_game:"Игровые валюты",shop_group_diamonds:"Алмазы / премиум",shop_group_paid:"Покупки за реальные деньги",shop_group_unknown:"Требует проверки",shop_paid_guard:"Платная покупка: текущая цена, текущее содержимое и соотношение цена/выгода должны быть проверены до сильной рекомендации купить."},
+  ar:{shop_group_game:"عملات داخل اللعبة",shop_group_diamonds:"الماس / مميز",shop_group_paid:"مشتريات بأموال حقيقية",shop_group_unknown:"يحتاج تحقق",shop_paid_guard:"شراء مدفوع: يجب التحقق من السعر الحالي والمحتوى الحالي ونسبة التكلفة إلى الفائدة قبل توصية شراء قوية."},
+  pl:{shop_group_game:"Waluty w grze",shop_group_diamonds:"Diamenty / premium",shop_group_paid:"Zakupy za prawdziwe pieniądze",shop_group_unknown:"Do weryfikacji",shop_paid_guard:"Płatny zakup: aktualna cena, aktualna zawartość i stosunek koszt/zysk muszą być zweryfikowane przed mocną rekomendacją zakupu."},
+  tr:{shop_group_game:"Oyun içi para birimleri",shop_group_diamonds:"Elmas / premium",shop_group_paid:"Gerçek para alışverişleri",shop_group_unknown:"Doğrulanmalı",shop_paid_guard:"Ücretli satın alma: güçlü bir satın alma önerisinden önce güncel fiyat, güncel içerik ve maliyet/kazanç doğrulanmalıdır."},
+  ko:{shop_group_game:"게임 내 화폐",shop_group_diamonds:"다이아 / 프리미엄",shop_group_paid:"현금 구매",shop_group_unknown:"확인 필요",shop_paid_guard:"유료 구매: 현재 가격, 현재 구성품, 비용 대비 이득이 모두 확인된 경우에만 강한 구매 추천을 제공합니다."},
+  vi:{shop_group_game:"Tiền tệ trong game",shop_group_diamonds:"Kim cương / premium",shop_group_paid:"Mua bằng tiền thật",shop_group_unknown:"Cần xác minh",shop_paid_guard:"Mua trả phí: giá hiện tại, nội dung hiện tại và tỷ lệ chi phí/lợi ích phải được xác minh trước khi đưa ra khuyến nghị mua mạnh."},
+  th:{shop_group_game:"สกุลเงินในเกม",shop_group_diamonds:"เพชร / พรีเมียม",shop_group_paid:"ซื้อด้วยเงินจริง",shop_group_unknown:"ต้องตรวจสอบ",shop_paid_guard:"การซื้อแบบจ่ายเงินจริง: ต้องยืนยันราคาปัจจุบัน เนื้อหาปัจจุบัน และความคุ้มค่าต้นทุน/ผลตอบแทนก่อนให้คำแนะนำซื้อแบบชัดเจน"},
+  id:{shop_group_game:"Mata uang dalam game",shop_group_diamonds:"Berlian / premium",shop_group_paid:"Pembelian dengan uang nyata",shop_group_unknown:"Perlu diverifikasi",shop_paid_guard:"Pembelian berbayar: harga saat ini, isi saat ini, dan rasio biaya/manfaat harus diverifikasi sebelum rekomendasi beli yang kuat."},
+  uk:{shop_group_game:"Ігрові валюти",shop_group_diamonds:"Діаманти / преміум",shop_group_paid:"Покупки за реальні гроші",shop_group_unknown:"Потрібна перевірка",shop_paid_guard:"Платна покупка: поточна ціна, поточний вміст і співвідношення вартість/вигода мають бути перевірені перед сильною рекомендацією купити."},
+  ro:{shop_group_game:"Monede din joc",shop_group_diamonds:"Diamante / premium",shop_group_paid:"Achiziții cu bani reali",shop_group_unknown:"De verificat",shop_paid_guard:"Achiziție plătită: prețul actual, conținutul actual și raportul cost/beneficiu trebuie verificate înaintea unei recomandări ferme de cumpărare."},
+  el:{shop_group_game:"Νομίσματα παιχνιδιού",shop_group_diamonds:"Διαμάντια / premium",shop_group_paid:"Αγορές με πραγματικά χρήματα",shop_group_unknown:"Χρειάζεται έλεγχος",shop_paid_guard:"Πληρωμένη αγορά: η τρέχουσα τιμή, το τρέχον περιεχόμενο και η σχέση κόστους/οφέλους πρέπει να επαληθευτούν πριν από ισχυρή σύσταση αγοράς."},
+  cs:{shop_group_game:"Herní měny",shop_group_diamonds:"Diamanty / premium",shop_group_paid:"Nákupy za skutečné peníze",shop_group_unknown:"Je třeba ověřit",shop_paid_guard:"Placený nákup: aktuální cena, aktuální obsah a poměr náklad/přínos musí být ověřeny před silným doporučením k nákupu."},
+  sv:{shop_group_game:"Valutor i spelet",shop_group_diamonds:"Diamanter / premium",shop_group_paid:"Köp med riktiga pengar",shop_group_unknown:"Behöver verifieras",shop_paid_guard:"Betalt köp: aktuellt pris, aktuellt innehåll och kostnad/nytta måste verifieras innan en stark köprekommendation ges."}
+};
+for(const [code,values] of Object.entries(V2518_SHOP_LABELS)){
+  const targets=code==="en"?[EN,EN_GB,EN_US]:[packs[code]].filter(Boolean);
+  targets.forEach(target=>Object.assign(target,values));
+}
+for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){
+  if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.(?:14|17)/g,"V2.5.18");
+}

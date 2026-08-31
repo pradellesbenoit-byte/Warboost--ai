@@ -9,7 +9,7 @@ import {repairSeasonState,seasonLifecycle,seasonIsActive,activeSeasonProgress} f
 import {createWarBoostSupabaseAuthClient} from "./lib/browser-auth.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.5.17";
+const APP_VERSION="2.5.18";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const BACKUP_KEY="warboost_last_good_state", ACCOUNT_STATE_PREFIX="warboost_account_state:", VOICE_ENABLED_KEY="warboost_voice_enabled", VOICE_ID_KEY="warboost_voice_id";
 const BETA_CONSENT_KEY="warboost_beta_consent_2026_08_30_v1", BETA_CONSENT_VERSION="2026-08-30-v1";
@@ -159,7 +159,7 @@ function migrateLegacyLocalState(seed){
   out.version=APP_VERSION;return {state:out,changed};
 }
 function recoverLocalHeroHistory(input){const legacyProfile=readLegacyJson("wb10_profile")||null,legacyImportedPlayers=readLegacyJson("wb19_imported_players")||[];return recoverHeroData(input,{legacyProfile,legacyImportedPlayers,currentPlayerName:input?.player?.name||""});}
-function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.17-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state);let next=finalRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.17-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
+function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.18-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state);let next=finalRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.18-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,suppressPush=false,cloud=null,cloudSession=null,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null;
 let voiceGreetedSections=new Set(),availableVoices=[];
@@ -339,7 +339,7 @@ function render(){
   const p=state.player,a=state.alliance,v=state.vs,s=state.season,d=state.drone||{},reveal=betaPrivateDataVisible();
   if(!$("#playerMeta"))return;
 
-  // V2.5.17 privacy boundary: saved local/cloud data is preserved in state but is never rendered
+  // V2.5.18 privacy boundary: saved local/cloud data is preserved in state but is never rendered
   // until an invited WarBoost session is active and beta consent is accepted.
   if(!reveal){
     $("#playerMeta").textContent=t("to_connect");
@@ -482,6 +482,23 @@ function planModeLabel(row){const mode=String(row?.mode||"focus"),action=String(
 function planTargetLabel(row){if(["scan","hold","review"].includes(String(row?.mode||"")))return "";if(aiUsesNativeCopy())return String(row?.target||"").trim();const kind=String(row?.kind||"").toLowerCase(),raw=String(row?.target||"").trim();if(raw&&HERO_CATALOG.some(n=>n.toLowerCase()===canonicalStoredHeroName(raw).toLowerCase()))return canonicalStoredHeroName(raw);if(kind==="drone")return t("drone");if(kind==="technology")return aiKindLabel("technology");return aiKindLabel(kind||"focus")}
 function renderPlayer7DayPlan(analysis){const box=$("#player7DayPlan");if(!box)return;const rows=analysis?.seven_day_plan?.days||[];if(!rows.length){box.innerHTML=`<div class="notice">${esc(t("player_sync_note"))}</div>`;return}const cards=rows.map(row=>{const target=planTargetLabel(row);return `<div class="plan7Row${Number(row.day)===1?" today":""}"><span class="plan7Day">${esc(`#${row.day}`)}</span><div class="plan7Main"><b>${esc(planModeLabel(row))}${target?` · ${esc(target)}`:""}</b></div></div>`}).join("");box.innerHTML=`${cards}<div class="plan7Policy">${esc(t("plan7_policy"))}</div>`}
 
+function shopGroupLabel(type){
+  if(type==="game_currency")return t("shop_group_game");
+  if(type==="diamonds")return t("shop_group_diamonds");
+  if(type==="real_money")return t("shop_group_paid");
+  return t("shop_group_unknown");
+}
+function shopGroupRows(shop){
+  const raw=Array.isArray(shop?.recommendations)?shop.recommendations:[],provided=shop?.recommendation_groups&&typeof shop.recommendation_groups==="object"?shop.recommendation_groups:null;
+  const groups=provided||{game_currency:raw.filter(x=>x?.purchase_type==="game_currency"),diamonds:raw.filter(x=>x?.purchase_type==="diamonds"),real_money:raw.filter(x=>x?.purchase_type==="real_money"),unknown:raw.filter(x=>!["game_currency","diamonds","real_money"].includes(String(x?.purchase_type||"")))};
+  const limits={game_currency:3,diamonds:2,real_money:2,unknown:1};
+  return ["game_currency","diamonds","real_money","unknown"].map(type=>({type,rows:(Array.isArray(groups[type])?groups[type]:[]).slice(0,limits[type])})).filter(g=>g.rows.length);
+}
+function renderShopRecommendationCard(x,groupRank,native,ui){
+  const paymentType=String(x?.purchase_type||"unknown"),paymentLabel=native&&x?.purchase_type_label?String(x.purchase_type_label):shopGroupLabel(paymentType),paidGuard=x?.paid_guard?.real_money?String(x?.paid_guard?.label||t("shop_paid_guard")):"";
+  return `<article class="shopCard ${esc(x.verdict_key||"")} ${paymentType==="real_money"?"shopPaidCard":""}"><div class="shopHead"><span class="shopRank">${esc(groupRank||"•")}</span><div><div class="shopItemLine"><b>${esc(native?(x.item||""):structuredShopItemLabel(x))}</b><span class="shopPaymentBadge">${esc(paymentLabel)}</span></div><small>${native?`${esc(x.store||"")}${x.price_label?` · ${esc(x.price_label)}`:""}`:(["scan","official","reference"].includes(String(x.source||""))&&x.price_label?esc(x.price_label):"")}</small>${x.relevance_score!=null||x.score!=null?`<div class="shopMetrics"><span class="shopScore">${esc(t("shop_relevance"))} ${esc(String(Math.round(Number(x.relevance_score??x.score))))}/100</span>${x.evidence_confidence!=null?`<span class="shopEvidence">${esc(t("shop_data_confidence"))} ${esc(String(Math.round(Number(x.evidence_confidence))))}%</span>`:""}</div>`:""}</div><span class="shopVerdict">${esc(native?(x.verdict||""):shopVerdictLabel(x))}</span></div>${paidGuard?`<div class="shopPaidGuard">🛡️ ${esc(paidGuard)}</div>`:""}<details class="decisionDetails"><summary>${esc(native?ui.details:"ℹ️")}</summary><p>${esc(native?(x.reason||""):t("condition_neutral"))}</p><span class="shopAvailability">${esc(t("shop_availability"))}: ${esc(x.availability_status==="official_current"?t("shop_availability_official"):x.availability_status==="observed_scan"?t("shop_availability_observed"):t("shop_availability_unverified"))}</span>${native&&x.target?`<strong>${esc(x.target)}</strong>`:""}${paidGuard?`<small class="shopPaidGuardDetail">${esc(t("shop_paid_guard"))}</small>`:""}</details></article>`;
+}
+
 function renderProPriority(analysis){
   const native=aiUsesNativeCopy(),ui=aiUiText(),panel=$("#proPriorityPanel"),summary=$("#proPrioritySummary"),contextBox=$("#proAdaptiveContext"),list=$("#proPriorityList"),compare=$("#proSquadCompare"),exCompare=$("#proExclusiveCompare"),metaSources=$("#proMetaSources"),confidence=$("#proConfidence"),note=$("#playerSyncInfo"),shopList=$("#proShopList"),shopSummary=$("#proShopSummary"),shopConfidence=$("#shopConfidence"),shopCatalogPill=$("#shopCatalogPill"),avoid=$("#proAvoidList");
   if(!panel||!analysis)return;
@@ -505,7 +522,7 @@ function renderProPriority(analysis){
   if(shopSummary)shopSummary.textContent=native?(shop.summary||t("shop_summary_default")):t("shop_summary_default");
   if(shopConfidence)shopConfidence.textContent=`${t("shop_data_confidence")} ${Math.round(Number(shop.data_confidence??shop.confidence??0))}%`;
   if(shopCatalogPill){shopCatalogPill.textContent=native?(shop.catalog_label||"—"):t("adaptive");shopCatalogPill.className=`pill ${shop.catalog_status==="official"?"catalogOfficialPill":"catalogPartialPill"}`}
-  if(shopList){const rows=(Array.isArray(shop.recommendations)?shop.recommendations:[]).slice(0,3);shopList.innerHTML=rows.length?rows.map(x=>`<article class="shopCard ${esc(x.verdict_key||"")}"><div class="shopHead"><span class="shopRank">${esc(x.rank||"•")}</span><div><b>${esc(native?(x.item||""):structuredShopItemLabel(x))}</b><small>${native?`${esc(x.store||"")}${x.price_label?` · ${esc(x.price_label)}`:""}`:(["scan","official"].includes(String(x.source||""))&&x.price_label?esc(x.price_label):"")}</small>${x.relevance_score!=null||x.score!=null?`<div class="shopMetrics"><span class="shopScore">${esc(t("shop_relevance"))} ${esc(String(Math.round(Number(x.relevance_score??x.score))))}/100</span>${x.evidence_confidence!=null?`<span class="shopEvidence">${esc(t("shop_data_confidence"))} ${esc(String(Math.round(Number(x.evidence_confidence))))}%</span>`:""}</div>`:""}</div><span class="shopVerdict">${esc(native?(x.verdict||""):shopVerdictLabel(x))}</span></div><details class="decisionDetails"><summary>${esc(native?ui.details:"ℹ️")}</summary><p>${esc(native?(x.reason||""):t("condition_neutral"))}</p><span class="shopAvailability">${esc(t("shop_availability"))}: ${esc(x.availability_status==="official_current"?t("shop_availability_official"):x.availability_status==="observed_scan"?t("shop_availability_observed"):t("shop_availability_unverified"))}</span>${native&&x.target?`<strong>${esc(x.target)}</strong>`:""}</details></article>`).join(""):`<div class="notice">${esc(t("shop_no_recommendations"))}</div>`}
+  if(shopList){const groups=shopGroupRows(shop);shopList.innerHTML=groups.length?groups.map(g=>`<section class="shopGroup" data-shop-group="${esc(g.type)}"><div class="shopGroupTitle"><span>${esc(shopGroupLabel(g.type))}</span><small>${esc(String(g.rows.length))}</small></div>${g.rows.map((x,i)=>renderShopRecommendationCard(x,i+1,native,ui)).join("")}</section>`).join(""):`<div class="notice">${esc(t("shop_no_recommendations"))}</div>`}
   renderPlayer7DayPlan(analysis);
 }
 

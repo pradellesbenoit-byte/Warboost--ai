@@ -1,0 +1,72 @@
+WARBOOST V2.5.18 — BUILD VERIFICATION
+Date: 2026-08-31
+Base: WarBoost V2.5.17 FULL / Context Source Relevance
+Target: private beta preview package
+Production/main: NOT TOUCHED
+
+RESULT: PASS
+
+AUTOMATED SOURCE CHECKS
+- npm run check: PASS
+- npm run verify: PASS
+- WarBoost V2.5.18 verification: PASS
+- 12 serverless API functions syntax-covered: PASS
+- 31 canonical heroes preserved: PASS
+- 23 explicit language choices + Auto preserved: PASS
+- no V2.5.18 Supabase migration: PASS
+
+SHOP / DIAGNOSTIC SINGLE-SOURCE-OF-TRUTH VERIFIED
+- Shop EX shard targets inherit the exact current Diagnostic PRO EX ranking: PASS
+- user-like Air squad case keeps Diagnostic #1 as Shop EX target #1: PASS
+- missing DVA EX remains missing/unranked; no value is invented: PASS
+- exact shard/material quantities remain unknown without validated evidence: PASS
+
+PAYMENT SAFETY VERIFIED
+- in-game currencies, diamonds/premium and real-money offers are separated: PASS
+- reference real-money prices are dated observations, not current-price claims: PASS
+- paid offer strong-advice eligibility requires current price + contents + cost/gain verification: PASS
+- unverified scanned Pass Mensuel is forced to `verify_paid`: PASS
+- reference paid offers cannot become `buy_now`: PASS
+- real-money UI exposes a visible evidence guard: PASS
+
+GEAR SHOP VERIFIED
+- known gear target is surfaced in shop advice: PASS
+- unknown gear target is explicitly marked as unconfirmed: PASS
+- generic equipment resources do not invent a hero target: PASS
+
+PRO / SOURCES NON-REGRESSION
+- five-hero EX comparison preserved: PASS
+- rank-aware `Pourquoi` explanations preserved: PASS
+- community meta remains explanatory only with zero direct score bonus: PASS
+- meta sources remain topic-filtered; irrelevant Drone evidence stays out of EX diagnostics: PASS
+
+PLAYER / VS / SEASON / ALLIANCE NON-REGRESSION
+- Squad 1 remains player-selected main squad when configured: PASS
+- Sunday remains VS preparation for Monday Day 1: PASS
+- unknown VS opponent remains non-speculative: PASS
+- ended/inter-season Season logic remains historical/non-active: PASS
+- stale R5/R4 members are never assigned invented tactical roles: PASS
+
+DATA / PRIVACY NON-REGRESSION
+- saved player data is preserved through normalization: PASS
+- signed-out/unconsented/cross-account private-state isolation preserved: PASS
+- private beta allowlist/consent and free-PRO/payment-lock safeguards preserved: PASS
+- no unauthorized Last War integration introduced: PASS
+- no SQL DROP/TRUNCATE/DELETE migration added: PASS
+
+PACKAGE VERIFICATION
+- PATCH file count = 18: PASS
+- V2.5.17 base + V2.5.18 PATCH matches V2.5.18 FULL source exactly: PASS
+- extracted FULL ZIP matches V2.5.18 FULL source exactly: PASS
+- npm run check on patch-applied tree: PASS
+- npm run verify on patch-applied tree: PASS
+- npm run check on extracted FULL ZIP: PASS
+- npm run verify on extracted FULL ZIP: PASS
+- ZIP integrity tests: PASS
+
+FULL TREE
+- Total files in verified V2.5.18 FULL tree: 249
+- Root files: 165
+
+NOTE
+V2.5.18 is intended for publisher-demo / Preview validation first. Do not clear existing player data and do not deploy to main/Production before Preview verification.

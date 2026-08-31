@@ -1,0 +1,35 @@
+WARBOOST V2.5.18 — PATCH MANIFEST
+Base: V2.5.17 FULL / Context Source Relevance
+Changed/new files: 18
+
+ROOT (13)
+app.js
+BUILD_VERIFICATION_V2_5_18.txt
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+PATCH_MANIFEST_V2_5_18.txt
+README.md
+SHA256SUMS_V2_5_18.txt
+styles.css
+sw.js
+UPLOAD_GUIDE_V2_5_18.txt
+WARBOOST_V2_5_18_RELEASE.md
+
+api/ (2)
+api/advice.js
+api/health.js
+
+lib/ (2)
+lib/meta-intel.js
+lib/normalize.js
+
+scripts/ (1)
+scripts/verify-v2.5.18.mjs
+
+assets/
+NO V2.5.18 CHANGES
+
+supabase/
+NO V2.5.18 MIGRATION
