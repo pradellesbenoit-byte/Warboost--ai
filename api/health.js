@@ -23,7 +23,7 @@ export default async function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.18",
+    version:"2.5.19",
     mode:"private-beta-approval-first-api-ready",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -111,6 +111,9 @@ export default async function handler(req,res){
       shop_payment_channels_separated:true,
       paid_offer_requires_current_price_contents_cost_gain:true,
       reference_cash_prices_dated_not_current:true,
+      historical_paid_references_quarantined:true,
+      historical_paid_references_unranked:true,
+      current_paid_scan_required_for_current_offer_group:true,
       shop_gear_target_explicit_or_unconfirmed:true,
       shop_alignment_labels_23_languages:true,
       opaque_container_direct_resource_guard:true,
