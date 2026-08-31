@@ -1,0 +1,24 @@
+WARBOOST V2.5.19 — PRIVATE BETA PLAYER SAFETY
+
+CIBLE
+- Joueurs invités à la bêta privée.
+- Recommandation de branche GitHub : private-beta
+- NE PAS remplacer publisher-demo V2.5.18 (démo Last War/FirstFun).
+- NE PAS modifier main / Production.
+
+INSTALLATION FULL
+1. Décompresser WarBoost_V2.5.19_BETA_FULL.zip.
+2. Ouvrir/créer la branche dédiée aux joueurs bêta (ex. private-beta).
+3. Envoyer le contenu extrait en conservant les dossiers api/, assets/, lib/, scripts/ et supabase/.
+4. index.html, app.js, i18n.js, styles.css, sw.js, manifest.webmanifest et vercel.json restent à la racine.
+5. Ne supprimer aucune donnée joueur, aucun localStorage et aucune donnée Supabase.
+6. Aucune migration Supabase n’est requise.
+
+CONTROLE APRES DEPLOIEMENT
+- En-tête : WarBoost V2.5.19 + BÊTA PRIVÉE.
+- Compte bêta invité + consentement.
+- Diagnostic PRO inchangé et données joueur conservées.
+- Boutique IA : Monnaies du jeu / Diamants-Premium / Achats en argent réel / Offres payantes historiques à vérifier.
+- Les offres historiques n’ont pas de rang numérique ni de score de recommandation actuel.
+- Un ancien prix est toujours libellé prix observé / prix actuel non vérifié.
+- Scanner une boutique : une offre payante réellement scannée peut apparaître dans Achats en argent réel, mais reste protégée tant que prix/contenu/coût-gain ne sont pas tous vérifiés.
