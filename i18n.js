@@ -899,3 +899,42 @@ for(const [code,values] of Object.entries(V2519_BETA_SHOP_LABELS)){
   const targets=code==="en"?[EN,EN_GB,EN_US]:[packs[code]].filter(Boolean);
   targets.forEach(target=>Object.assign(target,values));
 }
+
+
+// ===== V2.5.19 · Private Beta Home Identity Hotfix =====
+// Player-facing beta pages must never look like the publisher demonstration.
+// Keep the version stable so this can be deployed as a two-file hotfix on private-beta.
+const V2519_BETA_CONNECTION_LABELS={
+  en:"Official Last War connection not enabled",
+  fr:"Connexion officielle Last War non activée",
+  es:"Conexión oficial de Last War no activada",
+  it:"Connessione ufficiale a Last War non attivata",
+  de:"Offizielle Last-War-Verbindung nicht aktiviert",
+  pt:"Ligação oficial ao Last War não ativada",
+  nl:"Officiële Last War-verbinding niet ingeschakeld",
+  zh:"Last War 官方连接尚未启用",
+  ja:"Last War公式接続は未有効",
+  ru:"Официальное подключение Last War не включено",
+  ar:"الاتصال الرسمي بـ Last War غير مفعّل",
+  pl:"Oficjalne połączenie z Last War nie jest włączone",
+  tr:"Resmî Last War bağlantısı etkin değil",
+  ko:"Last War 공식 연결이 활성화되지 않음",
+  vi:"Kết nối chính thức Last War chưa được bật",
+  th:"ยังไม่ได้เปิดใช้การเชื่อมต่อ Last War อย่างเป็นทางการ",
+  id:"Koneksi resmi Last War belum diaktifkan",
+  uk:"Офіційне підключення Last War не ввімкнено",
+  ro:"Conexiunea oficială Last War nu este activată",
+  el:"Η επίσημη σύνδεση Last War δεν είναι ενεργοποιημένη",
+  cs:"Oficiální připojení Last War není aktivováno",
+  sv:"Officiell Last War-anslutning är inte aktiverad"
+};
+for(const [code,connectionLabel] of Object.entries(V2519_BETA_CONNECTION_LABELS)){
+  const targets=code==="en"?[EN,EN_GB,EN_US]:[packs[code]].filter(Boolean);
+  targets.forEach(target=>{
+    const betaName=target.beta_release_label||target.beta_badge||"Private Beta";
+    target.publisher_demo=target.beta_badge||betaName;
+    target.publisher_edition=betaName;
+    target.official_pending=connectionLabel;
+    target.tagline=`V2.5.19 · ${betaName} · ${connectionLabel}`;
+  });
+}
