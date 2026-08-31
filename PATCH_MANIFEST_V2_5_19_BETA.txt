@@ -1,0 +1,24 @@
+WARBOOST V2.5.19 BETA PATCH MANIFEST
+Base: WarBoost V2.5.18 FULL
+Target: Private Beta players only
+
+Changed / added files:
+BUILD_VERIFICATION_V2_5_19_BETA.txt
+PATCH_MANIFEST_V2_5_19_BETA.txt
+PUBLISHER_DEMO.md
+README.md
+SHA256SUMS_V2_5_19_BETA.txt
+UPLOAD_GUIDE_V2_5_19_BETA.txt
+WARBOOST_V2_5_19_BETA_RELEASE.md
+api/advice.js
+api/health.js
+app.js
+i18n.js
+index.html
+lib/meta-intel.js
+lib/normalize.js
+manifest.webmanifest
+package.json
+scripts/verify-v2.5.19.mjs
+styles.css
+sw.js

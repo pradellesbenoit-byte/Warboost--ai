@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.18 Beta",
+  "name": "WarBoost V2.5.19 Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.18 — Shop Decision Integrity: private beta with protected player data, unified PRO/shop priorities, separated payment channels and guarded real-money recommendations.",
+  "description": "WarBoost V2.5.19 — Private Beta Player Safety: protected player data, unified PRO/shop priorities, and historical paid offers isolated until current availability is confirmed.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

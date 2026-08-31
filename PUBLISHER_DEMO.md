@@ -1,5 +1,7 @@
 # WarBoost V2 — Publisher Demo
 
+La **Publisher Demo destinée à Last War/FirstFun reste V2.5.18**. WarBoost V2.5.19 est une variante de bêta privée joueurs et ne doit pas remplacer cette démo éditeur sans décision explicite.
+
 ## Positioning
 WarBoost is an AI companion platform for Last War: Survival. It analyzes account and alliance progression and turns it into understandable recommendations.
 
@@ -10,7 +12,7 @@ WarBoost is an AI companion platform for Last War: Survival. It analyzes account
 - VS daily planning
 - Season planning
 - Alliance R5/R4 activity and planning
-- Multi-language UI: FR, EN-GB, EN-US, ES, DE, JA, ZH, AR
+- Multi-language UI
 
 ## Data and compliance
 - Explicit player consent
@@ -19,6 +21,3 @@ WarBoost is an AI companion platform for Last War: Survival. It analyzes account
 - No unauthorized account-data method
 - Official provider connector remains disabled until authorization
 - Demo hero art is original placeholder art, not copied game artwork
-
-## Desired official integration
-A read-only API or other approved data-access method for player profile, squads, heroes, exclusive weapons, gear, Drone, technology, profession, Season, VS and alliance data, subject to FirstFun-approved scope.

@@ -1,0 +1,41 @@
+WARBOOST V2.5.19 — PRIVATE BETA PLAYER SAFETY
+BUILD VERIFICATION
+Date: 2026-08-31
+Target: invited-player private beta Preview only
+Publisher Demo: remains separately frozen at V2.5.18
+
+PRIMARY CHANGE VERIFIED
+- Dated/reference-only real-money offers are quarantined into a dedicated historical paid-offer group.
+- Historical paid references have no current numeric rank and no current recommendation relevance score.
+- Historical paid references explicitly require a fresh shop scan before purchase evaluation.
+- A fresh scanned paid offer can enter the current real-money group, but a strong recommendation still requires current price + current contents + cost/gain verification.
+- Old cash prices remain dated observations and never become current prices.
+
+NON-REGRESSION VERIFIED
+- Diagnostic PRO and Boutique IA share the same EX ranking source of truth.
+- Five main heroes remain compared; missing DVA EX remains unknown and unranked.
+- No exact fragment quantity is invented without validated evidence.
+- Topic-scoped meta sources remain secondary to saved/scanned account data.
+- Squad 1 selection, legacy data preservation and last-good backup remain intact.
+- VS Sunday prep logic and unknown opponent safeguards remain intact.
+- Season ended/interseason lifecycle safeguards remain intact.
+- R5/R4 tactical assignments use confirmed-active members only.
+- Beta invitation/consent gates remain active; WarBoost payments remain disabled in private beta.
+- No unauthorized Last War data connector is enabled.
+- No Supabase migration is required; supabase/ is unchanged from V2.5.18.
+- Hero assets are unchanged from V2.5.18.
+- 31 canonical heroes and 23 explicit languages + Auto remain supported.
+- 12 serverless API functions remain syntax-checked.
+
+TEST RESULTS
+- npm run check: PASS
+- npm run verify: PASS
+- WarBoost V2.5.19 verification: PASS
+- PWA cache key bumped to V2.5.19 beta safety cache: PASS
+- Dedicated beta release docs distinguish private beta from Publisher Demo V2.5.18: PASS
+
+DEPLOYMENT RULE
+Deploy to a dedicated private-beta Preview branch (recommended: private-beta).
+Do not overwrite publisher-demo V2.5.18.
+Do not modify main/Production without separate validation.
+Do not clear localStorage, scans, cloud state or player history.
