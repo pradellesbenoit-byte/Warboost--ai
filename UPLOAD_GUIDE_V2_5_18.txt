@@ -1,0 +1,43 @@
+WARBOOST V2.5.18 — PREVIEW UPLOAD GUIDE
+
+BASE
+- Apply to the current V2.5.17 publisher-demo / Preview branch.
+- Do NOT touch main/Production until Preview is validated.
+- No Supabase migration is required.
+- Do NOT clear localStorage, cloud data, scans, squads, Drone, Alliance or saved player history.
+
+RECOMMENDED METHOD
+1. Extract WarBoost_V2.5.18_FULL.zip.
+2. Upload the complete extracted CONTENT to the root of the publisher-demo branch (not the outer folder itself).
+3. Keep index.html, app.js, i18n.js, styles.css, sw.js and manifest.webmanifest at repository root.
+4. Keep api/, lib/, scripts/, assets/ and supabase/ as subfolders; do not move their files to root.
+5. Commit directly to publisher-demo.
+6. Wait for the green Vercel Preview deployment.
+7. Open the new Preview URL and confirm `WarBoost V2.5.18` at the top.
+
+PREVIEW CHECKS — DIAGNOSTIC / SHOP SINGLE SOURCE OF TRUTH
+- Open Diagnostic PRO and note the #1 EX hero.
+- Open Boutique Last War · Conseiller IA.
+- `Fragment d'Arme Exclusive Universel` must target the same #1 EX hero first.
+- If DVA EX is unknown, it must remain unknown/unranked; never invent an EX value.
+
+PREVIEW CHECKS — PAYMENT CHANNELS
+- Shop cards must be separated into: Monnaies du jeu / Diamants-premium / Achats en argent réel (when present).
+- A real-money reference must display an observed/date wording, not imply a current price.
+- A paid offer without current price + current contents + cost/gain verification must stay `À vérifier en boutique` / guarded.
+- A paid offer must never outrank free/in-game resources merely because it costs real money.
+
+PREVIEW CHECKS — GEAR
+- Plan d'Équipement / gear materials must show a concrete hero/gear target when known.
+- If the exact target is not known, WarBoost must explicitly say it remains to confirm.
+
+NON-REGRESSION CHECKS
+- Sources méta remain filtered to the active diagnostic topic.
+- Player profile, squads, Drone and Alliance reload after login without rescanning.
+- VS Sunday remains preparation for Monday Day 1.
+- Season 6 ended/inter-season remains historical, not active advice.
+- R5/R4 stale members are not assigned invented tactical roles.
+
+NO CHANGES REQUIRED
+- No V2.5.18 Supabase migration.
+- Do not delete existing repository files or saved player data.

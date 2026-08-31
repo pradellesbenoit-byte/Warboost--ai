@@ -1,4 +1,36 @@
-# WarBoost V2.5.17
+# WarBoost V2.5.18
+
+## Bêta privée — Shop Decision Integrity
+
+V2.5.18 conserve le Diagnostic PRO et la pertinence des sources validés en V2.5.17, puis fiabilise la Boutique IA pour qu’elle ne contredise jamais le classement PRO et qu’elle traite séparément les monnaies du jeu, les diamants et les achats en argent réel.
+
+### Correctif V2.5.18 — Boutique IA alignée sur le Diagnostic PRO
+
+- **Une seule source de vérité EX** : la Boutique IA réutilise exactement le classement `exclusive_comparison` du Diagnostic PRO. Si Carlie est n°1 dans le Diagnostic PRO, les fragments universels ciblent Carlie en premier.
+- **Canaux de paiement séparés** : monnaies du jeu, diamants/premium et argent réel sont affichés dans des groupes distincts ; un pack en euros n’est plus présenté comme s’il était en concurrence directe avec une ressource Honneur/Alliance.
+- **Garde-fou achats réels** : aucune offre en argent réel ne peut recevoir une recommandation forte tant que le prix actuel, le contenu actuel et le rapport coût/gain ne sont pas tous explicitement vérifiés depuis une source actuelle autorisée (scan récent ou source officielle).
+- **Prix de référence daté** : un ancien prix en EUR/USD/GBP est affiché comme prix observé avec sa date et comme non vérifié aujourd’hui, jamais comme prix courant.
+- **Cible équipement explicite** : les plans/matériaux d’équipement indiquent le héros/équipement visé quand l’information existe ; sinon WarBoost écrit clairement que la cible exacte reste à confirmer.
+- **Référentiel payant conservateur** : les références payantes peuvent être montrées dans leur propre groupe, mais restent « à vérifier » tant qu’elles ne sont pas confirmées par une donnée actuelle.
+- **Aucune quantité inventée** : fragments, coût exact futur et gain chiffré restent inconnus tant qu’une source visible/officielle validée ne les fournit pas.
+
+### Non-régressions conservées
+
+- Diagnostic PRO : comparaison EX des 5 héros, explications liées au vrai rang, DVA inconnue laissée inconnue, méta communautaire secondaire et sans bonus/malus opaque.
+- Sources : filtrage par sujet ; une source Drone ne remonte pas dans une analyse EX.
+- Joueur : Escouade 1 reste la principale lorsqu’elle est configurée, données historiques protégées, aucune mise à jour ne doit forcer un rescan.
+- VS : dimanche = préparation du Jour 1, adversaire inconnu non inventé.
+- Saison : inter-saison/terminée traitée comme historique, aucun conseil S6 actif hors saison.
+- Alliance R5/R4 : données anciennes non transformées en rôles tactiques inventés.
+- Bêta privée : consentement, isolation des comptes, paiements désactivés et aucune intégration Last War non autorisée.
+
+### Déploiement
+
+V2.5.18 est prévue pour `publisher-demo` / Preview uniquement jusqu’à validation. Aucune migration Supabase n’est requise. Ne pas effacer localStorage, scans, données cloud ou historique joueur.
+
+---
+
+# Historique V2.5.17
 
 ## Bêta privée — pertinence des sources et classement compte-first
 
