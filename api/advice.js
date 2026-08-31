@@ -8,7 +8,7 @@ import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScor
 import {seasonLifecycle,seasonIsActive,activeSeasonProgress} from '../lib/season-lifecycle.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
-const ENGINE_VERSION="2.5.17";
+const ENGINE_VERSION="2.5.18";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -346,7 +346,7 @@ function rankAwareExclusiveWhy(comparison,chosen,lang){
 function bottleneckFamily(kind){return kind==="level"||kind==="stars"||kind==="exclusive"||kind==="gear"?"hero":kind}
 function selectSmartTop3(candidates,lang){
   const sorted=[...candidates].sort((a,b)=>(b.marginal_value_score??b.severity)-(a.marginal_value_score??a.severity)||b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
-  // V2.5.17: construct every reliable candidate first, then rank by contextual marginal value.
+  // V2.5.18: construct every reliable candidate first, then rank by contextual marginal value.
   // No explanatory card is allowed to call itself "best" independently of the actual ranking.
   const out=[],seen=new Set();
   for(const x of sorted){
@@ -453,7 +453,7 @@ function buildPlayerAnalysis(state,locale){
   const top=unique[0];
   const metaTopicForKind=k=>k==="exclusive"?"exclusive":k==="gear"?"gear":k==="drone"?"drone":null;
   const metaTopics=[...new Set(unique.map(x=>metaTopicForKind(x?.kind)).filter(Boolean))];
-  // V2.5.17: source cards follow the domains of the current top recommendations.
+  // V2.5.18: source cards follow the domains of the current top recommendations.
   // Example: an EX-only TOP 3 cannot display a Drone article merely to increase source count.
   const metaInfo=metaContext(state,{topics:metaTopics});
   const usedEvidenceIds=[...new Set(unique.flatMap(x=>Array.isArray(x?.evidence_ids)?x.evidence_ids:[]))];
@@ -521,6 +521,44 @@ function heroNeedSnapshot(state){
   return {main_squad:(main?.i??0)+1,heroes,squadType,starTargets,exTargets,gearTargets,levelTargets,needExclusive:exTargets.length>0,needStars:starTargets.length>0,needGear:gearTargets.length>0,needLevel:levelTargets.length>0,exclusiveUrgency,starsUrgency,gearUrgency,droneUrgency,droneKnown,droneLevel,gearKnownCount:gearKnown.length,exclusiveKnownCount:exKnown.length,exclusiveDataComplete:heroes.length>0&&exKnown.length===heroes.length};
 }
 
+// V2.5.18: the shop must consume the SAME exclusive-weapon ranking that Diagnostic PRO displays.
+// heroNeedSnapshot remains the fallback when no current Diagnostic PRO comparison is available.
+function alignShopNeedsWithDiagnostic(needs,analysis={}){
+  const base={...needs},existing=Array.isArray(needs?.exTargets)?needs.exTargets:[],byHero=new Map(existing.map(x=>[canonicalHeroName(x?.name).toLowerCase(),x]));
+  const ranked=(Array.isArray(analysis?.exclusive_comparison?.heroes)?analysis.exclusive_comparison.heroes:[])
+    .filter(x=>Number.isFinite(Number(x?.exclusive_rank))&&Number(x.exclusive_rank)>0)
+    .sort((a,b)=>Number(a.exclusive_rank)-Number(b.exclusive_rank));
+  const aligned=[];
+  for(const row of ranked){
+    const name=canonicalHeroName(row?.hero),key=name.toLowerCase();if(!name)continue;
+    const known=byHero.get(key);
+    if(known){aligned.push(known);byHero.delete(key);continue}
+    const current=num(row?.current),target=num(String(row?.next_target||'').replace(/[^0-9.]/g,''));
+    if(current!==null&&target!==null)aligned.push({name,exclusive:current,next_breakpoint:target});
+  }
+  for(const x of existing)if(byHero.has(canonicalHeroName(x?.name).toLowerCase())){aligned.push(x);byHero.delete(canonicalHeroName(x?.name).toLowerCase())}
+  if(aligned.length)base.exTargets=aligned;
+  base.diagnostic_ex_source=aligned.length?'diagnostic_pro_exclusive_comparison':'fallback_need_snapshot';
+  base.diagnostic_ex_ranked_heroes=aligned.map(x=>canonicalHeroName(x?.name)).filter(Boolean);
+  return base;
+}
+function shopGearTargetLabel(needs,locale){
+  const first=Array.isArray(needs?.gearTargets)?needs.gearTargets[0]:null,l=localePack(locale),sq=Number(needs?.main_squad)||1;
+  if(first?.name){const lv=num(first?.gear);return l==='fr'?`${first.name}${lv!==null?` · équipement Nv.${lv}`:''}`:l==='es'?`${first.name}${lv!==null?` · equipo Nv.${lv}`:''}`:l==='de'?`${first.name}${lv!==null?` · Ausrüstung Lv.${lv}`:''}`:l==='ja'?`${first.name}${lv!==null?` · 装備Lv.${lv}`:''}`:l==='zh'?`${first.name}${lv!==null?` · 装备Lv.${lv}`:''}`:l==='ar'?`${first.name}${lv!==null?` · معدات Lv.${lv}`:''}`:`${first.name}${lv!==null?` · gear Lv.${lv}`:''}`;}
+  return l==='fr'?`Escouade ${sq} · équipement principal à confirmer`:l==='es'?`Escuadrón ${sq} · equipo principal por confirmar`:l==='de'?`Trupp ${sq} · Hauptausrüstung noch zu bestätigen`:l==='ja'?`部隊${sq} · 主力装備は要確認`:l==='zh'?`队伍${sq} · 主力装备待确认`:l==='ar'?`الفريق ${sq} · المعدات الرئيسية تحتاج تأكيد`:`Squad ${sq} · main gear target to confirm`;
+}
+function shopTargetReason(category,target,locale){
+  if(!target||!["blueprint","gear_material"].includes(String(category||"")))return "";
+  const l=localePack(locale),unknown=/confirmer|confirm|bestätigen|要確認|待确认|تأكيد|verificar/i.test(String(target));
+  if(l==='fr')return unknown?`Cible équipement exacte non confirmée : ${target}. Un nouveau scan peut préciser le héros et l’équipement.`:`Cible équipement actuelle : ${target}.`;
+  if(l==='es')return unknown?`Objetivo exacto de equipo sin confirmar: ${target}. Un nuevo escaneo puede precisar héroe y equipo.`:`Objetivo de equipo actual: ${target}.`;
+  if(l==='de')return unknown?`Genaues Ausrüstungsziel nicht bestätigt: ${target}. Ein neuer Scan kann Held und Ausrüstung präzisieren.`:`Aktuelles Ausrüstungsziel: ${target}.`;
+  if(l==='ja')return unknown?`正確な装備対象は未確認です：${target}。再スキャンで英雄と装備を特定できます。`:`現在の装備対象：${target}。`;
+  if(l==='zh')return unknown?`具体装备目标尚未确认：${target}。重新扫描可进一步确定英雄和装备。`:`当前装备目标：${target}。`;
+  if(l==='ar')return unknown?`هدف العتاد الدقيق غير مؤكد: ${target}. يمكن لمسح جديد تحديد البطل والعتاد.`:`هدف العتاد الحالي: ${target}.`;
+  return unknown?`Exact gear target not confirmed: ${target}. A fresh scan can identify the hero and gear.`:`Current gear target: ${target}.`;
+}
+
 function normItem(v){return cleanName(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
 const KNOWN_SHOP_CATEGORIES=new Set(["vip_time","blueprint","exclusive","hero","drone","stamina","armament","skill","speed_heal","speed_research","speed_build","speed_train","speed","shield","teleport","campaign_chest","resource","cosmetic","chest","monthly_pass","training","overlord","badge_value","gear_material","armament_material","decoration_component","superalloy","season_skill","profession","hero_recruit","survivor","trade","transfer","combat_data","event_pack","diamond_topup","gold_brick"]);
 function itemCategory(name,explicitCategory="",store=""){const explicit=normItem(explicitCategory).replace(/\s+/g,"_");if(KNOWN_SHOP_CATEGORIES.has(explicit))return explicit;const ref=referenceCategoryForItem(name,store);if(ref)return ref;const s=normItem(`${name||""} ${explicitCategory||""}`);
@@ -577,8 +615,8 @@ function shopSourceConfidence(source,freshnessStatus="unknown"){
 }
 function shopAvailabilityStatus(source){return source==="official"?"official_current":source==="scan"?"observed_scan":source==="reference"?"reference_unverified":"strategy_unverified";}
 function decorateShopRecommendation(rec,profileConfidence,locale){
-  const src=String(rec?.source||"strategy"),fresh=rec?.data_freshness?.status||"unknown",sourceConfidence=shopSourceConfidence(src,fresh),dataConfidence=Math.max(0,Math.min(sourceConfidence,Number(profileConfidence)||0)),e=shopEvidenceText(locale),relevance=Number.isFinite(Number(rec?.score))?Math.round(Number(rec.score)):null;
-  return {...rec,relevance_score:relevance,relevance_label:relevance===null?null:e.relevance(relevance),source_confidence:sourceConfidence,evidence_confidence:dataConfidence,evidence_confidence_label:e.data(dataConfidence),availability_status:shopAvailabilityStatus(src),availability_live_verified:src==="official",availability_observed:src==="official"||src==="scan"};
+  const src=String(rec?.source||"strategy"),fresh=rec?.data_freshness?.status||"unknown",sourceConfidence=shopSourceConfidence(src,fresh),dataConfidence=Math.max(0,Math.min(sourceConfidence,Number(profileConfidence)||0)),e=shopEvidenceText(locale),relevance=Number.isFinite(Number(rec?.score))?Math.round(Number(rec.score)):null,currency=rec?.currency||rec?.budget?.currency||"",guard=rec?.paid_guard||paidPurchaseGuard({source:src,currency,price:rec?.budget?.price,current_price_verified:rec?.current_price_verified,current_contents_verified:rec?.current_contents_verified,cost_gain_verified:rec?.cost_gain_verified},locale);
+  return {...rec,currency,purchase_type:guard.purchase_type,purchase_type_label:guard.purchase_type_label,paid_guard:guard,relevance_score:relevance,relevance_label:relevance===null?null:e.relevance(relevance),source_confidence:sourceConfidence,evidence_confidence:dataConfidence,evidence_confidence_label:e.data(dataConfidence),availability_status:shopAvailabilityStatus(src),availability_live_verified:src==="official",availability_observed:src==="official"||src==="scan"};
 }
 const ADAPTIVE_TEXT={
   fr:{score:n=>shopEvidenceText("fr").relevance(n),reserve:n=>shopEvidenceText("fr").reserve(n),lowBudget:"Cet achat ferait passer tes diamants sous la réserve de référence VIP. Vérifie le coût actuel en jeu.",unknownBudget:"Solde de diamants non lu : WarBoost ne pénalise pas la pertinence, mais conserve la réserve VIP comme référence datée à vérifier en jeu.",vs:d=>`Contexte VS jour ${d} pris en compte.`,allStars:"Tes héros principaux visibles sont déjà à 5★ : les fragments héros génériques perdent fortement en priorité.",exFirst:t=>`Armes exclusives encore en retrait${t?` (${t})`:""} : évite de disperser les ressources rares.`,notAffordable:"Solde visible insuffisant pour cette offre.",realMoney:"Achat en argent réel : WarBoost limite volontairement la recommandation tant que le gain n'est pas ciblé.",budgetOk:"Le solde visible reste au-dessus de la réserve diamants après achat."},
@@ -646,6 +684,22 @@ function shopSituationalText(locale){return SHOP_SITUATIONAL_TEXT[shopLocaleKey(
 function adaptiveText(locale){return ADAPTIVE_TEXT[localePack(locale)]||ADAPTIVE_TEXT.en;}
 function isDiamondCurrency(v){return /diamond|diamant|diamante|gem|gems|钻石|ダイヤ|ألماس|💎/.test(normItem(v));}
 function isCashCurrency(v){const raw=String(v||"");return /eur|usd|gbp|euro|dollar|pound/.test(normItem(v))||/[€$£]/.test(raw);}
+const SHOP_PAYMENT_TEXT={
+  fr:{real:'Achat réel',diamond:'Diamants / monnaie premium',game:'Monnaie du jeu',unknown:'Type de paiement à vérifier',verify:'Achat réel : vérifie le prix actuel, le contenu actuel et le rapport coût/gain avant de payer.',observed:(d,p)=>`Prix observé le ${d} : ${p} · prix actuel non vérifié.`,contents:(d,n)=>`Contenu observé le ${d} : ${n} Contenu actuel non vérifié.`},
+  en:{real:'Real-money purchase',diamond:'Diamonds / premium currency',game:'In-game currency',unknown:'Payment type to verify',verify:'Real-money purchase: verify the current price, current contents and cost/gain before paying.',observed:(d,p)=>`Price observed on ${d}: ${p} · current price not verified.`,contents:(d,n)=>`Contents observed on ${d}: ${n} Current contents not verified.`},
+  es:{real:'Compra con dinero real',diamond:'Diamantes / moneda premium',game:'Moneda del juego',unknown:'Tipo de pago por verificar',verify:'Compra con dinero real: verifica precio actual, contenido actual y relación coste/ganancia antes de pagar.',observed:(d,p)=>`Precio observado el ${d}: ${p} · precio actual no verificado.`,contents:(d,n)=>`Contenido observado el ${d}: ${n} Contenido actual no verificado.`},
+  de:{real:'Echtgeldkauf',diamond:'Diamanten / Premiumwährung',game:'Spielwährung',unknown:'Zahlungsart prüfen',verify:'Echtgeldkauf: aktuellen Preis, aktuellen Inhalt und Kosten/Nutzen vor dem Bezahlen prüfen.',observed:(d,p)=>`Beobachteter Preis am ${d}: ${p} · aktueller Preis nicht bestätigt.`,contents:(d,n)=>`Beobachteter Inhalt am ${d}: ${n} Aktueller Inhalt nicht bestätigt.`},
+  ja:{real:'課金',diamond:'ダイヤ / プレミアム通貨',game:'ゲーム内通貨',unknown:'支払方法を確認',verify:'課金商品：支払う前に現在価格・現在内容・費用対効果を確認してください。',observed:(d,p)=>`${d}に確認した価格：${p} · 現在価格は未確認。`,contents:(d,n)=>`${d}に確認した内容：${n} 現在内容は未確認。`},
+  zh:{real:'真钱购买',diamond:'钻石 / 高级货币',game:'游戏内货币',unknown:'支付类型待确认',verify:'真钱购买：付款前请确认当前价格、当前内容和成本收益。',observed:(d,p)=>`${d}观察价格：${p} · 当前价格未验证。`,contents:(d,n)=>`${d}观察内容：${n} 当前内容未验证。`},
+  ar:{real:'شراء بأموال حقيقية',diamond:'ألماس / عملة مميزة',game:'عملة داخل اللعبة',unknown:'نوع الدفع يحتاج تحقق',verify:'شراء بأموال حقيقية: تحقق من السعر الحالي والمحتوى الحالي ومقارنة التكلفة بالعائد قبل الدفع.',observed:(d,p)=>`السعر المرصود في ${d}: ${p} · السعر الحالي غير مؤكد.`,contents:(d,n)=>`المحتوى المرصود في ${d}: ${n} المحتوى الحالي غير مؤكد.`}
+};
+function shopPaymentText(locale){return SHOP_PAYMENT_TEXT[localePack(locale)]||SHOP_PAYMENT_TEXT.en}
+function purchaseType(currency){return isCashCurrency(currency)?'real_money':isDiamondCurrency(currency)?'diamonds':cleanName(currency)?'game_currency':'unknown'}
+function purchaseTypeLabel(type,locale){const t=shopPaymentText(locale);return type==='real_money'?t.real:type==='diamonds'?t.diamond:type==='game_currency'?t.game:t.unknown}
+function paidPurchaseGuard({source,currency,price,current_price_verified=false,current_contents_verified=false,cost_gain_verified=false}={},locale){
+  const type=purchaseType(currency),paid=type==='real_money',strong_allowed=!paid||(Boolean(current_price_verified)&&Boolean(current_contents_verified)&&Boolean(cost_gain_verified)&&['scan','official'].includes(String(source||'')));
+  return {purchase_type:type,purchase_type_label:purchaseTypeLabel(type,locale),real_money:paid,strong_recommendation_allowed:strong_allowed,current_price_verified:Boolean(current_price_verified),current_contents_verified:Boolean(current_contents_verified),cost_gain_verified:Boolean(cost_gain_verified),label:paid&&!strong_allowed?shopPaymentText(locale).verify:''};
+}
 function vsContextBoost(cat,name,day){const d=Number(day),s=normItem(name);if(!Number.isInteger(d)||d<1||d>6)return 0;
   if(d===1&&cat==="drone")return 5;
   if(d===2&&(cat==="speed_build"||(/construct|build|construction/.test(s)&&cat==="speed")))return 8;
@@ -707,7 +761,7 @@ function situationalUtilityGuard(cat,state,locale,name=""){
 }
 function baseOfferScore(cat,needs){
   if(cat==="vip_time")return 94;
-  if(cat==="monthly_pass")return 78;
+  if(cat==="monthly_pass")return 52;
   if(cat==="blueprint")return 84+needs.gearUrgency*14;
   if(cat==="gear_material")return 68+needs.gearUrgency*18;
   if(cat==="exclusive")return 62+needs.exclusiveUrgency*36;
@@ -845,6 +899,12 @@ function observedShopOffers(shop={}){
   return {rows:out,raw_count:rows.length,unique_count:out.length,sold_count:soldCount,deduped_count:Math.max(0,rows.length-out.length-soldCount),price_conflict_count:conflictCount};
 }
 
+function referenceCatalogPriceLabel(r,locale){
+  if(r?.price===null||r?.price===undefined)return "";
+  const raw=priceLabel({price:r.price,currency:r.currency},locale),date=localePack(locale)==='fr'?SHOP_REFERENCE_DATE.split('-').reverse().join('/'):SHOP_REFERENCE_DATE;
+  if(isCashCurrency(r?.currency))return shopPaymentText(locale).observed(date,raw);
+  const prefix=localePack(locale)==='fr'?`réf. ${date} · `:`ref. ${date} · `;return `${prefix}${raw}`;
+}
 function referenceCatalogRecommendations(state,locale,needs){
   const refs=referenceItemsForStrategy({locale,includeTemporary:true}),p=shopText(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),action=shopAlignmentText(locale),out=[];
   for(const r of refs){
@@ -855,20 +915,28 @@ function referenceCatalogRecommendations(state,locale,needs){
     if(r.category==="cosmetic")score=Math.min(score,14);
     if(r.category==="event_pack")score=Math.min(score,42);
     score=Math.max(0,Math.min(100,Math.round(score)));
-    const target=r.category==="exclusive"?needs.exTargets.slice(0,3).map(exTargetLabel).filter(Boolean).join(" / "):r.category==="hero"?needs.starTargets.slice(0,3).map(x=>x.name).join(" / "):r.category==="drone"?safe.droneTarget(needs.droneLevel):"";
-    const refPrefix=String(locale||"").toLowerCase().startsWith("fr")?`réf. ${SHOP_REFERENCE_DATE.split("-").reverse().join("/")} · `:`ref. ${SHOP_REFERENCE_DATE} · `;
-    const price=r.price!==null&&r.price!==undefined?`${refPrefix}${priceLabel({price:r.price,currency:r.currency},locale)}`:"";
-    const da=diagnosticShopAdjustment(r.category,state?._shop_alignment,locale),opaqueGuard=opaqueContainerGuard(r.category,locale),situationalGuard=situationalUtilityGuard(r.category,state,locale,r.item);out.push({item:r.item,store:`${r.store} · ${safe.notVerified}`,score,score_label:a.score(score),reason:[offerReason(r.category,needs,p),...da.reasons,opaqueGuard.reason,situationalGuard.reason,r.temporary?(localePack(locale)==="fr"?"Offre/rotation observée : rescanner avant achat.":"Observed rotating offer: rescan before buying."):""].filter(Boolean).join(" ").trim(),target,verdict:action.verify,verdict_key:"strategy",price_label:price,source:"reference",category:r.category,availability_label:safe.notVerified,diagnostic_alignment:{resource_family:da.family,priority_rank:da.rank,bonus:da.bonus},opaque_container:opaqueGuard.opaque,opaque_score_cap:opaqueGuard.cap,situational_resource:situationalGuard.situational,situational_context_confirmed:situationalGuard.contextual,situational_score_cap:situationalGuard.cap,_sort:score});
+    const target=r.category==="exclusive"?needs.exTargets.slice(0,3).map(exTargetLabel).filter(Boolean).join(" / "):r.category==="hero"?needs.starTargets.slice(0,3).map(x=>x.name).join(" / "):r.category==="drone"?safe.droneTarget(needs.droneLevel):["blueprint","gear_material"].includes(r.category)?shopGearTargetLabel(needs,locale):"";
+    const price=referenceCatalogPriceLabel(r,locale),da=diagnosticShopAdjustment(r.category,state?._shop_alignment,locale),opaqueGuard=opaqueContainerGuard(r.category,locale),situationalGuard=situationalUtilityGuard(r.category,state,locale,r.item),paidGuard=paidPurchaseGuard({source:'reference',currency:r.currency,price:r.price},locale),refDate=localePack(locale)==='fr'?SHOP_REFERENCE_DATE.split('-').reverse().join('/'):SHOP_REFERENCE_DATE,observedContents=isCashCurrency(r.currency)&&cleanName(r.notes)?shopPaymentText(locale).contents(refDate,cleanName(r.notes)):"";out.push({item:r.item,store:`${r.store} · ${safe.notVerified}`,score,score_label:a.score(score),reason:[offerReason(r.category,needs,p),shopTargetReason(r.category,target,locale),...da.reasons,opaqueGuard.reason,situationalGuard.reason,observedContents,paidGuard.label,r.temporary?(localePack(locale)==="fr"?"Offre/rotation observée : rescanner avant achat.":"Observed rotating offer: rescan before buying."):""].filter(Boolean).join(" ").trim(),target,verdict:action.verify,verdict_key:"strategy",price_label:price,source:"reference",category:r.category,currency:r.currency,availability_label:safe.notVerified,diagnostic_alignment:{resource_family:da.family,priority_rank:da.rank,bonus:da.bonus},paid_guard:paidGuard,current_price_verified:false,current_contents_verified:false,cost_gain_verified:false,reference_observed_contents:cleanName(r.notes)||null,opaque_container:opaqueGuard.opaque,opaque_score_cap:opaqueGuard.cap,situational_resource:situationalGuard.situational,situational_context_confirmed:situationalGuard.contextual,situational_score_cap:situationalGuard.cap,_sort:score});
   }
   const seen=new Set(),seenCategories=new Set(),ranked=[];
-  for(const x of out.sort((a,b)=>b._sort-a._sort)){
+  const sorted=out.sort((a,b)=>b._sort-a._sort);
+  for(const x of sorted){
     const key=`${x.item}|${x.store}`;
     if(seen.has(key))continue;
     if(seenCategories.has(x.category)&&ranked.length<6)continue;
     seen.add(key);seenCategories.add(x.category);ranked.push(x);
     if(ranked.length>=10)break;
   }
-  return ranked.map((x,i)=>{const {_sort,...rest}=x;return {...rest,rank:i+1}});
+  // Payment-channel separation must not make the paid section disappear merely because
+  // in-game resources occupy the global TOP 10. Add at most two guarded reference paid options.
+  const paidAlready=()=>ranked.filter(x=>purchaseType(x.currency)==='real_money').length;
+  for(const x of sorted){
+    if(paidAlready()>=2)break;
+    if(purchaseType(x.currency)!=='real_money')continue;
+    const key=`${x.item}|${x.store}`;if(seen.has(key))continue;
+    seen.add(key);ranked.push(x);
+  }
+  return ranked.slice(0,12).map((x,i)=>{const {_sort,...rest}=x;return {...rest,rank:i+1}});
 }
 
 function referenceObservedPriceLabel(offer,store,locale){
@@ -876,12 +944,14 @@ function referenceObservedPriceLabel(offer,store,locale){
   if(num(offer?.price)!==null)return live;
   const ref=findShopReference(offer?.item_name,store),sameStore=ref&&canonicalShopStore(ref.store)===canonicalShopStore(store);
   if(!ref||!sameStore||Number(ref.match_score)<96||num(ref.price)===null)return live;
-  const prefix=localePack(locale)==="fr"?`réf. ${SHOP_REFERENCE_DATE.split("-").reverse().join("/")} · `:`ref. ${SHOP_REFERENCE_DATE} · `;
+  const date=localePack(locale)==="fr"?SHOP_REFERENCE_DATE.split("-").reverse().join("/"):SHOP_REFERENCE_DATE;
+  if(isCashCurrency(ref.currency))return shopPaymentText(locale).observed(date,priceLabel({price:ref.price,currency:ref.currency},locale));
+  const prefix=localePack(locale)==="fr"?`réf. ${date} · `:`ref. ${date} · `;
   return `${prefix}${priceLabel({price:ref.price,currency:ref.currency},locale)}`;
 }
 
 function buildShopAdvice(state,locale,analysis){
-  const p=shopText(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),needs=heroNeedSnapshot(state),shop=state?.shop||{},profileConfidence=shopProfileConfidence(needs),alignment=buildShopDiagnosticAlignment(analysis),stateCtx={...state,_locale:locale,_shop_alignment:alignment},caps=Array.isArray(state?.sync?.capabilities)?state.sync.capabilities:[],officialCatalog=Boolean(state?.sync?.sources?.official&&(caps.includes("shop_catalog")||caps.includes("shop")||caps.includes("store_catalog"))),referenceStats=shopReferenceStats();
+  const p=shopText(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),rawNeeds=heroNeedSnapshot(state),needs=alignShopNeedsWithDiagnostic(rawNeeds,analysis),shop=state?.shop||{},profileConfidence=shopProfileConfidence(needs),alignment=buildShopDiagnosticAlignment(analysis),stateCtx={...state,_locale:locale,_shop_alignment:alignment},caps=Array.isArray(state?.sync?.capabilities)?state.sync.capabilities:[],officialCatalog=Boolean(state?.sync?.sources?.official&&(caps.includes("shop_catalog")||caps.includes("shop")||caps.includes("store_catalog"))),referenceStats=shopReferenceStats();
   let recommendations=[],confidence=Math.min(90,profileConfidence),scanBased=false,store="Last War Shop",catalogFreshness=freshnessInfo(shop?.updated_at||null,"shop",locale),observed=officialCatalog?{rows:(Array.isArray(shop?.offers)?shop.offers.filter(o=>o?.sold!==true).map(o=>({...o,_store_type:canonicalShopStore(shop?.store_type)||shop?.store_type||"Last War Shop",_currency:normalizeObservedCurrency({...o,_store_type:shop?.store_type,_currency:o?.currency||shop?.currency}).currency,_currency_balance:shop?.currency_balance,_updated_at:shop?.updated_at})):[]),raw_count:Array.isArray(shop?.offers)?shop.offers.length:0,unique_count:Array.isArray(shop?.offers)?shop.offers.filter(o=>o?.sold!==true).length:0,sold_count:Array.isArray(shop?.offers)?shop.offers.filter(o=>o?.sold===true).length:0,deduped_count:0,price_conflict_count:0}:observedShopOffers(shop);
   const liveObserved=observed.rows.filter(o=>freshnessInfo(o?._updated_at||null,"shop",locale).status!=="stale"&&freshnessInfo(o?._updated_at||null,"shop",locale).status!=="unknown");
   if(liveObserved.length){
@@ -890,10 +960,11 @@ function buildShopAdvice(state,locale,analysis){
     recommendations=liveObserved.map(o=>{
       const offerStore=o._store_type||store,cat=itemCategory(o?.item_name,o?.category,offerStore),availability_label=officialCatalog?safe.officialAvailability:safe.visibleAvailability,fresh=freshnessInfo(o?._updated_at||null,"shop",locale);
       if(cat==="other"){return {item:cleanName(o?.item_name)||"—",store:offerStore,score:null,score_label:safe.unanalysed,reason:safe.unknownReason,target:"",verdict:safe.unanalysed,verdict_key:"unknown",price_label:referenceObservedPriceLabel(o,offerStore,locale),source:officialCatalog?"official":"scan",category:cat,availability_label,data_freshness:fresh,_sort:-1};}
-      const offerState={...stateCtx,shop:{...shop,currency:o._currency||o.currency||"",currency_balance:o._currency_balance??null}},scored=scoreVisibleOffer({...o,currency:o._currency||o.currency,store_type:offerStore},needs,offerState),{score,factors,budget}=scored,v=verdict(score,p),target=cat==="exclusive"?needs.exTargets.slice(0,3).map(exTargetLabel).filter(Boolean).join(" / "):cat==="hero"?needs.starTargets.slice(0,3).map(x=>x.name).join(" / "):cat==="drone"?safe.droneTarget(needs.droneLevel):"",ref=findShopReference(o?.item_name,offerStore),reason=[offerReason(cat,needs,p),...factors,ref?referenceMatchText(locale,ref.match_score):"",fresh.label].filter(Boolean).join(" ");
+      const offerState={...stateCtx,shop:{...shop,currency:o._currency||o.currency||"",currency_balance:o._currency_balance??null}},scored=scoreVisibleOffer({...o,currency:o._currency||o.currency,store_type:offerStore},needs,offerState),{score,factors,budget}=scored,v=verdict(score,p),target=cat==="exclusive"?needs.exTargets.slice(0,3).map(exTargetLabel).filter(Boolean).join(" / "):cat==="hero"?needs.starTargets.slice(0,3).map(x=>x.name).join(" / "):cat==="drone"?safe.droneTarget(needs.droneLevel):["blueprint","gear_material"].includes(cat)?shopGearTargetLabel(needs,locale):"",ref=findShopReference(o?.item_name,offerStore),source=officialCatalog?"official":"scan",currentPriceVerified=Boolean(num(o?._price??o?.price)!==null&&(source==="official"||(fresh.status==="fresh"&&(num(o?._price_confidence)===null||num(o?._price_confidence)>=.8)))),currentContentsVerified=Boolean(source==="official"||o?.contents_verified===true||o?.content_verified===true),costGainVerified=Boolean(o?.cost_gain_verified===true),paidGuard=paidPurchaseGuard({source,currency:budget?.currency||o?._currency||o?.currency,price:budget?.price,current_price_verified:currentPriceVerified,current_contents_verified:currentContentsVerified,cost_gain_verified:costGainVerified},locale),reason=[offerReason(cat,needs,p),shopTargetReason(cat,target,locale),...factors,ref?referenceMatchText(locale,ref.match_score):"",fresh.label,paidGuard.label].filter(Boolean).join(" ");
       let verdictKey=v.key,verdictLabel=v.label;
-      if(fresh.blocks_paid&&isCashCurrency(budget?.currency||o?._currency||o?.currency)){verdictKey="refresh";verdictLabel=refreshBeforePaidText(locale);}
-      return {item:cleanName(o?.item_name)||"—",store:offerStore,score,score_label:a.score(score),reason,target,verdict:verdictLabel,verdict_key:verdictKey,price_label:referenceObservedPriceLabel(o,offerStore,locale),source:officialCatalog?"official":"scan",category:cat,budget,availability_label,data_freshness:fresh,opaque_container:scored.opaque_container,opaque_score_cap:scored.opaque_score_cap,situational_resource:scored.situational_resource,situational_context_confirmed:scored.situational_context_confirmed,situational_score_cap:scored.situational_score_cap,_sort:score};
+      if(fresh.blocks_paid&&paidGuard.real_money){verdictKey="refresh";verdictLabel=refreshBeforePaidText(locale);}
+      else if(paidGuard.real_money&&!paidGuard.strong_recommendation_allowed){verdictKey="verify_paid";verdictLabel=shopAlignmentText(locale).verify;}
+      return {item:cleanName(o?.item_name)||"—",store:offerStore,score,score_label:a.score(score),reason,target,verdict:verdictLabel,verdict_key:verdictKey,price_label:referenceObservedPriceLabel(o,offerStore,locale),source,category:cat,currency:budget?.currency||o?._currency||o?.currency||"",budget,paid_guard:paidGuard,current_price_verified:currentPriceVerified,current_contents_verified:currentContentsVerified,cost_gain_verified:costGainVerified,availability_label,data_freshness:fresh,opaque_container:scored.opaque_container,opaque_score_cap:scored.opaque_score_cap,situational_resource:scored.situational_resource,situational_context_confirmed:scored.situational_context_confirmed,situational_score_cap:scored.situational_score_cap,_sort:score};
     }).sort((x,y)=>(y._sort??-1)-(x._sort??-1)).slice(0,12).map((x,i)=>{const {_sort,...rest}=x;return {...rest,rank:i+1}});
     const quality=Math.min(30,liveObserved.length)+Math.min(20,new Set(liveObserved.map(o=>o._store_type)).size*4);
     confidence=Math.max(confidence,Math.round(profileConfidence*.66+(68+quality)*.34));confidence=Math.min(officialCatalog?98:92,confidence);
@@ -908,13 +979,14 @@ function buildShopAdvice(state,locale,analysis){
   const dataConfidence=Math.max(0,Math.min(sourceEvidenceConfidence,profileConfidence));
   const rankingConfidence=Math.max(0,Math.min(96,Math.round(profileConfidence*.6+sourceEvidenceConfidence*.4)));
   recommendations=recommendations.map(x=>decorateShopRecommendation(x,profileConfidence,locale));
+  const recommendationGroups={game_currency:recommendations.filter(x=>x.purchase_type==='game_currency'),diamonds:recommendations.filter(x=>x.purchase_type==='diamonds'),real_money:recommendations.filter(x=>x.purchase_type==='real_money'),unknown:recommendations.filter(x=>x.purchase_type==='unknown')};
   const balance=num(shop?.currency_balance),currency=cleanName(shop?.currency),budgetSummary=(balance!==null&&isDiamondCurrency(currency||store))?` ${shopEvidenceText(locale).reserve(VIP30_REFERENCE_POLICY.diamonds)}`:"";
   let summary,catalogStatus,catalogLabel;
   if(officialCatalog){summary=liveObserved.length?safe.officialSummary(store,liveObserved.length):safe.officialEmpty;catalogStatus="official";catalogLabel=safe.officialLabel;}
   else if(liveObserved.length){summary=observedSummary(locale,new Set(liveObserved.map(o=>o._store_type)).size,liveObserved.length,observed.raw_count);catalogStatus="partial";catalogLabel=safe.partialLabel;}
   else {summary=referenceSummary(locale,referenceStats);catalogStatus="reference";catalogLabel=referenceLabel(locale);}
   summary+=budgetSummary;
-  return {summary,confidence:dataConfidence,confidence_label:shopEvidenceText(locale).data(dataConfidence),data_confidence:dataConfidence,source_evidence_confidence:sourceEvidenceConfidence,profile_confidence:profileConfidence,ranking_confidence:rankingConfidence,scan_based:scanBased,catalog_status:catalogStatus,catalog_complete:officialCatalog,catalog_label:catalogLabel,store_type:store,updated_at:shop?.updated_at||null,data_freshness:catalogFreshness,recommendations,knowledge_date:SHOP_REFERENCE_DATE,reference_catalog:referenceStats,observed_shop_count:new Set(liveObserved.map(o=>o._store_type)).size,observed_offer_count:liveObserved.length,raw_observed_offer_count:observed.raw_count,unique_observed_offer_count:liveObserved.length,sold_observed_offer_count:observed.sold_count,deduped_offer_count:observed.deduped_count,price_conflict_count:observed.price_conflict_count,meta_intelligence:metaContext(state),method:officialCatalog?"official-shop-catalog + separated-relevance-evidence-availability + diagnostic-pro-alignment + opaque-container-guard + situational-utility-guard + adaptive-account-rules + dated-vip-reference + VS/season-context":liveObserved.length?"multi-shop-visible-scan + separated-relevance-evidence-availability + item-deduplication + store-currency-integrity + sold-offer-exclusion + ambiguous-price-suppression + dated-reference-matching + diagnostic-pro-alignment + opaque-container-guard + situational-utility-guard + adaptive-account-rules + dated-vip-reference + VS/season-context":"dated-user-screenshot-reference + separated-relevance-evidence-availability + diagnostic-pro-alignment + opaque-container-guard + situational-utility-guard + adaptive-account-rules + availability-unverified",diagnostic_alignment:alignment,budget:{currency:currency||null,balance,reserve_diamonds:VIP30_REFERENCE_POLICY.diamonds,reserve_days:VIP30_REFERENCE_POLICY.days,reserve_basis:VIP30_REFERENCE_POLICY.evidence_kind,reserve_checked_at:VIP30_REFERENCE_POLICY.checked_at,reserve_live_verified:VIP30_REFERENCE_POLICY.live_verified,reserve_requires_in_game_check:VIP30_REFERENCE_POLICY.requires_in_game_check},needs:{exclusive_urgency:Math.round(needs.exclusiveUrgency*100),stars_urgency:Math.round(needs.starsUrgency*100),gear_urgency:Math.round(needs.gearUrgency*100),drone_urgency:Math.round(needs.droneUrgency*100)},limitations:officialCatalog?[]:["Relevance score is not a certainty score","Reference catalogue is dated and does not prove current availability","Exact reference prices are dated and must be checked in game","Fresh scans are accumulated across multiple shops for live ranking","Duplicate rows from the same item/shop are merged","Store currency is normalized only when the shop has a deterministic currency","Sold items are excluded and ambiguous numeric prices are suppressed","Unknown item types receive no purchase recommendation","Opaque chests cannot outrank known direct progression solely on rarity","Situational utilities require matching VS/Season/event context before they can outrank direct progression","Paid offers require fresh account/shop data"],sources:[officialCatalog?"Official Last War read-only catalogue":"User-provided Last War shop scans",`WarBoost screenshot reference catalogue ${SHOP_REFERENCE_DATE}`,"Public community cross-check for VIP30 reference (checked 2026-08-30)","WarBoost saved account state"]};
+  return {summary,confidence:dataConfidence,confidence_label:shopEvidenceText(locale).data(dataConfidence),data_confidence:dataConfidence,source_evidence_confidence:sourceEvidenceConfidence,profile_confidence:profileConfidence,ranking_confidence:rankingConfidence,scan_based:scanBased,catalog_status:catalogStatus,catalog_complete:officialCatalog,catalog_label:catalogLabel,store_type:store,updated_at:shop?.updated_at||null,data_freshness:catalogFreshness,recommendations,recommendation_groups:recommendationGroups,knowledge_date:SHOP_REFERENCE_DATE,reference_catalog:referenceStats,observed_shop_count:new Set(liveObserved.map(o=>o._store_type)).size,observed_offer_count:liveObserved.length,raw_observed_offer_count:observed.raw_count,unique_observed_offer_count:liveObserved.length,sold_observed_offer_count:observed.sold_count,deduped_offer_count:observed.deduped_count,price_conflict_count:observed.price_conflict_count,meta_intelligence:metaContext(state),method:officialCatalog?"official-shop-catalog + separated-relevance-evidence-availability + diagnostic-pro-single-source-of-truth + paid-purchase-evidence-guard + payment-channel-separation + opaque-container-guard + situational-utility-guard + adaptive-account-rules + dated-vip-reference + VS/season-context":liveObserved.length?"multi-shop-visible-scan + separated-relevance-evidence-availability + item-deduplication + store-currency-integrity + sold-offer-exclusion + ambiguous-price-suppression + dated-reference-matching + diagnostic-pro-single-source-of-truth + paid-purchase-evidence-guard + payment-channel-separation + opaque-container-guard + situational-utility-guard + adaptive-account-rules + dated-vip-reference + VS/season-context":"dated-user-screenshot-reference + separated-relevance-evidence-availability + diagnostic-pro-single-source-of-truth + paid-purchase-evidence-guard + payment-channel-separation + opaque-container-guard + situational-utility-guard + adaptive-account-rules + availability-unverified",diagnostic_alignment:alignment,budget:{currency:currency||null,balance,reserve_diamonds:VIP30_REFERENCE_POLICY.diamonds,reserve_days:VIP30_REFERENCE_POLICY.days,reserve_basis:VIP30_REFERENCE_POLICY.evidence_kind,reserve_checked_at:VIP30_REFERENCE_POLICY.checked_at,reserve_live_verified:VIP30_REFERENCE_POLICY.live_verified,reserve_requires_in_game_check:VIP30_REFERENCE_POLICY.requires_in_game_check},needs:{exclusive_urgency:Math.round(needs.exclusiveUrgency*100),stars_urgency:Math.round(needs.starsUrgency*100),gear_urgency:Math.round(needs.gearUrgency*100),drone_urgency:Math.round(needs.droneUrgency*100)},limitations:officialCatalog?[]:["Relevance score is not a certainty score","Reference catalogue is dated and does not prove current availability","Exact reference prices are dated and must be checked in game","Fresh scans are accumulated across multiple shops for live ranking","Duplicate rows from the same item/shop are merged","Store currency is normalized only when the shop has a deterministic currency","Sold items are excluded and ambiguous numeric prices are suppressed","Unknown item types receive no purchase recommendation","Opaque chests cannot outrank known direct progression solely on rarity","Situational utilities require matching VS/Season/event context before they can outrank direct progression","Paid offers require fresh account/shop data","Real-money offers never receive a strong buy recommendation unless current price, current contents and cost/gain are explicitly verified","Shop exclusive targets inherit the current Diagnostic PRO exclusive ranking","Reference real-money prices are labelled as dated observations, never as current prices"],sources:[officialCatalog?"Official Last War read-only catalogue":"User-provided Last War shop scans",`WarBoost screenshot reference catalogue ${SHOP_REFERENCE_DATE}`,"Public community cross-check for VIP30 reference (checked 2026-08-30)","WarBoost saved account state"]};
 }
 
 
