@@ -321,12 +321,40 @@ function renderAuth(){
   $("#authLoggedIn")?.classList.toggle("hidden",!logged);
   if($("#authPill"))$("#authPill").textContent=logged?t("connected"):(cloudInit.status==="ready"?t("ready"):t("local"));
   if(logged&&$("#authIdentity"))$("#authIdentity").textContent=`WarBoost · ${cloudSession.user.email||""}`;
+  if(!logged&&pendingAuthEmail())revealEmailConfirmation(pendingAuthEmail());
   const msg=$("#authMessage");
   if(!logged&&msg&&["config-missing","config-unreachable","client-error","auth-unreachable"].includes(cloudInit.status)){msg.className="notice warn";msg.textContent=cloudAuthFailureMessage()}
   renderBeta();renderPro();
 }
 function renderBeta(){const pill=$("#betaAccessPill"),status=$("#betaAccessStatus"),row=$("#betaConsentRow"),checkbox=$("#betaConsent");if(pill){const invited=Boolean(cloudSession?.user&&betaAccessAllowed());pill.textContent=!cloudSession?.user?t("beta_signin_short"):betaState.enforced&&!betaState.allowed?t("beta_invite_short"):betaState.enforced?t("beta_invited_short"):t("beta_setup_short");pill.className=`pill ${invited?"active":"warn"}`}if(status){status.className=`notice${cloudSession?.user&&betaAccessAllowed()?"":" warn"}`;status.textContent=betaAccessMessage()}if(row)row.classList.toggle("hidden",!cloudSession?.user||!betaAccessAllowed());if(checkbox)checkbox.checked=betaConsentAccepted();$$('.moduleCard').forEach(x=>{const locked=Boolean(!cloudSession?.user||(betaState.enforced&&!betaState.allowed));x.classList.toggle("betaLocked",locked);x.setAttribute("aria-disabled",locked?"true":"false")});const fab=$("#betaFeedbackBtn");if(fab)fab.classList.toggle("hidden",Boolean(!cloudSession?.user||(betaState.enforced&&!betaState.allowed)))}
 function authMessage(text,ok=false){const el=$("#authMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
+
+const PENDING_AUTH_EMAIL_KEY="warboost_v1_pending_email";
+function pendingAuthEmail(){return String(localStorage.getItem(PENDING_AUTH_EMAIL_KEY)||"").trim().toLowerCase()}
+function rememberPendingAuthEmail(email){const value=String(email||"").trim().toLowerCase();if(value)localStorage.setItem(PENDING_AUTH_EMAIL_KEY,value);return value}
+function clearPendingAuthEmail(){localStorage.removeItem(PENDING_AUTH_EMAIL_KEY)}
+function revealEmailConfirmation(email){
+  const value=rememberPendingAuthEmail(email||pendingAuthEmail());
+  if(value&&$("#authEmail")&&!$("#authEmail").value)$("#authEmail").value=value;
+  $("#otpBox")?.classList.remove("hidden");
+  return value;
+}
+function authNeedsEmailConfirmation(error){
+  const code=String(error?.code||"").toLowerCase(),message=String(error?.message||"").toLowerCase();
+  return code==="email_not_confirmed"||code==="email_not_verified"||message.includes("email not confirmed")||message.includes("email not verified");
+}
+function authFriendlyError(error){
+  const code=String(error?.code||"").toLowerCase(),message=String(error?.message||"");
+  if(authNeedsEmailConfirmation(error))return t("auth_email_not_confirmed");
+  if(code==="invalid_credentials"||/invalid login credentials/i.test(message))return t("auth_invalid_credentials");
+  if(code==="user_already_exists"||code==="email_exists"||/already registered|already exists/i.test(message))return t("auth_account_exists");
+  if(Number(error?.status)===429||code.includes("rate_limit")||/rate limit|too many requests/i.test(message))return t("auth_rate_limited");
+  if(code==="auth_network_unavailable")return t("auth_cloud_unreachable");
+  return message||t("auth_cloud_unreachable");
+}
+function setAuthBusy(busy){
+  for(const id of ["loginBtn","signupBtn","verifyOtpBtn","resendOtpBtn"]){const el=$("#"+id);if(el)el.disabled=Boolean(busy)}
+}
 function inviteMessage(text,ok=false){const el=$("#inviteStatus");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text;el.classList.remove("hidden")}
 async function pushServerState(){if(!cloudSession?.access_token||!betaAccessAllowed()||!betaConsentAccepted())return;try{const r=await fetch("/api/state",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state})});if(!r.ok)return;const j=await r.json().catch(()=>({}));if(j?.updated_at){state.sync.last_sync=state.sync.last_sync||j.updated_at;localStorage.setItem(STORE_KEY,JSON.stringify(state));rememberAccountState(cloudSession.user.id,state)}}catch{}}
 async function pullServerState(loginSeed=null){if(!cloudSession?.access_token)return {skipped:true};try{const r=await fetch("/api/state",{cache:"no-store",headers:authHeaders()}),j=await r.json().catch(()=>({}));if(!r.ok){if(j?.error==="database_schema_missing"){state.sync.last_error=t("cloud_schema_missing");state.sync.status="offline";renderProvider()}return {ok:false,error:j?.error||"state_error"}}if(!j?.state)return {ok:true,cloud_empty:true};const localBefore=hasMeaningfulCore(loginSeed)?loginSeed:safeClone(state),localTs=Date.parse(state?.updated_at||"")||0,cloudTs=Date.parse(j.updated_at||j.state?.updated_at||"")||0,preferLocal=Boolean(localTs&&cloudTs&&localTs>cloudTs);suppressPush=true;let merged=mergeStateProtected(state,j.state,{preferBase:preferLocal});if(hasMeaningfulCore(localBefore)&&!hasMeaningfulCore(merged))merged=mergeStateProtected(merged,localBefore,{preferBase:false});const localRecovered=recoverLocalHeroHistory(merged);state=repairLegacySquadIdentity(localRecovered.state).state;state.player_id=cloudSession.user.id;state.updated_at=preferLocal?(state.updated_at||new Date().toISOString()):(j.state?.updated_at||j.updated_at||state.updated_at);localStorage.setItem(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull");rememberAccountState(cloudSession.user.id,state);render();suppressPush=false;return {ok:true,cloud_empty:false}}catch{return {ok:false,error:"offline"}}}
@@ -628,9 +656,62 @@ $("#voiceTestBtn")?.addEventListener("click",()=>speakGreeting("test",true));
 if("speechSynthesis" in window){window.speechSynthesis.addEventListener?.("voiceschanged",refreshVoices);setTimeout(refreshVoices,100)}
 $("#proActionBtn")?.addEventListener("click",openProAction);const proReturn=new URLSearchParams(location.search).get("pro");if(proReturn){setTimeout(()=>{openDrawer("account");if(proReturn==="success")setTimeout(refreshPro,900)},500);history.replaceState({},"",location.pathname)}
 
-$("#loginBtn")?.addEventListener("click",async()=>{if(!cloud)return authMessage(cloudAuthFailureMessage());const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value;try{const {error}=await cloud.auth.signInWithPassword({email,password});if(error)return authMessage(error.code==="auth_network_unavailable"?t("auth_cloud_unreachable"):error.message);authMessage(t("auth_success"),true)}catch{return authMessage(t("auth_cloud_unreachable"))}});
-$("#signupBtn")?.addEventListener("click",async()=>{if(!cloud)return authMessage(cloudAuthFailureMessage());const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value;if(!email||password.length<6)return authMessage(t("auth_invalid"));try{const {error}=await cloud.auth.signUp({email,password});if(error)return authMessage(error.code==="auth_network_unavailable"?t("auth_cloud_unreachable"):error.message);localStorage.setItem("warboost_v1_pending_email",email);$("#otpBox").classList.remove("hidden");authMessage(t("signup_sent"),true)}catch{return authMessage(t("auth_cloud_unreachable"))}});
-$("#verifyOtpBtn")?.addEventListener("click",async()=>{if(!cloud)return authMessage(cloudAuthFailureMessage());const email=localStorage.getItem("warboost_v1_pending_email")||$("#authEmail").value.trim().toLowerCase(),token=$("#authOtp").value.replace(/\D/g,"");if(token.length<6||token.length>8)return authMessage(t("otp_full"));try{const {error}=await cloud.auth.verifyOtp({email,token,type:"email"});if(error)return authMessage(error.code==="auth_network_unavailable"?t("auth_cloud_unreachable"):error.message);localStorage.removeItem("warboost_v1_pending_email");authMessage(t("email_confirmed"),true)}catch{return authMessage(t("auth_cloud_unreachable"))}});
+$("#loginBtn")?.addEventListener("click",async()=>{
+  if(!cloud)return authMessage(cloudAuthFailureMessage());
+  const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value;
+  if(!email||!password)return authMessage(t("auth_invalid"));
+  setAuthBusy(true);
+  try{
+    const {error}=await cloud.auth.signInWithPassword({email,password});
+    if(error){
+      if(authNeedsEmailConfirmation(error)){revealEmailConfirmation(email);authMessage(t("auth_email_not_confirmed"));return}
+      authMessage(authFriendlyError(error));return;
+    }
+    clearPendingAuthEmail();$("#otpBox")?.classList.add("hidden");authMessage(t("auth_success"),true);
+  }catch{authMessage(t("auth_cloud_unreachable"))}
+  finally{setAuthBusy(false)}
+});
+$("#signupBtn")?.addEventListener("click",async()=>{
+  if(!cloud)return authMessage(cloudAuthFailureMessage());
+  const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value;
+  if(!email||password.length<6)return authMessage(t("auth_invalid"));
+  setAuthBusy(true);
+  try{
+    const {data,error}=await cloud.auth.signUp({email,password});
+    if(error){
+      if(authNeedsEmailConfirmation(error)){revealEmailConfirmation(email);authMessage(t("auth_email_not_confirmed"));return}
+      authMessage(authFriendlyError(error));return;
+    }
+    if(data?.session){clearPendingAuthEmail();$("#otpBox")?.classList.add("hidden");authMessage(t("auth_success"),true);return}
+    revealEmailConfirmation(email);authMessage(t("signup_sent"),true);
+  }catch{authMessage(t("auth_cloud_unreachable"))}
+  finally{setAuthBusy(false)}
+});
+$("#verifyOtpBtn")?.addEventListener("click",async()=>{
+  if(!cloud)return authMessage(cloudAuthFailureMessage());
+  const email=pendingAuthEmail()||$("#authEmail").value.trim().toLowerCase(),token=$("#authOtp").value.replace(/\D/g,"");
+  if(!email)return authMessage(t("auth_invalid"));
+  if(token.length<6||token.length>8)return authMessage(t("otp_full"));
+  setAuthBusy(true);
+  try{
+    const {error}=await cloud.auth.verifyOtp({email,token,type:"email"});
+    if(error){authMessage(authFriendlyError(error));return}
+    clearPendingAuthEmail();$("#otpBox")?.classList.add("hidden");if($("#authOtp"))$("#authOtp").value="";authMessage(t("email_confirmed"),true);
+  }catch{authMessage(t("auth_cloud_unreachable"))}
+  finally{setAuthBusy(false)}
+});
+$("#resendOtpBtn")?.addEventListener("click",async()=>{
+  if(!cloud)return authMessage(cloudAuthFailureMessage());
+  const email=$("#authEmail").value.trim().toLowerCase()||pendingAuthEmail();
+  if(!email)return authMessage(t("auth_invalid"));
+  setAuthBusy(true);
+  try{
+    const {error}=await cloud.auth.resend({email,type:"signup"});
+    if(error){authMessage(authFriendlyError(error));return}
+    revealEmailConfirmation(email);authMessage(t("auth_confirmation_resent"),true);
+  }catch{authMessage(t("auth_cloud_unreachable"))}
+  finally{setAuthBusy(false)}
+});
 $("#logoutBtn")?.addEventListener("click",async()=>{const signedOutUserId=String(cloudSession?.user?.id||"");if(signedOutUserId&&String(state?.player_id||"")===signedOutUserId)rememberAccountState(signedOutUserId,state);if(cloud)await cloud.auth.signOut();cloudSession=null;proState={active:false,status:"free",configured:false,plan:null,beta:true};betaState={...betaState,allowed:false,access_status:"sign-in-required"};render();renderAuth();renderBeta()});
 
 document.addEventListener("click",e=>{const btn=e.target.closest?.("[data-inline-hero-save]");if(!btn)return;e.preventDefault();e.stopPropagation();const container=btn.closest?.("[data-inline-confirm]");saveInlineHeroNames(btn.dataset.inlineHeroSave,container,btn)});

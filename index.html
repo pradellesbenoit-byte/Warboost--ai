@@ -15,21 +15,21 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BETA PRIVÉE</span></div><small data-i18n="tagline">V2.5.19 · Private Beta · official Last War connection not enabled</small></div>
+        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BETA PRIVÉE</span></div><small data-i18n="tagline">V2.5.19 · Private Beta · official integration pending</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
     </header>
 
 
-    <section class="publisherStrip" aria-label="Private beta status">
+    <section class="publisherStrip" aria-label="Publisher demo status">
       <div><b>WarBoost V2.5.19</b><span data-i18n="beta_release_label">Private Beta</span></div>
-      <span class="publisherPill" data-i18n="official_pending">Official Last War connection not enabled</span>
+      <span class="publisherPill" data-i18n="official_pending">Official integration pending</span>
     </section>
 
     <section class="publisherVision">
       <div class="visionCopy">
-        <span class="eyebrow" data-i18n="publisher_demo">PRIVATE BETA</span>
+        <span class="eyebrow" data-i18n="publisher_demo">Publisher Demo</span>
         <h2 data-i18n="publisher_value">One AI companion for Player, Alliance, VS and Season</h2>
         <p data-i18n="publisher_value_desc">WarBoost turns consented account data into clear recommendations without automating gameplay.</p>
       </div>
@@ -141,7 +141,7 @@
   <section id="accountDrawer" class="drawer" aria-hidden="true">
     <div class="drawerHandle"></div><div class="drawerHeader"><h2 data-i18n="warboost_account">Compte WarBoost</h2><button class="closeBtn" data-close>×</button></div>
     <div class="section"><div class="sectionTitle"><h3 data-i18n="warboost_login">Connexion WarBoost</h3><span id="authPill" class="pill">Local</span></div>
-      <div id="authLoggedOut" class="settingsForm"><div class="field"><label data-i18n="email">E-mail</label><input id="authEmail" type="email" autocomplete="email" /></div><div class="field"><label data-i18n="password">Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" /></div><div class="buttonRow"><button id="loginBtn" class="secondaryBtn" data-i18n="login">Se connecter</button><button id="signupBtn" class="secondaryBtn" data-i18n="create_account">Créer un compte</button></div><div id="otpBox" class="hidden"><div class="field" style="margin-top:9px"><label data-i18n="email_code">Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" maxlength="8" /></div><button id="verifyOtpBtn" class="primaryAction" style="margin-top:9px" data-i18n="validate_code">Valider le code</button></div><div id="authMessage" class="notice hidden"></div></div>
+      <div id="authLoggedOut" class="settingsForm"><div class="field"><label data-i18n="email">E-mail</label><input id="authEmail" type="email" autocomplete="email" /></div><div class="field"><label data-i18n="password">Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" /></div><div class="buttonRow"><button id="loginBtn" class="secondaryBtn" data-i18n="login">Se connecter</button><button id="signupBtn" class="secondaryBtn" data-i18n="create_account">Créer un compte</button></div><div id="otpBox" class="hidden"><div class="privacyText authConfirmHelp" data-i18n="auth_confirm_help">Ton e-mail doit être confirmé. Entre le code reçu par e-mail. Si ton e-mail contient un lien de confirmation, ouvre ce lien puis reviens dans WarBoost.</div><div class="field" style="margin-top:9px"><label data-i18n="email_code">Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" /></div><div class="buttonRow" style="margin-top:9px"><button id="verifyOtpBtn" class="primaryAction" type="button" data-i18n="validate_code">Valider le code</button><button id="resendOtpBtn" class="secondaryBtn" type="button" data-i18n="auth_resend_confirmation">Renvoyer l’e-mail</button></div></div><div id="authMessage" class="notice hidden"></div></div>
       <div id="authLoggedIn" class="hidden"><div id="authIdentity" class="notice"></div><button id="logoutBtn" class="dangerBtn" style="width:100%;margin-top:9px" data-i18n="logout">Se déconnecter</button></div>
     </div>
     <div id="betaAccessSection" class="section betaAccessSection"><div class="sectionTitle"><h3>🧪 <span data-i18n="beta_access_title">Accès bêta privée</span></h3><span id="betaAccessPill" class="pill">—</span></div><div id="betaAccessStatus" class="notice"></div><label id="betaConsentRow" class="betaConsentRow hidden"><input id="betaConsent" type="checkbox" /> <span data-i18n="beta_consent_text">J’accepte que les données que je choisis de synchroniser ou d’analyser soient envoyées à WarBoost pour fournir les fonctions de la bêta. Les mises à jour ne doivent jamais effacer mes données existantes.</span></label><div class="privacyText" data-i18n="beta_consent_note">Consentement bêta révocable sur cet appareil. WarBoost n’utilise aucun accès Last War non autorisé.</div></div>
