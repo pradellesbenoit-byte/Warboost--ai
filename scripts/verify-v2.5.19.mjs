@@ -390,7 +390,7 @@ const baseState={
   assert.match(health,/pending-approval/);assert.match(health,/database_service_probe/);assert.match(health,/probeServiceAccess/);
   assert.match(health,/unauthorized_source_default\s*:\s*false/);
   assert.equal(manifest.name.includes('V2.5.19'),true);
-  assert.match(sw,/warboost-v2-5-19-private-beta-player-safety/);
+  assert.match(sw,/warboost-v2-5-19-private-beta-player-safety(?:-login-hf1)?/);
   assert.match(migration,/create table if not exists public\.wb1_profiles/i);
   assert.match(migration,/create table if not exists public\.wb1_snapshots/i);
   assert.match(migration,/create table if not exists public\.wb1_alliances/i);
@@ -881,12 +881,51 @@ log('Non-owner alliance switching uses one player_id-scoped membership row');
   const app=read('app.js'),css=read('styles.css'),health=read('api/health.js'),pkg=JSON.parse(read('package.json')),readme=read('README.md'),publisher=read('PUBLISHER_DEMO.md'),sw=read('sw.js');
   assert.equal(pkg.version,'2.5.19');assert.equal(pkg.name,'warboost-v2-private-beta');assert.equal(pkg.scripts.verify,'node scripts/verify-v2.5.19.mjs');
   assert.match(app,/historical_paid/);assert.match(app,/historical_reference_paid/);assert.match(app,/shop_group_paid_history/);assert.match(app,/displayRank=historicalPaid\?"—"/);
-  assert.match(css,/\.shopHistoricalPaidCard/);assert.match(css,/\.shopHistoryGuard/);assert.match(sw,/warboost-v2-5-19-private-beta-player-safety/);
+  assert.match(css,/\.shopHistoricalPaidCard/);assert.match(css,/\.shopHistoryGuard/);assert.match(sw,/warboost-v2-5-19-private-beta-player-safety(?:-login-hf1)?/);
   for(const flag of ['shop_diagnostic_ex_single_source_of_truth','shop_payment_channels_separated','paid_offer_requires_current_price_contents_cost_gain','reference_cash_prices_dated_not_current','historical_paid_references_quarantined','historical_paid_references_unranked','current_paid_scan_required_for_current_offer_group','shop_gear_target_explicit_or_unconfirmed'])assert.match(health,new RegExp(flag+':true'));
   const keys=['shop_group_game','shop_group_diamonds','shop_group_paid','shop_group_paid_history','shop_group_unknown','shop_paid_guard','shop_history_guard'];
   for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const key of keys)assert.notEqual(tr(key),key,`${code} missing V2.5.19 ${key}`);assert.match(tr('tagline'),/V2\.5\.19/)}
   assert.match(readme,/joueurs invités à la bêta privée/i);assert.match(readme,/private-beta/);assert.match(publisher,/Publisher Demo.*V2\.5\.19/is);
   log('All 23 explicit languages and beta release docs separate historical paid references from current paid offers');
+}
+
+
+// V2.5.19 HF1: unconfirmed beta accounts must recover in-place instead of showing raw English errors.
+{
+  const index=read('index.html'),app=read('app.js'),browserAuth=read('lib/browser-auth.js'),sw=read('sw.js');
+  assert.match(index,/id="resendOtpBtn"/,'Account UI must expose confirmation resend');
+  assert.match(index,/autocomplete="one-time-code"/,'OTP input should use one-time-code autocomplete');
+  assert.match(app,/function authNeedsEmailConfirmation\(/);
+  assert.match(app,/function authFriendlyError\(/);
+  assert.match(app,/revealEmailConfirmation\(email\)/);
+  assert.match(app,/cloud\.auth\.resend\(\{email,type:"signup"\}\)/);
+  assert.match(app,/finally\{setAuthBusy\(false\)\}/,'Auth actions must always re-enable buttons');
+  assert.match(browserAuth,/async function resend\(/);
+  assert.match(browserAuth,/request\('\/resend'/);
+  assert.match(sw,/warboost-v2-5-19-private-beta-player-safety-login-hf1/,'Service worker cache must be bumped so beta players receive the auth hotfix');
+
+  const keys=['auth_confirm_help','auth_resend_confirmation','auth_confirmation_resent','auth_email_not_confirmed','auth_invalid_credentials','auth_account_exists','auth_rate_limited'];
+  for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){
+    const tr=translator(code);
+    for(const key of keys)assert.notEqual(tr(key),key,`${code} missing V2.5.19 HF1 ${key}`);
+  }
+
+  const mem=()=>{const m=new Map();return {getItem:k=>m.has(k)?m.get(k):null,setItem:(k,v)=>m.set(k,String(v)),removeItem:k=>m.delete(k)}};
+  let resendBody=null;
+  const client=createWarBoostSupabaseAuthClient({
+    url:'https://abc123.supabase.co',key:'publishable',storage:mem(),
+    fetchImpl:async(url,opts={})=>{
+      if(String(url).endsWith('/resend')){
+        resendBody=JSON.parse(opts.body||'{}');
+        return {ok:true,status:200,json:async()=>({})};
+      }
+      throw new Error('unexpected request');
+    }
+  });
+  const resent=await client.auth.resend({email:'Tester@Example.com',type:'signup'});
+  assert.equal(resent.error,null);
+  assert.deepEqual(resendBody,{email:'tester@example.com',type:'signup'});
+  log('HF1 unconfirmed-email recovery, resend transport, localized errors and cache refresh are present');
 }
 
 console.log('\nWarBoost V2.5.19 verification: PASS');
