@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.19 — Private Beta Player Safety</title>
+  <title>WarBoost V2.5.20 — Private Beta Onboarding</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -15,21 +15,21 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BETA PRIVÉE</span></div><small data-i18n="tagline">V2.5.19 · Private Beta · official integration pending</small></div>
+        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BETA PRIVÉE</span></div><small data-i18n="tagline">V2.5.20 · Private Beta · official integration pending</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
     </header>
 
 
-    <section class="publisherStrip" aria-label="Publisher demo status">
-      <div><b>WarBoost V2.5.19</b><span data-i18n="beta_release_label">Private Beta</span></div>
+    <section class="publisherStrip" aria-label="Private beta status">
+      <div><b>WarBoost V2.5.20</b><span data-i18n="beta_release_label">Private Beta</span></div>
       <span class="publisherPill" data-i18n="official_pending">Official integration pending</span>
     </section>
 
     <section class="publisherVision">
       <div class="visionCopy">
-        <span class="eyebrow" data-i18n="publisher_demo">Publisher Demo</span>
+        <span class="eyebrow" data-i18n="beta_badge">PRIVATE BETA</span>
         <h2 data-i18n="publisher_value">One AI companion for Player, Alliance, VS and Season</h2>
         <p data-i18n="publisher_value_desc">WarBoost turns consented account data into clear recommendations without automating gameplay.</p>
       </div>
@@ -61,7 +61,7 @@
       <button class="moduleCard" data-open="vs"><span class="moduleMeta" id="vsMeta">—</span><span class="moduleIcon">⚔️</span><h2 data-i18n="vs">VS</h2><p data-i18n="vs_desc">Adversaire de la semaine, jour actuel et plan.</p></button>
       <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p id="seasonDesc" data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
     </section>
-    <div class="footerNote publisherFooter"><b data-i18n="publisher_footer_title">Built for an authorized companion model.</b><span data-i18n="footer">WarBoost Scan + alliance cloud today; official Last War integration can be connected after authorization.</span></div>
+    <div class="footerNote publisherFooter"><b data-i18n="beta_release_label">Private Beta</b><span data-i18n="beta_consent_note">Beta consent can be revoked on this device. No unauthorized Last War access.</span></div>
   </main>
 
   <div id="backdrop" class="drawerBackdrop"></div>
@@ -73,6 +73,12 @@
       <div class="stat"><span data-i18n="hq">QG</span><b id="pHq">—</b></div>
       <div class="stat"><span data-i18n="power">Puissance</span><b id="pPower">—</b></div>
       <div class="stat"><span data-i18n="drone">Drone</span><b id="pDrone">—</b></div>
+    </div>
+    <div id="playerOnboarding" class="section hidden" style="margin-top:10px">
+      <div class="sectionTitle"><h3>📷 <span data-i18n="scan_account">Scanner mon compte</span></h3><span class="pill" data-i18n="beta_setup_short">CONFIGURER</span></div>
+      <p class="heroText" style="margin:0 0 10px" data-i18n="sync_four">Ta première priorité est de mettre à jour tes 4 escouades et ton Drone. Le Coach pourra ensuite comparer ta progression.</p>
+      <button id="playerOnboardingScanBtn" class="primaryAction" type="button" data-i18n="scan_account">Scanner mon compte</button>
+      <div class="privacyText" style="margin-top:8px" data-i18n="player_sync_note">Tes valeurs manuelles restent protégées. Un scan plus récent remplace uniquement les champs qu'il peut lire avec confiance.</div>
     </div>
     <div id="squadList"></div>
     <div class="buttonRow"><button id="scanPlayerBtn" class="secondaryBtn" data-i18n="scan_button">📷 WarBoost Scan</button><button id="syncPlayerBtn" class="secondaryBtn" data-i18n="public_button">🌐 Synchroniser WarBoost</button></div>

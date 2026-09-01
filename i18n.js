@@ -867,7 +867,7 @@ for(const [code,values] of Object.entries(V2518_SHOP_LABELS)){
   targets.forEach(target=>Object.assign(target,values));
 }
 for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){
-  if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.(?:14|17)/g,"V2.5.19");
+  if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.(?:14|17|19)/g,"V2.5.20");
 }
 
 // ===== V2.5.19 · Private Beta Player Purchase Safety =====

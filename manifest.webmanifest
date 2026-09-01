@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.19 Beta",
+  "name": "WarBoost V2.5.20 Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.19 — Private Beta Player Safety: protected player data, unified PRO/shop priorities, and historical paid offers isolated until current availability is confirmed.",
+  "description": "WarBoost V2.5.20 — Private Beta Onboarding: protected player data, reliable email confirmation, and guided first scan for new beta players.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
