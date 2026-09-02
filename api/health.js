@@ -23,8 +23,8 @@ export default async function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.18",
-    mode:"private-beta-approval-first-api-ready",
+    version:"2.5.21",
+    mode:"publisher-demo-rc-approval-first",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
     now:now.toISOString(),
@@ -45,9 +45,11 @@ export default async function handler(req,res){
     legacy_provider:providers.legacy?"explicitly-enabled":"disabled",
     vision:Boolean(process.env.OPENAI_API_KEY||process.env.WARBOOST_VISION_ENDPOINT)?"configured":"optional",
     languages:["fr","en-GB","en-US","es","it","de","pt","nl","zh","ja","ru","ar","pl","tr","ko","vi","th","id","uk","ro","el","cs","sv"],
-    beta:{mode:"private",release:beta.release,access_enforced:beta.enforced,invited_count:beta.invited_count,pro_included:beta.pro_included,payments_enabled:beta.payments_enabled,consent_version:beta.consent_version,feedback_mode:"device-share"},
+    beta:{mode:"publisher-demo",release:false,access_enforced:false,invited_count:0,pro_included:true,payments_enabled:false,consent_version:beta.consent_version,feedback_mode:"disabled"},
+    publisher_demo:{enabled:true,release_candidate:true,sample_data:"anonymized",account_required:false,cloud_writes:false,live_scan_external_processing:false,official_connector:"disabled-until-written-authorization",official_request_status:"submitted-awaiting-response"},
     safeguards:{
       read_only:true,
+      publisher_demo:true,publisher_demo_anonymized_sample_data:true,publisher_demo_no_login_required:true,publisher_demo_no_cloud_writes:true,publisher_demo_external_scan_disabled:true,publisher_demo_scan_simulation_disclosed:true,publisher_demo_official_connector_disabled_until_written_authorization:true,publisher_demo_no_payment_checkout:true,
       player_consent:true,
       private_beta_badge:true,
       beta_email_invitation_allowlist:true,
@@ -111,6 +113,9 @@ export default async function handler(req,res){
       shop_payment_channels_separated:true,
       paid_offer_requires_current_price_contents_cost_gain:true,
       reference_cash_prices_dated_not_current:true,
+      historical_paid_references_quarantined:true,
+      historical_paid_references_unranked:true,
+      current_paid_scan_required_for_current_offer_group:true,
       shop_gear_target_explicit_or_unconfirmed:true,
       shop_alignment_labels_23_languages:true,
       opaque_container_direct_resource_guard:true,
