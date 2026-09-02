@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.21 Publisher Demo RC",
-  "short_name": "WarBoost RC",
-  "description": "WarBoost Publisher Demo RC — anonymized sample data, read-only AI evaluation, official Last War integration pending authorization.",
+  "name": "WarBoost V2.5.22 Publisher Demo Final Candidate",
+  "short_name": "WarBoost Publisher",
+  "description": "WarBoost Publisher Demo Final Candidate — anonymized sample data, read-only AI evaluation, official Last War integration pending authorization.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
