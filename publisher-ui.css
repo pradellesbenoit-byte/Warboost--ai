@@ -13,3 +13,13 @@
 @keyframes wbHeroPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
 @media (prefers-reduced-motion:reduce){.wbHeroAvatar.wbTopHero,.wbHeroFadeIn{animation:none!important}}
 @media (max-width:520px){:root{--wb-hero-size:42px}.wbHeroBadge{font-size:10px;padding:3px 6px}}
+
+
+/* V2.5.21 · Publisher Demo RC */
+.publisherRcBadge{border-color:#8c6a25!important;background:#2b220d!important;color:#ffe7a3!important}
+.publisherBrief{margin:14px 0;padding:18px;border:1px solid #2e4d70;border-radius:22px;background:linear-gradient(180deg,#0e1b2c,#0a1320)}
+.publisherSampleNotice{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin-bottom:12px;border:1px solid #775c22;border-radius:14px;background:#241b09;color:#ffe1a0}
+.publisherSampleNotice b{font-size:12px;letter-spacing:.08em}.publisherSampleNotice span{font-size:13px;color:#d9c89f}
+.publisherBriefGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.publisherBriefGrid>div{min-width:0;border:1px solid #253c59;border-radius:14px;padding:12px;background:#0b1523}.publisherBriefGrid b{display:block;margin:5px 0 4px}.publisherBriefGrid small{display:block;color:#9caec6;line-height:1.35}.briefIcon{font-size:18px}
+.publisherSandboxAuth{line-height:1.5}.publisherDemoRc .betaAccessSection,.publisherDemoRc #feedbackDrawer{display:none!important}.publisherDemoRc .moduleCard.betaLocked{opacity:1;pointer-events:auto}
+@media(max-width:680px){.publisherBriefGrid{grid-template-columns:1fr}.publisherBrief{padding:14px}.publisherSampleNotice{align-items:flex-start}}

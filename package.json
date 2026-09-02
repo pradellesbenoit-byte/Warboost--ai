@@ -1,12 +1,12 @@
 {
-  "name": "warboost-v2-publisher-edition",
-  "version": "2.5.18",
+  "name": "warboost-v2-publisher-demo",
+  "version": "2.5.21",
   "private": true,
-  "description": "WarBoost V2.5.18 — Shop Decision Integrity: Diagnostic PRO and Boutique IA share one EX ranking, payment channels are separated, and paid offers require current price/content/cost-gain evidence.",
+  "description": "WarBoost V2.5.21 — Publisher Demo RC for Last War / FirstFun evaluation: anonymized sample data, read-only AI, no login/payment/cloud writes, and the official connector remains disabled pending written authorization.",
   "type": "module",
   "scripts": {
-    "check": "node --check app.js && node --check publisher-ui.js && node --check i18n.js && node --check sw.js && node --check api/state.js && node --check api/sync.js && node --check api/scan.js && node --check api/advice.js && node --check api/alliance-role.js && node --check api/invite.js && node --check api/join.js && node --check api/ingest.js && node --check api/health.js && node --check api/cloud-config.js && node --check api/cron-sync.js && node --check api/pro.js && node --check lib/supabase.js && node --check lib/browser-auth.js && node --check lib/normalize.js && node --check lib/provider.js && node --check lib/auth.js && node --check lib/meta-intel.js && node --check lib/heroes.js && node --check lib/alliance-activity.js && node --check lib/data-freshness.js && node --check lib/shop-catalog.js && node --check lib/season6-awakening.js && node --check lib/season-lifecycle.js && node --check lib/squad-identity.js && node --check lib/adaptive-context.js && node --check lib/hero-history.js && node --check lib/roster-import.js && node --check lib/alliance-roster-merge.js && node --check lib/beta-access.js",
+    "check": "node --check app.js && node --check publisher-ui.js && node --check i18n.js && node --check sw.js && node --check api/state.js && node --check api/sync.js && node --check api/scan.js && node --check api/advice.js && node --check api/alliance-role.js && node --check api/invite.js && node --check api/join.js && node --check api/ingest.js && node --check api/health.js && node --check api/cloud-config.js && node --check api/cron-sync.js && node --check api/pro.js && node --check lib/supabase.js && node --check lib/browser-auth.js && node --check lib/normalize.js && node --check lib/provider.js && node --check lib/auth.js && node --check lib/meta-intel.js && node --check lib/heroes.js && node --check lib/alliance-activity.js && node --check lib/data-freshness.js && node --check lib/shop-catalog.js && node --check lib/season6-awakening.js && node --check lib/season-lifecycle.js && node --check lib/squad-identity.js && node --check lib/adaptive-context.js && node --check lib/hero-history.js && node --check lib/roster-import.js && node --check lib/alliance-roster-merge.js && node --check lib/beta-access.js && node --check lib/publisher-demo.js",
     "serve": "npx serve .",
-    "verify": "node scripts/verify-v2.5.18.mjs"
+    "verify": "node scripts/verify-v2.5.21-publisher.mjs"
   }
 }

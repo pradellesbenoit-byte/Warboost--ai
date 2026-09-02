@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.18 Beta",
-  "short_name": "WarBoost",
-  "description": "WarBoost V2.5.18 — Shop Decision Integrity: private beta with protected player data, unified PRO/shop priorities, separated payment channels and guarded real-money recommendations.",
+  "name": "WarBoost V2.5.21 Publisher Demo RC",
+  "short_name": "WarBoost RC",
+  "description": "WarBoost Publisher Demo RC — anonymized sample data, read-only AI evaluation, official Last War integration pending authorization.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

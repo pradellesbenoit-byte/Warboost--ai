@@ -837,7 +837,7 @@ for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){
   if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.14/g,"V2.5.17");
 }
 
-// ===== V2.5.18 · Shop Decision Integrity =====
+// ===== V2.5.19 · Shop Decision Integrity =====
 const V2518_SHOP_LABELS={
   en:{shop_group_game:"In-game currencies",shop_group_diamonds:"Diamonds / premium",shop_group_paid:"Real-money purchases",shop_group_unknown:"Needs verification",shop_paid_guard:"Paid purchase: current price, current contents and cost/gain must all be verified before a strong buy recommendation."},
   fr:{shop_group_game:"Monnaies du jeu",shop_group_diamonds:"Diamants / premium",shop_group_paid:"Achats en argent réel",shop_group_unknown:"À vérifier",shop_paid_guard:"Achat payant : le prix actuel, le contenu actuel et le rapport coût/gain doivent tous être vérifiés avant une recommandation forte d’achat."},
@@ -867,5 +867,45 @@ for(const [code,values] of Object.entries(V2518_SHOP_LABELS)){
   targets.forEach(target=>Object.assign(target,values));
 }
 for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){
-  if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.(?:14|17)/g,"V2.5.18");
+  if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.(?:14|17)/g,"V2.5.19");
 }
+
+// ===== V2.5.19 · Private Beta Player Purchase Safety =====
+const V2519_BETA_SHOP_LABELS={
+  en:{shop_group_paid_history:"Historical paid offers to verify",shop_history_guard:"Historical paid offer: it is not a current purchase recommendation. Rescan the shop to confirm availability before evaluating it."},
+  fr:{shop_group_paid_history:"Offres payantes historiques à vérifier",shop_history_guard:"Offre payante historique : ce n’est pas une recommandation d’achat actuelle. Rescanne la boutique pour confirmer sa disponibilité avant de l’évaluer."},
+  es:{shop_group_paid_history:"Ofertas de pago históricas por verificar",shop_history_guard:"Oferta de pago histórica: no es una recomendación de compra actual. Vuelve a escanear la tienda para confirmar su disponibilidad antes de evaluarla."},
+  it:{shop_group_paid_history:"Offerte a pagamento storiche da verificare",shop_history_guard:"Offerta a pagamento storica: non è una raccomandazione d’acquisto attuale. Scansiona di nuovo il negozio per confermarne la disponibilità prima di valutarla."},
+  de:{shop_group_paid_history:"Historische Echtgeldangebote prüfen",shop_history_guard:"Historisches Echtgeldangebot: keine aktuelle Kaufempfehlung. Scanne den Shop erneut, um die Verfügbarkeit vor der Bewertung zu bestätigen."},
+  pt:{shop_group_paid_history:"Ofertas pagas históricas a verificar",shop_history_guard:"Oferta paga histórica: não é uma recomendação de compra atual. Volta a digitalizar a loja para confirmar a disponibilidade antes de a avaliar."},
+  nl:{shop_group_paid_history:"Historische betaalde aanbiedingen controleren",shop_history_guard:"Historische betaalde aanbieding: dit is geen huidige koopaanbeveling. Scan de winkel opnieuw om de beschikbaarheid te bevestigen voordat je ze beoordeelt."},
+  zh:{shop_group_paid_history:"待核实的历史付费商品",shop_history_guard:"历史付费商品：这不是当前购买建议。请重新扫描商店确认仍在售后再评估。"},
+  ja:{shop_group_paid_history:"確認が必要な過去の課金商品",shop_history_guard:"過去に記録された課金商品で、現在の購入推奨ではありません。評価前にショップを再スキャンして販売中か確認してください。"},
+  ru:{shop_group_paid_history:"Исторические платные предложения — проверить",shop_history_guard:"Историческое платное предложение: это не текущая рекомендация к покупке. Повторно просканируйте магазин и подтвердите доступность перед оценкой."},
+  ar:{shop_group_paid_history:"عروض مدفوعة تاريخية تحتاج تحقق",shop_history_guard:"عرض مدفوع تاريخي: ليس توصية شراء حالية. أعد مسح المتجر لتأكيد توفره قبل تقييمه."},
+  pl:{shop_group_paid_history:"Historyczne płatne oferty do weryfikacji",shop_history_guard:"Historyczna płatna oferta: to nie jest aktualna rekomendacja zakupu. Ponownie zeskanuj sklep i potwierdź dostępność przed oceną."},
+  tr:{shop_group_paid_history:"Doğrulanacak geçmiş ücretli teklifler",shop_history_guard:"Geçmiş ücretli teklif: bu güncel bir satın alma önerisi değildir. Değerlendirmeden önce mağazayı yeniden tarayıp mevcut olduğunu doğrula."},
+  ko:{shop_group_paid_history:"확인이 필요한 과거 유료 상품",shop_history_guard:"과거 유료 상품이며 현재 구매 추천이 아닙니다. 평가 전에 상점을 다시 스캔해 현재 판매 여부를 확인하세요."},
+  vi:{shop_group_paid_history:"Ưu đãi trả phí lịch sử cần xác minh",shop_history_guard:"Ưu đãi trả phí lịch sử: đây không phải khuyến nghị mua hiện tại. Hãy quét lại cửa hàng để xác nhận còn bán trước khi đánh giá."},
+  th:{shop_group_paid_history:"ข้อเสนอเงินจริงในอดีตที่ต้องตรวจสอบ",shop_history_guard:"ข้อเสนอเงินจริงในอดีต: ไม่ใช่คำแนะนำซื้อในปัจจุบัน โปรดสแกนร้านค้าใหม่เพื่อยืนยันว่ามีขายก่อนประเมิน"},
+  id:{shop_group_paid_history:"Penawaran berbayar lama yang perlu diverifikasi",shop_history_guard:"Penawaran berbayar lama: ini bukan rekomendasi pembelian saat ini. Pindai ulang toko untuk memastikan ketersediaannya sebelum dinilai."},
+  uk:{shop_group_paid_history:"Історичні платні пропозиції — перевірити",shop_history_guard:"Історична платна пропозиція: це не поточна рекомендація купівлі. Повторно проскануйте магазин і підтвердьте доступність перед оцінкою."},
+  ro:{shop_group_paid_history:"Oferte plătite istorice de verificat",shop_history_guard:"Ofertă plătită istorică: nu este o recomandare actuală de cumpărare. Scanează din nou magazinul pentru a confirma disponibilitatea înainte de evaluare."},
+  el:{shop_group_paid_history:"Ιστορικές πληρωμένες προσφορές προς έλεγχο",shop_history_guard:"Ιστορική πληρωμένη προσφορά: δεν είναι τρέχουσα σύσταση αγοράς. Σάρωσε ξανά το κατάστημα για επιβεβαίωση διαθεσιμότητας πριν την αξιολόγηση."},
+  cs:{shop_group_paid_history:"Historické placené nabídky k ověření",shop_history_guard:"Historická placená nabídka: nejde o aktuální doporučení nákupu. Před hodnocením znovu naskenuj obchod a potvrď dostupnost."},
+  sv:{shop_group_paid_history:"Historiska betalerbjudanden att verifiera",shop_history_guard:"Historiskt betalerbjudande: det är inte en aktuell köprekommendation. Skanna butiken igen och bekräfta tillgänglighet innan bedömning."}
+};
+for(const [code,values] of Object.entries(V2519_BETA_SHOP_LABELS)){
+  const targets=code==="en"?[EN,EN_GB,EN_US]:[packs[code]].filter(Boolean);
+  targets.forEach(target=>Object.assign(target,values));
+}
+
+
+// ===== V2.5.21 · Publisher Demo RC =====
+for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){
+  if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.\d+\.\d+/g,"V2.5.21");
+}
+Object.assign(EN,{tagline:"V2.5.21 · Publisher Demo RC · official integration pending"});
+Object.assign(EN_GB,{tagline:"V2.5.21 · Publisher Demo RC · official integration pending"});
+Object.assign(EN_US,{tagline:"V2.5.21 · Publisher Demo RC · official integration pending"});
+Object.assign(FR,{tagline:"V2.5.21 · Démo éditeur RC · intégration officielle en attente"});

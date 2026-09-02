@@ -40,3 +40,12 @@ if(typeof document!=='undefined'&&typeof MutationObserver!=='undefined'){
   setTimeout(refresh,1000);
 }
 export {heroKey,heroFromName};
+
+
+// V2.5.21 Publisher Demo RC controls. No cloud/account mutation is performed here.
+function initPublisherRcControls(){
+  document.body.classList.add('publisherDemoRc');
+  const reset=document.getElementById('publisherResetBtn'),status=document.getElementById('publisherResetStatus');
+  if(reset)reset.addEventListener('click',()=>{try{window.__WARBOOST_PUBLISHER_DEMO__?.reset?.();if(status){status.className='notice';status.textContent='Publisher demo data reset to the anonymized sample fixture.'}}catch{if(status){status.className='notice warn';status.textContent='Reset unavailable. Reload the page to restore the sample fixture.'}}});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initPublisherRcControls,{once:true});else initPublisherRcControls();
