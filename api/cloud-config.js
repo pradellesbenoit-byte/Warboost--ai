@@ -1,3 +1,4 @@
+import {PUBLISHER_DEMO_MODE} from "../lib/publisher-demo.js";
 function pick(...names){
   for(const name of names){
     const value=process.env[name];
@@ -8,6 +9,7 @@ function pick(...names){
 
 export default function handler(req,res){
   res.setHeader("Cache-Control","no-store, max-age=0");
+  if(PUBLISHER_DEMO_MODE)return res.status(200).json({configured:false,publisher_demo:true,account_required:false,cloud_writes:false,url:"",key:""});
 
   const url=pick(
     "SUPABASE_URL",

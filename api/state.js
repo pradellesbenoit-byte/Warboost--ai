@@ -1,3 +1,4 @@
+import {PUBLISHER_DEMO_MODE,buildPublisherDemoState} from "../lib/publisher-demo.js";
 import {configured,userConfigured,getProfile,upsertProfile,getProfileForUser,upsertProfileForUser,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser} from "../lib/supabase.js";
 import {normalizeState} from "../lib/normalize.js";
 import {recoverHeroData,heroDataSignature} from "../lib/hero-history.js";
@@ -8,6 +9,7 @@ function recoverySummary(r){return {changed:Boolean(r?.changed),recovered_fields
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
+  if(PUBLISHER_DEMO_MODE){if(req.method==="GET")return res.status(200).json({ok:true,publisher_demo:true,read_only:true,state:buildPublisherDemoState(),updated_at:null,access_mode:"publisher-demo-local-sample"});return res.status(403).json({ok:false,error:"publisher_demo_read_only",message:"Publisher Demo is read-only; no cloud write is performed."})}
   try{
     if(!configured()&&!userConfigured())return res.status(503).json({error:"database_not_configured",message:"Le serveur fonctionne en mode local tant que Supabase V1 n'est pas configuré."});
     const {user}=await requireBetaUser(req,{consent:true}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access);

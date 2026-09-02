@@ -1,3 +1,4 @@
+import {PUBLISHER_DEMO_MODE} from "../lib/publisher-demo.js";
 import {requireUser} from "../lib/auth.js";
 import {betaAccessForUser} from "../lib/beta-access.js";
 function pick(...names){
@@ -110,6 +111,7 @@ async function planInfo(){
 }
 
 export default async function handler(req,res){
+  if(PUBLISHER_DEMO_MODE){if(req.method==="GET")return res.status(200).json({ok:true,publisher_demo:true,active:true,status:"publisher-demo",configured:false,beta:false,payments_enabled:false,checkout_enabled:false});return res.status(403).json({ok:false,publisher_demo:true,error:"publisher_demo_payments_disabled",payments_enabled:false,checkout_enabled:false})}
   res.setHeader("Cache-Control","no-store, max-age=0");
   try{
     const user=await requireUser(req);

@@ -1,9 +1,11 @@
+import {PUBLISHER_DEMO_MODE} from "../lib/publisher-demo.js";
 import {configured,getAllianceMembership,getAllianceById,setAllianceMemberRole} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 
 function role(v){const r=String(v||"R1").toUpperCase();return /^R[1-5]$/.test(r)?r:"R1"}
 
 export default async function handler(req,res){
+  if(PUBLISHER_DEMO_MODE)return res.status(403).json({ok:false,publisher_demo:true,error:"publisher_demo_read_only",role_write:false,cloud_write:false});
   res.setHeader("Cache-Control","no-store");
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   if(!configured())return res.status(503).json({error:"database_not_configured"});

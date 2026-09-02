@@ -1,3 +1,4 @@
+import {PUBLISHER_DEMO_MODE,buildPublisherDemoState} from "../lib/publisher-demo.js";
 import {mergeNewest,normalizeState} from "../lib/normalize.js";
 import {configured,userConfigured,getProfile,upsertProfile,getProfileForUser,upsertProfileForUser,insertSnapshot,insertSnapshotForUser,getAllianceRoster} from "../lib/supabase.js";
 import {fetchLastWarState,providerConfig} from "../lib/provider.js";
@@ -5,6 +6,7 @@ import {requireBetaUser} from "../lib/beta-access.js";
 import {mergeCloudRosterPreservingManual} from "../lib/alliance-roster-merge.js";
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
+  if(PUBLISHER_DEMO_MODE){const now=new Date().toISOString(),state=buildPublisherDemoState(now);return res.status(200).json({ok:true,publisher_demo:true,read_only:true,provider:"publisher-demo",provider_kind:"publisher-demo",capabilities:[],sources:state.sync.sources,synced_at:now,state,official_connector:false,live_lastwar_data:false})}
   try{
     const {user}=await requireBetaUser(req,{consent:true}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId});let base=current;
     if(configured()||userMode){const saved=userMode?await getProfileForUser(playerId,access):await getProfile(playerId);if(saved?.state)base=mergeNewest(base,saved.state)}

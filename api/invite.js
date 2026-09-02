@@ -1,3 +1,4 @@
+import {PUBLISHER_DEMO_MODE} from "../lib/publisher-demo.js";
 import {randomBytes} from "node:crypto";
 import {configured,createAlliance,findInvite,getAllianceMembership,getAllianceById,getOwnedAlliance,joinAlliance} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
@@ -10,6 +11,7 @@ function manager(role){return ["R4","R5"].includes(String(role||"").trim().toUpp
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
+  if(PUBLISHER_DEMO_MODE)return res.status(200).json({ok:true,publisher_demo:true,simulated:true,read_only:true,invite_code:"DEMO-R5",role:"R5",external_access_created:false,cloud_write:false});
   if(!configured())return res.status(503).json({error:"database_not_configured"});
   try{
     const {user}=await requireBetaUser(req,{consent:true});

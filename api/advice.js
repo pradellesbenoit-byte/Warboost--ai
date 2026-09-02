@@ -1,3 +1,4 @@
+import {PUBLISHER_DEMO_MODE} from "../lib/publisher-demo.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
 import {canonicalHeroName,heroType} from '../lib/heroes.js';
@@ -8,7 +9,7 @@ import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScor
 import {seasonLifecycle,seasonIsActive,activeSeasonProgress} from '../lib/season-lifecycle.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
-const ENGINE_VERSION="2.5.21";
+const ENGINE_VERSION="2.5.22";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -1178,7 +1179,7 @@ function buildCrossDomain(state,locale,player){
 }
 export default async function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
-  const publisherDemo=Boolean(req.body?.publisher_demo===true&&req.body?.state?.sync?.provider_kind==="publisher-demo");
+  const publisherDemo=Boolean(PUBLISHER_DEMO_MODE||req.body?.publisher_demo===true&&req.body?.state?.sync?.provider_kind==="publisher-demo");
   if(!publisherDemo){try{await requireBetaUser(req,{consent:true});}catch(e){return res.status(e?.status||500).json({ok:false,error:e?.code||"beta_access_failed",message:e?.message||"Beta access failed"});}}
   const scope=String(req.body?.scope||"player"),s=req.body?.state||{},loc=String(req.body?.locale||"en-GB");
   if(scope==="player"){
@@ -1187,11 +1188,11 @@ export default async function handler(req,res){
     analysis.seven_day_plan=buildSevenDayPlan(s,analysis);
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
-    return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
+    return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis,...(publisherDemo?{publisher_demo:true,data_origin:"anonymized-sample",live_lastwar_data:false}:{})});
   }
-  if(scope==="alliance"){const role=String(s?.alliance?.role||s?.player?.role||"R1").toUpperCase();if(!["R4","R5"].includes(role))return res.status(403).json({ok:false,error:"manager_role_required",advice:loc.startsWith("fr")?"Plan de guerre réservé aux R5/R4 confirmés.":"War plan is reserved for verified R5/R4."});const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:`warboost-alliance-ai-v${ENGINE_VERSION}`,...a});}
-  if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
-  if(scope==="season")return res.status(200).json({ok:true,...buildSeasonAdvice(s,loc)});
+  if(scope==="alliance"){const role=String(s?.alliance?.role||s?.player?.role||"R1").toUpperCase();if(!["R4","R5"].includes(role))return res.status(403).json({ok:false,error:"manager_role_required",advice:loc.startsWith("fr")?"Plan de guerre réservé aux R5/R4 confirmés.":"War plan is reserved for verified R5/R4."});const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:`warboost-alliance-ai-v${ENGINE_VERSION}`,...a,...(publisherDemo?{publisher_demo:true,data_origin:"anonymized-sample",live_lastwar_data:false}:{})});}
+  if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc),...(publisherDemo?{publisher_demo:true,data_origin:"anonymized-sample",live_lastwar_data:false}:{})});
+  if(scope==="season")return res.status(200).json({ok:true,...buildSeasonAdvice(s,loc),...(publisherDemo?{publisher_demo:true,data_origin:"anonymized-sample",live_lastwar_data:false}:{})});
   return res.status(400).json({error:"unknown_scope"});
 }
 

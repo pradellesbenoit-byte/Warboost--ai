@@ -1,5 +1,3 @@
-import {configured,userConfigured,probeServiceAccess} from "../lib/supabase.js";
-import {providerConfig} from "../lib/provider.js";
 import {HERO_CATALOG} from "../lib/heroes.js";
 import {shopReferenceStats} from "../lib/shop-catalog.js";
 import {betaConfig} from "../lib/beta-access.js";
@@ -16,15 +14,15 @@ function isoWeek(d){
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
-  const providers=providerConfig(),serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=betaConfig();
-  const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
+  const shopRef=shopReferenceStats(),beta=betaConfig();
+  const serviceProbe={ok:false,code:"PUBLISHER_DEMO_NOT_USED"};
   const now=new Date(),serverClock=lastWarServerClock(now),dow=lastWarVsDay(now);
 
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.21",
-    mode:"publisher-demo-rc-approval-first",
+    version:"2.5.22",
+    mode:"publisher-demo-final-candidate",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
     now:now.toISOString(),
@@ -38,33 +36,33 @@ export default async function handler(req,res){
     weekday_utc:now.getUTCDay(),
     weekday_lastwar_server:dow,
 
-    database:serviceProbe.ok?"ready":(serviceDb||userDb)?"degraded":"local-fallback",
-    database_access:serviceProbe.ok?"service+user-rls":userDb?"user-rls":"local-only",
+    database:"not-used-in-publisher-demo",
+    database_access:"none",
     database_service_probe:serviceProbe.code,
-    lastwar_official_access:providers.official?"configured":providers.approved?"approved-connector":"pending-approval",
-    legacy_provider:providers.legacy?"explicitly-enabled":"disabled",
-    vision:Boolean(process.env.OPENAI_API_KEY||process.env.WARBOOST_VISION_ENDPOINT)?"configured":"optional",
+    lastwar_official_access:"pending-approval",
+    legacy_provider:"disabled",
+    vision:"publisher-demo-local-simulation-no-external-processing",
     languages:["fr","en-GB","en-US","es","it","de","pt","nl","zh","ja","ru","ar","pl","tr","ko","vi","th","id","uk","ro","el","cs","sv"],
     beta:{mode:"publisher-demo",release:false,access_enforced:false,invited_count:0,pro_included:true,payments_enabled:false,consent_version:beta.consent_version,feedback_mode:"disabled"},
-    publisher_demo:{enabled:true,release_candidate:true,sample_data:"anonymized",account_required:false,cloud_writes:false,live_scan_external_processing:false,official_connector:"disabled-until-written-authorization",official_request_status:"submitted-awaiting-response"},
+    publisher_demo:{enabled:true,release_candidate:false,final_candidate:true,sample_data:"anonymized",account_required:false,cloud_writes:false,live_scan_external_processing:false,official_connector:"disabled-until-written-authorization",official_request_status:"submitted-awaiting-response"},
     safeguards:{
       read_only:true,
-      publisher_demo:true,publisher_demo_anonymized_sample_data:true,publisher_demo_no_login_required:true,publisher_demo_no_cloud_writes:true,publisher_demo_external_scan_disabled:true,publisher_demo_scan_simulation_disclosed:true,publisher_demo_official_connector_disabled_until_written_authorization:true,publisher_demo_no_payment_checkout:true,
+      publisher_demo:true,publisher_demo_anonymized_sample_data:true,publisher_demo_no_login_required:true,publisher_demo_no_cloud_writes:true,publisher_demo_external_scan_disabled:true,publisher_demo_scan_simulation_disclosed:true,publisher_demo_official_connector_disabled_until_written_authorization:true,publisher_demo_no_payment_checkout:true,publisher_demo_distinct_from_private_beta:true,publisher_demo_all_copy_localized:true,publisher_demo_scan_stays_in_browser:true,publisher_demo_role_writes_disabled:true,publisher_demo_alliance_invites_simulated:true,publisher_demo_roster_import_local_only:true,publisher_demo_vs_scores_marked_sample:true,publisher_demo_season_values_marked_sample:true,
       player_consent:true,
-      private_beta_badge:true,
-      beta_email_invitation_allowlist:true,
-      beta_access_enforced_when_allowlist_configured:true,
-      beta_pro_free_for_invited_testers:true,
+      private_beta_badge:false,
+      beta_email_invitation_allowlist:false,
+      beta_access_enforced_when_allowlist_configured:false,
+      beta_pro_free_for_invited_testers:false,
       beta_payments_disabled:true,
-      beta_consent_required_before_cloud_ai_writes:true,
-      beta_consent_revocable_on_device:true,beta_consent_account_scoped:true,
-      beta_feedback_device_share_no_auto_personal_data:true,beta_feedback_no_full_user_agent:true,
-      beta_existing_player_data_preserved:true,beta_status_reuses_pro_endpoint:true,
-      signed_out_private_data_masked:true,invited_without_consent_private_data_masked:true,private_state_preserved_not_deleted:true,cross_account_local_state_isolated:true,
+      beta_consent_required_before_cloud_ai_writes:false,
+      beta_consent_revocable_on_device:false,beta_consent_account_scoped:false,
+      beta_feedback_device_share_no_auto_personal_data:false,beta_feedback_no_full_user_agent:false,
+      beta_existing_player_data_preserved:false,beta_status_reuses_pro_endpoint:false,
+      signed_out_private_data_masked:false,invited_without_consent_private_data_masked:false,private_state_preserved_not_deleted:true,cross_account_local_state_isolated:true,
       browser_auth_direct_supabase_transport:true,browser_auth_no_external_cdn:true,cloud_config_error_distinguished:true,auth_network_error_distinguished:true,auth_client_start_error_distinguished:true,legacy_supabase_session_storage_compatible:true,
       season_home_interseason_label:true,pro_context_internal_season_key_hidden:true,vs_sunday_next_monday_label:true,
       unauthorized_source_default:false,
-      user_scoped_cloud:true,
+      user_scoped_cloud:false,
       no_placeholder_hero_names:true,
       hero_identity_confirmation:true,
       double_pass_portrait_verification:true,
@@ -150,7 +148,7 @@ export default async function handler(req,res){
       cloud_schema_missing_is_explicit:true,
       safe_idempotent_cloud_migration:true,
       cloud_service_role_grant_guard:true,
-      live_cloud_permission_probe:true,
+      live_cloud_permission_probe:false,
       multilingual_structured_ai_23_choices:true,
       player_seven_day_plan:true,
       seven_day_plan_no_invented_quantities:true,
