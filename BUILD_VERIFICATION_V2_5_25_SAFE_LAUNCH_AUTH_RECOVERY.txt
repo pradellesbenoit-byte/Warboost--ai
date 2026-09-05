@@ -1,0 +1,55 @@
+WARBOOST V2.5.25 — BUILD VERIFICATION
+=====================================
+
+Base : V2.5.24 Safe Launch + Support
+Cible : public-beta-safe-launch
+
+RÉSULTAT GLOBAL : PASS
+
+1. npm run check : PASS
+   - app.js / i18n.js / service worker / support / reset-password / libs / 12 API functions : syntaxe valide.
+
+2. npm run verify : PASS
+   - régression Joueur / Squad 1 / plan 7 jours ;
+   - Alliance R5/R4 / roster / activité / Plan B ;
+   - VS / heure serveur UTC-2 ;
+   - Saison / cycle active-ended-interseason-unknown ;
+   - Diagnostic PRO / EX / Boutique IA ;
+   - 31 héros canoniques ;
+   - 23 langues explicites ;
+   - protection des données locales et cloud ;
+   - invitation bêta / consentement / PRO gratuit ;
+   - Safe Launch : accès jeu, scraping, gameplay automation et paiements désactivés ;
+   - service client V2.5.24 conservé ;
+   - 12 fonctions Vercel.
+
+3. Support API simulation : PASS
+   - création ticket ; historique ; réponse ; isolation player_id.
+
+4. Auth Recovery V2.5.25 : PASS
+   - resetPasswordForEmail ;
+   - redirect vers URL stable de branche Vercel Preview via VERCEL_BRANCH_URL ;
+   - consommation d'une session type=recovery ;
+   - mise à jour du mot de passe via Supabase Auth ;
+   - aucune persistance du mot de passe dans le stockage WarBoost ;
+   - suppression immédiate des access_token / refresh_token de l'URL ;
+   - formulaire refusé sans vraie session de récupération ;
+   - déconnexion de la session recovery après succès ;
+   - labels récupération présents dans les 23 langues.
+
+5. Base de données : PASS
+   - aucune nouvelle migration en V2.5.25 ;
+   - migration support V2.5.24 conservée ;
+   - aucun DROP TABLE / TRUNCATE / DELETE FROM dans la migration support.
+
+6. Données joueurs : PASS
+   - STORE_KEY historique conservé ;
+   - aucune utilisation de localStorage.clear() ;
+   - pas de reset forcé des scans, escouades, Drone, Alliance, VS, Saison ou historiques.
+
+CONFIGURATION POST-DÉPLOIEMENT NÉCESSAIRE
+-----------------------------------------
+Supabase > Authentication > URL Configuration > Redirect URLs :
+https://warboostv4-git-public-beta-safe-launch-warboost.vercel.app/reset-password.html
+
+Site URL peut rester https://warboost.fr pendant les tests Preview.

@@ -1,0 +1,74 @@
+WARBOOST V2.5.25 — GUIDE D'UPLOAD SAFE LAUNCH + AUTH RECOVERY
+===============================================================
+
+BRANCHE CIBLE UNIQUEMENT : public-beta-safe-launch
+NE PAS fusionner vers main.
+NE PAS remplacer publisher-demo.
+
+Pour une mise à jour depuis V2.5.24, utiliser le ZIP PATCH.
+Le ZIP FULL sert uniquement à une installation propre.
+
+FICHIERS RACINE DU PATCH
+------------------------
+README.md
+app.js
+i18n.js
+index.html
+legal.html
+manifest.webmanifest
+package.json
+reset-password.html
+reset-password.js
+styles.css
+support-admin.html
+sw.js
+WARBOOST_V2_5_25_SAFE_LAUNCH_AUTH_RECOVERY.md
+UPLOAD_GUIDE_V2_5_25_SAFE_LAUNCH_AUTH_RECOVERY.txt
+BUILD_VERIFICATION_V2_5_25_SAFE_LAUNCH_AUTH_RECOVERY.txt
+PATCH_MANIFEST_V2_5_25_SAFE_LAUNCH_AUTH_RECOVERY.txt
+DELETE_FILES_V2_5_25.txt
+
+DOSSIER api/
+------------
+api/advice.js
+api/cloud-config.js
+api/health.js
+api/ingest.js
+api/pro.js
+
+DOSSIER lib/
+------------
+lib/browser-auth.js
+lib/normalize.js
+lib/provider.js
+
+DOSSIER scripts/
+----------------
+scripts/verify-v2.5.25.mjs
+scripts/verify-auth-recovery-v2.5.25.mjs
+
+SUPPRESSION
+-----------
+Aucun fichier à supprimer en V2.5.25.
+
+APRÈS L'UPLOAD
+--------------
+1. Attendre que Vercel termine le Preview de public-beta-safe-launch.
+2. Dans Supabase > Authentication > URL Configuration, garder Site URL = https://warboost.fr pour le moment.
+3. Ajouter dans Redirect URLs :
+   https://warboostv4-git-public-beta-safe-launch-warboost.vercel.app/reset-password.html
+4. Tester depuis la Preview : Compte > Mot de passe oublié ?
+5. Vérifier que le mail ouvre la page V2.5.25 « Choisir un nouveau mot de passe ».
+6. Définir un nouveau mot de passe, puis se reconnecter.
+7. Vérifier qu'aucune donnée joueur existante n'a disparu.
+
+SUPABASE / BASE DE DONNÉES
+--------------------------
+Aucune nouvelle migration SQL n'est requise pour V2.5.25.
+Si le service client V2.5.24 fonctionne déjà, ne relance aucune migration pour cette mise à jour.
+
+VERCEL
+------
+Aucune nouvelle variable secrète n'est requise pour la récupération de mot de passe.
+WARBOOST_SUPPORT_ADMINS reste nécessaire pour la console support.
+La Preview utilise automatiquement VERCEL_BRANCH_URL (variable système Vercel) afin que les mails de récupération reviennent vers l'URL stable de la branche.

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.24 — Safe Launch Beta</title>
+  <title>WarBoost V2.5.25 — Safe Launch Beta</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -15,7 +15,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.24 · Bêta publique · sur invitation · accès externe désactivé</small></div>
+        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.25 · Bêta publique · sur invitation · accès externe désactivé</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -23,7 +23,7 @@
 
 
     <section class="publisherStrip" aria-label="Safe Launch beta status">
-      <div><b>WarBoost V2.5.24</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
+      <div><b>WarBoost V2.5.25</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
       <span class="publisherPill" data-i18n="safe_external_disabled">External game access disabled</span>
     </section>
 
@@ -161,7 +161,7 @@
   <section id="accountDrawer" class="drawer" aria-hidden="true">
     <div class="drawerHandle"></div><div class="drawerHeader"><h2 data-i18n="warboost_account">Compte WarBoost</h2><button class="closeBtn" data-close>×</button></div>
     <div class="section"><div class="sectionTitle"><h3 data-i18n="warboost_login">Connexion WarBoost</h3><span id="authPill" class="pill">Local</span></div>
-      <div id="authLoggedOut" class="settingsForm"><div class="field"><label data-i18n="email">E-mail</label><input id="authEmail" type="email" autocomplete="email" /></div><div class="field"><label data-i18n="password">Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" /></div><div class="buttonRow"><button id="loginBtn" class="secondaryBtn" data-i18n="login">Se connecter</button><button id="signupBtn" class="secondaryBtn" data-i18n="create_account">Créer un compte</button></div><div id="otpBox" class="hidden"><div class="privacyText authConfirmHelp" data-i18n="auth_confirm_help">Ton e-mail doit être confirmé. Entre le code reçu par e-mail. Si ton e-mail contient un lien de confirmation, ouvre ce lien puis reviens dans WarBoost.</div><div class="field" style="margin-top:9px"><label data-i18n="email_code">Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" /></div><div class="buttonRow" style="margin-top:9px"><button id="verifyOtpBtn" class="primaryAction" type="button" data-i18n="validate_code">Valider le code</button><button id="resendOtpBtn" class="secondaryBtn" type="button" data-i18n="auth_resend_confirmation">Renvoyer l’e-mail</button></div></div><div id="authMessage" class="notice hidden"></div></div>
+      <div id="authLoggedOut" class="settingsForm"><div class="field"><label data-i18n="email">E-mail</label><input id="authEmail" type="email" autocomplete="email" /></div><div class="field"><label data-i18n="password">Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" /></div><div class="buttonRow"><button id="loginBtn" class="secondaryBtn" data-i18n="login">Se connecter</button><button id="signupBtn" class="secondaryBtn" data-i18n="create_account">Créer un compte</button></div><button id="forgotPasswordBtn" class="textActionBtn" type="button" data-i18n="forgot_password">Mot de passe oublié ?</button><div id="otpBox" class="hidden"><div class="privacyText authConfirmHelp" data-i18n="auth_confirm_help">Ton e-mail doit être confirmé. Entre le code reçu par e-mail. Si ton e-mail contient un lien de confirmation, ouvre ce lien puis reviens dans WarBoost.</div><div class="field" style="margin-top:9px"><label data-i18n="email_code">Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" /></div><div class="buttonRow" style="margin-top:9px"><button id="verifyOtpBtn" class="primaryAction" type="button" data-i18n="validate_code">Valider le code</button><button id="resendOtpBtn" class="secondaryBtn" type="button" data-i18n="auth_resend_confirmation">Renvoyer l’e-mail</button></div></div><div id="authMessage" class="notice hidden"></div></div>
       <div id="authLoggedIn" class="hidden"><div id="authIdentity" class="notice"></div><button id="logoutBtn" class="dangerBtn" style="width:100%;margin-top:9px" data-i18n="logout">Se déconnecter</button></div>
     </div>
     <div id="betaAccessSection" class="section betaAccessSection"><div class="sectionTitle"><h3>🧪 <span data-i18n="beta_access_title">Accès bêta publique · sur invitation</span></h3><span id="betaAccessPill" class="pill">—</span></div><div id="betaAccessStatus" class="notice"></div><label id="betaConsentRow" class="betaConsentRow hidden"><input id="betaConsent" type="checkbox" /> <span data-i18n="beta_consent_text">J’accepte que les données que je choisis de synchroniser ou d’analyser soient envoyées à WarBoost pour fournir les fonctions de la bêta. Les mises à jour ne doivent jamais effacer mes données existantes.</span></label><div class="privacyText" data-i18n="beta_consent_note">Consentement bêta révocable sur cet appareil. L’accès externe au jeu est désactivé dans cette version.</div></div>
@@ -177,7 +177,7 @@
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>🛟 <span data-i18n="support_title">Service client WarBoost</span></h2><button class="closeBtn" data-close>×</button></div>
     <div id="supportAuthNotice" class="notice warn hidden" data-i18n="support_login_required">Connecte-toi à ton compte WarBoost pour créer et suivre tes demandes.</div>
     <div id="supportCreateSection" class="section">
-      <div class="sectionTitle"><h3 data-i18n="support_new_ticket">Nouvelle demande</h3><span class="pill">V2.5.24</span></div>
+      <div class="sectionTitle"><h3 data-i18n="support_new_ticket">Nouvelle demande</h3><span class="pill">V2.5.25</span></div>
       <div class="settingsForm">
         <div class="field"><label data-i18n="support_category">Catégorie</label><select id="supportCategory" class="fieldSelect"><option value="login" data-i18n="support_cat_login">Connexion / compte</option><option value="scan" data-i18n="support_cat_scan">Scan / capture</option><option value="data" data-i18n="support_cat_data">Données / escouades</option><option value="ai" data-i18n="support_cat_ai">IA / Diagnostic PRO</option><option value="alliance" data-i18n="support_cat_alliance">Alliance R5/R4</option><option value="bug" data-i18n="support_cat_bug">Bug</option><option value="suggestion" data-i18n="support_cat_suggestion">Suggestion</option><option value="other" data-i18n="support_cat_other">Autre</option></select></div>
         <div class="field"><label data-i18n="support_subject">Sujet</label><input id="supportSubject" maxlength="140" data-i18n-placeholder="support_subject_placeholder" placeholder="Résume le problème en une phrase" /></div>

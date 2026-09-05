@@ -1,12 +1,12 @@
 {
-  "name": "warboost-v2-safe-launch-support-beta",
-  "version": "2.5.24",
+  "name": "warboost-v2-safe-launch-support-auth-recovery",
+  "version": "2.5.25",
   "private": true,
-  "description": "WarBoost V2.5.24 — Public Beta Safe Launch + Support: invite-only, free PRO, in-app ticketing, external game access/payment hard-disabled, player data preserved.",
+  "description": "WarBoost V2.5.25 — Public Beta Safe Launch + Support + secure password recovery; invite-only, free PRO, external game access/payment hard-disabled, player data preserved.",
   "type": "module",
   "scripts": {
-    "check": "node --check app.js && node --check publisher-ui.js && node --check i18n.js && node --check sw.js && node --check api/state.js && node --check api/sync.js && node --check api/scan.js && node --check api/advice.js && node --check api/alliance-role.js && node --check api/invite.js && node --check api/join.js && node --check api/ingest.js && node --check api/health.js && node --check api/cloud-config.js && node --check api/pro.js && node --check api/support.js && node --check lib/supabase.js && node --check lib/browser-auth.js && node --check lib/normalize.js && node --check lib/provider.js && node --check lib/auth.js && node --check lib/meta-intel.js && node --check lib/heroes.js && node --check lib/alliance-activity.js && node --check lib/data-freshness.js && node --check lib/shop-catalog.js && node --check lib/season6-awakening.js && node --check lib/season-lifecycle.js && node --check lib/squad-identity.js && node --check lib/adaptive-context.js && node --check lib/hero-history.js && node --check lib/roster-import.js && node --check lib/alliance-roster-merge.js && node --check lib/beta-access.js && node --check lib/game-update.js && node --check support-admin.js",
+    "check": "node --check app.js && node --check publisher-ui.js && node --check i18n.js && node --check sw.js && node --check api/state.js && node --check api/sync.js && node --check api/scan.js && node --check api/advice.js && node --check api/alliance-role.js && node --check api/invite.js && node --check api/join.js && node --check api/ingest.js && node --check api/health.js && node --check api/cloud-config.js && node --check api/pro.js && node --check api/support.js && node --check lib/supabase.js && node --check lib/browser-auth.js && node --check lib/normalize.js && node --check lib/provider.js && node --check lib/auth.js && node --check lib/meta-intel.js && node --check lib/heroes.js && node --check lib/alliance-activity.js && node --check lib/data-freshness.js && node --check lib/shop-catalog.js && node --check lib/season6-awakening.js && node --check lib/season-lifecycle.js && node --check lib/squad-identity.js && node --check lib/adaptive-context.js && node --check lib/hero-history.js && node --check lib/roster-import.js && node --check lib/alliance-roster-merge.js && node --check lib/beta-access.js && node --check lib/game-update.js && node --check support-admin.js && node --check reset-password.js",
     "serve": "npx serve .",
-    "verify": "node scripts/verify-v2.5.24.mjs && node scripts/verify-support-v2.5.24.mjs"
+    "verify": "node scripts/verify-v2.5.25.mjs && node scripts/verify-support-v2.5.24.mjs && node scripts/verify-auth-recovery-v2.5.25.mjs"
   }
 }
