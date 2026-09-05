@@ -1,8 +1,8 @@
 import {configured,userConfigured,probeServiceAccess} from "../lib/supabase.js";
-import {providerConfig} from "../lib/provider.js";
 import {HERO_CATALOG} from "../lib/heroes.js";
 import {shopReferenceStats} from "../lib/shop-catalog.js";
 import {betaConfig} from "../lib/beta-access.js";
+import {REVIEWED_GAME_UPDATE} from "../lib/game-update.js";
 
 export function lastWarServerClock(d){return new Date(d.getTime()-2*60*60*1000)}
 export function lastWarVsDay(d){const day=lastWarServerClock(d).getUTCDay();return day===0?0:day}
@@ -16,15 +16,15 @@ function isoWeek(d){
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
-  const providers=providerConfig(),serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=betaConfig();
+  const serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=betaConfig();
   const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
   const now=new Date(),serverClock=lastWarServerClock(now),dow=lastWarVsDay(now);
 
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.20",
-    mode:"private-beta-approval-first-api-ready",
+    version:"2.5.24",
+    mode:"public-beta-invite-safe-launch",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
     now:now.toISOString(),
@@ -41,27 +41,38 @@ export default async function handler(req,res){
     database:serviceProbe.ok?"ready":(serviceDb||userDb)?"degraded":"local-fallback",
     database_access:serviceProbe.ok?"service+user-rls":userDb?"user-rls":"local-only",
     database_service_probe:serviceProbe.code,
-    lastwar_official_access:providers.official?"configured":providers.approved?"approved-connector":"pending-approval",
-    legacy_provider:providers.legacy?"explicitly-enabled":"disabled",
+    lastwar_official_access:"disabled-safe-launch",
+    legacy_provider:"disabled-safe-launch",
+    game_update:REVIEWED_GAME_UPDATE,
     vision:Boolean(process.env.OPENAI_API_KEY||process.env.WARBOOST_VISION_ENDPOINT)?"configured":"optional",
     languages:["fr","en-GB","en-US","es","it","de","pt","nl","zh","ja","ru","ar","pl","tr","ko","vi","th","id","uk","ro","el","cs","sv"],
-    beta:{mode:"private",release:beta.release,access_enforced:beta.enforced,invited_count:beta.invited_count,pro_included:beta.pro_included,payments_enabled:beta.payments_enabled,consent_version:beta.consent_version,feedback_mode:"device-share"},
+    beta:{mode:"public-invite",release:beta.release,access_enforced:beta.enforced,invited_count:beta.invited_count,pro_included:beta.pro_included,payments_enabled:beta.payments_enabled,consent_version:beta.consent_version,feedback_mode:"support-ticketing"},
     safeguards:{
       read_only:true,
+      safe_launch_external_game_access_hard_disabled:true,
+      safe_launch_no_scraping:true,
+      safe_launch_no_gameplay_automation:true,
+      safe_launch_payments_code_disabled:true,
+      safe_launch_ingest_disabled:true,
+      safe_launch_cron_external_sync_disabled:true,
+      safe_launch_independent_disclaimer_visible:true,
+      safe_launch_latest_game_update_reviewed:true,
+      safe_launch_season7_rumor_guard:true,
       player_consent:true,
-      private_beta_badge:true,
+      public_beta_invite_badge:true,
       beta_email_invitation_allowlist:true,
       beta_access_enforced_when_allowlist_configured:true,
       beta_pro_free_for_invited_testers:true,
       beta_payments_disabled:true,
       beta_consent_required_before_cloud_ai_writes:true,
       beta_consent_revocable_on_device:true,beta_consent_account_scoped:true,
-      beta_feedback_device_share_no_auto_personal_data:true,beta_feedback_no_full_user_agent:true,
+      support_ticketing:true,support_ticket_history:true,support_private_attachments:true,support_admin_allowlist:true,support_password_never_collected:true,beta_feedback_no_full_user_agent:true,
       beta_existing_player_data_preserved:true,beta_status_reuses_pro_endpoint:true,private_beta_player_onboarding:true,private_beta_publisher_copy_hidden:true,
       signed_out_private_data_masked:true,invited_without_consent_private_data_masked:true,private_state_preserved_not_deleted:true,cross_account_local_state_isolated:true,
       browser_auth_direct_supabase_transport:true,browser_auth_no_external_cdn:true,cloud_config_error_distinguished:true,auth_network_error_distinguished:true,auth_client_start_error_distinguished:true,legacy_supabase_session_storage_compatible:true,
       season_home_interseason_label:true,pro_context_internal_season_key_hidden:true,vs_sunday_next_monday_label:true,
       unauthorized_source_default:false,
+      external_provider_environment_ignored:true,
       user_scoped_cloud:true,
       no_placeholder_hero_names:true,
       hero_identity_confirmation:true,
@@ -169,6 +180,7 @@ export default async function handler(req,res){
       alliance_immediate_actions_and_plan_b:true,
       rank_aware_voice_greeting:true
     },
+    support:{ticketing:true,admin_allowlist_configured:Boolean(String(process.env.WARBOOST_SUPPORT_ADMINS||"").trim()),contact_email:String(process.env.WARBOOST_SUPPORT_EMAIL||"").trim()||null,attachment_max_bytes:2097152},
     hero_catalog_count:HERO_CATALOG.length,
     shop_reference_catalog:shopRef,
     hero_catalog_identity_source:"shared-single-source",
