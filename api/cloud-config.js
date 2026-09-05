@@ -24,15 +24,20 @@ export default function handler(req,res){
   );
 
   const configured=Boolean(url && key);
+  const branchHost=String(process.env.VERCEL_BRANCH_URL||"").trim().replace(/^https?:\/\//i,"").replace(/\/+$/g,"");
+  const recoveryRedirect=process.env.VERCEL_ENV==="preview"&&branchHost?`https://${branchHost}/reset-password.html`:"";
   const payload={
     configured,
     url: configured ? url : "",
-    key: configured ? key : ""
+    key: configured ? key : "",
+    recovery_redirect_url:recoveryRedirect
   };
 
   if(String(req.query?.debug||"")==="1"){
     payload.debug={
       vercel_env:process.env.VERCEL_ENV||null,
+      has_vercel_branch_url:Boolean(branchHost),
+      recovery_redirect_mode:recoveryRedirect?"stable-preview-branch":"current-origin-fallback",
       has_SUPABASE_URL:Boolean(String(process.env.SUPABASE_URL||"").trim()),
       has_NEXT_PUBLIC_SUPABASE_URL:Boolean(String(process.env.NEXT_PUBLIC_SUPABASE_URL||"").trim()),
       has_VITE_SUPABASE_URL:Boolean(String(process.env.VITE_SUPABASE_URL||"").trim()),

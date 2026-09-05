@@ -23,7 +23,7 @@ export default async function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.24",
+    version:"2.5.25",
     mode:"public-beta-invite-safe-launch",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -70,6 +70,7 @@ export default async function handler(req,res){
       beta_existing_player_data_preserved:true,beta_status_reuses_pro_endpoint:true,private_beta_player_onboarding:true,private_beta_publisher_copy_hidden:true,
       signed_out_private_data_masked:true,invited_without_consent_private_data_masked:true,private_state_preserved_not_deleted:true,cross_account_local_state_isolated:true,
       browser_auth_direct_supabase_transport:true,browser_auth_no_external_cdn:true,cloud_config_error_distinguished:true,auth_network_error_distinguished:true,auth_client_start_error_distinguished:true,legacy_supabase_session_storage_compatible:true,
+      password_recovery:true,password_recovery_stable_preview_branch_redirect:true,password_recovery_current_origin_fallback:true,password_recovery_requires_recovery_session:true,password_recovery_tokens_cleaned_from_url:true,password_update_via_supabase_auth:true,password_never_stored_by_warboost:true,
       season_home_interseason_label:true,pro_context_internal_season_key_hidden:true,vs_sunday_next_monday_label:true,
       unauthorized_source_default:false,
       external_provider_environment_ignored:true,

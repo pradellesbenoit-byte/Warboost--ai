@@ -1,7 +1,7 @@
 import {requireUser} from "../lib/auth.js";
 import {betaAccessForUser} from "../lib/beta-access.js";
 
-// V2.5.24 Safe Launch: no payment provider code is shipped in this build.
+// V2.5.25 Safe Launch: no payment provider code is shipped in this build.
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store, max-age=0");
   try{
