@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.20 — Private Beta Onboarding</title>
+  <title>WarBoost V2.5.24 — Safe Launch Beta</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -15,21 +15,21 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BETA PRIVÉE</span></div><small data-i18n="tagline">V2.5.20 · Private Beta · official integration pending</small></div>
+        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.24 · Bêta publique · sur invitation · accès externe désactivé</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
     </header>
 
 
-    <section class="publisherStrip" aria-label="Private beta status">
-      <div><b>WarBoost V2.5.20</b><span data-i18n="beta_release_label">Private Beta</span></div>
-      <span class="publisherPill" data-i18n="official_pending">Official integration pending</span>
+    <section class="publisherStrip" aria-label="Safe Launch beta status">
+      <div><b>WarBoost V2.5.24</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
+      <span class="publisherPill" data-i18n="safe_external_disabled">External game access disabled</span>
     </section>
 
     <section class="publisherVision">
       <div class="visionCopy">
-        <span class="eyebrow" data-i18n="beta_badge">PRIVATE BETA</span>
+        <span class="eyebrow" data-i18n="beta_badge">PUBLIC BETA</span>
         <h2 data-i18n="publisher_value">One AI companion for Player, Alliance, VS and Season</h2>
         <p data-i18n="publisher_value_desc">WarBoost turns consented account data into clear recommendations without automating gameplay.</p>
       </div>
@@ -42,6 +42,20 @@
 
     <!-- Hero portraits are injected contextually by publisher-ui.js -->
 
+    <section class="safeLaunchGrid" aria-label="Safe Launch information">
+      <article class="safeLaunchCard independentCard">
+        <div class="safeLaunchHead"><span>🛡️</span><b data-i18n="independent_title">Application indépendante</b></div>
+        <p data-i18n="independent_disclaimer">WarBoost est un outil compagnon indépendant pour les joueurs de Last War: Survival. WarBoost n’est ni affilié, ni sponsorisé, ni approuvé par FUNFLY PTE. LTD. ou Last War: Survival.</p>
+        <p class="safeLaunchSmall" data-i18n="safe_no_access">Aucun accès au jeu, scraping, automatisation de gameplay ou API non autorisée n’est activé dans cette version.</p>
+        <div class="safeLinks"><a href="/legal.html" data-i18n="legal_notice">Mentions & indépendance</a><a href="/privacy.html" data-i18n="privacy_notice">Confidentialité</a></div>
+      </article>
+      <article class="safeLaunchCard updateCard">
+        <div class="safeLaunchHead"><span>🛰️</span><b data-i18n="game_update_title">Veille du jeu · 1.0.361 · 02/09/2026</b></div>
+        <p data-i18n="game_update_note">Notes publiques revues : Alliance Star, Lucky Scratch Card et récompenses Alliance Celebration Fireworks.</p>
+        <p class="safeLaunchSmall" data-i18n="game_update_impact">Aucun changement héros / arme exclusive / méta n’est appliqué sans donnée confirmée.</p>
+        <p class="safeLaunchSmall" data-i18n="season7_guard">Saison 7 : WarBoost n’active aucune rumeur. Les conseils attendent des données officielles visibles ou un scan joueur confirmé.</p>
+      </article>
+    </section>
 
     <section class="serverStrip" aria-live="polite">
       <div class="serverTime">🕐 <b id="serverClock">--:--:--</b> · <span id="serverDay">WarBoost</span></div>
@@ -51,7 +65,7 @@
     <section class="heroCard">
       <div class="eyebrow">🤖 <span data-i18n="coach">Coach IA</span></div>
       <h2 id="adviceTitle" class="heroTitle" data-i18n="configure_profile">Configure ton profil</h2>
-      <p id="adviceText" class="heroText" data-i18n="configure_text">WarBoost combine tes scans, le cloud alliance et, dès autorisation, les données officielles Last War.</p>
+      <p id="adviceText" class="heroText" data-i18n="configure_text">WarBoost combine tes scans volontaires, tes données enregistrées et le cloud WarBoost. Aucun accès externe au jeu n’est utilisé dans cette bêta.</p>
       <button id="adviceAction" class="primaryAction" data-i18n="configure">Configurer WarBoost</button>
     </section>
 
@@ -61,7 +75,7 @@
       <button class="moduleCard" data-open="vs"><span class="moduleMeta" id="vsMeta">—</span><span class="moduleIcon">⚔️</span><h2 data-i18n="vs">VS</h2><p data-i18n="vs_desc">Adversaire de la semaine, jour actuel et plan.</p></button>
       <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p id="seasonDesc" data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
     </section>
-    <div class="footerNote publisherFooter"><b data-i18n="beta_release_label">Private Beta</b><span data-i18n="beta_consent_note">Beta consent can be revoked on this device. No unauthorized Last War access.</span></div>
+    <div class="footerNote publisherFooter"><b data-i18n="beta_release_label">Private Beta</b><span data-i18n="beta_consent_note">Beta consent can be revoked on this device. External game access is disabled in this build.</span></div>
   </main>
 
   <div id="backdrop" class="drawerBackdrop"></div>
@@ -69,7 +83,7 @@
   <section id="playerDrawer" class="drawer" aria-hidden="true">
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>👤 <span data-i18n="player">Joueur</span></h2><button class="closeBtn" data-close>×</button></div>
     <div class="summaryBar four">
-      <div class="stat"><span data-i18n="nickname">Pseudo Last War</span><b id="pName">—</b></div>
+      <div class="stat"><span data-i18n="nickname">Pseudo dans le jeu</span><b id="pName">—</b></div>
       <div class="stat"><span data-i18n="hq">QG</span><b id="pHq">—</b></div>
       <div class="stat"><span data-i18n="power">Puissance</span><b id="pPower">—</b></div>
       <div class="stat"><span data-i18n="drone">Drone</span><b id="pDrone">—</b></div>
@@ -92,9 +106,9 @@
       <details id="proExclusiveCompareDetails" class="compactDetails"><summary data-i18n="pro_exclusive_compare">Comparaison EX · 5 héros</summary><div id="proExclusiveCompare" class="exclusiveCompare"></div></details>
       <details id="proMetaSourcesDetails" class="compactDetails"><summary data-i18n="pro_meta_sources">Sources méta et date</summary><div id="proMetaSources" class="metaSources"></div></details>
       <details class="compactDetails"><summary data-i18n="pro_squad_compare">Comparaison des escouades</summary><div id="proSquadCompare" class="squadCompare"></div></details>
-      <details class="compactDetails"><summary data-i18n="pro_shop_title">Boutique Last War · Conseiller IA</summary><div class="proShopHeader"><div><p id="proShopSummary" class="shopSummary" data-i18n="shop_summary_default">Catalogue partiel : WarBoost conseille uniquement à partir des offres visibles ou des données officiellement autorisées.</p></div><div class="shopPills"><span id="shopCatalogPill" class="pill catalogPartialPill">Catalogue partiel</span><span id="shopConfidence" class="pill">—</span></div></div>
+      <details class="compactDetails"><summary data-i18n="pro_shop_title">Boutique du jeu · Conseiller IA</summary><div class="proShopHeader"><div><p id="proShopSummary" class="shopSummary" data-i18n="shop_summary_default">Catalogue partiel : WarBoost conseille uniquement à partir des offres visibles ou des données officiellement autorisées.</p></div><div class="shopPills"><span id="shopCatalogPill" class="pill catalogPartialPill">Catalogue partiel</span><span id="shopConfidence" class="pill">—</span></div></div>
       <div id="proShopList" class="shopList"></div>
-      <button id="scanShopBtn" class="secondaryBtn wideBtn" data-i18n="scan_shop_button">📷 Scanner une boutique Last War</button></details>
+      <button id="scanShopBtn" class="secondaryBtn wideBtn" data-i18n="scan_shop_button">📷 Scanner une boutique du jeu</button></details>
       <div class="proSubTitle plan7Header"><span>📅</span> <span data-i18n="seven_day_plan">Plan Joueur 7 jours</span></div>
       <div id="player7DayPlan" class="sevenDayPlan"></div>
     </section>
@@ -125,9 +139,9 @@
 
   <section id="scanDrawer" class="drawer" aria-hidden="true">
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>📷 <span data-i18n="scan_title">WarBoost Scan</span></h2><button class="closeBtn" data-close>×</button></div>
-    <div class="section"><p class="heroText" data-i18n="scan_intro">Fais une capture Last War. WarBoost Vision lit uniquement les données de jeu utiles et les fusionne avec ton profil enregistré.</p>
+    <div class="section"><p class="heroText" data-i18n="scan_intro">Choisis une capture du jeu. WarBoost Vision lit uniquement les données utiles visibles dans l’image et les fusionne avec ton profil enregistré.</p>
       <div class="settingsForm">
-        <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="drone">Drone</option><option value="exclusive">Arme exclusive</option><option value="shop">Boutique Last War</option><option value="vs">VS</option><option value="season">Saison</option></select></div>
+        <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="drone">Drone</option><option value="exclusive">Arme exclusive</option><option value="shop">Boutique du jeu</option><option value="vs">VS</option><option value="season">Saison</option></select></div>
         <label class="captureButton" for="scanFile"><span>🖼️</span><b data-i18n="choose_capture">Prendre ou choisir une capture</b></label><input id="scanFile" class="hidden" type="file" accept="image/png,image/jpeg,image/webp" />
         <img id="scanPreview" class="scanPreview hidden" alt="Screenshot preview" />
         <button id="analyzeScanBtn" class="primaryAction" data-i18n="analyze">Analyser la capture</button>
@@ -139,7 +153,7 @@
           <div class="buttonRow"><button id="skipHeroNamesBtn" class="secondaryBtn" data-i18n="hero_skip">Garder sans noms</button><button id="saveHeroNamesBtn" class="primaryAction" data-i18n="hero_save">Enregistrer les noms</button></div>
         </div>
 
-        <div class="privacyText" data-i18n="privacy_scan">La capture est redimensionnée avant l'envoi et n'est pas conservée par le navigateur après l'analyse.</div>
+        <div class="privacyText" data-i18n="privacy_scan">La capture est redimensionnée puis envoyée au service de vision configuré pour l’analyse. WarBoost n’enregistre pas l’image brute dans le profil joueur après l’analyse.</div>
       </div>
     </div>
   </section>
@@ -150,18 +164,36 @@
       <div id="authLoggedOut" class="settingsForm"><div class="field"><label data-i18n="email">E-mail</label><input id="authEmail" type="email" autocomplete="email" /></div><div class="field"><label data-i18n="password">Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" /></div><div class="buttonRow"><button id="loginBtn" class="secondaryBtn" data-i18n="login">Se connecter</button><button id="signupBtn" class="secondaryBtn" data-i18n="create_account">Créer un compte</button></div><div id="otpBox" class="hidden"><div class="privacyText authConfirmHelp" data-i18n="auth_confirm_help">Ton e-mail doit être confirmé. Entre le code reçu par e-mail. Si ton e-mail contient un lien de confirmation, ouvre ce lien puis reviens dans WarBoost.</div><div class="field" style="margin-top:9px"><label data-i18n="email_code">Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" /></div><div class="buttonRow" style="margin-top:9px"><button id="verifyOtpBtn" class="primaryAction" type="button" data-i18n="validate_code">Valider le code</button><button id="resendOtpBtn" class="secondaryBtn" type="button" data-i18n="auth_resend_confirmation">Renvoyer l’e-mail</button></div></div><div id="authMessage" class="notice hidden"></div></div>
       <div id="authLoggedIn" class="hidden"><div id="authIdentity" class="notice"></div><button id="logoutBtn" class="dangerBtn" style="width:100%;margin-top:9px" data-i18n="logout">Se déconnecter</button></div>
     </div>
-    <div id="betaAccessSection" class="section betaAccessSection"><div class="sectionTitle"><h3>🧪 <span data-i18n="beta_access_title">Accès bêta privée</span></h3><span id="betaAccessPill" class="pill">—</span></div><div id="betaAccessStatus" class="notice"></div><label id="betaConsentRow" class="betaConsentRow hidden"><input id="betaConsent" type="checkbox" /> <span data-i18n="beta_consent_text">J’accepte que les données que je choisis de synchroniser ou d’analyser soient envoyées à WarBoost pour fournir les fonctions de la bêta. Les mises à jour ne doivent jamais effacer mes données existantes.</span></label><div class="privacyText" data-i18n="beta_consent_note">Consentement bêta révocable sur cet appareil. WarBoost n’utilise aucun accès Last War non autorisé.</div></div>
-    <div class="section"><div class="sectionTitle"><h3 data-i18n="lastwar_identity">Identité Last War</h3><span class="pill" data-i18n="account">Compte</span></div><div class="settingsForm"><div class="field"><label data-i18n="nickname">Pseudo Last War</label><input id="fName" /></div><div class="field"><label data-i18n="server">Serveur</label><input id="fServer" inputmode="numeric" /></div><div class="field"><label data-i18n="hq">QG</label><input id="fHq" inputmode="numeric" /></div><div class="field"><label data-i18n="alliance">Alliance</label><input id="fAlliance" /></div><div class="field"><label data-i18n="role">Rôle</label><input id="fRole" /></div><div class="sectionTitle" style="margin-top:8px"><h4 data-i18n="pro_context_title">Contexte IA PRO</h4><span class="pill" data-i18n="adaptive">Adaptatif</span></div><div class="field"><label data-i18n="objective_label">Objectif principal</label><select id="fObjective"><option value="auto" data-i18n="objective_auto">Auto</option><option value="balanced" data-i18n="objective_balanced">Équilibré</option><option value="pvp" data-i18n="objective_pvp">PvP</option><option value="pve" data-i18n="objective_pve">PvE</option><option value="vs" data-i18n="objective_vs">VS</option><option value="season" data-i18n="objective_season">Saison</option></select></div><div class="field"><label data-i18n="account_age_days">Âge du compte (jours)</label><input id="fAccountAge" type="number" inputmode="numeric" min="0" max="5000" placeholder="—" /></div><div class="field"><label data-i18n="server_profile_label">Profil du serveur</label><select id="fServerProfile"><option value="auto" data-i18n="server_profile_auto">Auto / inconnu</option><option value="new" data-i18n="server_profile_new">Récent</option><option value="mature" data-i18n="server_profile_mature">Mature</option><option value="competitive" data-i18n="server_profile_competitive">Compétitif</option><option value="mixed" data-i18n="server_profile_mixed">Mixte</option></select></div><div class="notice" data-i18n="pro_context_note">Ces champs sont optionnels. En Auto, WarBoost utilise uniquement les données réellement disponibles et baisse la confiance si le contexte manque.</div><button id="saveProfileBtn" class="primaryAction" data-i18n="save">Enregistrer</button></div></div>
+    <div id="betaAccessSection" class="section betaAccessSection"><div class="sectionTitle"><h3>🧪 <span data-i18n="beta_access_title">Accès bêta publique · sur invitation</span></h3><span id="betaAccessPill" class="pill">—</span></div><div id="betaAccessStatus" class="notice"></div><label id="betaConsentRow" class="betaConsentRow hidden"><input id="betaConsent" type="checkbox" /> <span data-i18n="beta_consent_text">J’accepte que les données que je choisis de synchroniser ou d’analyser soient envoyées à WarBoost pour fournir les fonctions de la bêta. Les mises à jour ne doivent jamais effacer mes données existantes.</span></label><div class="privacyText" data-i18n="beta_consent_note">Consentement bêta révocable sur cet appareil. L’accès externe au jeu est désactivé dans cette version.</div></div>
+    <div class="section"><div class="sectionTitle"><h3 data-i18n="lastwar_identity">Identité dans le jeu</h3><span class="pill" data-i18n="account">Compte</span></div><div class="settingsForm"><div class="field"><label data-i18n="nickname">Pseudo dans le jeu</label><input id="fName" /></div><div class="field"><label data-i18n="server">Serveur</label><input id="fServer" inputmode="numeric" /></div><div class="field"><label data-i18n="hq">QG</label><input id="fHq" inputmode="numeric" /></div><div class="field"><label data-i18n="alliance">Alliance</label><input id="fAlliance" /></div><div class="field"><label data-i18n="role">Rôle</label><input id="fRole" /></div><div class="sectionTitle" style="margin-top:8px"><h4 data-i18n="pro_context_title">Contexte IA PRO</h4><span class="pill" data-i18n="adaptive">Adaptatif</span></div><div class="field"><label data-i18n="objective_label">Objectif principal</label><select id="fObjective"><option value="auto" data-i18n="objective_auto">Auto</option><option value="balanced" data-i18n="objective_balanced">Équilibré</option><option value="pvp" data-i18n="objective_pvp">PvP</option><option value="pve" data-i18n="objective_pve">PvE</option><option value="vs" data-i18n="objective_vs">VS</option><option value="season" data-i18n="objective_season">Saison</option></select></div><div class="field"><label data-i18n="account_age_days">Âge du compte (jours)</label><input id="fAccountAge" type="number" inputmode="numeric" min="0" max="5000" placeholder="—" /></div><div class="field"><label data-i18n="server_profile_label">Profil du serveur</label><select id="fServerProfile"><option value="auto" data-i18n="server_profile_auto">Auto / inconnu</option><option value="new" data-i18n="server_profile_new">Récent</option><option value="mature" data-i18n="server_profile_mature">Mature</option><option value="competitive" data-i18n="server_profile_competitive">Compétitif</option><option value="mixed" data-i18n="server_profile_mixed">Mixte</option></select></div><div class="notice" data-i18n="pro_context_note">Ces champs sont optionnels. En Auto, WarBoost utilise uniquement les données réellement disponibles et baisse la confiance si le contexte manque.</div><button id="saveProfileBtn" class="primaryAction" data-i18n="save">Enregistrer</button></div></div>
     <div class="section voiceSection"><div class="sectionTitle"><h3>🔊 <span data-i18n="voice_settings">Voix WarBoost</span></h3><span class="pill" id="voiceStatusPill">—</span></div><div class="settingsForm"><label class="voiceToggle"><input id="voiceEnabled" type="checkbox" /> <span data-i18n="voice_grade_note">Salutation au premier accès Joueur / Alliance selon le grade</span></label><div class="field"><label data-i18n="voice_choice">Voix</label><select id="voiceSelect"><option value="">Auto</option></select></div><button id="voiceTestBtn" class="secondaryBtn" type="button" data-i18n="test_voice">Tester la voix</button></div></div>
-    <div id="proSection" class="section proSection betaIncluded"><div class="sectionTitle"><h3>💎 <span data-i18n="pro">WarBoost PRO</span></h3><span id="proPill" class="pill proPill">BETA</span></div><div class="proHero"><div><b id="proTitle" data-i18n="beta_pro_title">WarBoost PRO · bêta</b><small id="proPrice" data-i18n="beta_pro_free">Gratuit pendant la bêta privée · aucun paiement n’est prélevé.</small></div><span class="proDiamond">💎</span></div><div class="proFeatures"><div data-i18n="pro_feature1">✓ Priorités IA détaillées pour tes escouades</div><div data-i18n="pro_feature2">✓ Plans de guerre IA pour R5/R4</div><div data-i18n="pro_feature3">✓ Plans VS adaptés au jour réel</div><div data-i18n="pro_feature4">✓ Conseils Saison avancés</div></div><div id="proMessage" class="notice hidden"></div><button id="proActionBtn" class="primaryAction proAction" type="button" data-i18n="beta_pro_included" disabled>PRO inclus dans la bêta</button></div>
-    <div class="section hybridSection"><div class="sectionTitle"><h3 data-i18n="hybrid_sync">Synchronisation hybride WarBoost</h3><span id="providerPill" class="pill">—</span></div><div class="sourceGrid"><div class="sourceCard"><span>🌐</span><b data-i18n="public_source">Accès officiel Last War</b><small id="publicSourceState">—</small></div><div class="sourceCard"><span>📷</span><b data-i18n="scan_source">WarBoost Scan</b><small id="scanSourceState">—</small></div><div class="sourceCard"><span>🛡️</span><b data-i18n="alliance_cloud">Cloud alliance</b><small id="allianceCloudState">—</small></div></div><div id="providerStatus" class="notice warn"></div><div class="buttonRow"><button id="openScanBtn" class="secondaryBtn" data-i18n="scan_account">Scanner mon compte</button><button id="syncAllBtn" class="secondaryBtn" data-i18n="public_refresh">Synchroniser WarBoost</button></div><div class="privacyText" data-i18n="hybrid_note">WarBoost n’utilise aucun accès Last War non autorisé. Tant que l’autorisation officielle est en attente, Scan et cloud restent actifs.</div></div>
+    <div id="proSection" class="section proSection betaIncluded"><div class="sectionTitle"><h3>💎 <span data-i18n="pro">WarBoost PRO</span></h3><span id="proPill" class="pill proPill">BETA</span></div><div class="proHero"><div><b id="proTitle" data-i18n="beta_pro_title">WarBoost PRO · bêta</b><small id="proPrice" data-i18n="beta_pro_free">Gratuit pendant la bêta Safe Launch · aucun paiement n’est possible.</small></div><span class="proDiamond">💎</span></div><div class="proFeatures"><div data-i18n="pro_feature1">✓ Priorités IA détaillées pour tes escouades</div><div data-i18n="pro_feature2">✓ Plans de guerre IA pour R5/R4</div><div data-i18n="pro_feature3">✓ Plans VS adaptés au jour réel</div><div data-i18n="pro_feature4">✓ Conseils Saison avancés</div></div><div id="proMessage" class="notice hidden"></div><button id="proActionBtn" class="primaryAction proAction" type="button" data-i18n="beta_pro_included" disabled>PRO inclus dans la bêta</button></div>
+    <div class="section hybridSection"><div class="sectionTitle"><h3 data-i18n="hybrid_sync">Synchronisation hybride WarBoost</h3><span id="providerPill" class="pill">—</span></div><div class="sourceGrid"><div class="sourceCard"><span>🌐</span><b data-i18n="public_source">Accès externe au jeu</b><small id="publicSourceState">—</small></div><div class="sourceCard"><span>📷</span><b data-i18n="scan_source">WarBoost Scan</b><small id="scanSourceState">—</small></div><div class="sourceCard"><span>🛡️</span><b data-i18n="alliance_cloud">Cloud alliance</b><small id="allianceCloudState">—</small></div></div><div id="providerStatus" class="notice warn"></div><div class="buttonRow"><button id="openScanBtn" class="secondaryBtn" data-i18n="scan_account">Scanner mon compte</button><button id="syncAllBtn" class="secondaryBtn" data-i18n="public_refresh">Synchroniser WarBoost</button></div><div class="privacyText" data-i18n="hybrid_note">Accès externe au jeu désactivé par code dans cette version. WarBoost Scan et le cloud WarBoost restent actifs avec ton consentement.</div></div>
   </section>
 
-  <button id="betaFeedbackBtn" class="betaFeedbackFab" type="button">🧪 <span data-i18n="beta_feedback_button">Retour bêta</span></button>
+  <button id="supportBtn" class="betaFeedbackFab supportFab" type="button">🛟 <span data-i18n="support_button">Service client</span></button>
 
-  <section id="feedbackDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div><div class="drawerHeader"><h2>🧪 <span data-i18n="beta_feedback_title">Retour bêta</span></h2><button class="closeBtn" data-close>×</button></div>
-    <div class="section"><div class="sectionTitle"><h3 data-i18n="beta_feedback_kind">Type de retour</h3><span class="pill">V2.5.19</span></div><select id="betaFeedbackKind" class="fieldSelect"><option value="bug" data-i18n="beta_feedback_bug">Bug</option><option value="idea" data-i18n="beta_feedback_idea">Idée</option><option value="confusing" data-i18n="beta_feedback_confusing">Écran peu clair</option><option value="data" data-i18n="beta_feedback_data">Donnée incorrecte</option></select><textarea id="betaFeedbackText" class="rosterImportText" rows="6" data-i18n-placeholder="beta_feedback_placeholder" placeholder="Décris ce qui s’est passé, ce que tu attendais et l’écran concerné."></textarea><label class="betaConsentRow"><input id="betaFeedbackDiagnostics" type="checkbox" checked /> <span data-i18n="beta_feedback_diagnostics">Inclure uniquement les diagnostics techniques non personnels (version, langue, navigateur et écran).</span></label><div class="privacyText" data-i18n="beta_feedback_privacy">WarBoost ne joint ni pseudo, e-mail, captures ni données de compte automatiquement. Le retour est partagé via les applications de ton téléphone.</div><button id="betaFeedbackShareBtn" class="primaryAction" type="button" data-i18n="beta_feedback_share">Partager le retour</button><div id="betaFeedbackStatus" class="notice hidden" style="margin-top:9px"></div></div>
+  <section id="supportDrawer" class="drawer" aria-hidden="true">
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>🛟 <span data-i18n="support_title">Service client WarBoost</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div id="supportAuthNotice" class="notice warn hidden" data-i18n="support_login_required">Connecte-toi à ton compte WarBoost pour créer et suivre tes demandes.</div>
+    <div id="supportCreateSection" class="section">
+      <div class="sectionTitle"><h3 data-i18n="support_new_ticket">Nouvelle demande</h3><span class="pill">V2.5.24</span></div>
+      <div class="settingsForm">
+        <div class="field"><label data-i18n="support_category">Catégorie</label><select id="supportCategory" class="fieldSelect"><option value="login" data-i18n="support_cat_login">Connexion / compte</option><option value="scan" data-i18n="support_cat_scan">Scan / capture</option><option value="data" data-i18n="support_cat_data">Données / escouades</option><option value="ai" data-i18n="support_cat_ai">IA / Diagnostic PRO</option><option value="alliance" data-i18n="support_cat_alliance">Alliance R5/R4</option><option value="bug" data-i18n="support_cat_bug">Bug</option><option value="suggestion" data-i18n="support_cat_suggestion">Suggestion</option><option value="other" data-i18n="support_cat_other">Autre</option></select></div>
+        <div class="field"><label data-i18n="support_subject">Sujet</label><input id="supportSubject" maxlength="140" data-i18n-placeholder="support_subject_placeholder" placeholder="Résume le problème en une phrase" /></div>
+        <div class="field"><label data-i18n="support_description">Description</label><textarea id="supportDescription" class="rosterImportText" rows="6" maxlength="6000" data-i18n-placeholder="support_description_placeholder" placeholder="Explique ce qui s’est passé, ce que tu attendais et l’écran concerné."></textarea></div>
+        <div class="field"><label data-i18n="support_attachment">Capture d’écran facultative</label><input id="supportAttachment" type="file" accept="image/jpeg,image/png,image/webp" /><small class="privacyText" data-i18n="support_attachment_note">Facultatif · l’image est compressée avant envoi · 2 Mo maximum.</small></div>
+        <label class="betaConsentRow"><input id="supportDiagnostics" type="checkbox" checked /> <span data-i18n="support_diagnostics">Inclure les diagnostics techniques utiles : version, langue et écran. Aucun mot de passe n’est envoyé.</span></label>
+        <label class="betaConsentRow"><input id="supportConsent" type="checkbox" /> <span data-i18n="support_consent">J’accepte l’envoi des informations de ce ticket au service client WarBoost pour traiter ma demande.</span></label>
+        <div class="privacyText" data-i18n="support_privacy">Le ticket contient l’e-mail du compte WarBoost et ton pseudo WarBoost/jeu si disponible, uniquement pour traiter ta demande.</div>
+        <button id="supportSubmitBtn" class="primaryAction" type="button" data-i18n="support_send">Envoyer la demande</button>
+        <div id="supportStatus" class="notice hidden"></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="sectionTitle"><h3 data-i18n="support_history">Mes demandes</h3><button id="supportRefreshBtn" class="smallBtn" type="button" data-i18n="support_refresh">Actualiser</button></div>
+      <div id="supportTickets" class="supportTickets"><div class="privacyText" data-i18n="support_history_empty">Aucune demande pour le moment.</div></div>
+    </div>
   </section>
 
   <script type="module" src="/app.js"></script>
