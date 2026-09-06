@@ -4,13 +4,36 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="robots" content="noindex,nofollow" />
-  <title>WarBoost · Console support</title>
+  <title>WarBoost · Console administrateur</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <main class="app">
-    <div class="topbar"><div class="brand"><img class="logo" src="/warboost-icon-192.png" alt="WarBoost"/><div class="brandText"><h1>WarBoost · Support</h1><small>V2.5.25 · console administrateur</small></div></div></div>
-    <div class="heroCard"><div class="eyebrow">🛟 SERVICE CLIENT</div><h2 class="heroTitle">Tickets joueurs</h2><p class="heroText">Cette page n’affiche les tickets qu’aux comptes présents dans <code>WARBOOST_SUPPORT_ADMINS</code>.</p><button id="adminRefresh" class="primaryAction" type="button">Actualiser</button></div>
+    <div class="topbar"><div class="brand"><img class="logo" src="/warboost-icon-192.png" alt="WarBoost"/><div class="brandText"><h1>WarBoost · Administration</h1><small>V2.5.26 · invitations bêta + service client</small></div></div></div>
+
+    <section class="heroCard adminInviteManager">
+      <div class="eyebrow">🔐 BÊTA SUR INVITATION</div>
+      <h2 class="heroTitle">Inviter des joueurs</h2>
+      <p class="heroText">Ajoute ici les adresses autorisées. Elles sont enregistrées dans Supabase : aucun changement Vercel et aucun redéploiement n’est nécessaire pour chaque joueur. Ensuite, partage simplement le lien de la bêta au joueur.</p>
+      <label class="adminFieldLabel" for="inviteEmails">Adresse(s) e-mail</label>
+      <textarea id="inviteEmails" class="adminInviteTextarea" rows="3" autocomplete="off" spellcheck="false" placeholder="joueur@exemple.fr&#10;autre@exemple.fr"></textarea>
+      <label class="adminFieldLabel" for="inviteNote">Note interne facultative</label>
+      <input id="inviteNote" class="adminInviteInput" maxlength="500" placeholder="Ex. joueur test serveur 884" />
+      <div class="adminInviteActions">
+        <button id="inviteAddBtn" class="primaryAction" type="button">Inviter / autoriser</button>
+        <button id="copyBetaLinkBtn" class="smallBtn" type="button">Copier le lien bêta</button>
+      </div>
+      <div id="inviteStatus" class="notice hidden"></div>
+      <div class="adminInviteLegend"><span>En attente = adresse autorisée, compte pas encore reconnu</span><span>Accepté = compte reconnu</span><span>Révoqué = accès bloqué</span></div>
+      <div id="inviteList" class="adminInviteList"></div>
+    </section>
+
+    <section class="heroCard">
+      <div class="eyebrow">🛟 SERVICE CLIENT</div>
+      <h2 class="heroTitle">Tickets joueurs</h2>
+      <p class="heroText">Cette page n’affiche les tickets et les invitations qu’aux comptes présents dans <code>WARBOOST_SUPPORT_ADMINS</code>.</p>
+      <button id="adminRefresh" class="primaryAction" type="button">Actualiser</button>
+    </section>
     <div id="adminStatus" class="notice">Vérification de la session WarBoost…</div>
     <div id="adminTickets" class="supportAdminTable" style="margin-top:12px"></div>
   </main>

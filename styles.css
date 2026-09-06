@@ -172,3 +172,18 @@ a.metaSourceRow{color:inherit;text-decoration:none}a.metaSourceRow:focus-visible
 .resetStatus{margin-top:14px}
 .resetActions{display:grid;gap:10px;margin-top:16px}
 .resetBack{display:inline-flex;justify-content:center;align-items:center;text-decoration:none}
+
+/* ===== V2.5.26 · Beta Invitation Manager ===== */
+.adminInviteManager{margin-bottom:14px}
+.adminFieldLabel{display:block;color:#9fb0c8;font-size:13px;font-weight:700;margin:12px 0 6px}
+.adminInviteTextarea,.adminInviteInput{width:100%;box-sizing:border-box;border:1px solid #2b3f5d;background:#0b1424;color:#eef5ff;border-radius:14px;padding:12px 14px;font:inherit;outline:none}
+.adminInviteTextarea:focus,.adminInviteInput:focus{border-color:#6ca8ff;box-shadow:0 0 0 2px rgba(108,168,255,.12)}
+.adminInviteActions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.adminInviteActions .primaryAction{flex:1 1 240px}
+.adminInviteLegend{display:flex;gap:8px;flex-wrap:wrap;color:#8fa1bb;font-size:11px;margin:12px 0 6px}
+.adminInviteLegend span{border:1px solid #263a56;border-radius:999px;padding:5px 8px;background:#091220}
+.adminInviteList{display:grid;gap:8px;margin-top:10px}
+.adminInviteRow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;border:1px solid #263a56;border-radius:14px;background:#091220;padding:11px 12px}
+.adminInviteMain{min-width:0}.adminInviteEmail{font-weight:850;overflow-wrap:anywhere}.adminInviteMeta,.adminInviteNote{font-size:12px;color:#91a3bc;margin-top:4px}.adminInviteNote{color:#c7d4e8}
+.adminInviteBadge{font-size:12px;font-weight:800;border:1px solid #39506d;border-radius:999px;padding:6px 9px;white-space:nowrap}.adminInviteBadge.pending{color:#ffe6a6;border-color:#7d6330;background:#2a2110}.adminInviteBadge.accepted{color:#b8f3d3;border-color:#32624b;background:#0d281d}.adminInviteBadge.revoked{color:#ffc0c0;border-color:#6b3939;background:#2a1114}.dangerLite{border-color:#714047!important;color:#ffc3c8!important}
+@media(max-width:620px){.adminInviteRow{grid-template-columns:minmax(0,1fr) auto}.adminInviteRow>.smallBtn{grid-column:1/3;width:100%}}
