@@ -1,5 +1,6 @@
 import {requireBetaUser} from "../lib/beta-access.js";
 import {HERO_CATALOG,canonicalHeroName,catalogHeroName,heroType} from "../lib/heroes.js";
+import {sanitizeGear} from "../lib/gear.js";
 function env(n){return String(process.env[n]||"").trim()}
 function textFromResponse(j){if(typeof j?.output_text==="string")return j.output_text;for(const item of j?.output||[])for(const c of item?.content||[])if(typeof c?.text==="string")return c.text;return ""}
 function jsonFromText(text){const s=String(text||"").trim().replace(/^```(?:json)?\s*/i,"").replace(/```$/,"" ).trim();return JSON.parse(s)}
@@ -11,7 +12,7 @@ function verifiedSquadHeroName(h,trustProvider=false){const evidence=String(h?.n
 function sanitize(extracted,now,scanType){const out={};const forcedSquad=String(scanType||"").match(/^squad([1-4])$/i);const forcedSquadId=forcedSquad?Number(forcedSquad[1]):null;
   if(extracted?.player){const p={};for(const k of ["name","server_id","coordinates","role"]){const v=str(extracted.player[k],80);if(v)p[k]=v}for(const k of ["hq_level","power_m"]){const v=num(extracted.player[k]);if(v!==null)p[k]=v}if(Object.keys(p).length)out.player=p}
   if(extracted?.drone){const d={updated_at:now};for(const k of ["level","power_m"]){const v=num(extracted.drone[k]);if(v!==null)d[k]=v}if(Object.keys(d).length>1)out.drone=d}
-  if(Array.isArray(extracted?.squads)){const arr=Array(4).fill(null);const source=forcedSquadId?extracted.squads.slice(0,1):extracted.squads.slice(0,4);for(const q of source){const id=forcedSquadId||Math.max(1,Math.min(4,Number(q?.id)||1)),x={id,name:`Squad ${id}`,updated_at:now};const power=num(q?.power);if(power!==null)x.power=power;if(forcedSquadId)x.heroes=Array.from({length:5},()=>({}));if(Array.isArray(q?.heroes)){if(!x.heroes)x.heroes=Array(5).fill(null);q.heroes.slice(0,5).forEach((h,idx)=>{const hx={};const hn=verifiedSquadHeroName(h,false);if(hn)hx.name=hn;for(const k of ["level","stars","power"]){const v=num(h?.[k]);if(v!==null)hx[k]=v}for(const k of ["exclusive","gear"]){const v=str(h?.[k],100);if(v)hx[k]=v}x.heroes[idx]=hx})}arr[id-1]=x}out.squads=arr}
+  if(Array.isArray(extracted?.squads)){const arr=Array(4).fill(null);const source=forcedSquadId?extracted.squads.slice(0,1):extracted.squads.slice(0,4);for(const q of source){const id=forcedSquadId||Math.max(1,Math.min(4,Number(q?.id)||1)),x={id,name:`Squad ${id}`,updated_at:now};const power=num(q?.power);if(power!==null)x.power=power;if(forcedSquadId)x.heroes=Array.from({length:5},()=>({}));if(Array.isArray(q?.heroes)){if(!x.heroes)x.heroes=Array(5).fill(null);q.heroes.slice(0,5).forEach((h,idx)=>{const hx={};const hn=verifiedSquadHeroName(h,false);if(hn)hx.name=hn;for(const k of ["level","stars","power"]){const v=num(h?.[k]);if(v!==null)hx[k]=v}for(const k of ["exclusive"]){const v=str(h?.[k],100);if(v)hx[k]=v}const gear=sanitizeGear(h?.gear);if(gear)hx.gear=gearx.heroes[idx]=hx})}arr[id-1]=x}out.squads=arr}
   {
     const rawWeapons=Array.isArray(extracted?.exclusive_weapons)?extracted.exclusive_weapons:(extracted?.exclusive_weapon?[extracted.exclusive_weapon]:[]);
     if(rawWeapons.length){
