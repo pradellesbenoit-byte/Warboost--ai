@@ -1,7 +1,7 @@
 import {configured,userConfigured,probeServiceAccess} from "../lib/supabase.js";
 import {HERO_CATALOG} from "../lib/heroes.js";
 import {shopReferenceStats} from "../lib/shop-catalog.js";
-import {betaConfig} from "../lib/beta-access.js";
+import {betaConfigAsync} from "../lib/beta-access.js";
 import {REVIEWED_GAME_UPDATE} from "../lib/game-update.js";
 
 export function lastWarServerClock(d){return new Date(d.getTime()-2*60*60*1000)}
@@ -16,14 +16,14 @@ function isoWeek(d){
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
-  const serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=betaConfig();
+  const serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=await betaConfigAsync();
   const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
   const now=new Date(),serverClock=lastWarServerClock(now),dow=lastWarVsDay(now);
 
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.25",
+    version:"2.5.26",
     mode:"public-beta-invite-safe-launch",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -60,13 +60,17 @@ export default async function handler(req,res){
       safe_launch_season7_rumor_guard:true,
       player_consent:true,
       public_beta_invite_badge:true,
-      beta_email_invitation_allowlist:true,
-      beta_access_enforced_when_allowlist_configured:true,
+      beta_database_invitation_registry:true,
+      beta_admin_invite_manager:true,
+      beta_bulk_invites:true,
+      beta_invite_revocation:true,
+      beta_legacy_env_allowlist_fallback:true,
+      beta_access_enforced:true,
       beta_pro_free_for_invited_testers:true,
       beta_payments_disabled:true,
       beta_consent_required_before_cloud_ai_writes:true,
       beta_consent_revocable_on_device:true,beta_consent_account_scoped:true,
-      support_ticketing:true,support_ticket_history:true,support_private_attachments:true,support_admin_allowlist:true,support_password_never_collected:true,beta_feedback_no_full_user_agent:true,
+      support_ticketing:true,support_ticket_history:true,support_private_attachments:true,support_admin_allowlist:true,support_player_admin_identity_separated:true,support_status_labels_localized:true,support_password_never_collected:true,beta_feedback_no_full_user_agent:true,
       beta_existing_player_data_preserved:true,beta_status_reuses_pro_endpoint:true,private_beta_player_onboarding:true,private_beta_publisher_copy_hidden:true,
       signed_out_private_data_masked:true,invited_without_consent_private_data_masked:true,private_state_preserved_not_deleted:true,cross_account_local_state_isolated:true,
       browser_auth_direct_supabase_transport:true,browser_auth_no_external_cdn:true,cloud_config_error_distinguished:true,auth_network_error_distinguished:true,auth_client_start_error_distinguished:true,legacy_supabase_session_storage_compatible:true,
@@ -181,7 +185,7 @@ export default async function handler(req,res){
       alliance_immediate_actions_and_plan_b:true,
       rank_aware_voice_greeting:true
     },
-    support:{ticketing:true,admin_allowlist_configured:Boolean(String(process.env.WARBOOST_SUPPORT_ADMINS||"").trim()),contact_email:String(process.env.WARBOOST_SUPPORT_EMAIL||"").trim()||null,attachment_max_bytes:2097152},
+    support:{ticketing:true,admin_allowlist_configured:Boolean(String(process.env.WARBOOST_SUPPORT_ADMINS||"").trim()),contact_email:String(process.env.WARBOOST_SUPPORT_EMAIL||"").trim()||null,attachment_max_bytes:2097152,beta_invite_manager:true,beta_invites_database:beta.database_invites_available,beta_invite_source:beta.invite_source},
     hero_catalog_count:HERO_CATALOG.length,
     shop_reference_catalog:shopRef,
     hero_catalog_identity_source:"shared-single-source",

@@ -1,17 +1,17 @@
 import {requireUser} from "../lib/auth.js";
-import {betaAccessForUser} from "../lib/beta-access.js";
+import {betaAccessForUserAsync} from "../lib/beta-access.js";
 
-// V2.5.25 Safe Launch: no payment provider code is shipped in this build.
+// V2.5.26 Safe Launch: no payment provider code is shipped in this build.
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store, max-age=0");
   try{
     const user=await requireUser(req);
-    const beta=betaAccessForUser(user);
+    const beta=await betaAccessForUserAsync(user);
     if(req.method==="GET")return res.status(200).json({
       ok:true,beta:true,release:true,safe_launch:true,configured:false,
       beta_configured:beta.configured,enforced:beta.enforced,allowed:beta.allowed,
       invited_count:beta.invited_count,consent_version:beta.consent_version,
-      access_status:beta.access_status,active:Boolean(beta.allowed),
+      access_status:beta.access_status,invite_source:beta.invite_source,active:Boolean(beta.allowed),
       status:beta.allowed?"beta":"invite_required",plan:null,
       payments_enabled:false,pro_included:Boolean(beta.allowed)
     });
