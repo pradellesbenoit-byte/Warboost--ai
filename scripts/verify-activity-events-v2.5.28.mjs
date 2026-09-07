@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {ACTIVITY_EVENT_TYPES,activityEventId,normalizeActivityEvent,mergeActivityEvents,confirmedActivityEvents,activityEventEvidence,eventCountsByType} from '../lib/activity-events.js';
 import {classifyAllianceMember,summarizeAllianceActivity} from '../lib/alliance-activity.js';
 import {normalizeState,mergeNewest} from '../lib/normalize.js';
+import {mergeCloudRosterPreservingManual,mergeCurrentPlayerActivityIntoRoster} from '../lib/alliance-roster-merge.js';
 import {S6_AWAKENING_HEROES,S6_AWAKENING_MIN_STARS,S6_AWAKENING_MIN_EX,S6_AWAKENING_UNLOCK_SHARDS,awakeningReadiness,awakeningDecisionScore,heroReshapeDecisionValue,season6TechPriorities,awakeningSwapAssessment} from '../lib/season6-awakening.js';
 import {seasonLifecycle,seasonIsActive,activeSeasonProgress,repairSeasonState} from '../lib/season-lifecycle.js';
 import {LANGUAGES,translator} from '../i18n.js';
@@ -68,6 +69,20 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
   assert.equal(s.alliance.members[0].role,'R5');
   assert.equal(s.alliance.members[0].management_role,'R1');
   log('Self-declared R1-R5 rank is preserved without granting WarBoost management permission');
+}
+
+// Regression from real Preview: a freshly confirmed event must immediately reach the authenticated player's roster row.
+{
+  const old=[{player_id:'p1',name:'Alpha',role:'R4',activity_events:[],updated_at:'2026-09-07T14:00:00Z'}];
+  const cloud=mergeCloudRosterPreservingManual(old,[{player_id:'p1',name:'Alpha',role:'R4',activity_events:[],updated_at:'2026-09-07T14:00:00Z'}]);
+  const fresh={event_type:'vs',event_date:'2026-09-07',confirmed:true,confirmed_at:'2026-09-07T15:30:00Z',updated_at:'2026-09-07T15:30:00Z'};
+  const roster=mergeCurrentPlayerActivityIntoRoster(cloud,{playerId:'p1',name:'Alpha',activityEvents:[fresh],updatedAt:'2026-09-07T15:31:00Z'});
+  assert.equal(roster.length,1);assert.equal(roster[0].activity_events[0].confirmed,true);
+  assert.equal(eventCountsByType(roster[0].activity_events,{nowMs,days:7}).vs,1);
+  assert.equal(classifyAllianceMember(roster[0],nowMs).key,'active');
+  const untouched=mergeCurrentPlayerActivityIntoRoster([{player_id:'p2',name:'Bravo',activity_events:[]}],{playerId:'p1',name:'Alpha',activityEvents:[fresh]});
+  assert.equal(untouched[0].activity_events.length,0,'current-player injection must never alter another member');
+  log('Fresh self-reported activity is mirrored into the authenticated roster row after sync');
 }
 
 // Alliance aggregates use evidence only and count event types over seven days.
