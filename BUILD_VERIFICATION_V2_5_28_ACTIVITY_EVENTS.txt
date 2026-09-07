@@ -1,0 +1,68 @@
+WarBoost V2.5.28 — Activity Events — BUILD VERIFICATION
+Date: 2026-09-07
+Scope: code/package verification before real Vercel Preview smoke test
+
+BASE CONTROLLED
+- Base rebuilt from WarBoost_V2.5.27_SCAN_RELIABILITY_FULL_FIXED.zip.
+- HF2 Scan Gear Detail overlaid on the base before V2.5.28 changes.
+- Baseline contains 124 files.
+
+AUTOMATIC CHECKS RUN ON V2.5.28 SOURCE
+- npm run check: PASS
+- npm run verify: PASS
+
+VERIFY SUITE COVERS
+- Player Diagnostic PRO regressions and Squad 1 main-squad policy.
+- 7-day plan / Boutique IA / explainability / freshness guards.
+- Alliance stale-member safety and Plan B.
+- 23 explicit languages + Auto.
+- invitation registry and admin lifecycle.
+- Support ticket simulated lifecycle.
+- Password recovery and no password storage.
+- Safe Launch payment lock.
+- Safe Launch external Last War access/ingest/provider lock.
+- 12 Vercel serverless API functions.
+- Scan HF1: no undefined `gearx`.
+- Scan HF2: exact per-item gear levels/rarities including real Lv.0.
+- Exact real Squad 3 fixture:
+  Adam 38/36/36/36 orange
+  Violet 0/30/0/30 orange/purple/purple/purple
+  Tesla 12/9/5/40 orange
+  Sarah 18/30/30/30 purple
+  Mason 0/30/0/30 orange/purple/orange/purple
+- api/scan.js explicit season lifecycle import.
+- One-tap VS/Zombie/Marauder/Alliance/War/Season confirmations.
+- Confirmation removal tombstone beats an older cloud confirmation.
+- Missing confirmation never implies inactivity.
+- Self-declared Last War R1-R5 separated from verified WarBoost management role.
+- Alliance AI authorization uses authenticated server membership, not self-declared player rank.
+- S6 Awakening heroes Kimberly/DVA/Tesla and 5★/EX20+/50 shard rules.
+- Reshape remains relative-decision-value only; no invented exact future combat power.
+- S6 technology priorities and Awakening Swap safeguards.
+- Inter-season disables active S6 Awakening advice.
+- UX regressions: Diagnostic confidence labels, Shop hide-details toggle, VS duplicate prefix, inter-season text cleanup.
+
+INDEPENDENT STATIC AUDIT
+- api/*.js count: 12.
+- api/ingest.js: hard-disabled.
+- lib/provider.js: Safe Launch hard lock.
+- no self-declared player-role fallback in Alliance advice authorization.
+- no `gearx` runtime reference.
+
+IMPORTANT VALIDATION STATUS
+This file certifies CODE/TEST/PACKAGE checks only.
+It does NOT certify the final Vercel Preview user experience.
+Presentation validation requires a real Preview smoke test after upload on public-beta-safe-launch.
+
+FINAL PACKAGE CHECKS
+- FULL archive payload: 135 files.
+- PATCH archive payload: 29 changed/added files.
+- Archive path traversal check: PASS (no absolute or .. paths).
+- FULL archive extracted and byte-compared with final source: PASS.
+- PATCH archive overlaid on the controlled V2.5.27 FULL_FIXED + HF2 baseline and byte-compared with final source: PASS.
+- npm run check from extracted FULL archive: PASS.
+- npm run verify from extracted FULL archive: PASS.
+- npm run check from PATCH-overlaid baseline: PASS.
+- npm run verify from PATCH-overlaid baseline: PASS.
+
+The Vercel Preview smoke test is still required before calling V2.5.28 presentation-validated.

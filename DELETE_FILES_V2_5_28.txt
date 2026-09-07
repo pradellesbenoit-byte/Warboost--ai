@@ -1,0 +1,5 @@
+WarBoost V2.5.28 — DELETE FILES
+
+Aucun fichier à supprimer.
+
+La V2.5.28 est additive et conserve les données/fichiers nécessaires des versions précédentes.

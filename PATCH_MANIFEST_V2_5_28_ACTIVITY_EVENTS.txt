@@ -1,0 +1,65 @@
+WarBoost V2.5.28 — Activity Events — PATCH MANIFEST
+Date: 2026-09-07
+Target beta branch: public-beta-safe-launch ONLY
+Base: V2.5.27 Scan Reliability FULL_FIXED + HF2 Scan Gear Detail
+
+PURPOSE
+- Add one-tap player-confirmed Last War activity without repeated screenshots.
+- Keep absence of confirmation neutral: never infer inactivity from a missing tap.
+- Separate self-declared Last War rank R1–R5 from verified WarBoost management rights.
+- Preserve all V2.5.27 HF1/HF2 Scan reliability and S6 Awakening/Reshape protections.
+- Apply the small UX corrections found during real Preview testing.
+
+RUNTIME FILES CHANGED
+- app.js
+- i18n.js
+- index.html
+- legal.html
+- privacy.html
+- styles.css
+- manifest.webmanifest
+- sw.js
+- reset-password.js
+- package.json
+- api/advice.js
+- api/health.js
+- api/scan.js
+- api/sync.js
+- lib/alliance-activity.js
+- lib/normalize.js
+- lib/supabase.js
+
+RUNTIME FILES ADDED
+- lib/activity-events.js
+
+TESTS ADDED
+- scripts/verify-v2.5.28.mjs
+- scripts/verify-scan-reliability-v2.5.28.mjs
+- scripts/verify-activity-events-v2.5.28.mjs
+- scripts/verify-auth-recovery-v2.5.28.mjs
+- scripts/verify-beta-invites-v2.5.28.mjs
+
+DOCUMENTATION CHANGED/ADDED
+- README.md
+- WARBOOST_V2_5_28_ACTIVITY_EVENTS.md
+- PATCH_MANIFEST_V2_5_28_ACTIVITY_EVENTS.txt
+- UPLOAD_GUIDE_V2_5_28_ACTIVITY_EVENTS.txt
+- BUILD_VERIFICATION_V2_5_28_ACTIVITY_EVENTS.txt
+- DELETE_FILES_V2_5_28.txt
+
+NO FILES TO DELETE.
+NO NEW SUPABASE MIGRATION FOR V2.5.28.
+The previously applied V2.5.26 beta invite migration remains required for invitation management.
+
+SECURITY / RELIABILITY GUARANTEES TESTED IN CODE
+- Self-declared R4/R5 does not authorize Alliance management APIs.
+- Alliance AI server authorization checks authenticated wb1_alliance_members membership.
+- Player event confirmations are labelled player_self_report, not official Last War telemetry.
+- Removing a confirmation creates a newer tombstone so stale cloud state cannot resurrect it.
+- Opening WarBoost is not a Last War event participation proof.
+- Stale/missing event data is not classified inactive by itself.
+- Payments and external Last War integration remain hard-disabled.
+- 12 Vercel API function limit preserved.
+- Scan `gearx` regression blocked.
+- Exact Squad 3 Lv.0 and 4-gear detail regression covered.
+- S6 Awakening/Reshape cannot become active in inter-season.

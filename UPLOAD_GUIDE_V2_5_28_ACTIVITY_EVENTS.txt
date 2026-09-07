@@ -1,0 +1,43 @@
+WarBoost V2.5.28 — Activity Events — GUIDE D'UPLOAD
+Date: 7 septembre 2026
+
+IMPORTANT
+1. Utiliser UNIQUEMENT la branche GitHub : public-beta-safe-launch
+2. NE PAS toucher à main.
+3. NE PAS toucher à publisher-demo.
+4. Ne pas passer la bêta en Production pendant les contrôles Preview.
+5. Aucune nouvelle migration Supabase V2.5.28 n'est nécessaire.
+
+OPTION RECOMMANDÉE : PATCH
+Le ZIP WarBoost_V2.5.28_ACTIVITY_EVENTS_PATCH.zip contient uniquement les fichiers modifiés/ajoutés par rapport à la base V2.5.27 FULL_FIXED + HF2 réellement testée.
+
+Étapes GitHub :
+- Ouvrir le dépôt pradellesbenoit-byte/Warboost--ai.
+- Vérifier que la branche affichée est public-beta-safe-launch.
+- Décompresser le ZIP PATCH sur le téléphone/ordinateur.
+- Téléverser les fichiers du PATCH en conservant exactement les dossiers api/, lib/, scripts/.
+- Remplacer les fichiers existants lorsqu'ils portent le même chemin.
+- Valider le commit sur public-beta-safe-launch uniquement.
+
+NE PAS exécuter de SQL pour V2.5.28.
+La migration supabase/migration_v2_5_26_beta_invites.sql est une migration antérieure déjà utilisée par le gestionnaire d'invitations ; elle ne doit pas être relancée si elle est déjà appliquée.
+
+APRÈS LE DÉPLOIEMENT VERCEL PREVIEW
+Ne pas déclarer la version "validée présentation" immédiatement.
+Effectuer les smoke tests réels suivants :
+- connexion du compte bêta existant sans perte de données ;
+- S1/S2/S3 toujours présentes avec leurs puissances et héros ;
+- Synchroniser WarBoost ;
+- vérifier le nouveau bloc Activité Last War ;
+- confirmer puis retirer une participation et vérifier l'état après synchronisation ;
+- déclarer temporairement un rang R5 côté joueur et vérifier que cela ne débloque pas à lui seul les droits de gestion WarBoost ;
+- compte R4/R5 WarBoost réellement autorisé : Plan de guerre IA fonctionne ;
+- VS n'invente pas d'adversaire et n'affiche plus "À éviter : À éviter :" ;
+- Saison reste S6 terminée / Entre-saisons et ne réactive pas Awakening/Reshape S6 ;
+- Diagnostic PRO : libellés "Confiance du diagnostic" / "Complétude des données" ;
+- Boutique IA : "Masquer les détails" lorsque la fiche est ouverte ;
+- Scan S3 : les vrais Nv.0 et niveaux/raretés détaillés restent exacts ;
+- invitations, support et récupération du mot de passe : smoke test si nécessaire.
+
+ROLLBACK
+En cas de problème bloquant, ne pas corriger main. Revenir au dernier commit stable de public-beta-safe-launch / V2.5.27 HF2.

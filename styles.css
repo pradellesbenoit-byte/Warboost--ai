@@ -187,3 +187,13 @@ a.metaSourceRow{color:inherit;text-decoration:none}a.metaSourceRow:focus-visible
 .adminInviteMain{min-width:0}.adminInviteEmail{font-weight:850;overflow-wrap:anywhere}.adminInviteMeta,.adminInviteNote{font-size:12px;color:#91a3bc;margin-top:4px}.adminInviteNote{color:#c7d4e8}
 .adminInviteBadge{font-size:12px;font-weight:800;border:1px solid #39506d;border-radius:999px;padding:6px 9px;white-space:nowrap}.adminInviteBadge.pending{color:#ffe6a6;border-color:#7d6330;background:#2a2110}.adminInviteBadge.accepted{color:#b8f3d3;border-color:#32624b;background:#0d281d}.adminInviteBadge.revoked{color:#ffc0c0;border-color:#6b3939;background:#2a1114}.dangerLite{border-color:#714047!important;color:#ffc3c8!important}
 @media(max-width:620px){.adminInviteRow{grid-template-columns:minmax(0,1fr) auto}.adminInviteRow>.smallBtn{grid-column:1/3;width:100%}}
+
+
+/* V2.5.28 · one-tap player activity + verified management separation */
+.activityQuickSection{border:1px solid rgba(91,161,255,.24);background:linear-gradient(180deg,rgba(19,42,72,.28),rgba(9,17,31,.18))}
+.activityEventGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.activityEventBtn{appearance:none;border:1px solid #29405d;background:#0a1423;color:#e7eef8;border-radius:12px;padding:10px;text-align:left;display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center;min-height:58px}
+.activityEventBtn span{grid-row:1/3;font-size:18px}.activityEventBtn b{font-size:13px}.activityEventBtn small{font-size:11px;color:#91a5bf}.activityEventBtn.confirmed{border-color:#3a9d70;background:#0d281f}.activityEventBtn.confirmed small{color:#a9d8bf}
+.allianceEventSummary{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.eventCountChip{display:inline-flex;gap:6px;align-items:center;border:1px solid #29405d;border-radius:999px;padding:6px 9px;background:#0a1423}.eventCountChip b{font-size:11px}.eventCountChip small{font-size:11px;color:#a8bad0}
+.activityEventsTitle{margin-top:12px}.managementRoleControl{display:flex;flex-direction:column;gap:3px;min-width:88px}.managementRoleControl small{font-size:10px;color:#91a5bf}.managementRoleControl select{background:#08111e;color:#dce8f7;border:1px solid #2a405c;border-radius:8px;padding:5px 7px}.managementOwnerBadge{display:inline-block;border:1px solid #526d91;border-radius:999px;padding:5px 8px;font-size:10px;color:#bfd3ec}.decisionDetails .detailsOpen{display:none}.decisionDetails[open] .detailsClosed{display:none}.decisionDetails[open] .detailsOpen{display:inline}
+@media (min-width:700px){.activityEventGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}

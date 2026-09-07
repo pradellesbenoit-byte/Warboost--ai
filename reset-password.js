@@ -9,7 +9,7 @@ const lang=resolveLanguage(choice), t=translator(lang);
 document.documentElement.lang=lang;
 document.documentElement.dir=dirFor(lang);
 document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
-try{document.title=`WarBoost V2.5.27 — ${t("choose_new_password")}`}catch{}
+try{document.title=`WarBoost V2.5.28 — ${t("choose_new_password")}`}catch{}
 
 function showStatus(text,ok=false){
   const el=$("#recoveryStatus");
