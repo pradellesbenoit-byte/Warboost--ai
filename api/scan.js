@@ -1,6 +1,7 @@
 import {requireBetaUser} from "../lib/beta-access.js";
 import {HERO_CATALOG,canonicalHeroName,catalogHeroName,heroType} from "../lib/heroes.js";
 import {sanitizeGear} from "../lib/gear.js";
+import {normalizeSeasonLifecycle} from "../lib/season-lifecycle.js";
 function env(n){return String(process.env[n]||"").trim()}
 function textFromResponse(j){if(typeof j?.output_text==="string")return j.output_text;for(const item of j?.output||[])for(const c of item?.content||[])if(typeof c?.text==="string")return c.text;return ""}
 function jsonFromText(text){const s=String(text||"").trim().replace(/^```(?:json)?\s*/i,"").replace(/```$/,"" ).trim();return JSON.parse(s)}

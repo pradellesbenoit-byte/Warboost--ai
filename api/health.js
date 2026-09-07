@@ -23,7 +23,7 @@ export default async function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.27",
+    version:"2.5.28",
     mode:"public-beta-invite-safe-launch",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -183,7 +183,16 @@ export default async function handler(req,res){
       vs_sunday_prep_not_day6:true,
       vs_server_reset_utc_minus_2:true,
       alliance_immediate_actions_and_plan_b:true,
-      rank_aware_voice_greeting:true
+      rank_aware_voice_greeting:true,
+      activity_one_tap_player_confirmation:true,
+      activity_confirmation_no_screenshot_required:true,
+      activity_self_report_not_official_game_telemetry:true,
+      activity_missing_confirmation_never_inactive:true,
+      activity_event_tombstone_prevents_cloud_resurrection:true,
+      activity_events_vs_zombie_marauder_alliance_war_season:true,
+      player_declared_rank_r1_r5:true,
+      declared_rank_separated_from_verified_management_role:true,
+      declared_rank_never_unlocks_management:true
     },
     support:{ticketing:true,admin_allowlist_configured:Boolean(String(process.env.WARBOOST_SUPPORT_ADMINS||"").trim()),contact_email:String(process.env.WARBOOST_SUPPORT_EMAIL||"").trim()||null,attachment_max_bytes:2097152,beta_invite_manager:true,beta_invites_database:beta.database_invites_available,beta_invite_source:beta.invite_source},
     hero_catalog_count:HERO_CATALOG.length,

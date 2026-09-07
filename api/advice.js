@@ -1,4 +1,5 @@
 import {requireBetaUser} from "../lib/beta-access.js";
+import {configured,getAllianceMembership} from "../lib/supabase.js";
 import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
 import {canonicalHeroName,heroType} from '../lib/heroes.js';
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from '../lib/alliance-activity.js';
@@ -8,7 +9,7 @@ import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScor
 import {seasonLifecycle,seasonIsActive,activeSeasonProgress} from '../lib/season-lifecycle.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
-const ENGINE_VERSION="2.5.27";
+const ENGINE_VERSION="2.5.28";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
 function metric(v){
@@ -1107,7 +1108,7 @@ function buildVsAdvice(state,locale){
   const isFr=localePack(locale)==="fr";
   const today=task;
   const keep=pack.hold;
-  const avoid=isFr?"À éviter : dépenser une ressource rare hors des tâches VS actives.":"Avoid: spending scarce resources outside active VS tasks.";
+  const avoid=isFr?"Dépenser une ressource rare hors des tâches VS actives.":"Spending scarce resources outside active VS tasks.";
   const concise=[{rank:1,kind:"today",label:isFr?"Aujourd’hui":"Today",text:today},{rank:2,kind:"keep",label:isFr?"À garder":"Keep",text:keep},{rank:3,kind:"avoid",label:isFr?"À éviter":"Avoid",text:avoid}];
   const conciseAdvice=concise.map(x=>`${x.label} : ${x.text}`).join("\n");
   return {advice:conciseAdvice,confidence,priorities:concise,day,week:v.week||null,opponent:v.opponent||null,score_gap:us!==null&&them!==null?us-them:null,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",data_freshness:freshness,engine:`warboost-vs-ai-v${ENGINE_VERSION}`};
@@ -1178,7 +1179,7 @@ function buildCrossDomain(state,locale,player){
 }
 export default async function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
-  try{await requireBetaUser(req,{consent:true});}catch(e){return res.status(e?.status||500).json({ok:false,error:e?.code||"beta_access_failed",message:e?.message||"Beta access failed"});}
+  let betaUser=null;try{({user:betaUser}=await requireBetaUser(req,{consent:true}));}catch(e){return res.status(e?.status||500).json({ok:false,error:e?.code||"beta_access_failed",message:e?.message||"Beta access failed"});}
   const scope=String(req.body?.scope||"player"),s=req.body?.state||{},loc=String(req.body?.locale||"en-GB");
   if(scope==="player"){
     const analysis=buildPlayerAnalysis(s,loc);
@@ -1188,7 +1189,7 @@ export default async function handler(req,res){
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }
-  if(scope==="alliance"){const role=String(s?.alliance?.role||s?.player?.role||"R1").toUpperCase();if(!["R4","R5"].includes(role))return res.status(403).json({ok:false,error:"manager_role_required",advice:loc.startsWith("fr")?"Plan de guerre réservé aux R5/R4 confirmés.":"War plan is reserved for verified R5/R4."});const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:`warboost-alliance-ai-v${ENGINE_VERSION}`,...a});}
+  if(scope==="alliance"){if(!configured())return res.status(503).json({ok:false,error:"database_not_configured"});const membership=await getAllianceMembership(betaUser.id).catch(()=>null),role=String(membership?.role||"R1").toUpperCase();if(!["R4","R5"].includes(role))return res.status(403).json({ok:false,error:"manager_role_required",advice:loc.startsWith("fr")?"Plan de guerre réservé aux R5/R4 confirmés.":"War plan is reserved for verified R5/R4."});const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:`warboost-alliance-ai-v${ENGINE_VERSION}`,...a});}
   if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
   if(scope==="season")return res.status(200).json({ok:true,...buildSeasonAdvice(s,loc)});
   return res.status(400).json({error:"unknown_scope"});
