@@ -1,7 +1,7 @@
 import {mergeNewest,normalizeState} from "../lib/normalize.js";
 import {configured,userConfigured,getProfile,upsertProfile,getProfileForUser,upsertProfileForUser,insertSnapshot,insertSnapshotForUser,getAllianceRoster} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
-import {mergeCloudRosterPreservingManual} from "../lib/alliance-roster-merge.js";
+import {mergeCloudRosterPreservingManual,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   try{
@@ -15,7 +15,8 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
       if(configured()){
         const ctx=await getAllianceRoster(playerId).catch(()=>null);
         if(ctx){
-          const roster=mergeCloudRosterPreservingManual(merged.alliance?.members,ctx.roster);
+          const cloudRoster=mergeCloudRosterPreservingManual(merged.alliance?.members,ctx.roster);
+          const roster=mergeCurrentPlayerActivityIntoRoster(cloudRoster,{playerId,name:merged.player?.name,activityEvents:merged.activity_events,updatedAt:now});
           merged.alliance={...merged.alliance,id:ctx.alliance.id,tag:ctx.alliance.tag||merged.alliance.tag,name:ctx.alliance.name||merged.alliance.name,invite_code:ctx.alliance.invite_code||merged.alliance.invite_code,role:ctx.membership.role||"R1",management_verified:true,members:roster,updated_at:now};merged.sync.sources.alliance=true;await upsertProfile(playerId,merged)}
         await insertSnapshot(playerId,merged,provider);
       }else if(userMode){await insertSnapshotForUser(playerId,merged,access,provider)}
