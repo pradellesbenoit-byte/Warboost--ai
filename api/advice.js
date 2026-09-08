@@ -1,5 +1,5 @@
 import {requireBetaUser} from "../lib/beta-access.js";
-import {configured,getAllianceMembership} from "../lib/supabase.js";
+import {configured} from "../lib/supabase.js";
 import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
 import {canonicalHeroName,heroType} from '../lib/heroes.js';
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from '../lib/alliance-activity.js';
@@ -1189,7 +1189,7 @@ export default async function handler(req,res){
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }
-  if(scope==="alliance"){if(!configured())return res.status(503).json({ok:false,error:"database_not_configured"});const membership=await getAllianceMembership(betaUser.id).catch(()=>null),role=String(membership?.role||"R1").toUpperCase();if(!["R4","R5"].includes(role))return res.status(403).json({ok:false,error:"manager_role_required",advice:loc.startsWith("fr")?"Plan de guerre réservé aux R5/R4 confirmés.":"War plan is reserved for verified R5/R4."});const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:`warboost-alliance-ai-v${ENGINE_VERSION}`,...a});}
+  if(scope==="alliance"){if(!configured())return res.status(503).json({ok:false,error:"database_not_configured"});const declaredRole=String(s?.player?.role||"R1").toUpperCase();if(!["R4","R5"].includes(declaredRole))return res.status(403).json({ok:false,error:"manager_role_required",advice:loc.startsWith("fr")?"Plan de guerre réservé aux joueurs qui déclarent être R5/R4 dans Last War.":"War plan is reserved for players who declare R5/R4 in Last War."});const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:`warboost-alliance-ai-v${ENGINE_VERSION}`,access_basis:"player_declared_last_war_rank",declared_role:declaredRole,...a});}
   if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
   if(scope==="season")return res.status(200).json({ok:true,...buildSeasonAdvice(s,loc)});
   return res.status(400).json({error:"unknown_scope"});
