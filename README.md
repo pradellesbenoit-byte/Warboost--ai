@@ -1,4 +1,14 @@
-# WarBoost V2.5.28 — Public Beta Safe Launch + Activity Events
+# WarBoost V2.5.28 HF3 — Public Beta Safe Launch · Final Reliability
+
+## HF3 · finition fiabilité
+
+- Corrige les anciens libellés « bêta privée » encore visibles après le passage à la bêta publique.
+- Affiche **Inactivité non évaluée** au lieu de `0 inactifs probables` lorsque des membres doivent encore être actualisés et qu’aucune preuve négative fiable n’existe.
+- Suspend le plan tactique lorsqu’aucun groupe fiable ne peut être formé ; si des actifs sont confirmés mais que le roster reste incomplet, le plan est clairement marqué **partiel** et n’utilise que ces actifs confirmés.
+- Corrige le Plan B pour qu’un membre sans données ne soit jamais compté deux fois.
+- Clarifie que le roster R5/R4 reçoit les données enregistrées dans **WarBoost**, pas des données récupérées automatiquement depuis Last War.
+- Conserve le HF2 : R4/R5 déclaré donne accès aux outils de conseil/import, tandis que les permissions sensibles restent vérifiées côté WarBoost.
+
 
 WarBoost V2.5.28 conserve toutes les protections de la V2.5.27/HF2 et ajoute un suivi d’activité Alliance sans captures répétées.
 
@@ -42,4 +52,4 @@ npm run verify
 
 Le contrôle couvre les 12 fonctions Vercel, le Scan, l’activité événementielle, la séparation rang déclaré / permission vérifiée, les invitations, le support, la récupération de mot de passe, la préservation des données, les 23 langues explicites + Auto et les verrous Safe Launch.
 
-Version 2.5.28 · 7 septembre 2026.
+Version 2.5.28 HF3 · 8 septembre 2026.

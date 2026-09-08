@@ -1,0 +1,29 @@
+WarBoost V2.5.28 HF3 — Final Reliability
+PATCH MANIFEST
+Base required: WarBoost_V2.5.28_HF2_DECLARED_R4_R5_ACCESS_FULL.zip
+Target branch: public-beta-safe-launch
+
+CHANGED / ADDED FILES
+BUILD_VERIFICATION_V2_5_28_HF3_FINAL_RELIABILITY.txt
+DELETE_FILES_V2_5_28_HF3_FINAL_RELIABILITY.txt
+PATCH_MANIFEST_V2_5_28_HF3_FINAL_RELIABILITY.txt
+README.md
+UPLOAD_GUIDE_V2_5_28_HF3_FINAL_RELIABILITY.txt
+WARBOOST_V2_5_28_HF3_FINAL_RELIABILITY.md
+api/advice.js
+api/health.js
+app.js
+i18n.js
+index.html
+package.json
+scripts/verify-v2.5.28-hf3.mjs
+scripts/verify-v2.5.28.mjs
+sw.js
+
+DELETE FILES
+None.
+
+NOTES
+- No Supabase migration is added or changed.
+- No payment, Last War external API/provider, scraping or gameplay automation path is enabled.
+- Data/player storage must not be cleared during deployment.

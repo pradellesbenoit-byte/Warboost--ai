@@ -1,0 +1,68 @@
+WARBOOST V2.5.28 HF3 — FINAL RELIABILITY
+BUILD VERIFICATION
+Date: 2026-09-08
+Base: WarBoost_V2.5.28_HF2_DECLARED_R4_R5_ACCESS_FULL.zip
+Target: public-beta-safe-launch / Preview
+main / Production: DO NOT TOUCH
+publisher-demo: DO NOT TOUCH
+
+RESULT: PASS — SOURCE / TEST / PACKAGE
+REAL VERCEL PREVIEW ACCEPTANCE: STILL REQUIRED
+
+SOURCE REGRESSION
+- npm run check: PASS
+- npm run verify: PASS
+- 12 Vercel serverless API functions preserved: PASS
+- All prior V2.5.28/HF2 regression suites preserved: PASS
+
+HF3 RELIABILITY TESTS
+- 94 stale members -> 0 confirmed active / 94 refresh / inactivity NOT evaluated: PASS
+- 94 stale members -> no invented tactical assignments: PASS
+- 94 stale members -> Plan B refresh count = 94 (not double-counted): PASS
+- 1 confirmed active + 93 stale -> assignments use confirmed-active evidence only: PASS
+- Unknown members are not double-counted in Plan B: PASS
+- Fresh negative evidence can still produce probable inactivity: PASS
+- French import example Joueur01;R4;30;65,2 parses correctly: PASS
+- 23 explicit languages resolve public-beta + Alliance reliability labels: PASS
+- Critical EN/FR beta labels no longer fall back to “private beta”: PASS
+- Alliance invite wording no longer implies automatic Last War retrieval: PASS
+
+HF2 ACCESS CONTRACT PRESERVED
+- Declared R4 -> advisory Alliance tools allowed: PASS
+- Declared R5 -> advisory Alliance tools allowed: PASS
+- Declared R1-R3 -> advisory Alliance tools blocked: PASS
+- Sensitive WarBoost permissions stay server-verified: PASS
+
+SCAN / DATA SAFETY PRESERVED
+- Hero identity/history safeguards: PASS
+- No hero-to-hero data transfer regression: PASS
+- Scan gear exact levels/rarities incl. real Lv.0: PASS
+- gearx runtime regression guard: PASS
+- Existing player data / stable storage keys preserved: PASS
+- No localStorage.clear(): PASS
+- No forced rescan: PASS
+- No new Supabase migration: PASS
+
+SAFE LAUNCH PRESERVED
+- Payments disabled / PRO included for authorized beta testers: PASS
+- External Last War access disabled: PASS
+- No scraping: PASS
+- No gameplay automation: PASS
+- External ingest/provider hard lock: PASS
+
+PACKAGE VERIFICATION
+- FULL archive contains the complete HF3 tree with repository paths preserved: PASS
+- PATCH contains only files changed/added relative to the exact HF2 FULL base: PASS
+- No delete list required: PASS
+- ZIP path traversal guard (no absolute paths / no .. entries): PASS
+- Extracted FULL byte-for-byte equals final HF3 source tree: PASS
+- HF2 base + extracted PATCH byte-for-byte equals final HF3 source tree: PASS
+- npm run check from extracted FULL: PASS
+- npm run verify from extracted FULL: PASS
+- npm run check from PATCH-overlaid HF2 base: PASS
+- npm run verify from PATCH-overlaid HF2 base: PASS
+- Critical security/data files not intentionally changed outside the manifest: PASS
+
+IMPORTANT
+These checks certify the code and generated packages. They do NOT certify the final Vercel/Supabase user experience.
+Before expanding the beta, perform the real Preview smoke test from UPLOAD_GUIDE_V2_5_28_HF3_FINAL_RELIABILITY.txt.

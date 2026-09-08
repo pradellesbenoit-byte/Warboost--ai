@@ -399,7 +399,7 @@ function render(){
     if($("#shareInviteBtn"))$("#shareInviteBtn").disabled=true;
     $("#rosterFresh").textContent=t("sync_needed");
     const members=$("#memberList");if(members)members.innerHTML=`<div class="notice">${esc(t("beta_signin_required"))}</div>`;
-    const activity=$("#activitySummary");if(activity)activity.innerHTML=`<div><b>🟢 0</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>🟠 0</b><small>${esc(t("activity_refresh"))}</small></div><div><b>🔴 0</b><small>${esc(t("activity_inactive_probable"))}</small></div>`;
+    const activity=$("#activitySummary");if(activity)activity.innerHTML=`<div><b>🟢 0</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>🟠 0</b><small>${esc(t("activity_refresh"))}</small></div><div><b>⚪ —</b><small>${esc(t("activity_inactivity_not_evaluated"))}</small></div>`;
     if($("#activityNote"))$("#activityNote").textContent=t("beta_signin_required");
     if($("#activityEventGrid"))$("#activityEventGrid").innerHTML="";if($("#playerActivityStatus"))$("#playerActivityStatus").textContent=t("beta_signin_required");if($("#playerActivityPill"))$("#playerActivityPill").textContent="—";if($("#allianceEventSummary"))$("#allianceEventSummary").innerHTML="";
     $("#vsWeekTitle").textContent=t("vs_week",{week:currentVsWeek()});
@@ -603,7 +603,9 @@ function togglePlayerActivityEvent(type){
 }
 function renderAllianceActivity(){
   const members=state.alliance.members||[],box=$("#activitySummary"),summary=summarizeAllianceActivity(members),c=summary.counts;
-  if(box)box.innerHTML=`<div><b>🟢 ${c.active}</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>🟠 ${c.refresh}</b><small>${esc(t("activity_refresh"))}</small></div><div><b>🔴 ${c.inactive}</b><small>${esc(t("activity_inactive_probable"))}</small></div>`;
+  const inactivityPending=(Number(c.inactive)||0)===0&&(Number(c.refresh)||0)>0;
+  const inactiveValue=inactivityPending?"—":String(c.inactive??0),inactiveLabel=inactivityPending?t("activity_inactivity_not_evaluated"):t("activity_inactive_probable"),inactiveIcon=inactivityPending?"⚪":"🔴";
+  if(box)box.innerHTML=`<div><b>🟢 ${c.active}</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>🟠 ${c.refresh}</b><small>${esc(t("activity_refresh"))}</small></div><div><b>${inactiveIcon} ${esc(inactiveValue)}</b><small>${esc(inactiveLabel)}</small></div>`;
   const note=$("#activityNote");if(note)note.textContent=members.length?t("activity_reliability_note"):t("activity_no_data");
   const eventBox=$("#allianceEventSummary");if(eventBox){const totals=Object.fromEntries(ACTIVITY_EVENT_TYPES.map(x=>[x,0]));for(const member of members){const counts=eventCountsByType(member.activity_events,{nowMs:serverNow.getTime(),days:7});for(const type of ACTIVITY_EVENT_TYPES)totals[type]+=Number(counts[type]||0)}eventBox.innerHTML=ACTIVITY_EVENT_TYPES.map(type=>`<span class="eventCountChip"><b>${esc(activityEventLabel(type))}</b><small>${totals[type]||0}</small></span>`).join("")}
   return summary;
@@ -645,8 +647,13 @@ function structuredAdviceText(scope,j){
     if(aiUsesNativeCopy()&&j.advice)return j.advice;
     const parts=[t("season_structured_priority")];if(j.progress_pct!=null)parts.push(`${t("season_progress")}: ${j.progress_pct}%`);else parts.push(`${t("season_progress")}: ${t("season_unknown")}`);if(j.profession)parts.push(`${t("profession")}: ${j.profession}`);if(j.resistance!=null)parts.push(`🛡️ ${j.resistance}`,t("season_resistance_priority"));if(j.day&&j.total_days&&Number(j.day)/Number(j.total_days)>=.8)parts.push(t("season_late_priority"));return parts.join("\n");
   }
+  if(scope==="alliance"){
+    const refreshCount=Number(j?.activity?.refresh??0),hasActions=Array.isArray(j?.immediate_actions)&&j.immediate_actions.length>0;
+    const status=j?.reliability==="refresh_required"&&refreshCount>0?t(hasActions?"alliance_plan_partial_refresh":"alliance_plan_refresh_required",{count:refreshCount}):"";
+    const body=aiUsesNativeCopy()&&j.advice?j.advice:`${t("alliance")} · 🟢 ${j.activity?.active??0} · 🟠 ${refreshCount}`;
+    return [status,body].filter(Boolean).join("\n");
+  }
   if(aiUsesNativeCopy()&&j.advice)return j.advice;
-  if(scope==="alliance")return `${t("alliance")} · 🟢 ${j.activity?.active??0} · 🟠 ${j.activity?.refresh??0}`;
   if(scope==="vs"){
     const d=Number(j.day),prep=d===0,key=Number.isInteger(d)&&d>=1&&d<=6?`vs_focus_${d}`:null,gap=Number(j.score_gap),focus=prep?t("vs_prep_focus"):key?t(key):t("plan7_hold"),head=prep?t("vs_prep_day"):(Number.isInteger(d)?`${t("vs")} · #${d}`:t("vs")),hold=prep?t("vs_prep_hold_rule"):t("vs_hold_rule");
     return `${head}\n${t("plan7_focus")}: ${focus}${!prep&&Number.isFinite(gap)?`\nΔ ${Math.round(gap*100)/100}`:""}\n${hold}`;

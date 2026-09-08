@@ -1,0 +1,5 @@
+WarBoost V2.5.28 HF3 — Final Reliability
+
+NO FILE DELETION REQUIRED.
+
+Do not delete historical verification files, Supabase migrations, player data, localStorage, scans or cloud data.

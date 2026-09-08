@@ -1,0 +1,70 @@
+WARBOOST V2.5.28 HF3 — FINAL RELIABILITY — UPLOAD GUIDE
+Date: 2026-09-08
+
+TARGET BRANCH ONLY
+- public-beta-safe-launch
+
+DO NOT MODIFY
+- main / Production
+- publisher-demo
+
+RECOMMENDED INSTALLATION — FULL
+1. Extract WarBoost_V2.5.28_HF3_FINAL_RELIABILITY_FULL.zip.
+2. Upload the CONTENT of the extracted archive to the ROOT of public-beta-safe-launch.
+3. Keep root files at root; keep api/, assets/, lib/, scripts/ and supabase/ as folders.
+4. Do NOT clear localStorage, cloud state, scans, squads, Drone, Alliance, VS, Season or player history.
+5. No new Supabase SQL/migration is required for HF3.
+6. Keep the existing Supabase environment variables and WARBOOST_SUPPORT_ADMINS.
+7. Keep the V2.5.26 invitation registry already installed; do not add one Vercel variable/redeploy per player.
+8. Do not enable Stripe/payment code, external Last War API/provider, scraping or gameplay automation.
+9. Commit directly to public-beta-safe-launch and wait for the green Vercel Preview deployment.
+10. Use the stable branch Preview URL for testers; do not share an older per-deployment URL that may have different environment configuration.
+
+PATCH OPTION
+- The PATCH is valid ONLY over the exact base:
+  WarBoost_V2.5.28_HF2_DECLARED_R4_R5_ACCESS_FULL.zip
+- Preserve every folder path from the PATCH.
+- No file deletion is required.
+
+POST-DEPLOY HEALTH CHECK
+Open /api/health and confirm at minimum:
+- version = 2.5.28
+- build = hf3-final-reliability
+- mode = public-beta-invite-safe-launch
+- safe-launch external game access remains disabled
+- payments remain disabled
+- 12 serverless functions are expected by the verified package
+
+REAL PREVIEW ACCEPTANCE — REQUIRED
+1. Open the stable public-beta-safe-launch Preview on the same invited account.
+2. Confirm the header shows WarBoost V2.5.28 HF3.
+3. Sign-out/sign-in screen must say “bêta publique”, never “bêta privée”.
+4. Sign back in and verify existing profile, squads, Scan data, Drone and Alliance data reappear without rescanning.
+5. With the current stale roster case, Alliance must show:
+   - 0 actifs confirmés
+   - 94 à actualiser
+   - Inactivité non évaluée
+   - Plan tactique suspendu
+   - Plan B Actualiser = 94
+   - no invented member assignments
+6. Confirm one real VS participation and sync:
+   - the confirmed player becomes active
+   - remaining stale members stay “à actualiser”
+   - if tactical actions exist, the plan is marked partial
+   - only confirmed-active members may receive assignments
+7. Remove that VS confirmation and sync again:
+   - the removed confirmation must not be resurrected from an older cloud state
+   - activity must return to the correct evidence state
+8. Declared R4 and R5: Plan de guerre IA / roster advisory import work.
+9. Controlled R3 test: advisory Alliance tools are refused; restore the real rank afterward.
+10. Sensitive WarBoost permission controls remain unavailable without verified management authorization.
+11. Import this exact French example and verify values:
+    Joueur01;R4;30;65,2
+12. Test Service client: create/list/reply; private attachment if used; no cross-account ticket visibility.
+13. Test Mot de passe oublié using the stable Preview recovery URL.
+14. Switch several languages, including French, English/US English, Arabic and Chinese; beta wording and Alliance reliability labels must remain coherent.
+15. Reload the app and test from a second phone/account where appropriate; existing data must be preserved.
+
+ONLY AFTER THESE LIVE CHECKS
+- mark HF3 as Preview presentation/end-to-end validated
+- then expand invitations gradually
