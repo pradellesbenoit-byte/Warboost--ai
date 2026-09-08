@@ -168,7 +168,7 @@ const baseState={
   assert.match(app,/\+\$\{more\}/);
   assert.match(css,/\.warPlanStructured>\.warPlanAction/);
   assert.doesNotMatch(html,/placeholder="Benoit,/i);
-  assert.match(html,/placeholder="Joueur01,R4,30,65\.2"/);
+  assert.match(html,/placeholder="Joueur01;R4;30;65,2"/);
   log('Alliance action rendering is compact on mobile and import example is neutral');
 }
 
@@ -883,7 +883,7 @@ log('Non-owner alliance switching uses one player_id-scoped membership row');
 // V2.5.28 UI/health/multilingual contract: beta players can distinguish historical paid references from current offers.
 {
   const app=read('app.js'),css=read('styles.css'),health=read('api/health.js'),pkg=JSON.parse(read('package.json')),readme=read('README.md'),sw=read('sw.js');
-  assert.equal(pkg.version,'2.5.28');assert.equal(pkg.name,'warboost-v2-safe-launch-activity-events');assert.equal(pkg.scripts.verify,'node scripts/verify-v2.5.28.mjs && node scripts/verify-scan-reliability-v2.5.28.mjs && node scripts/verify-activity-events-v2.5.28.mjs && node scripts/verify-support-v2.5.24.mjs && node scripts/verify-auth-recovery-v2.5.28.mjs && node scripts/verify-beta-invites-v2.5.28.mjs && node scripts/verify-invite-admin-api-v2.5.26.mjs');
+  assert.equal(pkg.version,'2.5.28');assert.equal(pkg.name,'warboost-v2-safe-launch-activity-events');assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf3\.mjs/);assert.match(pkg.scripts.verify,/verify-scan-reliability-v2\.5\.28\.mjs/);assert.match(pkg.scripts.verify,/verify-activity-events-v2\.5\.28\.mjs/);
   assert.match(app,/historical_paid/);assert.match(app,/historical_reference_paid/);assert.match(app,/shop_group_paid_history/);assert.match(app,/displayRank=historicalPaid\?"—"/);
   assert.match(css,/\.shopHistoricalPaidCard/);assert.match(css,/\.shopHistoryGuard/);assert.match(sw,/warboost-v2-5-28-hf2-declared-r4-r5-advice/);
   for(const flag of ['shop_diagnostic_ex_single_source_of_truth','shop_payment_channels_separated','paid_offer_requires_current_price_contents_cost_gain','reference_cash_prices_dated_not_current','historical_paid_references_quarantined','historical_paid_references_unranked','current_paid_scan_required_for_current_offer_group','shop_gear_target_explicit_or_unconfirmed'])assert.match(health,new RegExp(flag+':true'));
