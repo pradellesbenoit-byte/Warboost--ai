@@ -24,6 +24,7 @@ export default async function handler(req,res){
     ok:true,
     app:"WarBoost",
     version:"2.5.28",
+    build:"hf3-final-reliability",
     mode:"public-beta-invite-safe-launch",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -188,6 +189,9 @@ export default async function handler(req,res){
       activity_confirmation_no_screenshot_required:true,
       activity_self_report_not_official_game_telemetry:true,
       activity_missing_confirmation_never_inactive:true,
+      activity_zero_inactive_not_overclaimed_when_refresh_pending:true,
+      alliance_refresh_plan_never_double_counts_unknown:true,
+      public_beta_wording_consistent_23_languages:true,
       activity_event_tombstone_prevents_cloud_resurrection:true,
       activity_events_vs_zombie_marauder_alliance_war_season:true,
       player_declared_rank_r1_r5:true,
