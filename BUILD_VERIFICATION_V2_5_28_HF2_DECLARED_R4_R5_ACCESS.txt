@@ -1,0 +1,33 @@
+WarBoost V2.5.28 HF2 — Build Verification
+
+STATUS: CODE/PACKAGE VERIFICATION PASSED; REAL PREVIEW ACCEPTANCE STILL REQUIRED.
+
+Checks performed on reconstructed current branch base (V2.5.28 + HF1):
+- npm run check: PASS
+- npm run verify: PASS
+- 12 serverless API functions preserved
+- Declared R4 + unverified management -> Alliance AI allowed: PASS
+- Declared R5 + unverified management -> Alliance AI allowed: PASS
+- Declared R3 + verified management -> Alliance AI denied: PASS
+- War Plan client gate uses player.role: PASS
+- Roster import client gate uses player.role: PASS
+- Member permission UI still uses verified alliance management: PASS
+- api/alliance-role.js unchanged: PASS
+- api/invite.js unchanged: PASS
+- HF1 api/sync.js unchanged: PASS
+- HF1 lib/alliance-roster-merge.js unchanged: PASS
+- Activity confirm/remove/tombstone regression tests: PASS
+- Scan HF1/HF2 + exact Squad 3 Lv.0 regression: PASS
+- S6 Awakening/Reshape + inter-season safeguards: PASS
+- Safe Launch / payment lock / external game access lock: PASS
+- Auth recovery / invite manager / support tests: PASS
+- 23 explicit language choices resolve manager/advisory labels: PASS
+- Service worker cache bumped for changed client files: PASS
+
+Real Preview acceptance required before presentation validation:
+1. Log in to same invited account.
+2. With declared R4, generate Plan de guerre IA -> must succeed.
+3. Confirm VS, sync, generate Plan de guerre -> must use 1 active / 93 refresh without inventing activity.
+4. Remove VS, sync -> roster must return to 0 active / 94 refresh.
+5. Optional controlled R3 check -> Plan de guerre must be refused, then restore actual rank R4.
+6. Sensitive permission controls must remain unavailable unless WarBoost management is actually verified.

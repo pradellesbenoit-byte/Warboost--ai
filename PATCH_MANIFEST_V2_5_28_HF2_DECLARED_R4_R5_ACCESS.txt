@@ -1,0 +1,27 @@
+WarBoost V2.5.28 HF2 — Declared R4/R5 Advisory Access
+
+Target branch: public-beta-safe-launch
+Base required: V2.5.28 + HF1 Activity Roster Sync
+No Supabase migration required.
+No files deleted.
+
+FILES TO ADD/REPLACE
+app.js
+i18n.js
+sw.js
+api/advice.js
+scripts/verify-v2.5.28.mjs
+scripts/verify-activity-events-v2.5.28.mjs
+scripts/verify-auth-recovery-v2.5.28.mjs
+scripts/verify-beta-invites-v2.5.28.mjs
+WARBOOST_V2_5_28_HF2_DECLARED_R4_R5_ACCESS.md
+UPLOAD_GUIDE_V2_5_28_HF2_DECLARED_R4_R5_ACCESS.txt
+PATCH_MANIFEST_V2_5_28_HF2_DECLARED_R4_R5_ACCESS.txt
+BUILD_VERIFICATION_V2_5_28_HF2_DECLARED_R4_R5_ACCESS.txt
+
+FUNCTIONAL CONTRACT
+- Declared Last War R4/R5 unlocks War Plan AI and roster import.
+- Declared R1/R2/R3 remains blocked from those advisory R4/R5 tools.
+- Sensitive WarBoost management permissions remain server-verified.
+- Existing-alliance invite management remains server-verified.
+- HF1 Activity Events sync logic is unchanged.

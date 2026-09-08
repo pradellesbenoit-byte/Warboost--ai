@@ -1,0 +1,21 @@
+WarBoost V2.5.28 HF2 — Declared R4/R5 Advisory Access
+
+TARGET BRANCH ONLY: public-beta-safe-launch
+DO NOT MODIFY: main or publisher-demo
+NO SUPABASE SQL/MIGRATION REQUIRED
+
+Upload preserving paths:
+- app.js
+- i18n.js
+- sw.js
+- api/advice.js
+- scripts/verify-v2.5.28.mjs
+- scripts/verify-activity-events-v2.5.28.mjs
+- WARBOOST_V2_5_28_HF2_DECLARED_R4_R5_ACCESS.md
+
+Real Preview acceptance:
+- R4 declared -> Plan de guerre IA works
+- R5 declared -> Plan de guerre IA works
+- R3 declared -> Plan de guerre remains blocked
+- sensitive WarBoost permission changes remain server-verified
+- HF1 VS confirm/remove -> sync -> Alliance still works both ways
