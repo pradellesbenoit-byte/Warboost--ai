@@ -100,22 +100,29 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
   log('Alliance activity summary is evidence-based and event history is countable without screenshots');
 }
 
-// Security source guards: a declared R4/R5 must never unlock management.
+// Security/access contract: declared R4/R5 unlocks advisory tools only; sensitive management stays verified.
 {
-  const app=read('app.js'),advice=read('api/advice.js'),supabase=read('lib/supabase.js'),normalize=read('lib/normalize.js');
+  const app=read('app.js'),advice=read('api/advice.js'),roleApi=read('api/alliance-role.js'),inviteApi=read('api/invite.js'),supabase=read('lib/supabase.js'),normalize=read('lib/normalize.js');
   assert.doesNotMatch(app,/a\.role\s*\|\|\s*p\.role/);
   assert.doesNotMatch(app,/state\.alliance\.role\s*=\s*safeRole/);
   assert.doesNotMatch(app,/out\.alliance\.role\s*=\s*r\b/);
+  assert.match(app,/function hasDeclaredAllianceCommandRole\(\)\{return \["R4","R5"\]\.includes\(normalizedRole\(state\?\.player\?\.role\)\)\}/);
   assert.match(app,/function isAllianceManager\(\)\{return state\?\.alliance\?\.management_verified===true&&\["R4","R5"\]\.includes\(normalizedRole\(state\?\.alliance\?\.role\)\)\}/);
+  assert.match(app,/warPlanBtn[\s\S]{0,260}hasDeclaredAllianceCommandRole/);
+  assert.match(app,/rosterImportBtn[\s\S]{0,260}hasDeclaredAllianceCommandRole/);
   assert.match(app,/canShareAllianceInvite=a\.management_verified===true&&\["R4","R5"\]\.includes\(normalizedRole\(a\.role\)\)/);
   assert.match(app,/row\.management_role=nextRole/);
   assert.doesNotMatch(app,/row\.role=nextRole/);
-  assert.match(advice,/getAllianceMembership\(betaUser\.id\)/);
-  assert.match(advice,/if\(!\["R4","R5"\]\.includes\(role\)\)return res\.status\(403\)/);
-  assert.doesNotMatch(advice,/s\?\.player\?\.role/);
+  assert.match(advice,/declaredRole=String\(s\?\.player\?\.role\|\|"R1"\)\.toUpperCase\(\)/);
+  assert.match(advice,/access_basis:"player_declared_last_war_rank"/);
+  assert.doesNotMatch(advice,/getAllianceMembership\(/);
+  assert.match(roleApi,/getAllianceMembership\(user\.id\)/);
+  assert.match(roleApi,/r5_required/);
+  assert.match(inviteApi,/getAllianceMembership\(user\.id\)/);
+  assert.match(inviteApi,/manager_role_required/);
   assert.match(supabase,/role:s\.player\?\.role\|\|"R1",management_role:m\.role\|\|"R1"/);
   assert.match(normalize,/management_verified:alliance\.management_verified===true/);
-  log('Declared rank is statically separated from server-verified R4/R5 management access');
+  log('Declared R4/R5 unlocks alliance advice/import while sensitive WarBoost management stays server-verified');
 }
 
 // S6 Awakening/Reshape rules must survive V2.5.28 unchanged and must switch off in inter-season.
@@ -152,8 +159,8 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
   assert.match(app,/ACTIVITY_EVENT_TYPES\.map/);assert.match(app,/source:"player_self_report"/);
   assert.match(css,/\.activityEventBtn\.confirmed/);assert.match(css,/\.decisionDetails\[open\] \.detailsOpen/);
   assert.match(health,/activity_missing_confirmation_never_inactive/);assert.match(health,/declared_rank_never_unlocks_management/);
-  assert.match(sw,/warboost-v2-5-28-activity-events/);assert.match(sw,/\/lib\/activity-events\.js/);
-  const keys=['activity_quick_title','activity_quick_help','event_vs','event_zombie','event_marauder','event_alliance_event','event_war','event_season','activity_confirm','activity_remove','activity_reason_event','declared_role','diagnostic_confidence','data_completeness','shop_details','shop_hide_details','management_permission'];
+  assert.match(sw,/warboost-v2-5-28-hf2-declared-r4-r5-advice/);assert.match(sw,/\/lib\/activity-events\.js/);
+  const keys=['activity_quick_title','activity_quick_help','event_vs','event_zombie','event_marauder','event_alliance_event','event_war','event_season','activity_confirm','activity_remove','activity_reason_event','declared_role','diagnostic_confidence','data_completeness','shop_details','shop_hide_details','management_permission','manager_only'];
   const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.length,23);
   for(const [code] of explicit){const tr=translator(code);for(const key of keys)assert.notEqual(tr(key),key,`${code} missing ${key}`);assert.match(tr('tagline'),/V2\.5\.28/)}
   log('Activity/UX contract exists in all 23 explicit language choices');

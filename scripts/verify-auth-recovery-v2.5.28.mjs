@@ -94,7 +94,7 @@ const mem=()=>{const m=new Map();return {getItem:k=>m.has(k)?m.get(k):null,setIt
   assert.match(js,/password!==confirm/);
   assert.match(sw,/reset-password\.html/);
   assert.match(sw,/reset-password\.js/);
-  assert.match(sw,/warboost-v2-5-28-activity-events/);
+  assert.match(sw,/warboost-v2-5-28-hf2-declared-r4-r5-advice/);
   assert.equal(pkg.version,'2.5.28');
   console.log('✓ UI, service worker and release metadata include password recovery');
 }

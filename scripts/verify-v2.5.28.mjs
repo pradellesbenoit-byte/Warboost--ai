@@ -36,10 +36,10 @@ function callAdvice(scope,state,locale='fr-FR'){
     return {status:200,body:{ok:true,engine:analysis.engine,advice:analysis.summary,analysis}};
   }
   if(scope==='alliance'){
-    const role=String(state?.alliance?.role||'R1').toUpperCase();
-    if(state?.alliance?.management_verified!==true||!['R4','R5'].includes(role))return {status:403,body:{ok:false,error:'manager_role_required'}};
+    const declaredRole=String(state?.player?.role||'R1').toUpperCase();
+    if(!['R4','R5'].includes(declaredRole))return {status:403,body:{ok:false,error:'manager_role_required'}};
     const a=buildAllianceAdvice(state,locale);
-    return {status:200,body:{ok:true,engine:'warboost-alliance-ai-v2.5.28',...a}};
+    return {status:200,body:{ok:true,engine:'warboost-alliance-ai-v2.5.28',access_basis:'player_declared_last_war_rank',declared_role:declaredRole,...a}};
   }
   if(scope==='vs')return {status:200,body:{ok:true,...buildVsAdvice(state,locale)}};
   if(scope==='season')return {status:200,body:{ok:true,...buildSeasonAdvice(state,locale)}};
@@ -103,10 +103,12 @@ const baseState={
     ['Alpha','R5',90],['Bravo','R4',82],['Charlie','R3',75],['Delta','R3',70],['Echo','R2',64],['Foxtrot','R2',58]
   ].map(([name,role,power_m])=>({name,role,power_m,updated_at:now,last_active_at:now,delta_m:1}));
   members.push({name:'Golf',role:'R1',power_m:52,updated_at:stale,last_active_at:stale,delta_m:0,vs_points:0});
-  const state={...baseState,alliance:{...baseState.alliance,role:'R5',members}};
+  const state={...baseState,player:{...baseState.player,role:'R4'},alliance:{...baseState.alliance,role:'R1',management_verified:false,members}};
   const {status,body}=callAdvice('alliance',state,'fr-FR');
   assert.equal(status,200);
   assert.equal(body.ok,true);
+  assert.equal(body.access_basis,'player_declared_last_war_rank');
+  assert.equal(body.declared_role,'R4');
   assert.match(body.engine,/2\.5\.28/);
   assert.ok(body.immediate_actions.length>=1&&body.immediate_actions.length<=4);
   assert.deepEqual(body.immediate_actions.map(x=>x.kind),['rally','defense']);
@@ -114,10 +116,12 @@ const baseState={
   assert.ok(Array.isArray(body.plan_b)&&body.plan_b.length>=1);
   assert.ok(body.plan_b.some(x=>x.kind==='refresh'&&x.count===1));
   assert.match(body.policy,/No member is removed/i);
-  const denied=callAdvice('alliance',{...state,alliance:{...state.alliance,role:'R1'}},'fr-FR');
+  const r5=callAdvice('alliance',{...state,player:{...state.player,role:'R5'}},'fr-FR');
+  assert.equal(r5.status,200);assert.equal(r5.body.declared_role,'R5');
+  const denied=callAdvice('alliance',{...state,player:{...state.player,role:'R3'},alliance:{...state.alliance,role:'R5',management_verified:true}},'fr-FR');
   assert.equal(denied.status,403);
   assert.equal(denied.body.error,'manager_role_required');
-  log('Alliance AI enforces R5/R4 access and returns immediate groups plus Plan B');
+  log('Alliance AI uses declared Last War R4/R5 for advice while verified management remains separate');
 }
 
 
@@ -389,7 +393,7 @@ const baseState={
   assert.match(health,/disabled-safe-launch/);assert.match(health,/database_service_probe/);assert.match(health,/probeServiceAccess/);
   assert.match(health,/unauthorized_source_default\s*:\s*false/);
   assert.equal(manifest.name.includes('V2.5.28'),true);
-  assert.match(sw,/warboost-v2-5-28-activity-events/);
+  assert.match(sw,/warboost-v2-5-28-hf2-declared-r4-r5-advice/);
   assert.match(migration,/create table if not exists public\.wb1_profiles/i);
   assert.match(migration,/create table if not exists public\.wb1_snapshots/i);
   assert.match(migration,/create table if not exists public\.wb1_alliances/i);
@@ -881,7 +885,7 @@ log('Non-owner alliance switching uses one player_id-scoped membership row');
   const app=read('app.js'),css=read('styles.css'),health=read('api/health.js'),pkg=JSON.parse(read('package.json')),readme=read('README.md'),sw=read('sw.js');
   assert.equal(pkg.version,'2.5.28');assert.equal(pkg.name,'warboost-v2-safe-launch-activity-events');assert.equal(pkg.scripts.verify,'node scripts/verify-v2.5.28.mjs && node scripts/verify-scan-reliability-v2.5.28.mjs && node scripts/verify-activity-events-v2.5.28.mjs && node scripts/verify-support-v2.5.24.mjs && node scripts/verify-auth-recovery-v2.5.28.mjs && node scripts/verify-beta-invites-v2.5.28.mjs && node scripts/verify-invite-admin-api-v2.5.26.mjs');
   assert.match(app,/historical_paid/);assert.match(app,/historical_reference_paid/);assert.match(app,/shop_group_paid_history/);assert.match(app,/displayRank=historicalPaid\?"—"/);
-  assert.match(css,/\.shopHistoricalPaidCard/);assert.match(css,/\.shopHistoryGuard/);assert.match(sw,/warboost-v2-5-28-activity-events/);
+  assert.match(css,/\.shopHistoricalPaidCard/);assert.match(css,/\.shopHistoryGuard/);assert.match(sw,/warboost-v2-5-28-hf2-declared-r4-r5-advice/);
   for(const flag of ['shop_diagnostic_ex_single_source_of_truth','shop_payment_channels_separated','paid_offer_requires_current_price_contents_cost_gain','reference_cash_prices_dated_not_current','historical_paid_references_quarantined','historical_paid_references_unranked','current_paid_scan_required_for_current_offer_group','shop_gear_target_explicit_or_unconfirmed'])assert.match(health,new RegExp(flag+':true'));
   const keys=['shop_group_game','shop_group_diamonds','shop_group_paid','shop_group_paid_history','shop_group_unknown','shop_paid_guard','shop_history_guard'];
   for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const key of keys)assert.notEqual(tr(key),key,`${code} missing V2.5.28 ${key}`);assert.match(tr('tagline'),/V2\.5\.28/)}
@@ -902,7 +906,7 @@ log('Non-owner alliance switching uses one player_id-scoped membership row');
   assert.match(app,/finally\{setAuthBusy\(false\)\}/,'Auth actions must always re-enable buttons');
   assert.match(browserAuth,/async function resend\(/);
   assert.match(browserAuth,/request\('\/resend'/);
-  assert.match(sw,/warboost-v2-5-28-activity-events/,'Service worker cache must be bumped so beta players receive the V2.5.28 onboarding build');
+  assert.match(sw,/warboost-v2-5-28-hf2-declared-r4-r5-advice/,'Service worker cache must be bumped so beta players receive the V2.5.28 onboarding build');
 
   const keys=['auth_confirm_help','auth_resend_confirmation','auth_confirmation_resent','auth_email_not_confirmed','auth_invalid_credentials','auth_account_exists','auth_rate_limited'];
   for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){
@@ -945,7 +949,7 @@ log('Non-owner alliance switching uses one player_id-scoped membership row');
   assert.match(app,/sq\.updated_at\?updatedLabel\(sq\.updated_at\):t\("sync_needed"\)/,'Unscanned squads should ask for synchronization');
   assert.match(health,/private_beta_player_onboarding:true/);
   assert.match(health,/private_beta_publisher_copy_hidden:true/);
-  assert.match(sw,/warboost-v2-5-28-activity-events/);
+  assert.match(sw,/warboost-v2-5-28-hf2-declared-r4-r5-advice/);
   assert.match(app,/STORE_KEY=["']warboost_v1_core_state["']/,'Stable player storage key must be preserved');
   assert.doesNotMatch(app,/localStorage\.clear\s*\(/,'Onboarding update must never clear player storage');
   log('Private beta onboarding hides publisher-demo copy and guides incomplete accounts directly to WarBoost Scan without clearing data');
