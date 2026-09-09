@@ -24,7 +24,7 @@ export default async function handler(req,res){
     ok:true,
     app:"WarBoost",
     version:"2.5.28",
-    build:"hf4-final-management-ai",
+    build:"hf5-lastwar-identity-link",
     mode:"public-beta-invite-safe-launch",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -202,6 +202,13 @@ export default async function handler(req,res){
       alliance_participation_multi_source_evidence:true,
       alliance_missing_participation_never_means_absence:true,
       alliance_r5_r4_participation_import:true,
+      alliance_identity_lastwar_nickname_server_alliance:true,
+      alliance_email_never_identity_key:true,
+      alliance_unmatched_account_never_creates_roster_member:true,
+      alliance_identity_ambiguous_match_blocked:true,
+      alliance_legacy_private_id_requires_game_identity_reproof:true,
+      alliance_nickname_change_history_preserved:true,
+      alliance_link_status_visible_r5_r4:true,
       vs_today_keep_avoid_plan:true,
       player_declared_rank_r1_r5:true,
       declared_rank_separated_from_verified_management_role:true,
