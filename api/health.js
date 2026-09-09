@@ -24,7 +24,7 @@ export default async function handler(req,res){
     ok:true,
     app:"WarBoost",
     version:"2.5.28",
-    build:"hf3-final-reliability",
+    build:"hf4-final-management-ai",
     mode:"public-beta-invite-safe-launch",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -158,6 +158,9 @@ export default async function handler(req,res){
       awakening_labels_23_languages:true,
       adaptive_player_context:true,
       contextual_marginal_value_scoring:true,
+      player_specific_main_squad_ranking:true,
+      exclusive_equal_score_previous_rank_tiebreak_explained:true,
+      exclusive_rank_actions_hierarchical:true,
       conditional_dated_recommendations:true,
       certainty_tiers:true,
       no_invented_server_or_account_age:true,
@@ -194,6 +197,12 @@ export default async function handler(req,res){
       public_beta_wording_consistent_23_languages:true,
       activity_event_tombstone_prevents_cloud_resurrection:true,
       activity_events_vs_zombie_marauder_alliance_war_season:true,
+      alliance_event_management_30_day_history:true,
+      alliance_participation_statuses_distinct:true,
+      alliance_participation_multi_source_evidence:true,
+      alliance_missing_participation_never_means_absence:true,
+      alliance_r5_r4_participation_import:true,
+      vs_today_keep_avoid_plan:true,
       player_declared_rank_r1_r5:true,
       declared_rank_separated_from_verified_management_role:true,
       declared_rank_never_unlocks_management:true
