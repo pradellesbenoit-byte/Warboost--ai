@@ -1,0 +1,15 @@
+WARBOOST — GUIDE TESTEUR BÊTA HF6
+
+Bienvenue dans la bêta publique sur invitation de WarBoost.
+
+1. Ouvre le lien WarBoost reçu et connecte-toi avec l’adresse e-mail invitée.
+2. Renseigne ton identité de jeu exactement comme dans Last War : pseudo, serveur et alliance.
+3. Mets à jour ton compte avec WarBoost Scan ou tes données déjà enregistrées.
+4. Le Diagnostic PRO calcule des priorités adaptées à TON escouade et à TON compte.
+5. Dans « Activité confirmée par le joueur », confirme uniquement les événements auxquels tu as réellement participé.
+6. Si tu ne confirmes rien, WarBoost ne te considère pas automatiquement absent ou inactif.
+7. Si tu es R5/R4, l’espace Alliance permet de suivre les preuves connues de participation sans utiliser l’adresse e-mail comme identité de roster.
+8. Pendant la bêta, WarBoost PRO est inclus gratuitement et aucun paiement WarBoost n’est activé.
+9. En cas de problème, utilise le bouton « Service client » dans l’application et décris l’écran concerné. Ne communique jamais ton mot de passe.
+
+WarBoost est un compagnon indépendant. Cette bêta n’utilise aucune API Last War non autorisée, aucun scraping et aucune automatisation de gameplay.

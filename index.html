@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.28 HF5 — Safe Launch Beta</title>
+  <title>WarBoost V2.5.28 HF6 — Safe Launch Beta</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -15,7 +15,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.28 HF5 · Bêta publique · sur invitation · accès externe désactivé</small></div>
+        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.28 HF6 · Bêta publique · sur invitation · accès externe désactivé</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -23,7 +23,7 @@
 
 
     <section class="publisherStrip" aria-label="Safe Launch beta status">
-      <div><b>WarBoost V2.5.28 HF5</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
+      <div><b>WarBoost V2.5.28 HF6</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
       <span class="publisherPill" data-i18n="safe_external_disabled">External game access disabled</span>
     </section>
 
@@ -50,8 +50,8 @@
         <div class="safeLinks"><a href="/legal.html" data-i18n="legal_notice">Mentions & indépendance</a><a href="/privacy.html" data-i18n="privacy_notice">Confidentialité</a></div>
       </article>
       <article class="safeLaunchCard updateCard">
-        <div class="safeLaunchHead"><span>🛰️</span><b data-i18n="game_update_title">Veille du jeu · 1.0.361 · 02/09/2026</b></div>
-        <p data-i18n="game_update_note">Notes publiques revues : Alliance Star, Lucky Scratch Card et récompenses Alliance Celebration Fireworks.</p>
+        <div class="safeLaunchHead"><span>🛰️</span><b data-i18n="game_update_title">Veille du jeu · 1.0.362 · 09/09/2026</b></div>
+        <p data-i18n="game_update_note">Notes publiques 1.0.362 revues. Le texte varie selon les boutiques régionales ; une optimisation Silver Brick est observée. Aucun changement méta n’est déduit.</p>
         <p class="safeLaunchSmall" data-i18n="game_update_impact">Aucun changement héros / arme exclusive / méta n’est appliqué sans donnée confirmée.</p>
         <p class="safeLaunchSmall" data-i18n="season7_guard">Saison 7 : WarBoost n’active aucune rumeur. Les conseils attendent des données officielles visibles ou un scan joueur confirmé.</p>
       </article>
@@ -127,7 +127,7 @@
     <div class="section"><div class="sectionTitle"><h3 data-i18n="war_plan">Plan de guerre IA</h3><button id="warPlanBtn" class="smallBtn">💎 <span data-i18n="generate">Générer</span></button></div><p id="warPlanText" class="heroText warPlanCopy" style="margin:0" data-i18n="war_plan_empty">WarBoost ne crée des affectations rally, défense, groupe mobile et réserves que lorsque les données membres sont suffisamment récentes.</p><div id="allianceImmediate" class="warPlanStructured hidden"></div><div id="alliancePlanB" class="warPlanStructured hidden"></div></div>
     <div class="section"><div class="sectionTitle"><h3>📥 <span data-i18n="import_roster">Importer des membres</span></h3><span class="pill">R5/R4</span></div><p class="privacyText" data-i18n="import_roster_help">Colle une liste CSV/Excel : nom, rôle, QG, puissance. Les données cloud existantes ne sont jamais supprimées.</p><textarea id="rosterImportText" class="rosterImportText" rows="5" placeholder="Joueur01;R4;30;65,2"></textarea><button id="rosterImportBtn" class="secondaryBtn wideBtn" type="button" data-i18n="import_roster">Importer des membres</button><div id="rosterImportStatus" class="notice hidden" style="margin-top:9px"></div></div>
     <div class="section"><div class="sectionTitle"><h3>📅 <span data-i18n="participation_import_title">Importer les participations</span></h3><span class="pill">R5/R4</span></div><p class="privacyText" data-i18n="participation_import_help">Une ligne par participation : nom;date;événement;statut. Exemple : Joueur01;2026-09-08;desert_storm;participated. Une absence n’est enregistrée que si elle est explicitement confirmée.</p><textarea id="eventImportText" class="rosterImportText" rows="5" placeholder="Joueur01;2026-09-08;desert_storm;participated"></textarea><button id="eventImportBtn" class="secondaryBtn wideBtn" type="button" data-i18n="participation_import_button">Importer les participations</button><div id="eventImportStatus" class="notice hidden" style="margin-top:9px"></div></div>
-    <div class="section activitySection"><div class="sectionTitle"><h3>🧠 <span data-i18n="alliance_activity">Activité alliance</span></h3><span class="pill" data-i18n="ai_estimate">Fiabilité des données</span></div><div id="activitySummary" class="activitySummary"><div><b>🟢 0</b><small data-i18n="activity_active_confirmed">Actifs confirmés</small></div><div><b>🟠 0</b><small data-i18n="activity_refresh">À actualiser</small></div><div><b>⚪ —</b><small data-i18n="activity_inactivity_not_evaluated">Inactivité non évaluée</small></div></div><div id="allianceIdentitySummary" class="notice identityLinkSummary"></div><div class="sectionTitle activityEventsTitle"><h4 data-i18n="activity_event_history">Suivi des événements · 30 jours</h4><span class="pill" data-i18n="participation_sources_label">Sources WarBoost</span></div><div id="participationLegend" class="participationLegend" data-i18n="participation_legend">✅ Participé · ❌ Absent confirmé · 🔵 Non sélectionné · 🟠 Excusé · ❓ Non renseigné</div><div id="allianceEventSummary" class="allianceEventSummary"></div><details id="unlinkedWarBoostDetails" class="compactDetails participationDetails hidden"><summary data-i18n="identity_unlinked_accounts_title">Comptes WarBoost à associer</summary><div id="unlinkedWarBoostAccounts" class="allianceParticipationTable"></div></details><details class="compactDetails participationDetails"><summary data-i18n="participation_player_history">Suivi détaillé par joueur · 30 jours</summary><div id="allianceParticipationTable" class="allianceParticipationTable"></div></details><p id="activityNote" class="activityNote" data-i18n="activity_no_data">Données insuffisantes.</p></div>
+    <div class="section activitySection"><div class="sectionTitle"><h3>🧠 <span data-i18n="alliance_activity">Activité alliance</span></h3><span class="pill" data-i18n="ai_estimate">Fiabilité des données</span></div><div id="activitySummary" class="activitySummary"><div><b>🟢 0</b><small data-i18n="activity_active_confirmed">Actifs confirmés</small></div><div><b>🟠 0</b><small data-i18n="activity_refresh">À actualiser</small></div><div><b>⚪ —</b><small data-i18n="activity_inactivity_not_evaluated">Inactivité non évaluée</small></div></div><div id="allianceIdentitySummary" class="notice identityLinkSummary"></div><div class="sectionTitle activityEventsTitle"><h4 data-i18n="activity_event_history">Suivi des événements · 30 jours</h4><span class="pill" data-i18n="participation_sources_label">Sources WarBoost</span></div><div id="participationLegend" class="participationLegend" data-i18n="participation_legend">✅ Participé · ❌ Absent confirmé · 🔵 Non sélectionné · 🟠 Excusé · ❓ Non renseigné</div><div id="allianceParticipationManagementSummary" class="participationManagementSummary"></div><div id="allianceEventSummary" class="allianceEventSummary"></div><details id="unlinkedWarBoostDetails" class="compactDetails participationDetails hidden"><summary data-i18n="identity_unlinked_accounts_title">Comptes WarBoost à associer</summary><div id="unlinkedWarBoostAccounts" class="allianceParticipationTable"></div></details><details class="compactDetails participationDetails"><summary data-i18n="participation_player_history">Suivi détaillé par joueur · 30 jours</summary><div id="allianceParticipationTable" class="allianceParticipationTable"></div></details><p id="activityNote" class="activityNote" data-i18n="activity_no_data">Données insuffisantes.</p></div>
     <div class="section"><div class="sectionTitle"><h3 data-i18n="members">Membres</h3><span id="rosterFresh" class="pill">—</span></div><div id="memberList" class="list"></div></div>
   </section>
 

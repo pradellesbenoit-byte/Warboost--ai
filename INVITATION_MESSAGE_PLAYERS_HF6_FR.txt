@@ -1,0 +1,11 @@
+Salut 👋
+
+Je vous invite à tester WarBoost, un compagnon IA indépendant pour Last War.
+
+La bêta est gratuite et accessible sur invitation. WarBoost peut vous aider pour vos priorités de compte/escouade, le VS, la Saison, la Boutique IA et, pour les R5/R4, la gestion de l’Alliance et des participations aux événements.
+
+Important : WarBoost ne se connecte pas directement à votre compte Last War et n’automatise pas le jeu. Vos données sont celles que vous choisissez de renseigner, scanner ou confirmer. Pour l’Alliance, l’identité utilisée est votre pseudo Last War + serveur + alliance, pas votre adresse e-mail.
+
+Si vous trouvez un bug ou une recommandation étrange, utilisez le Service client intégré pour nous l’envoyer.
+
+Lien bêta : [COLLER ICI LE LIEN STABLE WARBOOST]

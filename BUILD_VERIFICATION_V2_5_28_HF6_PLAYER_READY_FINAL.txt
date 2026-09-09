@@ -1,0 +1,78 @@
+WARBOOST V2.5.28 HF6 — PLAYER-READY FINAL BETA
+BUILD VERIFICATION
+Date: 2026-09-09
+Base: WarBoost_V2.5.28_HF5_LASTWAR_IDENTITY_LINK_FULL.zip
+Base SHA-256: 651055f839fb79c83d617773f0095d6b83b54562298db75092e60e90756cc3fd
+Target: public-beta-safe-launch / Preview
+Production/main: NOT TOUCHED
+publisher-demo: NOT TOUCHED
+
+SOURCE RESULT: PASS
+- npm run check: PASS
+- npm run verify: PASS
+- HF3 regression: PASS
+- Scan reliability: PASS
+- Activity events: PASS
+- Support simulated lifecycle: PASS
+- Password recovery: PASS
+- Invitation manager: PASS
+- HF4 personalized management AI: PASS
+- HF5 Last War identity linking: PASS
+- HF6 player-ready management insights: PASS
+
+HF6 ALLIANCE MANAGEMENT
+- Last War roster identity remains nickname + server + alliance: PASS
+- E-mail is never the Alliance roster identity key: PASS
+- Unmatched/ambiguous account never creates a fake roster member: PASS
+- Player participation reaches the existing linked roster row: PASS
+- 30-day player detail exposes event counts, dates, statuses and source evidence: PASS
+- Management summary separates linked coverage, known evidence and explicitly confirmed absences: PASS
+- Missing participation evidence remains insufficient data; never inferred inactive: PASS
+- R5/R4 import statuses participated / absent_confirmed / not_selected / excused remain distinct: PASS
+
+PLAYER / AI / SHOP / VS / SEASON NON-REGRESSION
+- Diagnostic PRO remains player + main-squad specific, TOP 3 visible: PASS
+- Five main heroes remain compared behind the TOP 3: PASS
+- EX tie ordering remains explained/hierarchical: PASS
+- Boutique IA stays aligned to Diagnostic PRO and historical paid references stay guarded: PASS
+- VS Today / Keep / Avoid remains active; unknown opponent remains non-speculative: PASS
+- Ended/inter-season logic stays historical; no Season 7 rumor is activated: PASS
+- Scan hero/gear identity and true Lv.0 reliability regressions: PASS
+
+CURRENT GAME WATCH
+- Reviewed public version: 1.0.362
+- Released/reviewed: 2026-09-09
+- Regional release-note wording variance disclosed: PASS
+- Hero / Exclusive Weapon / meta impact inferred from update: NO
+- Season 7 rumors activated: NO
+
+SAFE LAUNCH / DATA / PRIVACY
+- 23 explicit languages + Auto: PASS
+- New HF6 management/game-watch labels localized in all 23 explicit languages: PASS
+- 12 Vercel serverless API functions preserved: PASS
+- Payments disabled / PRO included for invited beta: PASS
+- External Last War access hard-disabled: PASS
+- Scraping disabled: PASS
+- Gameplay automation disabled: PASS
+- External ingest disabled: PASS
+- Existing local/cloud keys preserved; no localStorage.clear(): PASS
+- Supabase tree unchanged from HF5: PASS
+- New HF6 Supabase migration: NONE
+- File deletion required: NONE
+
+PACKAGE VERIFICATION: PASS
+- HF6 FULL tree: 169 files
+- HF6 PATCH over exact HF5 base: 33 changed/added files
+- FULL ZIP integrity: PASS
+- PATCH ZIP integrity: PASS
+- Archive path traversal safety: PASS
+- Extracted FULL byte-for-byte equals HF6 source: PASS
+- Exact HF5 base + PATCH byte-for-byte equals HF6 source: PASS
+- Extracted FULL npm run check: PASS
+- Extracted FULL npm run verify: PASS
+- PATCH-applied tree npm run check: PASS
+- PATCH-applied tree npm run verify: PASS
+- Supabase tree byte-for-byte unchanged from HF5: PASS
+
+IMPORTANT
+This report certifies source/local package checks. The real Vercel Preview smoke test is still required before sending the stable beta link to a broader player group.

@@ -1,0 +1,40 @@
+WarBoost V2.5.28 HF6 — Player-Ready Final Beta
+PATCH manifest over exact HF5 FULL base
+
+Changed/added files: 33
+
+BUILD_VERIFICATION_V2_5_28_HF6_PLAYER_READY_FINAL.txt
+DELETE_FILES_V2_5_28_HF6_PLAYER_READY_FINAL.txt
+INVITATION_MESSAGE_PLAYERS_HF6_EN.txt
+INVITATION_MESSAGE_PLAYERS_HF6_FR.txt
+PATCH_MANIFEST_V2_5_28_HF6_PLAYER_READY_FINAL.txt
+PLAYER_BETA_GUIDE_HF6_FR.txt
+README.md
+UPLOAD_GUIDE_V2_5_28_HF6_PLAYER_READY_FINAL.txt
+WARBOOST_V2_5_28_HF6_PLAYER_READY_FINAL.md
+api/health.js
+app.js
+i18n.js
+index.html
+legal.html
+lib/alliance-participation-insights.js
+lib/game-update.js
+manifest.webmanifest
+package.json
+privacy.html
+scripts/verify-activity-events-v2.5.28.mjs
+scripts/verify-auth-recovery-v2.5.28.mjs
+scripts/verify-beta-invites-v2.5.28.mjs
+scripts/verify-v2.5.24.mjs
+scripts/verify-v2.5.25.mjs
+scripts/verify-v2.5.26.mjs
+scripts/verify-v2.5.27.mjs
+scripts/verify-v2.5.28-hf3.mjs
+scripts/verify-v2.5.28-hf4.mjs
+scripts/verify-v2.5.28-hf5.mjs
+scripts/verify-v2.5.28-hf6.mjs
+scripts/verify-v2.5.28.mjs
+styles.css
+sw.js
+
+Deleted files: NONE

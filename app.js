@@ -10,6 +10,7 @@ import {createWarBoostSupabaseAuthClient} from "./lib/browser-auth.js";
 import {formatGearSummary} from "./lib/gear.js";
 import {ACTIVITY_EVENT_TYPES,PLAYER_ACTIVITY_EVENT_TYPES,activityEventId,mergeActivityEvents,confirmedActivityEvents,eventCountsByType,participationEventRecords,participationSummaryByType,parseParticipationImport} from "./lib/activity-events.js";
 import {backfillRosterIdentityContext,linkCurrentPlayerIdentityIntoRoster,rosterLinkSummary} from "./lib/alliance-identity.js";
+import {playerParticipationInsight,allianceParticipationOverview} from "./lib/alliance-participation-insights.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
@@ -610,17 +611,29 @@ function togglePlayerActivityEvent(type){
   state.activity_events=mergeActivityEvents(events,[event]);
   reconcileCurrentPlayerAllianceIdentity({touch:true});saveState();render();
 }
+function participationDateLabel(v){
+  if(!v)return "—";const d=new Date(`${v}T12:00:00`);if(Number.isNaN(d.getTime()))return String(v);
+  try{return new Intl.DateTimeFormat(locale,{year:"numeric",month:"2-digit",day:"2-digit"}).format(d)}catch{return String(v)}
+}
+function participationEvidenceLabel(key){
+  const map={multiple_confirmed:"participation_evidence_multiple",confirmed:"participation_evidence_confirmed",known_no_conclusion:"participation_evidence_no_conclusion",insufficient:"participation_evidence_insufficient"};
+  return t(map[key]||"participation_evidence_insufficient");
+}
+function participationCountsLine(counts={}){
+  return `✅ ${Number(counts.participated||0)} · ❌ ${Number(counts.absent_confirmed||0)} · 🔵 ${Number(counts.not_selected||0)} · 🟠 ${Number(counts.excused||0)}`;
+}
 function renderAllianceParticipationTable(members){
   const box=$("#allianceParticipationTable");if(!box)return;
-  const rows=[];
-  for(const member of members){
-    const events=participationEventRecords(member.activity_events,{nowMs:serverNow.getTime(),days:30}).filter(x=>PLAYER_ACTIVITY_EVENT_TYPES.includes(x.event_type));
-    if(!events.length)continue;
-    const latestByType=new Map();for(const e of events){if(!latestByType.has(e.event_type))latestByType.set(e.event_type,e)}
-    rows.push({member,events:[...latestByType.values()]});
-  }
+  const rows=(Array.isArray(members)?members:[]).map(member=>playerParticipationInsight(member,{nowMs:serverNow.getTime(),days:30})).filter(x=>x.records.length>0);
   if(!rows.length){box.innerHTML=`<div class="notice">${esc(t("participation_no_known"))}</div>`;return}
-  box.innerHTML=rows.slice(0,100).map(({member,events})=>`<div class="participationPlayerRow"><b>${esc(member.name||t("player"))}</b><div>${events.map(e=>`<span class="participationMini" title="${esc(`${participationStatusLabel(e.participation_status)} · ${participationSourceLabel(e.source)} · ${e.event_date}`)}">${participationStatusIcon(e.participation_status)} ${esc(activityEventLabel(e.event_type))}</span>`).join("")}</div></div>`).join("");
+  rows.sort((a,b)=>(Date.parse(`${b.latest_known_date||"1970-01-01"}T12:00:00Z`)||0)-(Date.parse(`${a.latest_known_date||"1970-01-01"}T12:00:00Z`)||0)||String(a.member?.name||"").localeCompare(String(b.member?.name||"")));
+  box.innerHTML=rows.slice(0,100).map(insight=>{
+    const member=insight.member||{},linked=member.warboost_linked===true,summary=insight.total||{};
+    const eventRows=insight.by_type.map(x=>`<div class="participationEventDetail"><div><b>${esc(activityEventLabel(x.event_type))}</b><small>${esc(t("participation_last_known"))}: ${esc(participationDateLabel(x.last_date))} · ${esc(participationSourceLabel(x.last_source))}</small></div><span>${esc(participationCountsLine(x.counts))}</span></div>`).join("");
+    const history=insight.records.slice(0,12).map(e=>`<div class="participationHistoryRow"><time>${esc(participationDateLabel(e.event_date))}</time><b>${esc(activityEventLabel(e.event_type))}</b><span>${participationStatusIcon(e.participation_status)} ${esc(participationStatusLabel(e.participation_status))}</span><small>${esc(participationSourceLabel(e.source))}</small></div>`).join("");
+    const lastParticipation=insight.latest_participation_date?`${t("participation_last_participation")}: ${participationDateLabel(insight.latest_participation_date)}`:t("participation_no_confirmed_participation");
+    return `<details class="participationPlayerCard"><summary><div><b>${esc(member.name||t("player"))}</b><small>${esc(participationCountsLine(summary))}</small></div><span class="participationEvidenceBadge">${esc(participationEvidenceLabel(insight.evidence_key))}</span></summary><div class="participationPlayerMeta"><span>${linked?"🟢":"⚪"} ${esc(t(linked?"identity_linked_short":"identity_unlinked_short"))}</span><span>${esc(lastParticipation)}</span><span>${esc(t("participation_known_records",{count:insight.records.length}))}</span></div><div class="participationEventDetails">${eventRows}</div><div class="participationHistoryTitle">${esc(t("participation_recent_history"))}</div><div class="participationHistory">${history}</div><p class="activityNote">${esc(t("participation_evidence_guard"))}</p></details>`;
+  }).join("");
 }
 function renderAllianceIdentityLinks(members){
   const box=$("#allianceIdentitySummary"),pendingBox=$("#unlinkedWarBoostAccounts"),pendingDetails=$("#unlinkedWarBoostDetails");
@@ -640,6 +653,14 @@ function renderAllianceActivity(){
   if(box)box.innerHTML=`<div><b>🟢 ${c.active}</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>🟠 ${c.refresh}</b><small>${esc(t("activity_refresh"))}</small></div><div><b>${inactiveIcon} ${esc(inactiveValue)}</b><small>${esc(inactiveLabel)}</small></div>`;
   const note=$("#activityNote");if(note)note.textContent=members.length?t("activity_reliability_note"):t("activity_no_data");
   renderAllianceIdentityLinks(members);
+  const overview=allianceParticipationOverview(members,{nowMs:serverNow.getTime(),days:30});
+  const managementBox=$("#allianceParticipationManagementSummary");if(managementBox){
+    const linkedText=t("participation_management_linked",{linked:overview.linked,total:overview.total_members});
+    const evidenceText=t("participation_management_evidence",{known:overview.known_members,total:overview.total_members});
+    const missingText=!overview.linked?t("participation_management_no_linked"):overview.linked_without_evidence?t("participation_management_missing",{count:overview.linked_without_evidence}):t("participation_management_all_linked_known");
+    const absenceText=t("participation_management_absences",{count:overview.confirmed_absences});
+    managementBox.innerHTML=`<div class="managementSummaryHead"><b>🧠 ${esc(t("participation_management_title"))}</b><span class="pill">30 j</span></div><div class="managementSummaryGrid"><span>${esc(linkedText)}</span><span>${esc(evidenceText)}</span><span>${esc(absenceText)}</span><span>${esc(missingText)}</span></div><p>${esc(t("participation_management_guard"))}</p>`;
+  }
   const eventBox=$("#allianceEventSummary");if(eventBox){
     const totals=Object.fromEntries(PLAYER_ACTIVITY_EVENT_TYPES.map(type=>[type,{participated:0,absent_confirmed:0,not_selected:0,excused:0}]));
     for(const member of members){const ps=participationSummaryByType(member.activity_events,{nowMs:serverNow.getTime(),days:30});for(const type of PLAYER_ACTIVITY_EVENT_TYPES){const src=ps.by_type[type]||{};for(const k of ["participated","absent_confirmed","not_selected","excused"])totals[type][k]+=Number(src[k]||0)}}

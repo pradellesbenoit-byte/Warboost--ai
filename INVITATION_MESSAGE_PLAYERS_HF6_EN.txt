@@ -1,0 +1,11 @@
+Hi 👋
+
+You’re invited to test WarBoost, an independent AI companion for Last War.
+
+The beta is free and invite-only. WarBoost can help with account/squad priorities, VS, Season, the AI Shop advisor and, for R5/R4, Alliance management and event-participation tracking.
+
+Important: WarBoost does not connect directly to your Last War account and does not automate gameplay. It only uses data you choose to enter, scan or confirm. For Alliance roster identity, WarBoost uses your Last War nickname + server + alliance, not your email address.
+
+If you find a bug or an odd recommendation, please use the built-in Customer Support button.
+
+Beta link: [PASTE THE STABLE WARBOOST LINK HERE]

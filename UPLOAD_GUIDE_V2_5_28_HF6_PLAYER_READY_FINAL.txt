@@ -1,0 +1,66 @@
+WARBOOST V2.5.28 HF6 — PLAYER-READY FINAL BETA
+GUIDE D’INSTALLATION
+Date : 2026-09-09
+
+CIBLE UNIQUEMENT
+- Branche GitHub : public-beta-safe-launch
+- Ne pas modifier main / Production.
+- Ne pas modifier publisher-demo.
+
+BASE DU PATCH
+- Le PATCH HF6 est prévu uniquement sur la base exacte HF5 :
+  WarBoost_V2.5.28_HF5_LASTWAR_IDENTITY_LINK_FULL.zip
+- SHA-256 HF5 FULL attendu :
+  651055f839fb79c83d617773f0095d6b83b54562298db75092e60e90756cc3fd
+
+INSTALLATION RECOMMANDÉE — PATCH
+1. Décompresser WarBoost_V2.5.28_HF6_PLAYER_READY_FINAL_PATCH.zip.
+2. Envoyer le CONTENU extrait sur public-beta-safe-launch.
+3. Conserver exactement les dossiers api/, lib/, scripts/, etc.
+4. Commit directement sur public-beta-safe-launch.
+5. Attendre le déploiement Vercel Preview vert / Ready.
+
+NE PAS FAIRE
+- Ne pas effacer localStorage ni les données cloud.
+- Ne pas supprimer les scans, escouades, Drone, Alliance, VS, Saison ou historique.
+- Ne pas lancer de nouvelle migration Supabase : HF6 n’en contient aucune.
+- Ne pas réinitialiser les migrations V2.5.24 support ou V2.5.26 invitations déjà installées.
+- Ne pas activer Stripe/paiements.
+- Ne pas activer API Last War, scraping, ingestion externe ou automatisation gameplay.
+
+CONTRÔLE /api/health APRÈS DÉPLOIEMENT
+Vérifier au minimum :
+- version = 2.5.28
+- build = hf6-player-ready-final
+- mode = public-beta-invite-safe-launch
+- game_update.version = 1.0.362
+- game_update.reviewed_on = 2026-09-09
+- beta.payments_enabled = false
+- lastwar_official_access = disabled-safe-launch
+- serverless_functions = 12
+- safeguards.alliance_player_detail_dates_counts_sources = true
+- safeguards.alliance_management_evidence_summary = true
+- safeguards.alliance_management_never_infers_inactivity_from_missing_participation = true
+
+SMOKE TEST RÉEL OBLIGATOIRE
+1. Ouvrir le lien stable Preview de public-beta-safe-launch.
+2. En-tête : WarBoost V2.5.28 HF6.
+3. Se connecter avec le compte test déjà utilisé ; profil, escouades, Drone, Alliance et historique doivent réapparaître sans rescan forcé.
+4. Profil Last War : pseudo + serveur + alliance exacts.
+5. Confirmer un événement réellement participé dans Joueur puis Synchroniser WarBoost.
+6. Alliance R5/R4 : le joueur doit rester lié à sa ligne du roster ; aucun membre supplémentaire ne doit être créé.
+7. Résumé Alliance : le compte lié et les preuves connues doivent se mettre à jour ; une absence de donnée doit rester non évaluée.
+8. Suivi détaillé : pseudo Last War visible avec compteurs, date(s), événement(s), statut(s) et source(s). Aucune adresse e-mail dans la vue Alliance.
+9. Tester un statut importé R5/R4 (sur un joueur test) : absent_confirmed / not_selected / excused ; ces statuts ne doivent pas devenir « inactif ».
+10. Diagnostic PRO : TOP 3 personnalisé, données existantes conservées.
+11. Boutique IA : alignée sur Diagnostic, aucune offre historique présentée comme actuelle.
+12. VS : jour actuel correct, adversaire inconnu non inventé, Aujourd’hui / À garder / À éviter.
+13. Saison : inter-saison historique, aucune S7 inventée.
+14. Service client : créer/lire/répondre à un ticket test.
+15. Mot de passe oublié : vérifier le lien stable Preview.
+16. Invitations : tester un deuxième compte invité et vérifier qu’un compte révoqué reste bloqué.
+
+DÉPLOIEMENT JOUEURS CONSEILLÉ
+- Première vague : 5 à 10 joueurs invités, idéalement plusieurs types d’escouades et au moins un R5/R4.
+- Observer 24 à 48 h les tickets et la qualité des données.
+- Si aucun problème bloquant : élargir progressivement la bêta.

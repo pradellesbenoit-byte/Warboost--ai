@@ -1,79 +1,26 @@
-# WarBoost V2.5.28 HF5 — Last War Identity Link
+# WarBoost V2.5.28 HF6 — Player-Ready Final Beta
 
-HF5 corrige la remontée Joueur → Alliance observée en réel après HF4. L’adresse e-mail reste strictement réservée à l’authentification/support WarBoost ; l’identité Alliance est basée sur **pseudo Last War + serveur + alliance**.
+HF6 est la version de finition Safe Launch destinée à l’envoi aux joueurs invités après validation Preview. Elle part exactement de HF5 et conserve toutes les protections existantes.
 
-- Une nouvelle liaison exige une correspondance exacte et unique du pseudo dans le bon serveur et la bonne alliance.
-- Un doublon ou une identité incomplète reste **non lié / à associer** : WarBoost ne devine jamais.
-- Aucun compte WarBoost non associé ne crée un faux 95e membre dans un roster importé de 94 membres.
-- Une confirmation joueur (VS, Marshal, Zombie, Desert Storm, etc.) est transférée au membre lié et devient visible dans le suivi R5/R4 sur 30 jours.
-- Une fois la liaison exacte établie, l’historique est conservé si le joueur change ensuite de pseudo.
-- Les R5/R4 voient **Compte WarBoost lié / non lié**, sans voir l’e-mail du joueur.
-- Les sécurités HF4/HF3 restent intactes : aucune donnée manquante = inactivité, aucun rôle tactique inventé, TOP 3 personnalisé, VS/Saison protégés, paiements et accès Last War externes désactivés.
+## Ce que HF6 finalise
+- Diagnostic PRO personnalisé au compte et à l’escouade principale ; TOP 3 visible, cinq héros comparés en arrière-plan.
+- Boutique IA alignée sur le Diagnostic, sans prix/offre actuelle inventée.
+- VS avec Aujourd’hui / À garder / À éviter et adversaire inconnu non spéculatif.
+- Saison inter-saison protégée : aucun conseil S6/S7 inventé.
+- Alliance R5/R4 : identité par pseudo Last War + serveur + alliance, jamais par e-mail.
+- Suivi d’événements 30 jours avec participé / absence confirmée / non sélectionné / excusé / non renseigné.
+- Vue détaillée joueur : compteurs, dates, source de la dernière donnée et historique récent.
+- Résumé de gestion basé uniquement sur les preuves connues ; absence de donnée ≠ absence/inactivité.
+- Veille publique revue au 09/09/2026 : Last War 1.0.362, information seulement, aucune méta déduite.
+- Service client, invitations, récupération de mot de passe, Scan et conservation des données maintenus.
+- Bêta gratuite sur invitation : paiements WarBoost désactivés ; API Last War non autorisée, scraping et automatisation désactivés.
 
-Voir `WARBOOST_V2_5_28_HF5_LASTWAR_IDENTITY_LINK.md` et `UPLOAD_GUIDE_V2_5_28_HF5_LASTWAR_IDENTITY_LINK.txt`.
+## Déploiement
+Branche cible : `public-beta-safe-launch` uniquement. Ne pas modifier `main/Production` ou `publisher-demo`.
 
----
+Aucune migration Supabase et aucune suppression de fichier ne sont requises pour HF6.
 
-# WarBoost V2.5.28 HF4 — Final Management AI
+Voir `UPLOAD_GUIDE_V2_5_28_HF6_PLAYER_READY_FINAL.txt` et `BUILD_VERIFICATION_V2_5_28_HF6_PLAYER_READY_FINAL.txt`.
 
-HF4 conserve tout le socle HF3 et finalise l’IA personnalisée Joueur, le départage EX, le plan VS Aujourd’hui/À garder/À éviter et le suivi R5/R4 des participations aux événements sur 30 jours. Le Safe Launch reste inchangé: aucun paiement, accès Last War externe, scraping ou automatisation gameplay.
-
-Voir `WARBOOST_V2_5_28_HF4_FINAL_MANAGEMENT_AI.md` et `UPLOAD_GUIDE_V2_5_28_HF4_FINAL_MANAGEMENT_AI.txt`.
-
----
-
-# WarBoost V2.5.28 HF3 — Public Beta Safe Launch · Final Reliability
-
-## HF3 · finition fiabilité
-
-- Corrige les anciens libellés « bêta privée » encore visibles après le passage à la bêta publique.
-- Affiche **Inactivité non évaluée** au lieu de `0 inactifs probables` lorsque des membres doivent encore être actualisés et qu’aucune preuve négative fiable n’existe.
-- Suspend le plan tactique lorsqu’aucun groupe fiable ne peut être formé ; si des actifs sont confirmés mais que le roster reste incomplet, le plan est clairement marqué **partiel** et n’utilise que ces actifs confirmés.
-- Corrige le Plan B pour qu’un membre sans données ne soit jamais compté deux fois.
-- Clarifie que le roster R5/R4 reçoit les données enregistrées dans **WarBoost**, pas des données récupérées automatiquement depuis Last War.
-- Conserve le HF2 : R4/R5 déclaré donne accès aux outils de conseil/import, tandis que les permissions sensibles restent vérifiées côté WarBoost.
-
-
-WarBoost V2.5.28 conserve toutes les protections de la V2.5.27/HF2 et ajoute un suivi d’activité Alliance sans captures répétées.
-
-## Nouveauté principale
-
-Le joueur confirme en un appui sa participation réelle à VS, Zombie, Maraudeur, Événement d’alliance, Guerre ou Saison. Ces confirmations alimentent l’activité Alliance et le Plan de guerre IA.
-
-WarBoost ne prétend pas recevoir ces participations depuis Last War : ce sont des confirmations joueur clairement identifiées. L’absence de confirmation n’est jamais une preuve d’inactivité.
-
-## Rangs
-
-Le rang Last War R1–R5 peut être déclaré par le joueur. Il est distinct du rang de gestion WarBoost vérifié : une déclaration R5 ne débloque pas automatiquement les droits d’administration.
-
-## Safe Launch
-
-- Bêta sur invitation.
-- PRO inclus gratuitement pendant la bêta.
-- Paiements WarBoost désactivés.
-- Aucun accès direct au compte Last War.
-- Aucune API Last War non autorisée.
-- Aucun scraping.
-- Aucune automatisation de gameplay.
-- WarBoost reste indépendant de FUNFLY / Last War: Survival.
-
-## Données et migration
-
-Les données joueur existantes sont conservées. Les confirmations d’activité utilisent le profil JSON WarBoost existant : **aucune migration Supabase V2.5.28**. La bêta sur invitation continue toutefois d’utiliser la migration déjà appliquée `supabase/migration_v2_5_26_beta_invites.sql` (à ne pas relancer si elle est déjà en place).
-
-## Fiabilité Scan conservée
-
-La V2.5.28 conserve les correctifs V2.5.27/HF1/HF2 : ordre confirmé des héros, identité sûre, aucun transfert de données entre héros, correction `gearx`, équipements propres, 4 niveaux/raretés lorsque visibles et vrais niveaux 0 conservés.
-
-## Vérification
-
-Exécuter :
-
-```bash
-npm run check
-npm run verify
-```
-
-Le contrôle couvre les 12 fonctions Vercel, le Scan, l’activité événementielle, la séparation rang déclaré / permission vérifiée, les invitations, le support, la récupération de mot de passe, la préservation des données, les 23 langues explicites + Auto et les verrous Safe Launch.
-
-Version 2.5.28 HF3 · 8 septembre 2026.
+## Socle Supabase déjà installé
+HF6 n’ajoute aucune migration. Conserver les migrations déjà appliquées, notamment `supabase/migration_v2_5_24_support.sql` et `supabase/migration_v2_5_26_beta_invites.sql` ; ne pas les réexécuter inutilement et ne pas supprimer les tables existantes.
