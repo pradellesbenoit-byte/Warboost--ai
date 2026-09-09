@@ -989,7 +989,7 @@ console.log('\nWarBoost V2.5.25 verification: PASS');
   assert.match(html,/FUNFLY PTE\. LTD\./);
   assert.match(html,/not affiliated|ni affilié/i);
   assert.match(html,/legal\.html/);assert.match(html,/privacy\.html/);
-  assert.match(html,/1\.0\.361/);assert.match(html,/Saison 7|Season 7/i);
+  assert.match(html,/1\.0\.362/);assert.match(html,/Saison 7|Season 7/i);
   assert.doesNotMatch(manifest,/Last War|FUNFLY/i,'Trademark names should not be used in hidden PWA metadata');
   assert.match(css,/safeLaunchGrid/);
   log('Independent disclaimer, legal/privacy links, latest reviewed update and Season 7 rumor guard are visible');
@@ -997,8 +997,8 @@ console.log('\nWarBoost V2.5.25 verification: PASS');
 
 // Game update is informational only; no unverified hero/meta mutation is asserted.
 {
-  assert.equal(REVIEWED_GAME_UPDATE.version,'1.0.361');
-  assert.equal(REVIEWED_GAME_UPDATE.released_on,'2026-09-02');
+  assert.equal(REVIEWED_GAME_UPDATE.version,'1.0.362');
+  assert.equal(REVIEWED_GAME_UPDATE.released_on,'2026-09-09');
   assert.equal(REVIEWED_GAME_UPDATE.meta_impact,'informational-only');
   assert.equal(REVIEWED_GAME_UPDATE.confirmed_hero_meta_change,false);
   assert.equal(REVIEWED_GAME_UPDATE.season7_status,'not-activated-from-rumors');

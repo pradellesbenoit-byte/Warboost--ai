@@ -120,7 +120,7 @@ const log=msg=>console.log(`✓ ${msg}`);
   assert.match(health,/safe_launch_external_game_access_hard_disabled:true/);
   assert.match(health,/safe_launch_payments_code_disabled:true/);
   assert.match(manifest,/V2\.5\.28/);
-  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link)/);
+  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final)/);
   log('V2.5.28 versioning and Safe Launch payment/game-access locks remain explicit');
 }
 
