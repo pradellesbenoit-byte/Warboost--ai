@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {ACTIVITY_EVENT_TYPES,activityEventId,normalizeActivityEvent,mergeActivityEvents,confirmedActivityEvents,activityEventEvidence,eventCountsByType} from '../lib/activity-events.js';
+import {ACTIVITY_EVENT_TYPES,PLAYER_ACTIVITY_EVENT_TYPES,LEGACY_ACTIVITY_EVENT_TYPES,activityEventId,normalizeActivityEvent,mergeActivityEvents,confirmedActivityEvents,activityEventEvidence,eventCountsByType} from '../lib/activity-events.js';
 import {classifyAllianceMember,summarizeAllianceActivity} from '../lib/alliance-activity.js';
 import {normalizeState,mergeNewest} from '../lib/normalize.js';
 import {mergeCloudRosterPreservingManual,mergeCurrentPlayerActivityIntoRoster} from '../lib/alliance-roster-merge.js';
@@ -15,9 +15,10 @@ const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const log=x=>console.log(`PASS: ${x}`);
 const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
 
-// Exactly the six agreed low-friction confirmations. No screenshot is required by this data model.
+// HF4 expands the low-friction event registry while keeping every V2.5.28 legacy id readable.
 {
-  assert.deepEqual([...ACTIVITY_EVENT_TYPES],['vs','zombie','marauder','alliance_event','war','season']);
+  for(const type of ['vs','alliance_exercise','zombie_siege','desert_storm','canyon_storm','ghost_ops','city_war','season_war','marauder'])assert.ok(PLAYER_ACTIVITY_EVENT_TYPES.includes(type));
+  for(const type of ['zombie','alliance_event','war','season'])assert.ok(LEGACY_ACTIVITY_EVENT_TYPES.includes(type)&&ACTIVITY_EVENT_TYPES.includes(type));
   for(const type of ACTIVITY_EVENT_TYPES){
     const id=activityEventId(type,'2026-09-07');
     assert.equal(id,`2026-09-07:${type}`);
@@ -25,7 +26,7 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
     assert.equal(row.source,'player_self_report');
     assert.equal(row.confirmed,true);
   }
-  log('Exactly six one-tap player-declared event types are supported');
+  log('Expanded event registry preserves all legacy V2.5.28 confirmation ids');
 }
 
 // Removing a confirmation creates a newer tombstone. An older cloud copy cannot resurrect it.
@@ -159,7 +160,7 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
   assert.match(app,/ACTIVITY_EVENT_TYPES\.map/);assert.match(app,/source:"player_self_report"/);
   assert.match(css,/\.activityEventBtn\.confirmed/);assert.match(css,/\.decisionDetails\[open\] \.detailsOpen/);
   assert.match(health,/activity_missing_confirmation_never_inactive/);assert.match(health,/declared_rank_never_unlocks_management/);
-  assert.match(sw,/warboost-v2-5-28-hf2-declared-r4-r5-advice/);assert.match(sw,/\/lib\/activity-events\.js/);
+  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai)/);assert.match(sw,/\/lib\/activity-events\.js/);
   const keys=['activity_quick_title','activity_quick_help','event_vs','event_zombie','event_marauder','event_alliance_event','event_war','event_season','activity_confirm','activity_remove','activity_reason_event','declared_role','diagnostic_confidence','data_completeness','shop_details','shop_hide_details','management_permission','manager_only'];
   const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.length,23);
   for(const [code] of explicit){const tr=translator(code);for(const key of keys)assert.notEqual(tr(key),key,`${code} missing ${key}`);assert.match(tr('tagline'),/V2\.5\.28/)}
