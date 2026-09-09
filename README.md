@@ -1,3 +1,11 @@
+# WarBoost V2.5.28 HF4 — Final Management AI
+
+HF4 conserve tout le socle HF3 et finalise l’IA personnalisée Joueur, le départage EX, le plan VS Aujourd’hui/À garder/À éviter et le suivi R5/R4 des participations aux événements sur 30 jours. Le Safe Launch reste inchangé: aucun paiement, accès Last War externe, scraping ou automatisation gameplay.
+
+Voir `WARBOOST_V2_5_28_HF4_FINAL_MANAGEMENT_AI.md` et `UPLOAD_GUIDE_V2_5_28_HF4_FINAL_MANAGEMENT_AI.txt`.
+
+---
+
 # WarBoost V2.5.28 HF3 — Public Beta Safe Launch · Final Reliability
 
 ## HF3 · finition fiabilité

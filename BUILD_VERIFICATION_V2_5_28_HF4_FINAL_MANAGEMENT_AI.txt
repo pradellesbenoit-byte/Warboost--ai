@@ -1,0 +1,73 @@
+WARBOOST V2.5.28 HF4 — FINAL MANAGEMENT AI — BUILD VERIFICATION
+Date: 2026-09-08
+Base: WarBoost V2.5.28 HF3 Final Reliability
+Base SHA-256: 0dbdf5ece630853959b5420750b6a88f65e66636071f64c41025aa2678d2f475
+Target: public-beta-safe-launch / Vercel Preview
+Production/main: NOT TOUCHED
+publisher-demo: NOT TOUCHED
+
+RESULT: PASS
+
+SOURCE VERIFICATION
+- npm run check: PASS
+- npm run verify: PASS
+- dedicated HF4 verification: PASS
+- 12 api/*.js serverless functions preserved: PASS
+- 23 explicit language choices + Auto preserved: PASS
+- Supabase tree byte-identical to HF3; no HF4 migration: PASS
+
+HF4 PLAYER AI
+- player-specific selected-main-squad ranking: PASS
+- TOP 3 visible cards maximum: PASS
+- all 5 configured main-squad heroes remain in detailed EX comparison: PASS
+- another player's Air ranking is not inherited by a Tank main squad: PASS
+- equal rounded EX scores expose previous-rank tie metadata: PASS
+- tie-break basis = severity, ROI, then impact: PASS
+- French EX status `Comparé`: PASS
+- EX actions are hierarchical for #1 / #2 / #3: PASS
+- no exact EX fragment/material quantity invented: PASS
+- Boutique/Diagnostic single-source-of-truth regressions: PASS
+
+HF4 VS
+- Day 2 label explicitly says Base Expansion / Expansion de base: PASS
+- Today / Keep / Avoid structure: PASS
+- Day 3 + Day 4 preparation in Day 2 advice: PASS
+- unknown opponent remains non-speculative: PASS
+
+HF4 ALLIANCE R5/R4
+- expanded main event registry: PASS
+- legacy V2.5.28 event ids remain readable: PASS
+- 30-day event/player participation history: PASS
+- statuses participated / confirmed absent / not selected / excused / unknown: PASS
+- player and R5/R4 evidence sources preserved: PASS
+- R5/R4 participation import parser: PASS
+- absent / unknown / missing event data never auto-becomes inactivity: PASS
+- stale-member tactical assignment safeguards preserved: PASS
+- declared R4/R5 advisory access remains separate from sensitive WarBoost admin permission: PASS
+
+SAFE LAUNCH / NON-REGRESSION
+- existing player/local/cloud data preservation safeguards: PASS
+- Scan identity + exact gear fixtures including true Lv.0: PASS
+- support tickets/private attachments: PASS
+- password recovery/no password storage: PASS
+- database invite manager/revoke/restore: PASS
+- payments disabled: PASS
+- external Last War access hard-disabled: PASS
+- no scraping: PASS
+- no gameplay automation: PASS
+- S6 ended/inter-season protection: PASS
+- Season 7 rumor guard: PASS
+
+FINAL PACKAGE VERIFICATION
+- FULL tree: 152 files
+- PATCH over exact HF3: 24 changed/added files
+- no file deletion required
+- archive path traversal safety: PASS
+- extracted FULL byte-for-byte matches final HF4 source: PASS
+- exact HF3 + PATCH byte-for-byte matches final HF4 source: PASS
+- npm run check/verify on extracted FULL: PASS
+- npm run check/verify on PATCH-overlaid exact HF3: PASS
+- Supabase tree remains unchanged: PASS
+
+IMPORTANT
+This certifies code/test/package integrity. It does NOT certify the final live Vercel/Supabase user experience. A real Preview smoke test is still required after deployment.

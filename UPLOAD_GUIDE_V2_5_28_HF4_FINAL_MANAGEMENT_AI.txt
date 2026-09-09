@@ -1,0 +1,75 @@
+WARBOOST V2.5.28 HF4 — FINAL MANAGEMENT AI — GUIDE D'INSTALLATION
+Date: 2026-09-08
+
+CIBLE UNIQUEMENT
+- Branche GitHub: public-beta-safe-launch
+- Vercel: Preview de cette branche
+
+NE PAS MODIFIER
+- main / Production
+- publisher-demo
+
+BASE DU PATCH — OBLIGATOIRE
+- WarBoost_V2.5.28_HF3_FINAL_RELIABILITY_FULL.zip
+- SHA-256 exact: 0dbdf5ece630853959b5420750b6a88f65e66636071f64c41025aa2678d2f475
+
+OPTION RECOMMANDÉE SI LA BRANCHE EST BIEN SUR HF3
+1. Décompresser WarBoost_V2.5.28_HF4_FINAL_MANAGEMENT_AI_PATCH.zip.
+2. Envoyer le CONTENU extrait à la racine de public-beta-safe-launch en conservant tous les dossiers.
+3. Aucun fichier ne doit être supprimé.
+4. Commit directement sur public-beta-safe-launch; ne pas ouvrir de PR vers main.
+5. Attendre le Preview Vercel vert.
+
+OPTION FULL
+- Le FULL est autonome: décompresser puis envoyer son CONTENU à la racine de public-beta-safe-launch.
+- Conserver api/, assets/, lib/, scripts/ et supabase/ comme dossiers.
+
+DONNÉES — NE RIEN EFFACER
+- ne pas vider localStorage;
+- ne pas supprimer les données cloud;
+- ne pas effacer scans, escouades, Drone, Alliance, VS, Saison ni historique;
+- aucune nouvelle migration SQL/Supabase HF4.
+
+VARIABLES VERCEL À CONSERVER
+- variables Supabase existantes;
+- WARBOOST_SUPPORT_ADMINS;
+- registre d'invitations V2.5.26 déjà installé;
+- éventuel WARBOOST_BETA_EMAILS de secours existant.
+
+SAFE LAUNCH À NE PAS ACTIVER
+- Stripe / paiements;
+- API/provider Last War externe;
+- scraping;
+- automatisation de gameplay.
+
+POST-DEPLOY — /api/health
+Vérifier au minimum:
+- version = 2.5.28
+- build = hf4-final-management-ai
+- mode = public-beta-invite-safe-launch
+- serverless_functions = 12
+- safe_launch_external_game_access_hard_disabled = true
+- beta.payments_enabled = false
+- player_specific_main_squad_ranking = true
+- alliance_event_management_30_day_history = true
+- alliance_missing_participation_never_means_absence = true
+- vs_today_keep_avoid_plan = true
+
+SMOKE TEST RÉEL OBLIGATOIRE
+1. Ouvrir l'URL Preview stable de public-beta-safe-launch.
+2. Vérifier l'en-tête: WarBoost V2.5.28 HF4.
+3. Se reconnecter avec un compte invité existant et confirmer que profil, escouades, Scan, Drone, Alliance, VS et Saison réapparaissent sans rescan.
+4. Joueur > Diagnostic PRO: maximum 3 cartes; comparaison EX = les 5 héros de l'escouade principale du joueur.
+5. Si deux scores EX sont égaux, vérifier que le détail explique le départage au lieu de cacher l'égalité.
+6. Boutique IA: vérifier que les priorités EX restent alignées sur Diagnostic PRO.
+7. VS Jour 2: vérifier Aujourd'hui / À garder / À éviter, avec préparation Jour 3 et Jour 4; aucun adversaire inventé.
+8. Alliance R5/R4: avec le roster ALL4 périmé, conserver 0 actif confirmé / 94 à actualiser / inactivité non évaluée / plan tactique suspendu / Plan B 94 / aucune affectation inventée.
+9. Tester l'import participation avec une copie de test d'un membre existant:
+   Joueur01;2026-09-08;desert_storm;participated
+   Vérifier le statut, la source R5/R4 et l'historique 30 jours.
+10. Tester aussi `absent`, `non_selectionne`, `excuse`: aucun de ces statuts ne doit à lui seul convertir le joueur en inactif.
+11. Saison entre-saisons: aucune recommandation active S6/S7 inventée.
+12. Tester Service client, mot de passe oublié, invitation/révocation avec les parcours déjà installés avant élargissement de la bêta.
+
+IMPORTANT
+Les tests automatiques du ZIP ne remplacent pas ce smoke test réel Vercel/Supabase.

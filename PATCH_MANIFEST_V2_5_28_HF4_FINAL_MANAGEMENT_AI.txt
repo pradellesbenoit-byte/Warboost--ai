@@ -1,0 +1,36 @@
+WARBOOST V2.5.28 HF4 — FINAL MANAGEMENT AI — PATCH MANIFEST
+Base required: WarBoost V2.5.28 HF3 Final Reliability
+Base SHA-256: 0dbdf5ece630853959b5420750b6a88f65e66636071f64c41025aa2678d2f475
+
+CHANGED FILES
+- README.md
+- api/advice.js
+- api/health.js
+- app.js
+- i18n.js
+- index.html
+- legal.html
+- lib/activity-events.js
+- manifest.webmanifest
+- package.json
+- privacy.html
+- scripts/verify-activity-events-v2.5.28.mjs
+- scripts/verify-auth-recovery-v2.5.28.mjs
+- scripts/verify-beta-invites-v2.5.28.mjs
+- scripts/verify-v2.5.28-hf3.mjs
+- scripts/verify-v2.5.28.mjs
+- styles.css
+- sw.js
+
+ADDED FILES
+- BUILD_VERIFICATION_V2_5_28_HF4_FINAL_MANAGEMENT_AI.txt
+- DELETE_FILES_V2_5_28_HF4_FINAL_MANAGEMENT_AI.txt
+- PATCH_MANIFEST_V2_5_28_HF4_FINAL_MANAGEMENT_AI.txt
+- UPLOAD_GUIDE_V2_5_28_HF4_FINAL_MANAGEMENT_AI.txt
+- WARBOOST_V2_5_28_HF4_FINAL_MANAGEMENT_AI.md
+- scripts/verify-v2.5.28-hf4.mjs
+
+DELETED FILES
+- none
+
+TOTAL PATCH FILES: 24

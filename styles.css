@@ -197,3 +197,14 @@ a.metaSourceRow{color:inherit;text-decoration:none}a.metaSourceRow:focus-visible
 .allianceEventSummary{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.eventCountChip{display:inline-flex;gap:6px;align-items:center;border:1px solid #29405d;border-radius:999px;padding:6px 9px;background:#0a1423}.eventCountChip b{font-size:11px}.eventCountChip small{font-size:11px;color:#a8bad0}
 .activityEventsTitle{margin-top:12px}.managementRoleControl{display:flex;flex-direction:column;gap:3px;min-width:88px}.managementRoleControl small{font-size:10px;color:#91a5bf}.managementRoleControl select{background:#08111e;color:#dce8f7;border:1px solid #2a405c;border-radius:8px;padding:5px 7px}.managementOwnerBadge{display:inline-block;border:1px solid #526d91;border-radius:999px;padding:5px 8px;font-size:10px;color:#bfd3ec}.decisionDetails .detailsOpen{display:none}.decisionDetails[open] .detailsClosed{display:none}.decisionDetails[open] .detailsOpen{display:inline}
 @media (min-width:700px){.activityEventGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* V2.5.28 HF4 · Alliance event participation management */
+.allianceParticipationTable{display:grid;gap:8px;margin-top:10px}
+.participationPlayerRow{display:grid;gap:7px;padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025)}
+.participationPlayerRow>div{display:flex;gap:6px;flex-wrap:wrap}
+.participationMini{display:inline-flex;align-items:center;gap:4px;padding:5px 7px;border:1px solid rgba(255,255,255,.09);border-radius:999px;font-size:.78rem;background:rgba(0,0,0,.14)}
+.eventStatusChip{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:2px;white-space:normal!important}
+.eventStatusChip small{opacity:.78;font-weight:600}
+.participationDetails{margin-top:12px}
+.participationLine{opacity:.88}
+@media(max-width:720px){.participationPlayerRow>div{display:grid;grid-template-columns:1fr}.participationMini{width:100%;box-sizing:border-box}.eventStatusChip{width:100%}}

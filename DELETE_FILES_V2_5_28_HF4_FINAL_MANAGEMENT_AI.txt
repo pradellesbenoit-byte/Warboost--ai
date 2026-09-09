@@ -1,0 +1,3 @@
+WarBoost V2.5.28 HF4 — Final Management AI
+AUCUNE SUPPRESSION DE FICHIER REQUISE.
+Le PATCH est additif/modificatif sur la base HF3 exacte et ne demande aucun effacement de données.

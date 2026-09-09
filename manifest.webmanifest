@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 Safe Launch Beta",
+  "name": "WarBoost V2.5.28 HF4 Safe Launch Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 — invite-only Safe Launch beta with player-controlled one-tap activity confirmations, protected data, free PRO features, and external game access hard-disabled.",
+  "description": "WarBoost V2.5.28 HF4 — personalized player AI, evidence-safe R5/R4 event participation management, protected data, free beta PRO, and external game access hard-disabled.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
