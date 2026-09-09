@@ -1,3 +1,19 @@
+# WarBoost V2.5.28 HF5 — Last War Identity Link
+
+HF5 corrige la remontée Joueur → Alliance observée en réel après HF4. L’adresse e-mail reste strictement réservée à l’authentification/support WarBoost ; l’identité Alliance est basée sur **pseudo Last War + serveur + alliance**.
+
+- Une nouvelle liaison exige une correspondance exacte et unique du pseudo dans le bon serveur et la bonne alliance.
+- Un doublon ou une identité incomplète reste **non lié / à associer** : WarBoost ne devine jamais.
+- Aucun compte WarBoost non associé ne crée un faux 95e membre dans un roster importé de 94 membres.
+- Une confirmation joueur (VS, Marshal, Zombie, Desert Storm, etc.) est transférée au membre lié et devient visible dans le suivi R5/R4 sur 30 jours.
+- Une fois la liaison exacte établie, l’historique est conservé si le joueur change ensuite de pseudo.
+- Les R5/R4 voient **Compte WarBoost lié / non lié**, sans voir l’e-mail du joueur.
+- Les sécurités HF4/HF3 restent intactes : aucune donnée manquante = inactivité, aucun rôle tactique inventé, TOP 3 personnalisé, VS/Saison protégés, paiements et accès Last War externes désactivés.
+
+Voir `WARBOOST_V2_5_28_HF5_LASTWAR_IDENTITY_LINK.md` et `UPLOAD_GUIDE_V2_5_28_HF5_LASTWAR_IDENTITY_LINK.txt`.
+
+---
+
 # WarBoost V2.5.28 HF4 — Final Management AI
 
 HF4 conserve tout le socle HF3 et finalise l’IA personnalisée Joueur, le départage EX, le plan VS Aujourd’hui/À garder/À éviter et le suivi R5/R4 des participations aux événements sur 30 jours. Le Safe Launch reste inchangé: aucun paiement, accès Last War externe, scraping ou automatisation gameplay.

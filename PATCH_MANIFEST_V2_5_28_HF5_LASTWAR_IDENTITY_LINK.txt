@@ -1,0 +1,41 @@
+WARBOOST V2.5.28 HF5 — LAST WAR IDENTITY LINK — PATCH MANIFEST
+Base required: WarBoost V2.5.28 HF4 Final Management AI
+Base FULL SHA-256: fd7b8d0990302db4da1c4e11797416c8a2bfbad1eafbcc9d5a19d8a3097c86ba
+
+CHANGED FILES
+- README.md
+- api/health.js
+- api/sync.js
+- app.js
+- i18n.js
+- index.html
+- legal.html
+- lib/alliance-roster-merge.js
+- lib/normalize.js
+- lib/roster-import.js
+- lib/supabase.js
+- manifest.webmanifest
+- package.json
+- privacy.html
+- scripts/verify-activity-events-v2.5.28.mjs
+- scripts/verify-auth-recovery-v2.5.28.mjs
+- scripts/verify-beta-invites-v2.5.28.mjs
+- scripts/verify-v2.5.28-hf3.mjs
+- scripts/verify-v2.5.28-hf4.mjs
+- scripts/verify-v2.5.28.mjs
+- styles.css
+- sw.js
+
+ADDED FILES
+- BUILD_VERIFICATION_V2_5_28_HF5_LASTWAR_IDENTITY_LINK.txt
+- DELETE_FILES_V2_5_28_HF5_LASTWAR_IDENTITY_LINK.txt
+- PATCH_MANIFEST_V2_5_28_HF5_LASTWAR_IDENTITY_LINK.txt
+- UPLOAD_GUIDE_V2_5_28_HF5_LASTWAR_IDENTITY_LINK.txt
+- WARBOOST_V2_5_28_HF5_LASTWAR_IDENTITY_LINK.md
+- lib/alliance-identity.js
+- scripts/verify-v2.5.28-hf5.mjs
+
+DELETED FILES
+- none
+
+TOTAL PATCH FILES: 29

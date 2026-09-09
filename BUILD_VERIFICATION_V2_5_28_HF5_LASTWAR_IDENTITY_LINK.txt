@@ -1,0 +1,81 @@
+WARBOOST V2.5.28 HF5 — LAST WAR IDENTITY LINK — BUILD VERIFICATION
+Date: 2026-09-09
+Base: WarBoost V2.5.28 HF4 Final Management AI
+Base FULL SHA-256: fd7b8d0990302db4da1c4e11797416c8a2bfbad1eafbcc9d5a19d8a3097c86ba
+Target: public-beta-safe-launch / Vercel Preview
+Production/main: NOT TOUCHED
+publisher-demo: NOT TOUCHED
+
+RESULT: PASS
+
+SOURCE VERIFICATION
+- npm run check: PASS
+- npm run verify: PASS
+- dedicated HF5 verification: PASS
+- all historical V2.5.28/HF3/HF4 regression suites: PASS
+- 12 api/*.js serverless functions preserved: PASS
+- 23 explicit language choices + Auto preserved: PASS
+- Supabase tree byte-identical to HF4: PASS
+- no HF5 database migration: PASS
+- no localStorage.clear(): PASS
+
+HF5 LAST WAR IDENTITY LINK
+- initial Alliance identity key = normalized Last War nickname + server + alliance: PASS
+- e-mail is never an Alliance roster identity key: PASS
+- R5/R4 pending-link view contains game identity context only, not e-mail: PASS
+- exact unique nickname/server/alliance match links the existing roster member: PASS
+- exact ALL4 real-case fixture keeps 94 members and links `les gladiateurs81` on server 884: PASS
+- linked player self-confirmed participation reaches the correct roster row: PASS
+- linked participation is countable in 7/30-day event history: PASS
+- wrong nickname is never matched: PASS
+- wrong server is never matched: PASS
+- duplicate/ambiguous nickname is never guessed: PASS
+- unmatched WarBoost account remains pending and never creates a fake roster member when an imported roster exists: PASS
+- legacy HF4 private player_id cannot bypass Last War game-identity re-proof: PASS
+- private continuity id is accepted only after an established game-identity link: PASS
+- nickname change after an established link keeps participation history: PASS
+- normalized/cloud state preserves identity-link metadata and pending accounts without e-mail fields: PASS
+- roster member UI exposes linked / unlinked account status: PASS
+- participation legend is visible: PASS
+
+ALLIANCE SAFETY / NON-REGRESSION
+- missing participation never means absence: PASS
+- missing/old data never becomes automatic inactivity: PASS
+- stale members remain excluded from tactical assignments: PASS
+- current 94-stale-member safety logic remains covered: PASS
+- participation tombstone protection remains covered: PASS
+- R5/R4 participation import remains evidence-scoped and ambiguous pseudo matches are blocked: PASS
+- declared Last War R4/R5 advisory access remains separate from sensitive WarBoost management authorization: PASS
+
+PLAYER / VS / SEASON / SHOP / SCAN NON-REGRESSION
+- personalized main-squad TOP 3 Diagnostic PRO: PASS
+- five-hero detailed EX comparison + tie explanation: PASS
+- Boutique IA / Diagnostic single-source-of-truth regressions: PASS
+- VS Today / Keep / Avoid and non-speculative opponent safeguards: PASS
+- ended/inter-season Season safeguards and S7 rumor guard: PASS
+- Scan hero identity/order and exact gear regressions including true Lv.0: PASS
+- no `gearx` runtime regression: PASS
+
+SAFE LAUNCH / ACCOUNT NON-REGRESSION
+- existing player/local/cloud data preservation safeguards: PASS
+- support tickets/private attachments: PASS
+- password recovery/no password storage: PASS
+- database invitation manager/revoke/restore: PASS
+- payments disabled: PASS
+- external Last War access hard-disabled: PASS
+- no scraping: PASS
+- no gameplay automation: PASS
+
+PACKAGE VERIFICATION
+- FULL tree: 159 files
+- PATCH over exact HF4: 29 changed/added files
+- no file deletion required
+- archive path traversal safety: PASS
+- extracted FULL byte-for-byte matches final HF5 source: PASS
+- exact HF4 + PATCH byte-for-byte matches final HF5 source: PASS
+- npm run check/verify on extracted FULL: PASS
+- npm run check/verify on PATCH-overlaid exact HF4: PASS
+- Supabase tree remains unchanged: PASS
+
+IMPORTANT
+This certifies source/test/package integrity. It does NOT certify the final live Vercel/Supabase user experience. A real Preview smoke test remains required after deployment, especially the real `les gladiateurs81 · 884 · ALL4` linkage and Player → Alliance participation propagation.

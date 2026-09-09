@@ -1,0 +1,84 @@
+WARBOOST V2.5.28 HF5 — LAST WAR IDENTITY LINK — GUIDE D'INSTALLATION
+Date: 2026-09-09
+
+CIBLE UNIQUEMENT
+- Branche GitHub: public-beta-safe-launch
+- Vercel: Preview de cette branche
+
+NE PAS MODIFIER
+- main / Production
+- publisher-demo
+
+BASE DU PATCH — OBLIGATOIRE
+- WarBoost_V2.5.28_HF4_FINAL_MANAGEMENT_AI_FULL.zip
+- SHA-256 exact: fd7b8d0990302db4da1c4e11797416c8a2bfbad1eafbcc9d5a19d8a3097c86ba
+
+OPTION RECOMMANDÉE SI LA BRANCHE EST BIEN SUR HF4
+1. Décompresser WarBoost_V2.5.28_HF5_LASTWAR_IDENTITY_LINK_PATCH.zip.
+2. Envoyer le CONTENU extrait à la racine de public-beta-safe-launch en conservant tous les dossiers.
+3. Aucun fichier ne doit être supprimé.
+4. Commit directement sur public-beta-safe-launch; ne pas ouvrir de PR vers main.
+5. Attendre le Preview Vercel vert.
+
+OPTION FULL
+- Le FULL est autonome: décompresser puis envoyer son CONTENU à la racine de public-beta-safe-launch.
+- Conserver api/, assets/, lib/, scripts/ et supabase/ comme dossiers.
+
+DONNÉES — NE RIEN EFFACER
+- ne pas vider localStorage;
+- ne pas supprimer les données cloud;
+- ne pas effacer scans, escouades, Drone, Alliance, VS, Saison ni historique;
+- aucune nouvelle migration SQL/Supabase HF5.
+
+VARIABLES VERCEL À CONSERVER
+- variables Supabase existantes;
+- WARBOOST_SUPPORT_ADMINS;
+- registre d'invitations V2.5.26 déjà installé;
+- éventuel WARBOOST_BETA_EMAILS de secours existant.
+
+SAFE LAUNCH À NE PAS ACTIVER
+- Stripe / paiements;
+- API/provider Last War externe;
+- scraping;
+- automatisation de gameplay.
+
+POST-DEPLOY — /api/health
+Vérifier au minimum:
+- version = 2.5.28
+- build = hf5-lastwar-identity-link
+- mode = public-beta-invite-safe-launch
+- serverless_functions = 12
+- safe_launch_external_game_access_hard_disabled = true
+- beta.payments_enabled = false
+- alliance_identity_lastwar_nickname_server_alliance = true
+- alliance_email_never_identity_key = true
+- alliance_unmatched_account_never_creates_roster_member = true
+- alliance_identity_ambiguous_match_blocked = true
+- alliance_legacy_private_id_requires_game_identity_reproof = true
+- alliance_nickname_change_history_preserved = true
+- alliance_link_status_visible_r5_r4 = true
+
+SMOKE TEST RÉEL OBLIGATOIRE
+1. Ouvrir l'URL Preview stable de public-beta-safe-launch.
+2. Vérifier l'en-tête: WarBoost V2.5.28 HF5.
+3. Se reconnecter avec le compte invité existant. Profil, escouades, Scan, Drone, Alliance, VS, Saison et historique doivent réapparaître sans rescan.
+4. Vérifier l'identité de jeu: pseudo `les gladiateurs81`, serveur `884`, alliance `ALL4`.
+5. Dans Alliance R5/R4, le roster ALL4 doit rester EXACTEMENT à 94 membres. Aucun 95e membre ne doit être créé par la synchronisation.
+6. La ligne `les gladiateurs81` doit afficher `🟢 Compte WarBoost lié`. Les autres membres sans compte associé restent `⚪ ... non lié`.
+7. L'adresse e-mail du compte ne doit apparaître nulle part comme identité de roster ou dans la liste des comptes à associer.
+8. Si une participation joueur récente existe, appuyer sur Synchroniser WarBoost puis vérifier qu'elle apparaît dans:
+   - Suivi des événements · 30 jours;
+   - Suivi détaillé par joueur · 30 jours;
+   - la ligne du bon pseudo uniquement.
+9. Si la confirmation récente est une preuve d'activité, le résumé peut passer à 1 actif confirmé / 93 à actualiser. Les autres membres ne deviennent pas inactifs automatiquement.
+10. Retirer cette confirmation puis resynchroniser: le tombstone doit empêcher une ancienne confirmation cloud de revenir.
+11. Tester une identité inconnue ou ambiguë dans un compte de test: elle doit rester non liée et ne doit recevoir la participation d'aucun membre.
+12. Tester un changement de pseudo APRÈS une liaison exacte: l'historique doit rester sur le même compte sans créer de doublon.
+13. Plan de guerre IA: seuls des membres actifs avec preuves fiables peuvent recevoir une affectation; les membres périmés restent exclus.
+14. Diagnostic PRO: TOP 3 personnalisé et données existantes conservées.
+15. VS: Aujourd'hui / À garder / À éviter; aucun adversaire inventé.
+16. Saison: entre-saisons historique seulement, aucune S6/S7 inventée.
+17. Test rapide Boutique IA, Service client, mot de passe oublié et invitation/révocation avant élargissement de la bêta.
+
+IMPORTANT
+Les tests automatiques du ZIP ne remplacent pas ce smoke test réel Vercel/Supabase.
