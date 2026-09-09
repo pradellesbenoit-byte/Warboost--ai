@@ -74,14 +74,14 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
 
 // Regression from real Preview: a freshly confirmed event must immediately reach the authenticated player's roster row.
 {
-  const old=[{player_id:'p1',name:'Alpha',role:'R4',activity_events:[],updated_at:'2026-09-07T14:00:00Z'}];
-  const cloud=mergeCloudRosterPreservingManual(old,[{player_id:'p1',name:'Alpha',role:'R4',activity_events:[],updated_at:'2026-09-07T14:00:00Z'}]);
+  const old=[{player_id:'p1',name:'Alpha',server_id:'884',alliance_tag:'ALL4',role:'R4',activity_events:[],updated_at:'2026-09-07T14:00:00Z'}];
+  const cloud=mergeCloudRosterPreservingManual(old,[{player_id:'p1',name:'Alpha',server_id:'884',alliance_tag:'ALL4',role:'R4',activity_events:[],updated_at:'2026-09-07T14:00:00Z'}],{serverId:'884',allianceTag:'ALL4'});
   const fresh={event_type:'vs',event_date:'2026-09-07',confirmed:true,confirmed_at:'2026-09-07T15:30:00Z',updated_at:'2026-09-07T15:30:00Z'};
-  const roster=mergeCurrentPlayerActivityIntoRoster(cloud,{playerId:'p1',name:'Alpha',activityEvents:[fresh],updatedAt:'2026-09-07T15:31:00Z'});
+  const roster=mergeCurrentPlayerActivityIntoRoster(cloud,{playerId:'p1',name:'Alpha',serverId:'884',allianceTag:'ALL4',activityEvents:[fresh],updatedAt:'2026-09-07T15:31:00Z'});
   assert.equal(roster.length,1);assert.equal(roster[0].activity_events[0].confirmed,true);
   assert.equal(eventCountsByType(roster[0].activity_events,{nowMs,days:7}).vs,1);
   assert.equal(classifyAllianceMember(roster[0],nowMs).key,'active');
-  const untouched=mergeCurrentPlayerActivityIntoRoster([{player_id:'p2',name:'Bravo',activity_events:[]}],{playerId:'p1',name:'Alpha',activityEvents:[fresh]});
+  const untouched=mergeCurrentPlayerActivityIntoRoster([{player_id:'p2',name:'Bravo',server_id:'884',alliance_tag:'ALL4',activity_events:[]}],{playerId:'p1',name:'Alpha',serverId:'884',allianceTag:'ALL4',activityEvents:[fresh]});
   assert.equal(untouched[0].activity_events.length,0,'current-player injection must never alter another member');
   log('Fresh self-reported activity is mirrored into the authenticated roster row after sync');
 }
@@ -160,7 +160,7 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
   assert.match(app,/ACTIVITY_EVENT_TYPES\.map/);assert.match(app,/source:"player_self_report"/);
   assert.match(css,/\.activityEventBtn\.confirmed/);assert.match(css,/\.decisionDetails\[open\] \.detailsOpen/);
   assert.match(health,/activity_missing_confirmation_never_inactive/);assert.match(health,/declared_rank_never_unlocks_management/);
-  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai)/);assert.match(sw,/\/lib\/activity-events\.js/);
+  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link)/);assert.match(sw,/\/lib\/activity-events\.js/);
   const keys=['activity_quick_title','activity_quick_help','event_vs','event_zombie','event_marauder','event_alliance_event','event_war','event_season','activity_confirm','activity_remove','activity_reason_event','declared_role','diagnostic_confidence','data_completeness','shop_details','shop_hide_details','management_permission','manager_only'];
   const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.length,23);
   for(const [code] of explicit){const tr=translator(code);for(const key of keys)assert.notEqual(tr(key),key,`${code} missing ${key}`);assert.match(tr('tagline'),/V2\.5\.28/)}

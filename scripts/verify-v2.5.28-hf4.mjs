@@ -18,7 +18,7 @@ const emptySquad=(id,heroes)=>({id,name:`Squad ${id}`,power:40+id,updated_at:now
 {
   for(const type of ['vs','alliance_exercise','zombie_siege','desert_storm','canyon_storm','ghost_ops','city_war','season_war','marauder'])assert.ok(PLAYER_ACTIVITY_EVENT_TYPES.includes(type),type);
   for(const legacy of ['zombie','alliance_event','war','season'])assert.ok(LEGACY_ACTIVITY_EVENT_TYPES.includes(legacy),legacy);
-  const parsed=parseParticipationImport('Joueur01;2026-09-08;desert_storm;participated\nJoueur02;2026-09-08;canyon;absent\nJoueur03;2026-09-08;marshal;non_selectionne\nJoueur04;2026-09-08;ghost;excuse');
+  const parsed=parseParticipationImport('Joueur01;2026-09-08;desert_storm;participated\nJoueur02;2026-09-08;canyon;absent\nJoueur03;2026-09-08;marshal;non_selectionne\nJoueur04;2026-09-08;ghost;excuse',{now});
   assert.equal(parsed.errors.length,0);assert.equal(parsed.rows.length,4);
   assert.deepEqual(parsed.rows.map(x=>x.participation_status),['participated','absent_confirmed','not_selected','excused']);
   assert.ok(parsed.rows.every(x=>x.source==='r5_r4_import'));
@@ -90,9 +90,9 @@ const airState={
 {
   const html=read('index.html'),app=read('app.js'),health=read('api/health.js'),sw=read('sw.js');
   for(const id of ['eventImportText','eventImportBtn','eventImportStatus','allianceParticipationTable'])assert.match(html,new RegExp(`id=["']${id}["']`));
-  assert.match(html,/WarBoost V2\.5\.28 HF4/);assert.match(app,/renderAllianceParticipationTable/);assert.match(app,/PLAYER_ACTIVITY_EVENT_TYPES/);assert.match(sw,/warboost-v2-5-28-hf4-final-management-ai/);assert.match(health,/build:"hf4-final-management-ai"/);
+  assert.match(html,/WarBoost V2\.5\.28 HF[45]/);assert.match(app,/renderAllianceParticipationTable/);assert.match(app,/PLAYER_ACTIVITY_EVENT_TYPES/);assert.match(sw,/warboost-v2-5-28-(?:hf4-final-management-ai|hf5-lastwar-identity-link)/);assert.match(health,/build:"(?:hf4-final-management-ai|hf5-lastwar-identity-link)"/);
   for(const flag of ['player_specific_main_squad_ranking','exclusive_equal_score_previous_rank_tiebreak_explained','alliance_event_management_30_day_history','alliance_participation_statuses_distinct','alliance_missing_participation_never_means_absence','alliance_r5_r4_participation_import','vs_today_keep_avoid_plan'])assert.match(health,new RegExp(`${flag}:true`));
-  for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const key of ['event_desert_storm','event_canyon_storm','participation_participated','participation_absent_confirmed','participation_not_selected','participation_excused','participation_import_title','participation_player_history','ex_tie_previous'])assert.notEqual(tr(key),key,`${code} missing ${key}`);assert.match(tr('tagline'),/V2\.5\.28 HF4/)}
+  for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const key of ['event_desert_storm','event_canyon_storm','participation_participated','participation_absent_confirmed','participation_not_selected','participation_excused','participation_import_title','participation_player_history','ex_tie_previous'])assert.notEqual(tr(key),key,`${code} missing ${key}`);assert.match(tr('tagline'),/V2\.5\.28 HF[45]/)}
   const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);
   log('HF4 UI, 23-language labels, health safeguards, cache key and 12-function budget are present');
 }
