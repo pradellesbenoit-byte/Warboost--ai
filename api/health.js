@@ -1,4 +1,4 @@
-import {configured,userConfigured,probeServiceAccess} from "../lib/supabase.js";
+import {configured,userConfigured,probeServiceAccess,probeAllianceScopeSchema} from "../lib/supabase.js";
 import {HERO_CATALOG} from "../lib/heroes.js";
 import {shopReferenceStats} from "../lib/shop-catalog.js";
 import {betaConfigAsync} from "../lib/beta-access.js";
@@ -18,13 +18,14 @@ export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
   const serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=await betaConfigAsync();
   const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
+  const allianceScopeProbe=serviceDb?await probeAllianceScopeSchema():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
   const now=new Date(),serverClock=lastWarServerClock(now),dow=lastWarVsDay(now);
 
   res.status(200).json({
     ok:true,
     app:"WarBoost",
     version:"2.5.28",
-    build:"hf6-player-ready-final",
+    build:"hf7-server-alliance-invite-gate",
     mode:"public-beta-invite-safe-launch",
 
     // Heure serveur + VS : fusion de l'ancien /api/time
@@ -42,6 +43,7 @@ export default async function handler(req,res){
     database:serviceProbe.ok?"ready":(serviceDb||userDb)?"degraded":"local-fallback",
     database_access:serviceProbe.ok?"service+user-rls":userDb?"user-rls":"local-only",
     database_service_probe:serviceProbe.code,
+    alliance_scope_schema:allianceScopeProbe.code,
     lastwar_official_access:"disabled-safe-launch",
     legacy_provider:"disabled-safe-launch",
     game_update:REVIEWED_GAME_UPDATE,
@@ -184,6 +186,20 @@ export default async function handler(req,res){
       alliance_invite_owner_takeover_guard:true,
       alliance_owner_switch_guard:true,
       alliance_share_requires_server_invite:true,
+      alliance_invites_r5_r4_only:true,
+      alliance_invitation_exact_server_scope:true,
+      alliance_invitation_exact_alliance_scope:true,
+      alliance_invitation_exact_roster_nickname_required:true,
+      alliance_invitation_code_never_authorizes_by_itself:true,
+      alliance_outsider_join_fail_closed:true,
+      alliance_scope_unique_server_tag_guard:true,
+      alliance_scope_duplicate_fail_closed:true,
+      alliance_cross_server_join_blocked:true,
+      alliance_cross_alliance_join_blocked:true,
+      alliance_switch_requires_target_roster_proof:true,
+      alliance_canonical_roster_server_side:true,
+      alliance_canonical_roster_preserves_participation_evidence:true,
+      alliance_email_never_invite_identity_key:true,
       vs_sunday_prep_not_day6:true,
       vs_server_reset_utc_minus_2:true,
       alliance_immediate_actions_and_plan_b:true,
