@@ -1,0 +1,64 @@
+WARBOOST V2.5.28 HF8.2 — VS LIVE COACH
+Date: 2026-09-10
+Target: public-beta-safe-launch Preview
+Base patch principal: HF8 Commercial Readiness FULL
+Base également supportée: HF8.1 PRO Visible UX FULL
+
+OBJECTIF
+- Remplacer le VS générique par une analyse pilotée par les valeurs visibles d'un scan Duel d'alliances.
+- Conserver tous les garde-fous Safe Launch, PRO, Alliance, données et compatibilités précédemment validés.
+
+RÉSULTATS SOURCE
+- npm run check: PASS
+- npm run verify: PASS
+- Base V2.5.28 + HF3 + Scan + Activity + Support + Auth + Invites + HF4 + HF5 + HF6 + HF7 + HF8 + HF8.1 + HF8.2: PASS
+- scripts/verify-v2.5.28-hf8-2.mjs: PASS
+- 12 fonctions api/*.js: PASS
+- 23 langues explicites + Auto, libellés VS Live Coach: PASS
+
+FIXTURE RÉELLE DU 10/09/2026
+- ALL FOR 1 [ALL4] #884: 1 440 270 940
+- Fire and Brimstone [Mep] #872: 667 494 056
+- Part visible: 68 % / 32 %
+- les gladiateurs81: #3, 43 195 000
+- Cyril°68°: #2, 53 395 524
+Vérifications:
+- situation = strong_lead: PASS
+- écart alliance = 772 776 884: PASS
+- part calculée ≈ 68,33 %: PASS
+- écart joueur vers #2 = 10 200 524: PASS
+- conseil forte avance = ne pas dépenser uniquement pour gonfler le score: PASS
+- classement limité aux lignes visibles / absence ≠ inactivité: PASS
+
+VS LIVE COACH
+- 0–0 non confirmé devient score inconnu: PASS
+- extraction scan VS étendue sans déduction de données absentes: PASS
+- situation/écart/part de score: PASS
+- rang personnel et écart vers le rang supérieur visible: PASS
+- historique de snapshots VS: PASS
+- tendance comparée uniquement sur même semaine/jour: PASS
+- aucun score futur/résultat/récompense inventé: PASS
+
+NON-RÉGRESSION
+- HF8.1 carte WarBoost PRO visible: PASS
+- paiements bêta OFF: PASS
+- prix commercial préparé 4,99 EUR/mois inchangé: PASS
+- accès Last War externe non autorisé OFF: PASS
+- scraping OFF: PASS
+- automatisation gameplay OFF: PASS
+- HF7 Server + Alliance Invite Gate conservé: PASS
+- données Joueur/escouades/Drone/Scan/Boutique/VS/Saison/Alliance/historique conservées: PASS
+- aucune migration Supabase HF8.2: PASS
+- aucune suppression de fichier/donnée: PASS
+
+PACKAGE FINAL
+- FULL files: 199
+- PATCH files: 23
+- FULL extraction + npm run check: PASS
+- FULL extraction + npm run verify: PASS
+- HF8 + PATCH byte-for-byte == FULL source: PASS
+- HF8.1 + PATCH byte-for-byte == FULL source: PASS
+- PATCH-applied npm run check/verify: PASS
+- ZIP integrity: PASS
+
+Un smoke test réel Vercel reste obligatoire après déploiement. Aucun rapport local ne prétend qu'un scan live Vercel est validé avant ce test.

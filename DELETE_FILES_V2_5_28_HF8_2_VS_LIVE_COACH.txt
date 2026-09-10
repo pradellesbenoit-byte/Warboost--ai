@@ -1,0 +1,3 @@
+WARBOOST V2.5.28 HF8.2 — VS LIVE COACH
+AUCUNE SUPPRESSION DE FICHIER REQUISE.
+Le PATCH est additif/remplaçant uniquement et ne doit déclencher aucune suppression de données.

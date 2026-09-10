@@ -1,0 +1,38 @@
+WARBOOST V2.5.28 HF8.2 — VS LIVE COACH
+
+CIBLE
+- Branche: public-beta-safe-launch uniquement.
+- PATCH cumulatif: compatible avec HF8 Commercial Readiness ou HF8.1 PRO Visible UX.
+- Ne pas toucher main / Production / publisher-demo.
+
+INSTALLATION RECOMMANDÉE
+1. Décompresser WarBoost_V2.5.28_HF8.2_VS_LIVE_COACH_PATCH.zip.
+2. Envoyer le CONTENU extrait à la racine de public-beta-safe-launch en conservant les dossiers.
+3. Remplacer les fichiers de même nom quand GitHub le demande.
+4. Aucun fichier à supprimer.
+5. Aucune migration Supabase à exécuter pour HF8.2.
+6. Ne pas vider localStorage, le cloud, les scans, les escouades, le Drone, l'Alliance, le VS, la Saison ou l'historique.
+7. Laisser Vercel créer le nouveau Preview et attendre l'état Ready.
+
+SMOKE TEST APRÈS DÉPLOIEMENT
+1. En-tête: WarBoost V2.5.28 HF8.2.
+2. Accueil: cartes Joueur, Alliance, VS Live Coach, Saison et WarBoost PRO visibles.
+3. Ouvrir VS Live Coach: si aucun score scanné fiable n'existe, afficher « Score non synchronisé » et PAS 0–0 comme score réel.
+4. Appuyer « Scanner le VS maintenant »: WarBoost Scan doit s'ouvrir avec le type VS sélectionné.
+5. Scanner une capture de Duel d'alliances récente.
+6. Vérifier les données réellement visibles: alliances/tags/serveurs, score, thème, temps restant, rang et score personnel.
+7. Vérifier la décision IA. En forte avance, elle ne doit pas conseiller de vider les ressources uniquement pour gonfler le score.
+8. Faire un second scan plus tard dans le même Jour VS: la tendance doit comparer uniquement l'intervalle entre les deux captures.
+9. Vérifier que le classement indique qu'il ne couvre que les lignes visibles et qu'absence ≠ inactivité.
+10. Vérifier Diagnostic PRO, Boutique IA, Saison et Alliance: aucune régression et roster ALL4 toujours à 94 si c'est le compte de test actuel.
+11. Vérifier WarBoost PRO: visible, bêta gratuite, aucun paiement actif.
+
+SAFE LAUNCH À CONSERVER
+- Paiements bêta: OFF.
+- API/provider Last War non autorisé: OFF.
+- Scraping: OFF.
+- Automatisation de gameplay: OFF.
+- PRO: inclus pour les testeurs autorisés.
+
+AUCUNE ACTION SUPABASE HF8.2
+Le Live Coach réutilise l'état WarBoost existant. Ne lancer aucune migration pour cette version.

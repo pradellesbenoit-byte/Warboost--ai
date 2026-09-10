@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.1 PRO Visible UX Beta",
+  "name": "WarBoost V2.5.28 HF8.2 VS Live Coach Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.1 — HF8 commercial readiness plus a visible PRO entry on the home screen; beta payments and external game access remain hard-disabled.",
+  "description": "WarBoost V2.5.28 HF8.2 — VS Live Coach adds scan-based live Duel analysis, personal rank context and safe resource decisions; beta payments and external game access remain hard-disabled.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

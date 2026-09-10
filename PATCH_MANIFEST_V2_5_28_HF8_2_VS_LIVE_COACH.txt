@@ -1,0 +1,41 @@
+WARBOOST V2.5.28 HF8.2 — VS LIVE COACH
+PATCH CUMULATIF
+
+BASE PRINCIPALE
+- WarBoost V2.5.28 HF8 Commercial Readiness FULL
+- SHA-256: c9fc3b2e114ad96faaae17aa5197a29b0f3484006d18a8d6becc7098880fb93c
+
+BASE AUSSI SUPPORTÉE
+- WarBoost V2.5.28 HF8.1 PRO Visible UX FULL
+- SHA-256: db4dd7baa8f009bbf2731398200ac3316ff19c1ad8fedf87b35c5027a2f1f46f
+
+SUPPRESSIONS
+- Aucune.
+
+FICHIERS DU PATCH (contenu complet des fichiers)
+- BUILD_VERIFICATION_V2_5_28_HF8_1_PRO_VISIBLE_UX.txt
+- BUILD_VERIFICATION_V2_5_28_HF8_2_VS_LIVE_COACH.txt
+- DELETE_FILES_V2_5_28_HF8_2_VS_LIVE_COACH.txt
+- PATCH_MANIFEST_V2_5_28_HF8_1_PRO_VISIBLE_UX.txt
+- PATCH_MANIFEST_V2_5_28_HF8_2_VS_LIVE_COACH.txt
+- README.md
+- UPLOAD_GUIDE_V2_5_28_HF8_1_PRO_VISIBLE_UX.txt
+- UPLOAD_GUIDE_V2_5_28_HF8_2_VS_LIVE_COACH.txt
+- WARBOOST_V2_5_28_HF8_1_PRO_VISIBLE_UX.md
+- WARBOOST_V2_5_28_HF8_2_VS_LIVE_COACH.md
+- api/advice.js
+- api/health.js
+- api/scan.js
+- app.js
+- i18n.js
+- index.html
+- lib/vs-live.js
+- manifest.webmanifest
+- package.json
+- scripts/verify-v2.5.28-hf8-1.mjs
+- scripts/verify-v2.5.28-hf8-2.mjs
+- styles.css
+- sw.js
+
+RÈGLE
+Décompresser puis envoyer le CONTENU du PATCH à la racine de public-beta-safe-launch en conservant les dossiers. Ne pas supprimer les fichiers absents du PATCH. Aucune migration Supabase HF8.2.
