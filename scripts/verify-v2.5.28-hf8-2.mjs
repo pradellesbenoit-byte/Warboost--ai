@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition} from '../lib/vs-live.js';
+import {LANGUAGES,translator} from '../i18n.js';
+const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const app=read('app.js'),html=read('index.html'),scan=read('api/scan.js'),advice=read('api/advice.js'),sw=read('sw.js'),health=read('api/health.js');
+for(const id of ['scanVsBtn','vsScoreUnknown','vsSituationPill','vsTheme','vsRemaining','vsGap','vsPersonal','vsShareLine','vsTrendLine','vsVisibleRankingSection','vsVisibleRanking'])assert.match(html,new RegExp(`id=["']${id}["']`));
+assert.match(html,/WarBoost V2\.5\.28 HF8\.2/);
+assert.match(app,/mergeVsState/);assert.match(app,/scoreKnown/);assert.match(app,/vsSituation/);assert.match(app,/vsTrend/);assert.match(app,/personalVsPosition/);assert.match(app,/scanType[^\n]*value="vs"|value="vs"/);
+assert.match(scan,/time_remaining_text/);assert.match(scan,/our_server_id/);assert.match(scan,/opponent_server_id/);assert.match(scan,/personal_rank/);assert.match(scan,/leaderboard/);assert.match(scan,/score_confirmed=true/);assert.match(scan,/Do not infer missing leaderboard members, inactivity, final outcome, rewards, or future score/);
+assert.match(advice,/warboost-vs-live-ai-v/);assert.match(advice,/vsSituation\(v\)/);assert.match(advice,/personalVsPosition\(v\)/);assert.match(advice,/R5\/R4 should coordinate confirmed contributors|R5\/R4 doivent coordonner les contributeurs confirmés/);
+assert.match(sw,/hf8-2-vs-live-coach/);assert.match(health,/ui_revision:"hf8\.2-vs-live-coach"/);
+const sample={source:'scan',updated_at:'2026-09-10T18:15:00.000Z',week:37,day:4,theme:'Former des Héros',time_remaining_text:'07:29:18',time_remaining_seconds:26958,our_server_id:'884',our_tag:'ALL4',our_alliance:'ALL FOR 1',opponent_server_id:'872',opponent_tag:'Mep',opponent:'Fire and Brimstone',our_score:1440270940,their_score:667494056,our_percent:68,their_percent:32,personal_name:'les gladiateurs81',personal_rank:3,personal_score:43195000,score_confirmed:true,leaderboard:[{rank:1,alliance_tag:'ALL4',player_name:'benja12',score:63942208},{rank:2,alliance_tag:'ALL4',player_name:"Cyril°68°",score:53395524},{rank:3,alliance_tag:'ALL4',player_name:'les gladiateurs81',score:43195000}]};
+let state=mergeVsState({},sample);assert.equal(scoreKnown(state),true);assert.equal(state.snapshots.length,1);const sit=vsSituation(state);assert.equal(sit.status,'strong_lead');assert.equal(sit.gap,772776884);assert.ok(sit.our_share>68&&sit.our_share<69);
+const pos=personalVsPosition(state);assert.equal(pos.rank,3);assert.equal(pos.gap_to_next,10200524);assert.equal(pos.next_player,'Cyril°68°');
+state=mergeVsState(state,{...sample,source:'scan',updated_at:'2026-09-10T18:45:00.000Z',our_score:1500270940,their_score:747494056,time_remaining_seconds:25158});const trend=vsTrend(state);assert.equal(state.snapshots.length,2);assert.equal(trend.elapsed_seconds,1800);assert.equal(trend.our_gain,60000000);assert.equal(trend.their_gain,80000000);assert.equal(trend.momentum,'theirs');
+assert.equal(scoreKnown({our_score:0,their_score:0}),false);assert.equal(scoreKnown({our_score:0,their_score:0,score_confirmed:true}),true);
+for(const item of LANGUAGES.filter(x=>x.code!=='auto')){const t=translator(item.code);for(const key of ['vs_live_coach','vs_score_unknown','vs_scan_now','vs_live_situation','vs_status_strong_lead','vs_ai_decision','vs_ranking_guard'])assert.notEqual(t(key),key,`${item.code} missing ${key}`)}
+const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12,'serverless API function budget must remain 12');
+console.log('WarBoost V2.5.28 HF8.2 VS Live Coach verification: PASS');
