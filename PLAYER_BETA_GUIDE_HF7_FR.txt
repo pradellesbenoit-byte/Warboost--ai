@@ -1,0 +1,13 @@
+WARBOOST HF7 — GUIDE RAPIDE JOUEUR
+
+1. Utilise uniquement le lien de bêta WarBoost reçu.
+2. Connecte-toi avec ton compte WarBoost invité.
+3. Dans ton profil, renseigne exactement ton pseudo Last War, ton numéro de serveur et le tag de ton alliance.
+4. Pour rejoindre l'espace Alliance WarBoost, utilise uniquement l'invitation donnée par un R5/R4 de TON alliance.
+5. Le code ne suffit pas : WarBoost vérifie serveur + alliance + pseudo exact dans le roster de cette alliance.
+6. Si tu n'es pas dans le roster, si le serveur/alliance ne correspondent pas ou si le pseudo est ambigu, l'accès est refusé. Demande au R5/R4 de vérifier le roster.
+7. Ton e-mail WarBoost sert à la connexion ; il n'est pas ton identité dans le roster Alliance.
+8. Confirme seulement les événements auxquels tu as réellement participé. Une absence de confirmation n'est jamais automatiquement considérée comme une absence/inactivité.
+9. En cas de problème, utilise le Service client WarBoost et n'envoie jamais ton mot de passe.
+
+WarBoost est un compagnon indépendant. Aucun accès/API Last War non autorisé, scraping ou automatisation de gameplay n'est activé dans cette bêta.

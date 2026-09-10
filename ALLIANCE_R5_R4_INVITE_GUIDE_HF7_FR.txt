@@ -1,0 +1,29 @@
+WARBOOST HF7 — GUIDE R5/R4 : INVITER SON ALLIANCE
+
+AVANT DE PARTAGER
+- Pendant la bêta sur invitation, le compte du joueur doit aussi être autorisé dans la bêta WarBoost ; le code Alliance ne remplace pas cette autorisation de compte.
+- Vérifie ton pseudo Last War exact, ton serveur et le tag de ton alliance.
+- Importe/actualise le roster de TON alliance dans WarBoost.
+- Ta propre ligne doit apparaître exactement comme R5 ou R4.
+- Synchronise WarBoost.
+
+PARTAGER
+- Pendant la bêta sur invitation, le compte du joueur doit aussi être autorisé dans la bêta WarBoost ; le code Alliance ne remplace pas cette autorisation de compte.
+- Ouvre Alliance R5/R4 > Faire venir les membres.
+- Seuls les R5/R4 correspondant exactement au roster peuvent obtenir/partager l'invitation.
+- L'invitation est attachée au serveur + alliance de cet espace.
+
+CE QUE WARBOOST BLOQUE
+- joueur d'un autre serveur ;
+- joueur d'une autre alliance ;
+- pseudo absent du roster ;
+- pseudo ambigu/dupliqué ;
+- R1/R2/R3 qui tente de partager ;
+- code récupéré/transféré sans correspondance exacte au roster ;
+- bascule vers une autre alliance sans preuve dans le roster cible.
+
+AUTRES SERVEURS
+Un R5/R4 d'un autre serveur crée son propre espace avec SON serveur + SON alliance + SON roster. Les espaces ne sont pas mélangés.
+
+LIMITE ACTUELLE
+Sans API officielle Last War, WarBoost ne lit pas automatiquement la composition réelle de l'alliance dans le jeu. Le roster maintenu par les R5/R4 dans WarBoost est donc la référence d'admission. Garde-le à jour avant de partager largement.

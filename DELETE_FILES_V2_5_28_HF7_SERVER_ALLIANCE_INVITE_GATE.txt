@@ -1,0 +1,3 @@
+WARBOOST V2.5.28 HF7 — DELETE FILES
+Aucune suppression de fichier n'est requise.
+Ne supprimer aucun fichier, aucune table, aucun roster, scan, historique ou donnée joueur existante.

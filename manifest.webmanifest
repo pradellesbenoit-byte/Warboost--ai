@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF6 Player-Ready Beta",
+  "name": "WarBoost V2.5.28 HF7 Server-Scoped Invite Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF6 — personalized player AI, evidence-safe R5/R4 event participation management, protected data, free beta PRO, and external game access hard-disabled.",
+  "description": "WarBoost V2.5.28 HF7 — server+alliance scoped R5/R4 invitations, exact roster admission, personalized player AI, protected data, free beta PRO, and external game access hard-disabled.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

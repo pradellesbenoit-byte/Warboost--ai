@@ -1,0 +1,80 @@
+WARBOOST V2.5.28 HF7 — SERVER + ALLIANCE INVITE GATE
+GUIDE D'INSTALLATION
+Date : 2026-09-09
+
+CIBLE UNIQUEMENT
+- Branche GitHub : public-beta-safe-launch
+- Ne pas modifier main / Production.
+- Ne pas modifier publisher-demo.
+
+BASE DU PATCH
+- PATCH HF7 uniquement sur la base exacte HF6 :
+  WarBoost_V2.5.28_HF6_PLAYER_READY_FINAL_FULL.zip
+- SHA-256 HF6 FULL attendu :
+  428e637e21ec54053f9dd051e1d371e2a214560dd17388f1cfaa66677e08e323
+
+IMPORTANT — ORDRE D'INSTALLATION
+1. Sauvegarder/laisser intactes les données existantes. Ne rien réinitialiser.
+2. Dans Supabase > SQL Editor, exécuter UNE FOIS :
+   supabase/migration_v2_5_28_hf7_alliance_scope.sql
+3. Vérifier que la requête se termine sans erreur.
+4. Décompresser le PATCH HF7.
+5. Envoyer le CONTENU extrait à la racine de public-beta-safe-launch en conservant exactement api/, lib/, scripts/, supabase/ et les fichiers racine.
+6. Commit directement sur public-beta-safe-launch.
+7. Attendre le Preview Vercel vert / Ready.
+8. Utiliser ensuite le lien STABLE de la branche Preview, pas un ancien lien de déploiement individuel.
+
+MIGRATION HF7
+- Additive/idempotente.
+- Ajoute server_id / roster / roster_updated_at sur wb1_alliances.
+- Backfill des espaces HF6 avec les données déjà consenties.
+- Le roster canonique ne copie pas l'e-mail ni le player_id privé.
+- Aucun DROP TABLE, TRUNCATE ou DELETE FROM.
+- Si des doublons historiques serveur+alliance existent, ils ne sont pas supprimés automatiquement : l'accès concerné échoue en mode sécurisé jusqu'à résolution.
+
+NE PAS FAIRE
+- Ne pas effacer localStorage.
+- Ne pas supprimer les profils, scans, escouades, Drone, Alliance, activité, VS, Saison ou historique.
+- Ne pas supprimer les migrations support V2.5.24 ou invitations bêta V2.5.26 déjà installées.
+- Ne pas activer Stripe/paiements.
+- Ne pas activer API Last War non autorisée, scraping, ingestion externe ou automatisation gameplay.
+- Ne pas mettre api/, lib/ ou scripts/ à la racine : conserver les dossiers.
+
+CONTRÔLE /api/health APRÈS DÉPLOIEMENT
+Vérifier au minimum :
+- version = 2.5.28
+- build = hf7-server-alliance-invite-gate
+- mode = public-beta-invite-safe-launch
+- alliance_scope_schema = ready
+- lastwar_official_access = disabled-safe-launch
+- beta.payments_enabled = false
+- serverless_functions = 12 (attendu par le package vérifié)
+- safeguards.alliance_invites_r5_r4_only = true
+- safeguards.alliance_invitation_exact_server_scope = true
+- safeguards.alliance_invitation_exact_alliance_scope = true
+- safeguards.alliance_invitation_exact_roster_nickname_required = true
+- safeguards.alliance_invitation_code_never_authorizes_by_itself = true
+- safeguards.alliance_outsider_join_fail_closed = true
+- safeguards.alliance_cross_server_join_blocked = true
+- safeguards.alliance_cross_alliance_join_blocked = true
+- safeguards.alliance_switch_requires_target_roster_proof = true
+- safeguards.alliance_canonical_roster_server_side = true
+- safeguards.alliance_canonical_roster_preserves_participation_evidence = true
+- safeguards.alliance_email_never_invite_identity_key = true
+
+SMOKE TEST RÉEL OBLIGATOIRE AVANT PARTAGE LARGE
+1. Compte actuel : profil, escouades, Drone, Diagnostic, Boutique, VS, Saison, Alliance et historique réapparaissent sans rescan.
+2. ALL4 : vérifier Serveur 884 + tag ALL4 et roster 94 après migration/synchronisation.
+3. R4 actuel : le bouton Partager fonctionne et le serveur refuse toute création/partage si l'identité R4 ne correspond pas exactement au roster.
+4. Compte membre TEST réellement présent dans ALL4 : pseudo + serveur 884 + ALL4 exacts, ouvrir le lien/code et vérifier qu'il rejoint la ligne existante du roster sans créer un 95e membre.
+5. Test contrôlé mauvais serveur : même code mais serveur différent => accès refusé.
+6. Test contrôlé mauvaise alliance : même serveur mais autre tag => accès refusé.
+7. Test contrôlé pseudo absent du roster => accès refusé.
+8. R1/R2/R3 : aucun partage d'invitation Alliance.
+9. R5/R4 d'un autre serveur/alliance TEST : après import de son roster exact, il peut créer un espace séparé pour son propre couple serveur+alliance ; aucune donnée ALL4 ne doit apparaître.
+10. Vérifier que les participations/historiques HF6 restent présents après rafraîchissement du roster canonique.
+11. Vérifier qu'aucune adresse e-mail n'apparaît dans la gestion Alliance.
+12. Service client / mot de passe oublié / invitations bêta générales restent opérationnels.
+
+IMPORTANT SUR LA GARANTIE
+Les tests locaux et de package couvrent les cas de sécurité ci-dessus, mais seul le smoke test Vercel + Supabase réel peut confirmer la configuration de TON environnement. Ne pas envoyer le code Alliance à un large groupe avant ce contrôle.

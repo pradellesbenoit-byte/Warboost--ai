@@ -1,0 +1,59 @@
+WARBOOST V2.5.28 HF7 — SERVER + ALLIANCE INVITE GATE
+BUILD VERIFICATION
+Date : 2026-09-09
+Base : WarBoost_V2.5.28_HF6_PLAYER_READY_FINAL_FULL.zip
+Base SHA-256 : 428e637e21ec54053f9dd051e1d371e2a214560dd17388f1cfaa66677e08e323
+
+SOURCE VERIFICATION
+- npm run check : PASS
+- npm run verify : PASS
+- HF3/HF4/HF5/HF6 regression suites : PASS
+- HF7 dedicated verification : PASS
+
+HF7 SECURITY COVERAGE
+- R5/R4 exact roster proof required to create/share an Alliance invitation : PASS
+- New R5/R4 from another server can bootstrap only its own exact server+alliance space : PASS
+- Invitation code alone never authorizes entry : PASS
+- Cross-server join blocked : PASS
+- Cross-alliance join blocked : PASS
+- Nickname absent from canonical roster blocked : PASS
+- Ambiguous/duplicate nickname blocked : PASS
+- Historical duplicate server+alliance spaces fail closed : PASS
+- Target roster role preserved on join/switch : PASS
+- Owner orphan-switch guard preserved : PASS
+- Canonical roster strips e-mail/private player_id : PASS
+- Canonical roster refresh preserves participation evidence : PASS
+- Smaller/partial local roster does not overwrite a larger canonical roster : PASS
+- E-mail remains authentication/support only, not Alliance identity : PASS
+
+DATA / NON-REGRESSION
+- Existing player data/localStorage keys preserved : PASS
+- Scan/hero/gear regressions including true Lv.0 : PASS
+- Diagnostic PRO TOP 3 personalized and Shop alignment regressions : PASS
+- VS / Season safeguards : PASS
+- Alliance activity missing-data != inactivity : PASS
+- Support / password recovery / beta invitation manager : PASS
+- 23 explicit languages + Auto : PASS
+- 12 Vercel serverless API functions : PASS
+- Safe Launch payment lock / external game access lock : PASS
+
+DATABASE
+- HF7 migration required : supabase/migration_v2_5_28_hf7_alliance_scope.sql
+- Migration additive/idempotent : PASS
+- No DROP TABLE / TRUNCATE / DELETE FROM : PASS
+- Safe legacy backfill of server/roster fields : PASS
+- E-mail/private player_id not copied to canonical roster by HF7 backfill : PASS
+
+PACKAGE VERIFICATION
+- FULL tree : 178 files
+- PATCH over exact HF6 base : 33 changed/added files
+- Removed files : 0
+- ZIP path traversal safety : PASS
+- Extracted FULL byte-for-byte equals final source : PASS
+- Exact HF6 + PATCH byte-for-byte equals final source : PASS
+- Extracted FULL npm run check / npm run verify : PASS
+- PATCH-applied tree npm run check / npm run verify : PASS
+- 12 api/*.js functions preserved : PASS
+
+LIVE STATUS
+This report certifies source and local regression checks. It does NOT replace the mandatory live Vercel + Supabase smoke test after applying the HF7 migration.
