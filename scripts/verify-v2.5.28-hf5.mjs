@@ -83,8 +83,8 @@ const roster94=()=>Array.from({length:94},(_,i)=>({name:i===9?'les gladiateurs81
 {
   const app=read('app.js'),sync=read('api/sync.js'),supabase=read('lib/supabase.js'),identity=read('lib/alliance-identity.js'),html=read('index.html'),health=read('api/health.js'),sw=read('sw.js');
   for(const id of ['allianceIdentitySummary','participationLegend','unlinkedWarBoostDetails','unlinkedWarBoostAccounts'])assert.match(html,new RegExp(`id=["']${id}["']`));
-  assert.match(html,/WarBoost V2\.5\.28 HF[567]/);assert.match(app,/reconcileCurrentPlayerAllianceIdentity/);assert.match(app,/saveState\(\);await syncAll\(\);const joined=await joinPendingAlliance\(\);if\(joined\)await syncAll\(\)/);assert.match(sync,/authoritativeTag/);assert.match(sync,/mergeCloudRosterWithIdentity/);assert.match(supabase,/server_id:serverId/);assert.match(supabase,/alliance_tag:profileAlliance/);assert.doesNotMatch(identity,/\.email\b|email\s*:/i);
-  assert.match(sw,/warboost-v2-5-28-(?:hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate)/);assert.match(health,/build:"(?:hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate)"/);
+  assert.match(html,/WarBoost V2\.5\.28 HF[5678]/);assert.match(app,/reconcileCurrentPlayerAllianceIdentity/);assert.match(app,/saveState\(\);await syncAll\(\);const joined=await joinPendingAlliance\(\);if\(joined\)await syncAll\(\)/);assert.match(sync,/authoritativeTag/);assert.match(sync,/mergeCloudRosterWithIdentity/);assert.match(supabase,/server_id:serverId/);assert.match(supabase,/alliance_tag:profileAlliance/);assert.doesNotMatch(identity,/\.email\b|email\s*:/i);
+  assert.match(sw,/warboost-v2-5-28-(?:hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate|hf8-commercial-readiness)/);assert.match(health,/build:"(?:hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate|hf8-commercial-readiness)"/);
   for(const flag of ['alliance_identity_lastwar_nickname_server_alliance','alliance_email_never_identity_key','alliance_unmatched_account_never_creates_roster_member','alliance_identity_ambiguous_match_blocked','alliance_legacy_private_id_requires_game_identity_reproof','alliance_nickname_change_history_preserved'])assert.match(health,new RegExp(`${flag}:true`));
   const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);
   log('HF5 UI/server contract exposes game-identity linking while preserving the 12-function budget');
@@ -95,7 +95,7 @@ const roster94=()=>Array.from({length:94},(_,i)=>({name:i===9?'les gladiateurs81
   const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.length,23);
   const identityKeys=['identity_match_privacy','identity_linked_short','identity_unlinked_short','identity_roster_summary','identity_pending_cloud','identity_unlinked_accounts_title','participation_legend'];
   const en=translator('en-GB');
-  for(const [code] of explicit){const tr=translator(code);for(const key of identityKeys){assert.notEqual(tr(key),key,`${code} missing ${key}`);if(!code.startsWith('en'))assert.notEqual(tr(key),en(key),`${code} still inherits English HF5 identity copy for ${key}`)}assert.match(tr('tagline'),/V2\.5\.28 HF[567]/)}
+  for(const [code] of explicit){const tr=translator(code);for(const key of identityKeys){assert.notEqual(tr(key),key,`${code} missing ${key}`);if(!code.startsWith('en'))assert.notEqual(tr(key),en(key),`${code} still inherits English HF5 identity copy for ${key}`)}assert.match(tr('tagline'),/V2\.5\.28 HF[5678]/)}
   log('23 explicit language choices resolve localized HF5 identity-link labels without English leakage');
 }
 

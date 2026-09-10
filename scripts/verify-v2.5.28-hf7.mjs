@@ -78,9 +78,9 @@ const state=(name='les gladiateurs81',server='884',tag='ALL4',role='R4',members=
 // Health/cache/package contract remains within the 12 serverless function budget.
 {
   const health=read('api/health.js'),sw=read('sw.js'),html=read('index.html'),pkg=JSON.parse(read('package.json'));
-  assert.match(health,/build:"hf7-server-alliance-invite-gate"/);assert.match(health,/alliance_scope_schema/);
+  assert.match(health,/build:"(?:hf7-server-alliance-invite-gate|hf8-commercial-readiness)"/);assert.match(health,/alliance_scope_schema/);
   for(const flag of ['alliance_invites_r5_r4_only','alliance_invitation_exact_server_scope','alliance_invitation_exact_alliance_scope','alliance_invitation_exact_roster_nickname_required','alliance_invitation_code_never_authorizes_by_itself','alliance_outsider_join_fail_closed','alliance_cross_server_join_blocked','alliance_cross_alliance_join_blocked','alliance_switch_requires_target_roster_proof','alliance_canonical_roster_server_side','alliance_canonical_roster_preserves_participation_evidence','alliance_email_never_invite_identity_key'])assert.match(health,new RegExp(`${flag}:true`));
-  assert.match(sw,/warboost-v2-5-28-hf7-server-alliance-invite-gate/);assert.match(sw,/\/lib\/alliance-scope\.js/);assert.match(html,/WarBoost V2\.5\.28 HF7/);assert.match(html,/data-i18n="invite_note_scoped"/);
+  assert.match(sw,/warboost-v2-5-28-(?:hf7-server-alliance-invite-gate|hf8-commercial-readiness)/);assert.match(sw,/\/lib\/alliance-scope\.js/);assert.match(html,/WarBoost V2\.5\.28 HF(?:7|8)/);assert.match(html,/data-i18n="invite_note_scoped"/);
   const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);assert.match(pkg.scripts.check,/alliance-scope\.js/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf7\.mjs/);
   log('HF7 health/cache/UI/test contract exposes the new gate while preserving exactly 12 serverless APIs');
 }
@@ -89,7 +89,7 @@ const state=(name='les gladiateurs81',server='884',tag='ALL4',role='R4',members=
 {
   const explicit=LANGUAGES.filter(([c])=>c!=='auto');assert.equal(explicit.length,23);const en=translator('en-GB');
   const keys=['invite_note_scoped','alliance_invite_ready_scoped','alliance_joined_scoped','alliance_invite_manager_only','alliance_manager_roster_match_required','alliance_roster_identity_ambiguous','lastwar_nickname_required','lastwar_server_required','lastwar_alliance_required','lastwar_identity_required','alliance_space_exists_invitation_required','alliance_scope_not_ready','alliance_server_mismatch','alliance_tag_mismatch','alliance_roster_not_ready','player_not_in_alliance_roster','alliance_scope_ambiguous_admin_required'];
-  for(const [code] of explicit){const tr=translator(code);for(const key of keys){assert.notEqual(tr(key),key,`${code} missing ${key}`);if(!code.startsWith('en'))assert.notEqual(tr(key),en(key),`${code} inherits English HF7 security copy for ${key}`)}assert.match(tr('tagline'),/V2\.5\.28 HF7/)}
+  for(const [code] of explicit){const tr=translator(code);for(const key of keys){assert.notEqual(tr(key),key,`${code} missing ${key}`);if(!code.startsWith('en'))assert.notEqual(tr(key),en(key),`${code} inherits English HF7 security copy for ${key}`)}assert.match(tr('tagline'),/V2\.5\.28 HF(?:7|8)/)}
   log('23 explicit languages contain localized HF7 alliance invitation security messages');
 }
 
