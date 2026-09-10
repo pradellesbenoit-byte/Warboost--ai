@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8 Commercial Readiness Beta",
+  "name": "WarBoost V2.5.28 HF8.1 PRO Visible UX Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8 — HF7 alliance security plus commercial PRO readiness at 4.99 EUR/month, with beta payments still hard-disabled and external game access disabled.",
+  "description": "WarBoost V2.5.28 HF8.1 — HF8 commercial readiness plus a visible PRO entry on the home screen; beta payments and external game access remain hard-disabled.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

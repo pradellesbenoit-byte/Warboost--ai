@@ -1,0 +1,20 @@
+WARBOOST V2.5.28 HF8.1 — PRO VISIBLE UX
+
+CIBLE
+- Branche: public-beta-safe-launch uniquement.
+- Base requise: HF8 Commercial Readiness déjà déployée.
+- Ne pas toucher main / Production / publisher-demo.
+
+INSTALLATION
+1. Décompresser le PATCH HF8.1.
+2. Envoyer son CONTENU à la racine de public-beta-safe-launch en conservant les dossiers.
+3. Aucun fichier à supprimer.
+4. Aucune migration Supabase à exécuter.
+5. Laisser Vercel créer le nouveau Preview.
+6. Ouvrir l'accueil: une 5e carte « WarBoost PRO » doit être visible.
+7. Appuyer dessus: Compte WarBoost doit s'ouvrir directement sur WarBoost PRO.
+8. Vérifier « PRO inclus dans la bêta » et « 4,99 € / mois » sans bouton de paiement actif.
+
+IMPORTANT
+- Ne pas activer Stripe/paiements pendant la bêta.
+- Ne pas vider localStorage ni les données cloud.

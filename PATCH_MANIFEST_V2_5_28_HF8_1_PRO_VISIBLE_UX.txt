@@ -1,0 +1,19 @@
+WARBOOST V2.5.28 HF8.1 — PRO VISIBLE UX
+Base: HF8 Commercial Readiness FULL
+
+FILES CHANGED/ADDED
+- BUILD_VERIFICATION_V2_5_28_HF8_1_PRO_VISIBLE_UX.txt
+- PATCH_MANIFEST_V2_5_28_HF8_1_PRO_VISIBLE_UX.txt
+- UPLOAD_GUIDE_V2_5_28_HF8_1_PRO_VISIBLE_UX.txt
+- WARBOOST_V2_5_28_HF8_1_PRO_VISIBLE_UX.md
+- api/health.js
+- app.js
+- i18n.js
+- index.html
+- manifest.webmanifest
+- package.json
+- scripts/verify-v2.5.28-hf8-1.mjs
+- sw.js
+
+DELETE: none
+SUPABASE MIGRATION: none

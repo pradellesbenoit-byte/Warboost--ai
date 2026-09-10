@@ -1316,3 +1316,8 @@ const V2528_HF8_COMMERCIAL={
 for(const target of [EN,EN_GB,EN_US])Object.assign(target,V2528_HF8_COMMERCIAL.en);
 for(const [code,copy] of Object.entries(V2528_HF8_COMMERCIAL)){if(code!=="en"&&packs[code])Object.assign(packs[code],copy)}
 for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.28\s+HF7/g,"V2.5.28 HF8")}
+
+// ===== HF8.1 · visible PRO entry on home =====
+for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){
+  if(target?.tagline)target.tagline=String(target.tagline).replace(/V2\.5\.28\s+HF8(?!\.1)/g,"V2.5.28 HF8.1");
+}

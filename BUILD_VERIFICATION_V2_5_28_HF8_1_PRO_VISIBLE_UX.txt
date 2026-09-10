@@ -1,0 +1,25 @@
+WARBOOST V2.5.28 HF8.1 — PRO VISIBLE UX
+Base exacte: HF8 Commercial Readiness FULL
+Target: public-beta-safe-launch Preview
+
+FIX
+- Carte WarBoost PRO visible directement sur l'accueil.
+- La carte ouvre Compte WarBoost et défile vers la section PRO existante.
+- Section PRO conserve le prix prévu 4,99 EUR/mois et l'indication bêta gratuite.
+- Paiements bêta restent hard-disabled.
+
+NON-REGRESSION
+- 12 fonctions api/*.js attendues.
+- Aucune suppression de données.
+- Aucun changement de schéma Supabase requis.
+- HF7 Server + Alliance Invite Gate conservé.
+- Diagnostic PRO, Boutique IA, VS, Saison, Scan, Support et 23 langues + Auto conservés.
+
+Les résultats automatisés sont générés après exécution de npm run check et npm run verify.
+RESULTATS AUTOMATISES
+- npm run check: PASS
+- npm run verify (V2.5.28 + HF3 + Scan + Activity + Support + Auth + Invites + HF4 + HF5 + HF6 + HF7 + HF8 + HF8.1): PASS
+- scripts/verify-v2.5.28-hf8-1.mjs: PASS
+- Nombre api/*.js: 12
+- Paiements bêta désactivés: PASS
+- Accès externe Last War désactivé: PASS
