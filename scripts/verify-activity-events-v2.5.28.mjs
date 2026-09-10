@@ -111,7 +111,7 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
   assert.match(app,/function isAllianceManager\(\)\{return state\?\.alliance\?\.management_verified===true&&\["R4","R5"\]\.includes\(normalizedRole\(state\?\.alliance\?\.role\)\)\}/);
   assert.match(app,/warPlanBtn[\s\S]{0,260}hasDeclaredAllianceCommandRole/);
   assert.match(app,/rosterImportBtn[\s\S]{0,260}hasDeclaredAllianceCommandRole/);
-  assert.match(app,/canShareAllianceInvite=a\.management_verified===true&&\["R4","R5"\]\.includes\(normalizedRole\(a\.role\)\)/);
+  assert.match(app,/cloudAlliance=Boolean\(a\.id\|\|a\.invite_code\),canShareAllianceInvite=declaredManager&&\(!cloudAlliance\|\|verifiedManager\)/);
   assert.match(app,/row\.management_role=nextRole/);
   assert.doesNotMatch(app,/row\.role=nextRole/);
   assert.match(advice,/declaredRole=String\(s\?\.player\?\.role\|\|"R1"\)\.toUpperCase\(\)/);
@@ -160,7 +160,7 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
   assert.match(app,/ACTIVITY_EVENT_TYPES\.map/);assert.match(app,/source:"player_self_report"/);
   assert.match(css,/\.activityEventBtn\.confirmed/);assert.match(css,/\.decisionDetails\[open\] \.detailsOpen/);
   assert.match(health,/activity_missing_confirmation_never_inactive/);assert.match(health,/declared_rank_never_unlocks_management/);
-  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final)/);assert.match(sw,/\/lib\/activity-events\.js/);
+  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate)/);assert.match(sw,/\/lib\/activity-events\.js/);
   const keys=['activity_quick_title','activity_quick_help','event_vs','event_zombie','event_marauder','event_alliance_event','event_war','event_season','activity_confirm','activity_remove','activity_reason_event','declared_role','diagnostic_confidence','data_completeness','shop_details','shop_hide_details','management_permission','manager_only'];
   const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.length,23);
   for(const [code] of explicit){const tr=translator(code);for(const key of keys)assert.notEqual(tr(key),key,`${code} missing ${key}`);assert.match(tr('tagline'),/V2\.5\.28/)}

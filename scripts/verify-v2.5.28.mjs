@@ -393,7 +393,7 @@ const baseState={
   assert.match(health,/disabled-safe-launch/);assert.match(health,/database_service_probe/);assert.match(health,/probeServiceAccess/);
   assert.match(health,/unauthorized_source_default\s*:\s*false/);
   assert.equal(manifest.name.includes('V2.5.28'),true);
-  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final)/);
+  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate)/);
   assert.match(migration,/create table if not exists public\.wb1_profiles/i);
   assert.match(migration,/create table if not exists public\.wb1_snapshots/i);
   assert.match(migration,/create table if not exists public\.wb1_alliances/i);
@@ -502,33 +502,69 @@ await withMockSupabase([
 ],async calls=>{const r=await callAsync(inviteHandler,{tag:'AAA'});assert.equal(r.status,403);assert.equal(r.body.error,'manager_role_required');assert.equal(calls.filter(c=>c.options?.method==='POST'&&c.url.includes('/rest/v1/wb1_alliances')).length,0)});
 log('Alliance invite sharing is restricted to R5/R4 for an existing cloud alliance');
 
-// Alliance invitation: recover an owned alliance if creation previously succeeded but membership insertion was interrupted.
+// HF7 Alliance invitation: an exact R4 roster identity may share only its own server+alliance invitation.
 await withMockSupabase([
-  {match:u=>u.endsWith('/auth/v1/user'),body:{id:'owner1'}},
-  {match:u=>u.includes('wb1_alliance_members?player_id=eq.owner1'),body:[]},
-  {match:u=>u.includes('wb1_alliances?owner_player_id=eq.owner1'),body:[{id:'a-owned',tag:'OWN',invite_code:'OWN-REAL',owner_player_id:'owner1'}]},
-  {match:(u,o)=>u.includes('wb1_alliance_members?on_conflict=player_id')&&o.method==='POST',body:[{alliance_id:'a-owned',player_id:'owner1',role:'R5'}]}
-],async calls=>{const r=await callAsync(inviteHandler,{tag:'OWN'});assert.equal(r.status,200);assert.equal(r.body.recovered,true);assert.equal(r.body.invite_code,'OWN-REAL');assert.equal(calls.filter(c=>c.options?.method==='POST'&&/\/rest\/v1\/wb1_alliances$/.test(c.url)).length,0)});
-log('Interrupted alliance creation recovers the existing owner alliance instead of creating duplicates');
+  {match:u=>u.endsWith('/auth/v1/user'),body:{id:'mgr1'}},
+  {match:u=>u.includes('wb1_alliance_members?player_id=eq.mgr1'),body:[{alliance_id:'a1',player_id:'mgr1',role:'R4',updated_at:now}]},
+  {match:u=>u.includes('wb1_alliances?id=eq.a1'),body:[{id:'a1',server_id:'884',tag:'ALL4',name:'ALL FOR 1',invite_code:'ALL4-SECURE',owner_player_id:'owner',roster:[{name:'Commander',server_id:'884',alliance_tag:'ALL4',role:'R4'}]}]},
+  {match:u=>u.includes('wb1_alliances?server_id=eq.884')&&u.includes('tag=eq.ALL4'),body:[{id:'a1',server_id:'884',tag:'ALL4',name:'ALL FOR 1',invite_code:'ALL4-SECURE',owner_player_id:'owner'}]},
+  {match:u=>u.includes('wb1_profiles?player_id=eq.mgr1'),body:[{state:{player:{name:'Commander',server_id:'884',role:'R4'},alliance:{tag:'ALL4',members:[{name:'Commander',server_id:'884',alliance_tag:'ALL4',role:'R4'}]}}}]},
+  {match:(u,o)=>u.includes('wb1_alliances?id=eq.a1')&&o.method==='PATCH',body:[{id:'a1',server_id:'884',tag:'ALL4',name:'ALL FOR 1',invite_code:'ALL4-SECURE',owner_player_id:'owner',roster:[{name:'Commander',server_id:'884',alliance_tag:'ALL4',role:'R4'}]}]}
+],async()=>{const r=await callAsync(inviteHandler,{});assert.equal(r.status,200);assert.equal(r.body.invite_code,'ALL4-SECURE');assert.equal(r.body.role,'R4');assert.equal(r.body.alliance.server_id,'884');assert.equal(r.body.alliance.tag,'ALL4');assert.equal(r.body.scope_verified,true)});
+log('HF7 alliance invite sharing requires exact Last War R5/R4 roster proof in the same server+alliance scope');
 
-// Alliance switch: owners are blocked from silently abandoning an owned alliance.
+// HF7 multi-server bootstrap: an exact R5/R4 with a local roster can create only its own new server+alliance space.
+await withMockSupabase([
+  {match:u=>u.endsWith('/auth/v1/user'),body:{id:'newmgr'}},
+  {match:u=>u.includes('wb1_alliance_members?player_id=eq.newmgr'),body:[]},
+  {match:u=>u.includes('wb1_profiles?player_id=eq.newmgr'),body:[{state:{player:{name:'NewBoss',server_id:'999',role:'R5'},alliance:{tag:'NEWX',members:[{name:'NewBoss',server_id:'999',alliance_tag:'NEWX',role:'R5',email:'never-store@example.com'},{name:'NewMember',server_id:'999',alliance_tag:'NEWX',role:'R2'}]}}}]},
+  {match:u=>u.includes('wb1_alliances?owner_player_id=eq.newmgr'),body:[]},
+  {match:u=>u.includes('wb1_alliances?server_id=eq.999')&&u.includes('tag=eq.NEWX'),body:[]},
+  {match:u=>u.includes('wb1_alliances?invite_code=eq.S999-NEWX-'),body:[]},
+  {match:(u,o)=>u.endsWith('/rest/v1/wb1_alliances')&&o.method==='POST',body:[{id:'new999',server_id:'999',tag:'NEWX',name:'NEWX',invite_code:'S999-NEWX-ABCDEF',owner_player_id:'newmgr',roster:[{name:'NewBoss',server_id:'999',alliance_tag:'NEWX',role:'R5'},{name:'NewMember',server_id:'999',alliance_tag:'NEWX',role:'R2'}]}]},
+  {match:(u,o)=>u.includes('wb1_alliance_members?on_conflict=player_id')&&o.method==='POST',body:[{alliance_id:'new999',player_id:'newmgr',role:'R5'}]}
+],async calls=>{const r=await callAsync(inviteHandler,{});assert.equal(r.status,200);assert.equal(r.body.alliance.server_id,'999');assert.equal(r.body.alliance.tag,'NEWX');assert.equal(r.body.role,'R5');assert.match(r.body.invite_code,/^S999-NEWX-/);const create=calls.find(c=>c.options?.method==='POST'&&c.url.endsWith('/rest/v1/wb1_alliances'));assert.ok(create);const body=JSON.parse(create.options.body);assert.equal(body.server_id,'999');assert.equal(body.tag,'NEWX');assert.equal(body.roster.length,2);assert.equal(Object.hasOwn(body.roster[0],'email'),false)});
+log('HF7 lets a verified-in-roster R5/R4 bootstrap a separate WarBoost space for another server/alliance without mixing scopes');
+
+// HF7 Alliance join: a code alone never authorizes a player from the wrong server.
+await withMockSupabase([
+  {match:u=>u.endsWith('/auth/v1/user'),body:{id:'outsider'}},
+  {match:u=>u.includes('wb1_alliances?invite_code=eq.NEW-CODE'),body:[{id:'new-a',server_id:'885',tag:'NEW',invite_code:'NEW-CODE',owner_player_id:'other',roster:[{name:'Outsider',server_id:'885',alliance_tag:'NEW',role:'R2'}]}]},
+  {match:u=>u.includes('wb1_alliances?server_id=eq.885')&&u.includes('tag=eq.NEW'),body:[{id:'new-a',server_id:'885',tag:'NEW'}]},
+  {match:u=>u.includes('wb1_profiles?player_id=eq.outsider'),body:[{state:{player:{name:'Outsider',server_id:'884'},alliance:{tag:'OLD'}}}]}
+],async calls=>{const r=await callAsync(joinHandler,{invite_code:'NEW-CODE'});assert.equal(r.status,403);assert.equal(r.body.error,'alliance_server_mismatch');assert.equal(calls.filter(c=>c.options?.method==='POST'&&c.url.includes('wb1_alliance_members?on_conflict=player_id')).length,0)});
+log('HF7 blocks cross-server joins even when the invitation code is valid');
+
+// HF7 duplicate scope: if historical data contains two spaces for the same server+tag, joining fails closed.
+await withMockSupabase([
+  {match:u=>u.endsWith('/auth/v1/user'),body:{id:'dupuser'}},
+  {match:u=>u.includes('wb1_alliances?invite_code=eq.DUP-CODE'),body:[{id:'dup-a',server_id:'884',tag:'ALL4',invite_code:'DUP-CODE',owner_player_id:'x',roster:[{name:'DupUser',server_id:'884',alliance_tag:'ALL4',role:'R2'}]}]},
+  {match:u=>u.includes('wb1_alliances?server_id=eq.884')&&u.includes('tag=eq.ALL4'),body:[{id:'dup-a',server_id:'884',tag:'ALL4'},{id:'dup-b',server_id:'884',tag:'ALL4'}]}
+],async calls=>{const r=await callAsync(joinHandler,{invite_code:'DUP-CODE'});assert.equal(r.status,409);assert.equal(r.body.error,'alliance_scope_ambiguous_admin_required');assert.equal(calls.some(c=>c.url.includes('wb1_profiles?player_id=eq.dupuser')),false);assert.equal(calls.some(c=>c.options?.method==='POST'&&c.url.includes('wb1_alliance_members?on_conflict=player_id')),false)});
+log('HF7 fails closed when historical duplicate WarBoost spaces exist for one server+alliance scope');
+
+// HF7 Alliance switch: owners remain blocked even after exact target-roster proof.
 await withMockSupabase([
   {match:u=>u.endsWith('/auth/v1/user'),body:{id:'owner2'}},
-  {match:u=>u.includes('wb1_alliances?invite_code=eq.NEW-CODE'),body:[{id:'new-a',tag:'NEW',invite_code:'NEW-CODE',owner_player_id:'other'}]},
+  {match:u=>u.includes('wb1_alliances?invite_code=eq.NEW-CODE'),body:[{id:'new-a',server_id:'885',tag:'NEW',invite_code:'NEW-CODE',owner_player_id:'other',roster:[{name:'OwnerTwo',server_id:'885',alliance_tag:'NEW',role:'R4'}]}]},
+  {match:u=>u.includes('wb1_alliances?server_id=eq.885')&&u.includes('tag=eq.NEW'),body:[{id:'new-a',server_id:'885',tag:'NEW'}]},
+  {match:u=>u.includes('wb1_profiles?player_id=eq.owner2'),body:[{state:{player:{name:'OwnerTwo',server_id:'885'},alliance:{tag:'NEW'}}}]},
   {match:u=>u.includes('wb1_alliance_members?player_id=eq.owner2'),body:[{alliance_id:'old-a',player_id:'owner2',role:'R5',updated_at:now}]},
-  {match:u=>u.includes('wb1_alliances?id=eq.old-a'),body:[{id:'old-a',tag:'OLD',invite_code:'OLD-CODE',owner_player_id:'owner2'}]}
+  {match:u=>u.includes('wb1_alliances?id=eq.old-a'),body:[{id:'old-a',server_id:'884',tag:'OLD',invite_code:'OLD-CODE',owner_player_id:'owner2',roster:[]}]}
 ],async calls=>{const r=await callAsync(joinHandler,{invite_code:'NEW-CODE'});assert.equal(r.status,409);assert.equal(r.body.error,'alliance_owner_switch_blocked');assert.equal(calls.filter(c=>c.options?.method==='POST'&&c.url.includes('wb1_alliance_members?on_conflict=player_id')).length,0)});
-log('Alliance owners cannot silently switch alliances and orphan their current alliance');
+log('Alliance owners still cannot silently switch and orphan their current alliance');
 
-// Alliance switch: a non-owner moves atomically via the player_id unique membership guard.
+// HF7 Alliance switch: a non-owner may move only after exact target roster proof; the Last War roster role is preserved.
 await withMockSupabase([
   {match:u=>u.endsWith('/auth/v1/user'),body:{id:'member1'}},
-  {match:u=>u.includes('wb1_alliances?invite_code=eq.NEW-CODE'),body:[{id:'new-a',tag:'NEW',invite_code:'NEW-CODE',owner_player_id:'other'}]},
+  {match:u=>u.includes('wb1_alliances?invite_code=eq.NEW-CODE'),body:[{id:'new-a',server_id:'885',tag:'NEW',invite_code:'NEW-CODE',owner_player_id:'other',roster:[{name:'MemberOne',server_id:'885',alliance_tag:'NEW',role:'R3'}]}]},
+  {match:u=>u.includes('wb1_alliances?server_id=eq.885')&&u.includes('tag=eq.NEW'),body:[{id:'new-a',server_id:'885',tag:'NEW'}]},
+  {match:u=>u.includes('wb1_profiles?player_id=eq.member1'),body:[{state:{player:{name:'MemberOne',server_id:'885'},alliance:{tag:'NEW'}}}]},
   {match:u=>u.includes('wb1_alliance_members?player_id=eq.member1'),body:[{alliance_id:'old-a',player_id:'member1',role:'R2',updated_at:now}]},
-  {match:u=>u.includes('wb1_alliances?id=eq.old-a'),body:[{id:'old-a',tag:'OLD',invite_code:'OLD-CODE',owner_player_id:'owner-old'}]},
-  {match:(u,o)=>u.includes('wb1_alliance_members?on_conflict=player_id')&&o.method==='POST',body:[{alliance_id:'new-a',player_id:'member1',role:'R1'}]}
-],async calls=>{const r=await callAsync(joinHandler,{invite_code:'NEW-CODE'});assert.equal(r.status,200);assert.equal(r.body.switched,true);const post=calls.find(c=>c.options?.method==='POST'&&c.url.includes('wb1_alliance_members?on_conflict=player_id'));assert.ok(post);assert.equal(JSON.parse(post.options.body).role,'R1')});
-log('Non-owner alliance switching uses one player_id-scoped membership row');
+  {match:u=>u.includes('wb1_alliances?id=eq.old-a'),body:[{id:'old-a',server_id:'884',tag:'OLD',invite_code:'OLD-CODE',owner_player_id:'owner-old',roster:[]}]},
+  {match:(u,o)=>u.includes('wb1_alliance_members?on_conflict=player_id')&&o.method==='POST',body:[{alliance_id:'new-a',player_id:'member1',role:'R3'}]}
+],async calls=>{const r=await callAsync(joinHandler,{invite_code:'NEW-CODE'});assert.equal(r.status,200);assert.equal(r.body.switched,true);const post=calls.find(c=>c.options?.method==='POST'&&c.url.includes('wb1_alliance_members?on_conflict=player_id'));assert.ok(post);assert.equal(JSON.parse(post.options.body).role,'R3')});
+log('Non-owner switching requires exact target roster proof and keeps the Last War roster role');
 
 // Boutique IA: a fresh visible scan is partial, excludes sold offers, and never fabricates full-catalogue availability.
 {
@@ -885,7 +921,7 @@ log('Non-owner alliance switching uses one player_id-scoped membership row');
   const app=read('app.js'),css=read('styles.css'),health=read('api/health.js'),pkg=JSON.parse(read('package.json')),readme=read('README.md'),sw=read('sw.js');
   assert.equal(pkg.version,'2.5.28');assert.equal(pkg.name,'warboost-v2-safe-launch-activity-events');assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf3\.mjs/);assert.match(pkg.scripts.verify,/verify-scan-reliability-v2\.5\.28\.mjs/);assert.match(pkg.scripts.verify,/verify-activity-events-v2\.5\.28\.mjs/);
   assert.match(app,/historical_paid/);assert.match(app,/historical_reference_paid/);assert.match(app,/shop_group_paid_history/);assert.match(app,/displayRank=historicalPaid\?"—"/);
-  assert.match(css,/\.shopHistoricalPaidCard/);assert.match(css,/\.shopHistoryGuard/);assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final)/);
+  assert.match(css,/\.shopHistoricalPaidCard/);assert.match(css,/\.shopHistoryGuard/);assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate)/);
   for(const flag of ['shop_diagnostic_ex_single_source_of_truth','shop_payment_channels_separated','paid_offer_requires_current_price_contents_cost_gain','reference_cash_prices_dated_not_current','historical_paid_references_quarantined','historical_paid_references_unranked','current_paid_scan_required_for_current_offer_group','shop_gear_target_explicit_or_unconfirmed'])assert.match(health,new RegExp(flag+':true'));
   const keys=['shop_group_game','shop_group_diamonds','shop_group_paid','shop_group_paid_history','shop_group_unknown','shop_paid_guard','shop_history_guard'];
   for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const key of keys)assert.notEqual(tr(key),key,`${code} missing V2.5.28 ${key}`);assert.match(tr('tagline'),/V2\.5\.28/)}
@@ -906,7 +942,7 @@ log('Non-owner alliance switching uses one player_id-scoped membership row');
   assert.match(app,/finally\{setAuthBusy\(false\)\}/,'Auth actions must always re-enable buttons');
   assert.match(browserAuth,/async function resend\(/);
   assert.match(browserAuth,/request\('\/resend'/);
-  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final)/,'Service worker cache must be bumped so beta players receive the V2.5.28 onboarding build');
+  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate)/,'Service worker cache must be bumped so beta players receive the V2.5.28 onboarding build');
 
   const keys=['auth_confirm_help','auth_resend_confirmation','auth_confirmation_resent','auth_email_not_confirmed','auth_invalid_credentials','auth_account_exists','auth_rate_limited'];
   for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){
@@ -949,7 +985,7 @@ log('Non-owner alliance switching uses one player_id-scoped membership row');
   assert.match(app,/sq\.updated_at\?updatedLabel\(sq\.updated_at\):t\("sync_needed"\)/,'Unscanned squads should ask for synchronization');
   assert.match(health,/private_beta_player_onboarding:true/);
   assert.match(health,/private_beta_publisher_copy_hidden:true/);
-  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final)/);
+  assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate)/);
   assert.match(app,/STORE_KEY=["']warboost_v1_core_state["']/,'Stable player storage key must be preserved');
   assert.doesNotMatch(app,/localStorage\.clear\s*\(/,'Onboarding update must never clear player storage');
   log('Private beta onboarding hides publisher-demo copy and guides incomplete accounts directly to WarBoost Scan without clearing data');

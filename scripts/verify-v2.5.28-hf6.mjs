@@ -56,11 +56,11 @@ const event=(type,date,status='participated',source='player_self_report')=>({eve
 // Runtime/UI player-ready contract.
 {
   const app=read('app.js'),html=read('index.html'),css=read('styles.css'),health=read('api/health.js'),sw=read('sw.js'),pkg=JSON.parse(read('package.json'));
-  assert.match(html,/WarBoost V2\.5\.28 HF6/);assert.match(html,/id="allianceParticipationManagementSummary"/);assert.match(app,/allianceParticipationOverview/);assert.match(app,/playerParticipationInsight/);assert.match(app,/participationHistoryRow/);assert.match(app,/participationEvidenceLabel/);
+  assert.match(html,/WarBoost V2\.5\.28 HF[67]/);assert.match(html,/id="allianceParticipationManagementSummary"/);assert.match(app,/allianceParticipationOverview/);assert.match(app,/playerParticipationInsight/);assert.match(app,/participationHistoryRow/);assert.match(app,/participationEvidenceLabel/);
   for(const cls of ['participationManagementSummary','participationPlayerCard','participationEventDetail','participationHistoryRow'])assert.match(css,new RegExp(`\\.${cls}`));
-  assert.match(health,/build:"hf6-player-ready-final"/);
+  assert.match(health,/build:"(?:hf6-player-ready-final|hf7-server-alliance-invite-gate)"/);
   for(const flag of ['alliance_player_detail_dates_counts_sources','alliance_management_evidence_summary','alliance_management_never_infers_inactivity_from_missing_participation','alliance_participation_insight_labels_evidence_only','latest_game_update_1_0_362_reviewed_2026_09_09'])assert.match(health,new RegExp(`${flag}:true`));
-  assert.match(sw,/warboost-v2-5-28-hf6-player-ready-final/);assert.match(sw,/\/lib\/alliance-participation-insights\.js/);
+  assert.match(sw,/warboost-v2-5-28-(?:hf6-player-ready-final|hf7-server-alliance-invite-gate)/);assert.match(sw,/\/lib\/alliance-participation-insights\.js/);
   const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);assert.match(pkg.scripts.check,/alliance-participation-insights\.js/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf6\.mjs/);
   log('HF6 UI/cache/health/test contract is player-ready while preserving the 12 serverless-function budget');
 }
@@ -70,7 +70,7 @@ const event=(type,date,status='participated',source='player_self_report')=>({eve
   const explicit=LANGUAGES.filter(([c])=>c!=='auto');assert.equal(explicit.length,23);
   const keys=['participation_management_title','participation_management_linked','participation_management_evidence','participation_management_missing','participation_management_absences','participation_management_guard','participation_evidence_confirmed','participation_evidence_no_conclusion','participation_evidence_insufficient','participation_last_participation','participation_last_known','participation_known_records','participation_recent_history','participation_evidence_guard','game_update_title','game_update_note'];
   const en=translator('en-GB');
-  for(const [code] of explicit){const tr=translator(code);for(const key of keys){assert.notEqual(tr(key),key,`${code} missing ${key}`);if(!code.startsWith('en'))assert.notEqual(tr(key),en(key),`${code} still inherits English HF6 copy for ${key}`)}assert.match(tr('tagline'),/V2\.5\.28 HF6/)}
+  for(const [code] of explicit){const tr=translator(code);for(const key of keys){assert.notEqual(tr(key),key,`${code} missing ${key}`);if(!code.startsWith('en'))assert.notEqual(tr(key),en(key),`${code} still inherits English HF6 copy for ${key}`)}assert.match(tr('tagline'),/V2\.5\.28 HF[67]/)}
   log('23 explicit languages resolve HF6 management and game-watch copy without English leakage');
 }
 
