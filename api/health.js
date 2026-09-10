@@ -3,6 +3,7 @@ import {HERO_CATALOG} from "../lib/heroes.js";
 import {shopReferenceStats} from "../lib/shop-catalog.js";
 import {betaConfigAsync} from "../lib/beta-access.js";
 import {REVIEWED_GAME_UPDATE} from "../lib/game-update.js";
+import {commercialConfig} from "../lib/commercial-pro.js";
 
 export function lastWarServerClock(d){return new Date(d.getTime()-2*60*60*1000)}
 export function lastWarVsDay(d){const day=lastWarServerClock(d).getUTCDay();return day===0?0:day}
@@ -16,7 +17,7 @@ function isoWeek(d){
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
-  const serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=await betaConfigAsync();
+  const serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=await betaConfigAsync(),commerce=commercialConfig();
   const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
   const allianceScopeProbe=serviceDb?await probeAllianceScopeSchema():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
   const now=new Date(),serverClock=lastWarServerClock(now),dow=lastWarVsDay(now);
@@ -25,8 +26,9 @@ export default async function handler(req,res){
     ok:true,
     app:"WarBoost",
     version:"2.5.28",
-    build:"hf7-server-alliance-invite-gate",
+    build:"hf8-commercial-readiness",
     mode:"public-beta-invite-safe-launch",
+    commercial:{mode:commerce.mode,ready:commerce.configured,payments_enabled:commerce.payments_enabled,plan:commerce.plan,activation_requirements:commerce.activation_requirements},
 
     // Heure serveur + VS : fusion de l'ancien /api/time
     now:now.toISOString(),
@@ -56,6 +58,13 @@ export default async function handler(req,res){
       safe_launch_no_scraping:true,
       safe_launch_no_gameplay_automation:true,
       safe_launch_payments_code_disabled:true,
+      safe_launch_payments_runtime_disabled:!commerce.payments_enabled,
+      commercial_code_server_side_only:true,
+      commercial_price_server_locked_499_eur_month:true,
+      commercial_stable_domain_required:true,
+      commercial_legal_identity_required:true,
+      commercial_webhook_signature_required:true,
+      commercial_subscription_entitlement_server_side:true,
       safe_launch_ingest_disabled:true,
       safe_launch_cron_external_sync_disabled:true,
       safe_launch_independent_disclaimer_visible:true,
