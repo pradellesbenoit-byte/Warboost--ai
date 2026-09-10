@@ -1,0 +1,41 @@
+WARBOOST HF8 — CHECKLIST AVANT LE PREMIER EURO ENCAISSÉ
+
+ÉTAT ACTUEL
+[OK] HF7 Server + Alliance Gate conservé
+[OK] PRO 4,99 EUR / mois verrouillé dans le code serveur
+[OK] Paiements désactivés par défaut
+[OK] Domaine temporaire *.vercel.app refusé pour activation live
+[OK] Entitlement PRO côté serveur
+[OK] Vérification de signature des webhooks
+[OK] Idempotence des événements de facturation prévue
+[OK] WarBoost ne stocke pas les numéros de carte
+[OK] 12 fonctions serverless conservées
+
+À TERMINER AVANT COMMERCIALISATION
+[ ] Domaine permanent WarBoost relié au bon déploiement
+[ ] Statut juridique/fiscal adapté à l'encaissement validé
+[ ] Nom légal du vendeur configuré
+[ ] Adresse de support publique opérationnelle
+[ ] Conditions/CGU d'abonnement finalisées
+[ ] Politique de confidentialité finalisée
+[ ] Informations de prix, renouvellement et résiliation affichées sans ambiguïté
+[ ] Migration Supabase HF8 appliquée
+[ ] Lignes historiques de warboost_subscriptions auditées et réconciliées
+[ ] Compte prestataire de paiement prêt à encaisser
+[ ] Produit/prix PRO vérifié : 499 centimes / EUR / mois
+[ ] Webhook live configuré vers l'endpoint WarBoost prévu
+[ ] Achat test réussi
+[ ] Activation PRO après paiement confirmée côté serveur
+[ ] Renouvellement testé
+[ ] Annulation en fin de période testée
+[ ] Échec de paiement testé sans faux accès PRO
+[ ] Portail client testé
+[ ] Remboursement/chargeback : politique et traitement définis
+[ ] FREE vs PRO validé avec de vrais testeurs
+[ ] Un second type d'escouade confirme que le Diagnostic reste personnalisé
+[ ] Support client capable de traiter un problème d'abonnement
+[ ] Mesure conversion / rétention / usage prête
+[ ] Décision explicite d'activer WARBOOST_COMMERCIAL_MODE=live seulement après tous les points ci-dessus
+
+OFFRE ALLIANCE
+Le prix d'une future offre Alliance R5/R4 n'est PAS fixé dans HF8. Le décider après mesure de l'usage réel et de la valeur perçue par les R5/R4.

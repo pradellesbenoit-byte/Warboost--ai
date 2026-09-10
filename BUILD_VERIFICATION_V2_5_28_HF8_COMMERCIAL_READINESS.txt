@@ -1,0 +1,67 @@
+WARBOOST V2.5.28 HF8 — COMMERCIAL READINESS
+BUILD VERIFICATION
+Date : 2026-09-10
+Base : WarBoost_V2.5.28_HF7_SERVER_ALLIANCE_INVITE_GATE_FULL.zip
+Base SHA-256 : dd4894999d2e01a51fd0a91cc70901433e0f9acb8b1187c3e2852ceaad4a9827
+
+SOURCE VERIFICATION
+- npm run check : PASS
+- npm run verify : PASS
+- All historical V2.5.28/HF3/HF4/HF5/HF6/HF7 regression suites : PASS
+- HF8 dedicated commercial-readiness suite : PASS
+
+HF8 COMMERCIAL SAFETY
+- Safe Launch remains non-billable by default : PASS
+- PRO commercial target locked server-side to 499 cents / EUR / month : PASS
+- Provider price must be active and exactly match 499 EUR cents monthly before checkout : PASS
+- Temporary *.vercel.app domain blocks live billing readiness : PASS
+- Stable HTTPS domain required : PASS
+- Legal identity/support/terms/privacy requirements enforced : PASS
+- Subscription entitlement calculated server-side : PASS
+- Checkout and customer billing portal implemented server-side : PASS
+- Webhook HMAC timestamp/signature verification : PASS
+- Constant-time signature comparison : PASS
+- Billing event idempotency ledger schema present : PASS
+- No card-number storage in WarBoost schema : PASS
+- Beta POST payment action remains SAFE_LAUNCH_PAYMENT_DISABLED : PASS
+
+HF7 / PRODUCT NON-REGRESSION
+- Exact nickname + server + alliance identity preserved : PASS
+- R5/R4 Alliance invitation gate and outsider/cross-server/cross-alliance blocks : PASS
+- Canonical roster / participation evidence preservation : PASS
+- Missing activity data never means inactive : PASS
+- Diagnostic PRO personalized TOP 3 and rank-aware Pourquoi : PASS
+- Shop / Diagnostic alignment and paid-offer evidence guards : PASS
+- Scan hero/gear identity and true Lv.0 safeguards : PASS
+- VS Today/Keep/Avoid and unknown-opponent guard : PASS
+- Ended/inter-season Season guard and no invented S7 : PASS
+- Support, password recovery and beta invite manager : PASS
+- Existing player/cloud/local data preservation safeguards : PASS
+- 23 explicit languages + Auto : PASS
+- 12 Vercel serverless functions : PASS
+- No unauthorized Last War API/scraping/gameplay automation : PASS
+
+DATABASE MIGRATION REVIEW
+- File : supabase/migration_v2_5_28_hf8_commercial_readiness.sql
+- Additive/idempotent : PASS
+- RLS enabled for commercial tables : PASS
+- Authenticated clients cannot mutate subscriptions : PASS
+- Billing event ledger is service-role only : PASS
+- No DROP TABLE / TRUNCATE / DELETE FROM : PASS
+- Existing warboost_subscriptions rows are preserved : PASS
+- Migration is not required for free beta operation; it is required before live payment testing.
+
+PACKAGE VERIFICATION
+- FULL tree : 187 files
+- PATCH over exact HF7 base : 27 changed/added files
+- Removed files : 0
+- ZIP path traversal safety : PASS
+- Extracted FULL byte-for-byte equals final HF8 source : PASS
+- Exact HF7 + PATCH byte-for-byte equals final HF8 source : PASS
+- Extracted FULL npm run check / npm run verify : PASS
+- PATCH-applied tree npm run check / npm run verify : PASS
+- 12 api/*.js functions preserved : PASS
+- No .env / .pem / .key packaged : PASS
+
+LIVE STATUS
+This report certifies source and local package/regression verification. HF8 has NOT been deployed or live-validated by this report. Keep HF7 live until the HF8 Preview is deployed and a real Vercel + Supabase smoke test passes. Payments must remain disabled during the current beta.

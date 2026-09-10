@@ -1,0 +1,5 @@
+WARBOOST V2.5.28 HF8 — COMMERCIAL READINESS
+
+AUCUNE SUPPRESSION DE FICHIER N'EST REQUISE.
+
+Le PATCH HF8 est additif/remplaçant uniquement. Ne supprimer aucun fichier, aucune donnée locale, aucune table Supabase, aucun roster ni historique.

@@ -1,0 +1,44 @@
+WARBOOST V2.5.28 HF8 — COMMERCIAL READINESS
+PATCH MANIFEST
+Date : 2026-09-10
+
+Base exacte : WarBoost_V2.5.28_HF7_SERVER_ALLIANCE_INVITE_GATE_FULL.zip
+Base SHA-256 : dd4894999d2e01a51fd0a91cc70901433e0f9acb8b1187c3e2852ceaad4a9827
+
+Fichiers ajoutés : 9
++ BUILD_VERIFICATION_V2_5_28_HF8_COMMERCIAL_READINESS.txt
++ COMMERCIAL_LAUNCH_CHECKLIST_HF8_FR.txt
++ DELETE_FILES_V2_5_28_HF8_COMMERCIAL_READINESS.txt
++ PATCH_MANIFEST_V2_5_28_HF8_COMMERCIAL_READINESS.txt
++ UPLOAD_GUIDE_V2_5_28_HF8_COMMERCIAL_READINESS.txt
++ WARBOOST_V2_5_28_HF8_COMMERCIAL_READINESS.md
++ lib/commercial-pro.js
++ scripts/verify-v2.5.28-hf8.mjs
++ supabase/migration_v2_5_28_hf8_commercial_readiness.sql
+
+Fichiers remplacés/modifiés : 18
+~ api/health.js
+~ api/pro.js
+~ app.js
+~ i18n.js
+~ index.html
+~ manifest.webmanifest
+~ package.json
+~ scripts/verify-activity-events-v2.5.28.mjs
+~ scripts/verify-auth-recovery-v2.5.28.mjs
+~ scripts/verify-beta-invites-v2.5.28.mjs
+~ scripts/verify-v2.5.28-hf3.mjs
+~ scripts/verify-v2.5.28-hf4.mjs
+~ scripts/verify-v2.5.28-hf5.mjs
+~ scripts/verify-v2.5.28-hf6.mjs
+~ scripts/verify-v2.5.28-hf7.mjs
+~ scripts/verify-v2.5.28.mjs
+~ styles.css
+~ sw.js
+
+Fichiers supprimés : 0
+Aucun.
+
+Total PATCH : 27 fichiers
+
+Le PATCH doit être appliqué uniquement sur la base HF7 exacte. Il ne supprime aucun fichier ni aucune donnée joueur.

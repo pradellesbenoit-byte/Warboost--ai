@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF7 Server-Scoped Invite Beta",
+  "name": "WarBoost V2.5.28 HF8 Commercial Readiness Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF7 — server+alliance scoped R5/R4 invitations, exact roster admission, personalized player AI, protected data, free beta PRO, and external game access hard-disabled.",
+  "description": "WarBoost V2.5.28 HF8 — HF7 alliance security plus commercial PRO readiness at 4.99 EUR/month, with beta payments still hard-disabled and external game access disabled.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -1,0 +1,80 @@
+WARBOOST V2.5.28 HF8 — COMMERCIAL READINESS
+GUIDE D'INSTALLATION
+Date : 2026-09-10
+
+CIBLE ACTUELLE
+- Branche : public-beta-safe-launch uniquement.
+- Base du PATCH : HF7 FULL exact.
+- Ne pas modifier main / Production pendant la validation.
+- Ne pas modifier publisher-demo.
+
+BASE EXACTE DU PATCH
+WarBoost_V2.5.28_HF7_SERVER_ALLIANCE_INVITE_GATE_FULL.zip
+SHA-256 : dd4894999d2e01a51fd0a91cc70901433e0f9acb8b1187c3e2852ceaad4a9827
+
+INSTALLATION BÊTA HF8
+1. Ne rien effacer : localStorage, cloud, scans, escouades, Drone, roster, événements, VS, Saison et support doivent être conservés.
+2. Décompresser le PATCH HF8.
+3. Envoyer son CONTENU à la racine de public-beta-safe-launch en conservant exactement les dossiers api/, lib/, scripts/, supabase/.
+4. Aucun fichier HF7 n'est à supprimer.
+5. Commit sur public-beta-safe-launch.
+6. Attendre le Preview Vercel Ready.
+7. Ouvrir le nouveau Preview et vérifier WarBoost V2.5.28 HF8.
+8. Vérifier /api/health avant tout test fonctionnel.
+
+SUPABASE HF8
+- La bêta gratuite peut continuer sans appliquer la nouvelle migration HF8.
+- AVANT tout test de paiement live, exécuter UNE FOIS :
+  supabase/migration_v2_5_28_hf8_commercial_readiness.sql
+- Migration additive/idempotente ; aucune suppression de données.
+- Ne jamais supprimer les anciennes migrations support, invitations ou alliance.
+- Des lignes historiques peuvent déjà exister dans warboost_subscriptions : les auditer avant activation commerciale ; ne pas les effacer automatiquement.
+
+NE PAS ACTIVER LES PAIEMENTS PENDANT LA BÊTA
+- Laisser WARBOOST_COMMERCIAL_MODE absent ou à off.
+- Ne pas configurer le lancement live tant que le domaine permanent, l'identité légale, le support, les conditions, la confidentialité et la configuration du prestataire ne sont pas validés.
+- Un domaine *.vercel.app ne doit pas être utilisé pour activer l'encaissement commercial.
+
+CONTRÔLE /api/health ATTENDU EN BÊTA
+- version = 2.5.28
+- build = hf8-commercial-readiness
+- mode = public-beta-invite-safe-launch
+- commercial.payments_enabled = false
+- beta.payments_enabled = false
+- safeguards.safe_launch_external_game_access_hard_disabled = true
+- safeguards.safe_launch_no_scraping = true
+- safeguards.safe_launch_no_gameplay_automation = true
+- safeguards.commercial_price_server_locked_499_eur_month = true
+- safeguards.commercial_stable_domain_required = true
+- safeguards.commercial_legal_identity_required = true
+- safeguards.commercial_webhook_signature_required = true
+- safeguards.commercial_subscription_entitlement_server_side = true
+- serverless_functions = 12
+
+SMOKE TEST HF8 AVANT DE GARDER LE BUILD
+1. Reconnexion d'un compte bêta existant : aucune donnée perdue et PRO toujours inclus gratuitement.
+2. L'écran PRO indique clairement que 4,99 €/mois est le tarif commercial prévu et qu'aucun paiement n'est possible pendant la bêta.
+3. Tout POST de paiement en mode bêta doit répondre SAFE_LAUNCH_PAYMENT_DISABLED.
+4. Diagnostic PRO : TOP 3 personnalisé, pas de recommandations copiées d'un autre joueur.
+5. Boutique IA : cohérente avec le Diagnostic et aucune offre payante historique présentée comme offre actuelle certaine.
+6. Scan : identités héros, EX, équipements et vrais Lv.0 préservés.
+7. VS : Aujourd'hui / À garder / À éviter et aucun adversaire inventé.
+8. Saison : état entre-saisons conservé ; aucune S7 inventée.
+9. Alliance R5/R4 : roster exact serveur+alliance, invitations outsiders refusées, activité sans fausse inactivité.
+10. Support / mot de passe oublié / invitations bêta : fonctionnels.
+11. Tester au moins un second compte joueur différent pour confirmer la personnalisation réelle de l'IA.
+
+AVANT PASSAGE COMMERCIAL LIVE — NE PAS SAUTER
+- domaine permanent HTTPS ;
+- identité vendeur et statut juridique/fiscal validés ;
+- support public ;
+- CGU/conditions d'abonnement et confidentialité finalisées ;
+- migration HF8 appliquée ;
+- anciennes lignes d'abonnement auditées ;
+- produit/prix prestataire exactement 4,99 EUR mensuel ;
+- webhook signé configuré ;
+- test achat, renouvellement, annulation, échec de paiement et portail client ;
+- contrôle des droits FREE/PRO côté serveur ;
+- smoke test complet puis décision explicite de passer WARBOOST_COMMERCIAL_MODE à live.
+
+Cette version prépare le commerce mais NE doit pas encaisser pendant la bêta actuelle.
