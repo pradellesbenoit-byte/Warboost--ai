@@ -27,6 +27,7 @@ export default async function handler(req,res){
     app:"WarBoost",
     version:"2.5.28",
     build:"hf8-commercial-readiness",
+    ui_revision:"hf8.1-pro-visible",
     mode:"public-beta-invite-safe-launch",
     commercial:{mode:commerce.mode,ready:commerce.configured,payments_enabled:commerce.payments_enabled,plan:commerce.plan,activation_requirements:commerce.activation_requirements},
 
@@ -65,6 +66,7 @@ export default async function handler(req,res){
       commercial_legal_identity_required:true,
       commercial_webhook_signature_required:true,
       commercial_subscription_entitlement_server_side:true,
+      commercial_pro_home_entry_visible:true,
       safe_launch_ingest_disabled:true,
       safe_launch_cron_external_sync_disabled:true,
       safe_launch_independent_disclaimer_visible:true,
