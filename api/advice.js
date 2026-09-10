@@ -9,6 +9,7 @@ import {formationBonusPct,mainSquadType,awakeningReadiness,awakeningDecisionScor
 import {seasonLifecycle,seasonIsActive,activeSeasonProgress} from '../lib/season-lifecycle.js';
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
+import {scoreKnown,vsSituation,vsTrend,personalVsPosition} from '../lib/vs-live.js';
 const ENGINE_VERSION="2.5.28";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
@@ -1124,29 +1125,50 @@ const VS_DAILY_PLAN={
   }
 };
 function vsDailyPlan(locale,day,pack){const base=VS_DAILY_PLAN[localePack(locale)]||VS_DAILY_PLAN.en;return base?.[day]||{today:pack.days[day]||pack.hold,keep:pack.hold,avoid:localePack(locale)==="fr"?"Évite les ressources rares hors des tâches VS actives.":"Avoid scarce resources outside active VS tasks."}}
+function vsFmtScore(v,locale){const n=Number(v);return Number.isFinite(n)?new Intl.NumberFormat(locale||"en",{maximumFractionDigits:0}).format(n):"—"}
+function vsFmtCompact(v,locale){const n=Number(v);return Number.isFinite(n)?new Intl.NumberFormat(locale||"en",{notation:"compact",maximumFractionDigits:1}).format(n):"—"}
+function vsLiveCopy(locale){
+  const lang=localePack(locale),fr=lang==="fr";
+  return fr?{
+    situation:{strong_lead:(g,p)=>`Avance très confortable : +${g} (${p}% du total).`,lead:(g,p)=>`Avance solide : +${g} (${p}% du total).`,narrow_lead:(g,p)=>`Avance faible : +${g} (${p}% du total).`,even:()=>"Duel extrêmement serré.",narrow_trail:(g,p)=>`Retard faible : −${g} (${p}% du total adverse).`,trail:(g,p)=>`Retard significatif : −${g}.`,strong_trail:(g,p)=>`Retard important : −${g}.`,unknown:()=>"Score live non confirmé."},
+    saveStrong:"L’alliance est largement devant : ne dépense pas uniquement pour gonfler le score. Utilise les ressources du jour seulement si elles servent aussi tes priorités personnelles, puis conserve le reste.",
+    saveLead:"Vous êtes devant : sécurise les points efficaces du jour et conserve les ressources rares qui n’améliorent pas réellement ton compte.",
+    monitor:"Le duel reste serré : surveille l’évolution et refais un scan dans 30 à 60 min avant une grosse dépense.",
+    push:"Vous êtes derrière : concentre uniquement les ressources qui marquent aujourd’hui et qui restent cohérentes avec ton Diagnostic PRO. Évite de vider le compte sans mesurer l’écart.",
+    pushHard:"Le retard est important : une dépense isolée peut être inefficace. R5/R4 doivent coordonner les contributeurs confirmés, puis rescanner avant de décider d’une poussée supplémentaire.",
+    late:"Moins de 2 h restantes : rapproche les scans et décide sur l’écart réel, pas sur une impression.",
+    personal:(r,score)=>`Tu es actuellement #${r} avec ${score}.`,
+    next:(gap,name)=>`Écart vers le rang supérieur : ${vsFmtCompact(gap,locale)}${name?` derrière ${name}`:""}. Ne chasse pas ce rang si le coût en ressources dépasse le bénéfice attendu.`,
+    top3:"Tu es dans le Top 3 : l’objectif prioritaire est de le conserver sans sacrifier inutilement les prochaines journées VS.",
+    trendO:(a,b,m)=>`Depuis le scan précédent (${m} min), votre alliance a gagné ${a} et l’adversaire ${b} : l’adversaire accélère davantage sur cet intervalle.`,
+    trendU:(a,b,m)=>`Depuis le scan précédent (${m} min), votre alliance a gagné ${a} contre ${b} pour l’adversaire.`,
+    rankingGuard:"Le classement analysé ne couvre que les lignes visibles sur la capture ; absence de la liste ≠ inactivité."
+  }:{
+    situation:{strong_lead:(g,p)=>`Very comfortable lead: +${g} (${p}% of total score).`,lead:(g,p)=>`Solid lead: +${g} (${p}% of total score).`,narrow_lead:(g,p)=>`Narrow lead: +${g} (${p}% of total score).`,even:()=>"Extremely close duel.",narrow_trail:(g,p)=>`Narrow deficit: −${g}.`,trail:(g,p)=>`Meaningful deficit: −${g}.`,strong_trail:(g,p)=>`Large deficit: −${g}.`,unknown:()=>"Live score is not confirmed."},
+    saveStrong:"Your alliance is far ahead: do not spend only to inflate the alliance score. Use today's resources only when they also advance your personal priorities, then save the rest.",saveLead:"You are ahead: secure efficient points and save scarce resources that do not meaningfully improve the account.",monitor:"The duel is still close: monitor the movement and rescan in 30–60 minutes before a large spend.",push:"You are behind: focus only on resources that score today and remain aligned with Diagnostic PRO. Do not empty the account without measuring the gap.",pushHard:"The deficit is large: isolated spending may be inefficient. R5/R4 should coordinate confirmed contributors and rescan before another push.",late:"Less than 2 hours remain: scan more often and decide from the real gap, not impressions.",personal:(r,score)=>`You are currently #${r} with ${score}.`,next:(gap,name)=>`Gap to the next rank: ${vsFmtCompact(gap,locale)}${name?` behind ${name}`:""}. Do not chase it when the resource cost exceeds the expected benefit.`,top3:"You are in the Top 3: prioritize keeping it without needlessly sacrificing future VS days.",trendO:(a,b,m)=>`Since the previous scan (${m} min), your alliance gained ${a} and the opponent ${b}; the opponent accelerated more in that interval.`,trendU:(a,b,m)=>`Since the previous scan (${m} min), your alliance gained ${a} versus ${b} for the opponent.`,rankingGuard:"Only rows visible in the screenshot are analyzed; missing from the list never means inactive."
+  };
+}
 function buildVsAdvice(state,locale){
-  const v=state?.vs||{},pack=contextPack(locale).vs,day=Number(v.day),freshness=freshnessInfo(v.updated_at||null,"vs",locale);
+  const v=state?.vs||{},pack=contextPack(locale).vs,day=Number(v.day),freshness=freshnessInfo(v.updated_at||null,"vs",locale),liveCopy=vsLiveCopy(locale);
   if(day===0){
     const prep=vsPrepText(locale),confidence=Math.max(35,Math.min(82,55+(state?.updated_at||state?.sync?.last_sync?10:0)-(freshness?.confidence_penalty||0))),priorities=[{rank:1,kind:"prep",text:prep.focus},{rank:2,kind:"keep",text:prep.hold},{rank:3,kind:"avoid",text:prep.avoid}];
     return {advice:priorities.map(x=>x.text).join(" "),confidence,priorities,day:0,week:v.week||null,opponent:v.opponent||null,score_gap:null,prep_day:true,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",data_freshness:freshness,engine:`warboost-vs-ai-v${ENGINE_VERSION}`};
   }
   if(!Number.isInteger(day)||day<1||day>6)return {advice:pack.missing,confidence:25,priorities:[],data_quality:"low"};
-  const priorities=[];
-  const task=pack.days[day]||pack.hold;
-  priorities.push({rank:1,kind:"vs_today",text:task});
-  priorities.push({rank:2,kind:"hold",text:pack.hold});
-  const us=num(v.our_score),them=num(v.their_score);
-  let scoreLine="";
-  if(us!==null&&them!==null){const gap=Math.round(Math.abs(us-them)*100)/100;scoreLine=us>them?pack.lead(gap):us<them?pack.trail(gap):pack.even;priorities.push({rank:3,kind:"score",text:scoreLine});}
-  const pt=playerTopLine(state,locale);if(pt)priorities.push({rank:priorities.length+1,kind:"player",text:pack.player(pt)});
-  let confidence=45+(v.opponent?15:0)+(us!==null&&them!==null?15:0)+(state?.updated_at||state?.sync?.last_sync?10:0);
-  confidence=Math.max(25,Math.min(92,confidence-(freshness?.confidence_penalty||0)));
-  const advice=[pack.day(day),task,scoreLine,pack.hold,pt?pack.player(pt):"",pack.confidence(confidence)].filter(Boolean).join(" ");
-  const isFr=localePack(locale)==="fr",daily=vsDailyPlan(locale,day,pack);
-  const today=daily.today,keep=daily.keep,avoid=daily.avoid;
-  const concise=[{rank:1,kind:"today",label:isFr?"Aujourd’hui":"Today",text:today},{rank:2,kind:"keep",label:isFr?"À garder":"Keep",text:keep},{rank:3,kind:"avoid",label:isFr?"À éviter":"Avoid",text:avoid}];
-  const conciseAdvice=concise.map(x=>`${x.label} : ${x.text}`).join("\n");
-  return {advice:conciseAdvice,confidence,priorities:concise,day,week:v.week||null,opponent:v.opponent||null,score_gap:us!==null&&them!==null?us-them:null,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",data_freshness:freshness,engine:`warboost-vs-ai-v${ENGINE_VERSION}`};
+  const sit=vsSituation(v),trend=vsTrend(v),personal=personalVsPosition(v),isFr=localePack(locale)==="fr",daily=vsDailyPlan(locale,day,pack),known=scoreKnown(v);
+  let situationText=liveCopy.situation.unknown(),decision=pack.hold;
+  if(known){
+    const gap=vsFmtScore(Math.abs(sit.gap),locale),share=Math.round(sit.our_share??0);
+    situationText=(liveCopy.situation[sit.status]||liveCopy.situation.unknown)(gap,share);
+    if(sit.status==="strong_lead")decision=liveCopy.saveStrong;else if(sit.status==="lead")decision=liveCopy.saveLead;else if(sit.status==="narrow_lead"||sit.status==="even"||sit.status==="narrow_trail")decision=liveCopy.monitor;else if(sit.status==="trail")decision=liveCopy.push;else if(sit.status==="strong_trail")decision=liveCopy.pushHard;
+  }
+  const remain=num(v.time_remaining_seconds);if(remain!==null&&remain<=7200)decision=`${decision} ${liveCopy.late}`;
+  const personalLines=[];if(personal.rank!==null){personalLines.push(liveCopy.personal(personal.rank,vsFmtScore(personal.score,locale)));if(personal.rank<=3)personalLines.push(liveCopy.top3);if(personal.gap_to_next!==null)personalLines.push(liveCopy.next(personal.gap_to_next,personal.next_player));}
+  let trendText="";if(trend){const mins=Math.max(1,Math.round(trend.elapsed_seconds/60)),a=vsFmtCompact(trend.our_gain,locale),b=vsFmtCompact(trend.their_gain,locale);trendText=trend.momentum==="theirs"?liveCopy.trendO(a,b,mins):liveCopy.trendU(a,b,mins)}
+  const lines=[`${isFr?"Situation":"Situation"} : ${situationText}`,v.theme?`${isFr?"Thème":"Theme"} : ${v.theme}`:"",`${isFr?"Aujourd’hui":"Today"} : ${daily.today}`,`${isFr?"Décision":"Decision"} : ${decision}`,personalLines.length?`${isFr?"Personnel":"Personal"} : ${personalLines.join(" ")}`:"",trendText?`${isFr?"Tendance":"Trend"} : ${trendText}`:"",`${isFr?"À garder":"Keep"} : ${daily.keep}`,`${isFr?"À éviter":"Avoid"} : ${daily.avoid}`,Array.isArray(v.leaderboard)&&v.leaderboard.length?liveCopy.rankingGuard:""].filter(Boolean);
+  let confidence=45+(v.opponent?10:0)+(known?18:0)+(v.theme?6:0)+(personal.rank!==null?6:0)+(state?.updated_at||state?.sync?.last_sync?7:0);confidence=Math.max(25,Math.min(94,confidence-(freshness?.confidence_penalty||0)));
+  const priorities=[{rank:1,kind:"today",label:isFr?"Aujourd’hui":"Today",text:daily.today},{rank:2,kind:"keep",label:isFr?"À garder":"Keep",text:daily.keep},{rank:3,kind:"avoid",label:isFr?"À éviter":"Avoid",text:daily.avoid}];
+  return {advice:lines.join("\n"),confidence,priorities,live_decision:{situation:situationText,decision},day,week:v.week||null,theme:v.theme||null,opponent:v.opponent||null,score_gap:known?sit.gap:null,situation:sit.status,our_share:sit.our_share,their_share:sit.their_share,time_remaining_seconds:remain,personal:{rank:personal.rank,score:personal.score,gap_to_next:personal.gap_to_next,next_player:personal.next_player},trend,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",data_freshness:freshness,engine:`warboost-vs-live-ai-v${ENGINE_VERSION}`};
 }
 function season6AwakeningContext(state,locale,player){
   if(Number(state?.season?.number)!==6||!seasonIsActive(state?.season||{}))return null;

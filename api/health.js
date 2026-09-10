@@ -27,7 +27,7 @@ export default async function handler(req,res){
     app:"WarBoost",
     version:"2.5.28",
     build:"hf8-commercial-readiness",
-    ui_revision:"hf8.1-pro-visible",
+    ui_revision:"hf8.2-vs-live-coach",
     mode:"public-beta-invite-safe-launch",
     commercial:{mode:commerce.mode,ready:commerce.configured,payments_enabled:commerce.payments_enabled,plan:commerce.plan,activation_requirements:commerce.activation_requirements},
 
