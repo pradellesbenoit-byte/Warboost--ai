@@ -1,0 +1,56 @@
+WARBOOST V2.5.28 HF8.3 — VS DECISION ENGINE
+BUILD VERIFICATION
+Date : 2026-09-11
+Base : WarBoost V2.5.28 HF8.2 VS Live Coach
+Target : public-beta-safe-launch Preview
+
+RESULT: PASS
+
+SOURCE / REGRESSION
+- npm run check: PASS
+- npm run verify complete: PASS
+- legacy HF3 -> HF8.2 regression suites: PASS
+- HF8.3 dedicated decision suite: PASS
+- 12 Vercel serverless API functions preserved: PASS
+- 23 explicit languages + Auto preserved: PASS
+
+VS DECISION ENGINE
+- Real ALL4/Mep fixture 1,440,270,940 vs 667,494,056: strong lead: PASS
+- Exact gap +772,776,884: PASS
+- Decision for that fixture = SAVE / low urgency: PASS
+- Raw #3 ranking does not trigger rank-chasing spend advice: PASS
+- Visible ranking moved to collapsed scan details: PASS
+- Unknown score -> SCAN, never unverified 0–0: PASS
+- Two-scan trend computes both gains and per-hour pace: PASS
+- Opponent-faster but projected catch-up after end -> no false emergency: PASS
+- Projected catch-up before end -> PROTECT with high/critical urgency: PASS
+- Strong/late deficit -> PUSH HARD: PASS
+- ETA wording remains conditional on unchanged observed pace: PASS
+- Missing leaderboard row never means inactivity: PASS
+
+SAFE LAUNCH / DATA / COMMERCIAL NON-REGRESSION
+- wording clarified to “Accès Last War désactivé · Safe Launch actif”: PASS
+- no unauthorized Last War provider/API/scraping/gameplay automation enabled: PASS
+- beta payments remain disabled: PASS
+- PRO visible and future 4.99 EUR/month readiness preserved: PASS
+- player data keys and last-good backup preserved: PASS
+- no localStorage.clear(): PASS
+- no HF8.3 Supabase migration: PASS
+- no file deletion required: PASS
+- HF7 server/alliance invitation protections preserved by regression suite: PASS
+- support, password recovery, beta invites, Scan, Shop, Season and Alliance regressions: PASS
+
+PACKAGE VERIFICATION — FINAL TREE
+- FULL file count: 205
+- PATCH file count: 19
+- ZIP integrity FULL: PASS
+- ZIP integrity PATCH: PASS
+- extracted FULL matches final source byte-for-byte: PASS
+- exact HF8.2 FULL + HF8.3 PATCH matches final HF8.3 source byte-for-byte: PASS
+- npm run check on extracted FULL: PASS
+- npm run verify on extracted FULL: PASS
+- npm run check on patch-applied HF8.2 tree: PASS
+- npm run verify on patch-applied HF8.2 tree: PASS
+
+LIVE LIMIT
+This report verifies source/packages locally. It does not replace the real Vercel/Supabase smoke test after deployment. Deploy only to public-beta-safe-launch Preview first; keep the current working HF8.2 Preview available until HF8.3 is confirmed live.

@@ -11,7 +11,7 @@ import {formatGearSummary} from "./lib/gear.js";
 import {ACTIVITY_EVENT_TYPES,PLAYER_ACTIVITY_EVENT_TYPES,activityEventId,mergeActivityEvents,confirmedActivityEvents,eventCountsByType,participationEventRecords,participationSummaryByType,parseParticipationImport} from "./lib/activity-events.js";
 import {backfillRosterIdentityContext,linkCurrentPlayerIdentityIntoRoster,rosterLinkSummary} from "./lib/alliance-identity.js";
 import {playerParticipationInsight,allianceParticipationOverview} from "./lib/alliance-participation-insights.js";
-import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition} from "./lib/vs-live.js";
+import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine} from "./lib/vs-live.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
@@ -731,8 +731,33 @@ function fmtVsNumber(v){const n=Number(v);return Number.isFinite(n)?new Intl.Num
 function fmtVsCompact(v){const n=Number(v);if(!Number.isFinite(n))return "—";return new Intl.NumberFormat(locale,{notation:"compact",maximumFractionDigits:1}).format(n)}
 function fmtVsDuration(seconds,text){const n=Number(seconds);if(Number.isFinite(n)&&n>=0){const h=Math.floor(n/3600),m=Math.floor((n%3600)/60);return `${h}h ${String(m).padStart(2,"0")}`;}return text||"—"}
 function vsSideLabel(v,side){const ours=side==="ours",name=ours?(v.our_alliance||state.alliance?.name||state.alliance?.tag):(v.opponent||t("unknown_opponent")),tag=ours?(v.our_tag||state.alliance?.tag):v.opponent_tag,server=ours?(v.our_server_id||state.player?.server_id):v.opponent_server_id;const parts=[name];if(tag&&String(name||"").toUpperCase()!==String(tag).toUpperCase())parts.push(`[${tag}]`);if(server)parts.push(`· #${server}`);return parts.filter(Boolean).join(" ")}
+function vsDecisionLabel(key){return t({scan:"vs_decision_scan",save:"vs_decision_save",monitor:"vs_decision_monitor",protect:"vs_decision_protect",push:"vs_decision_push",push_hard:"vs_decision_push_hard"}[key]||"vs_decision_scan")}
+function vsUrgencyLabel(key){return t({unknown:"vs_urgency_unknown",low:"vs_urgency_low",medium:"vs_urgency_medium",high:"vs_urgency_high",critical:"vs_urgency_critical"}[key]||"vs_urgency_unknown")}
+function vsDecisionReason(engine){
+  if(!engine.known)return t("vs_reason_scan");
+  if(engine.risk==="opponent_catchup_before_end")return t("vs_reason_protect");
+  if(engine.risk==="our_catchup_after_end")return t("vs_reason_push_hard");
+  return t({save:"vs_reason_save",monitor:"vs_reason_monitor",protect:"vs_reason_protect",push:"vs_reason_push",push_hard:"vs_reason_push_hard",scan:"vs_reason_scan"}[engine.decision]||"vs_reason_scan");
+}
+function vsRiskText(engine){
+  if(!engine.known)return t("vs_risk_unknown");
+  if(!engine.trend)return t("vs_risk_second_scan");
+  if(engine.eta_kind==="opponent_catchup"&&Number.isFinite(Number(engine.eta_seconds))){const eta=fmtVsDuration(engine.eta_seconds);return engine.risk==="opponent_catchup_before_end"?t("vs_risk_opponent_eta",{eta}):t("vs_risk_after_end",{eta})}
+  if(engine.eta_kind==="our_catchup"&&Number.isFinite(Number(engine.eta_seconds))){const eta=fmtVsDuration(engine.eta_seconds);return engine.risk==="our_catchup_possible"?t("vs_risk_our_eta",{eta}):t("vs_risk_our_too_late",{eta})}
+  if(engine.risk==="lead_growing")return t("vs_risk_lead_growing");
+  if(engine.risk==="opponent_extending")return t("vs_risk_opponent_extending");
+  return t("vs_risk_stable");
+}
+function vsUseNowText(v){const d=Number(v.day)||Number(currentVsDay());const key=Number.isInteger(d)&&d>=1&&d<=6?`vs_focus_${d}`:null;return key?t(key):t("vs_use_only_scoring")}
+function renderVsDecision(v,engine){
+  const action=$("#vsDecisionAction"),reason=$("#vsDecisionReason"),urgency=$("#vsUrgency"),urgencyPill=$("#vsUrgencyPill");
+  if(action)action.textContent=vsDecisionLabel(engine.decision);if(reason)reason.textContent=vsDecisionReason(engine);if(urgency)urgency.textContent=vsUrgencyLabel(engine.urgency);
+  if(urgencyPill){urgencyPill.textContent=vsUrgencyLabel(engine.urgency);urgencyPill.className=`pill vsUrgency ${engine.urgency}`}
+  const use=$("#vsDecisionUse"),keep=$("#vsDecisionKeep"),rescan=$("#vsDecisionRescan"),risk=$("#vsDecisionRisk");
+  if(use)use.textContent=vsUseNowText(v);if(keep)keep.textContent=t("vs_hold_rule");if(rescan)rescan.textContent=engine.rescan_minutes>0?t("vs_rescan_minutes",{minutes:engine.rescan_minutes}):t("vs_scan_now");if(risk)risk.textContent=vsRiskText(engine);
+}
 function renderVsLive(){
-  const v=state.vs||{},sit=vsSituation(v),trend=vsTrend(v),personal=personalVsPosition(v),known=scoreKnown(v),unknown=$("#vsScoreUnknown");
+  const v=state.vs||{},sit=vsSituation(v),trend=vsTrend(v),personal=personalVsPosition(v),engine=vsDecisionEngine(v),known=scoreKnown(v),unknown=$("#vsScoreUnknown");
   $("#vsWeekTitle").textContent=t("vs_week",{week:currentVsWeek()});$("#vsDayPill").textContent=currentVsDay()===0?t("vs_prep_day"):t("day_n",{day:currentVsDay()});
   $("#vsUs").textContent=vsSideLabel(v,"ours");$("#vsThem").textContent=vsSideLabel(v,"theirs");
   $("#vsUsScore").textContent=known?fmtVsNumber(v.our_score):"—";$("#vsThemScore").textContent=known?fmtVsNumber(v.their_score):"—";unknown?.classList.toggle("hidden",known);
@@ -740,9 +765,10 @@ function renderVsLive(){
   const pill=$("#vsSituationPill");if(pill){pill.textContent=t(key);pill.className=`pill vsSituation ${sit.status}`}
   $("#vsTheme").textContent=v.theme||"—";$("#vsRemaining").textContent=fmtVsDuration(v.time_remaining_seconds,v.time_remaining_text);
   $("#vsGap").textContent=known?`${sit.gap>=0?"+":"−"}${fmtVsCompact(Math.abs(sit.gap))}`:"—";
-  $("#vsPersonal").textContent=personal.rank!==null?`#${personal.rank}${personal.score!==null?` · ${fmtVsCompact(personal.score)}`:""}`:"—";
+  $("#vsPersonal").textContent=personal.rank!==null?`#${personal.rank}${personal.score!==null?` · ${fmtVsCompact(personal.score)}`:""}`:t("vs_no_personal_rank");
+  renderVsDecision(v,engine);
   const share=$("#vsShareLine");if(share){if(known&&sit.our_share!==null){const a=Math.round(sit.our_share),b=Math.round(sit.their_share);share.textContent=t("vs_share_line",{ours:a,theirs:b,gap:fmtVsNumber(Math.abs(sit.gap))});share.className="notice"}else share.className="notice hidden"}
-  const trendEl=$("#vsTrendLine");if(trendEl){if(trend){const mins=Math.max(1,Math.round(trend.elapsed_seconds/60));trendEl.textContent=t("vs_trend_line",{minutes:mins,ours:fmtVsCompact(trend.our_gain),theirs:fmtVsCompact(trend.their_gain)});trendEl.className="notice"}else trendEl.className="notice hidden"}
+  const trendEl=$("#vsTrendLine");if(trendEl){if(trend){const mins=Math.max(1,Math.round(trend.elapsed_seconds/60));trendEl.textContent=t("vs_trend_line",{minutes:mins,ours:fmtVsCompact(trend.our_gain),theirs:fmtVsCompact(trend.their_gain)});trendEl.className="notice"}else{trendEl.textContent=t("vs_trend_need_second_scan");trendEl.className=known?"notice":"notice hidden"}}
   const fresh=$("#vsFreshness");if(fresh)fresh.textContent=v.updated_at?t("vs_last_scan",{ago:fmtAgo(v.updated_at)}):t("vs_never_scanned");
   const sec=$("#vsVisibleRankingSection"),list=$("#vsVisibleRanking"),rows=Array.isArray(v.leaderboard)?v.leaderboard.slice(0,8):[];if(sec&&list){sec.classList.toggle("hidden",rows.length===0);list.innerHTML=rows.map(r=>`<div class="member"><div><b>#${esc(r.rank??"—")} · ${esc(r.player_name||"—")}</b><small>${r.alliance_tag?`[${esc(r.alliance_tag)}] · `:""}${esc(fmtVsNumber(r.score))}</small></div>${String(r.player_name||"").toLowerCase()===String(state.player?.name||"").toLowerCase()?`<span class="delta">${esc(t("you"))}</span>`:""}</div>`).join("")}
 }

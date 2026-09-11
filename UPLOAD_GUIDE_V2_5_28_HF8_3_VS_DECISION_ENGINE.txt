@@ -1,0 +1,45 @@
+WARBOOST V2.5.28 HF8.3 — VS DECISION ENGINE — GUIDE D'INSTALLATION
+Date : 2026-09-11
+
+CIBLE UNIQUEMENT
+- Branche GitHub : public-beta-safe-launch
+- Vercel : Preview de cette branche
+- NE PAS modifier main / Production / publisher-demo.
+
+BASE DU PATCH
+- WarBoost V2.5.28 HF8.2 — VS Live Coach.
+- Le PATCH HF8.3 est conçu pour être appliqué directement sur HF8.2.
+
+INSTALLATION RECOMMANDÉE
+1. Décompresser WarBoost_V2.5.28_HF8.3_VS_DECISION_ENGINE_PATCH.zip.
+2. Envoyer le CONTENU extrait à la racine de public-beta-safe-launch, en conservant les dossiers.
+3. Remplacer les fichiers de même nom lorsque GitHub le demande.
+4. Ne supprimer aucun autre fichier.
+5. Commit sur public-beta-safe-launch uniquement.
+6. Attendre le Preview Vercel vert / Ready.
+7. Ouvrir le nouveau Preview et vérifier l'en-tête WarBoost V2.5.28 HF8.3.
+
+SUPABASE
+- AUCUNE migration HF8.3.
+- Ne rien exécuter dans Supabase pour ce correctif.
+- Ne supprimer/modifier aucune donnée existante.
+
+PAIEMENTS / LAST WAR
+- Paiements bêta : toujours OFF.
+- Ne pas activer Stripe pour ce test.
+- Accès externe Last War : OFF.
+- Aucun scraping / automatisation / API non autorisée.
+
+SMOKE TEST RÉEL OBLIGATOIRE
+1. Vérifier que profil, escouades, Drone, Boutique IA, Alliance, VS, Saison et historique sont toujours présents sans rescan.
+2. Ouvrir VS Live Coach : la zone Décision VS doit être prioritaire.
+3. Sans score fiable : afficher Scanner le VS, jamais 0–0 comme score réel.
+4. Scanner la capture réelle ALL4 vs Mep : 1 440 270 940 vs 667 494 056.
+5. Attendu : Forte avance / décision ÉCONOMISER / urgence faible / +772 776 884.
+6. Le classement doit être replié dans Détails du scan et ne doit pas demander de chasser le rang #2.
+7. Faire un second scan plus tard pour vérifier Tendance + risque de rattrapage + délai de rescanner.
+8. Vérifier le texte : Accès Last War désactivé · Safe Launch actif.
+9. Vérifier Alliance : Serveur 884 / ALL4 / 94 membres / identité du compte conservée.
+10. Vérifier WarBoost PRO visible et 4,99 €/mois futur, sans possibilité d'encaissement en bêta.
+
+Si un contrôle échoue, conserver le déploiement HF8.2 fonctionnel et ne pas promouvoir HF8.3.

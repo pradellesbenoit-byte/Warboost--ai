@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.28 HF8.2 — VS Live Coach Beta</title>
+  <title>WarBoost V2.5.28 HF8.3 — VS Decision Engine Beta</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -15,7 +15,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.28 HF8.2 · Bêta publique · VS Live Coach · paiements désactivés</small></div>
+        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.28 HF8.3 · Bêta publique · VS Decision Engine · paiements désactivés</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -23,7 +23,7 @@
 
 
     <section class="publisherStrip" aria-label="Safe Launch beta status">
-      <div><b>WarBoost V2.5.28 HF8.2</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
+      <div><b>WarBoost V2.5.28 HF8.3</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
       <span class="publisherPill" data-i18n="safe_external_disabled">External game access disabled</span>
     </section>
 
@@ -141,20 +141,31 @@
       <div id="vsTimeline" class="timeline"></div>
       <button id="scanVsBtn" class="secondaryBtn wideBtn" type="button">📸 <span data-i18n="vs_scan_now">Scanner le VS maintenant</span></button>
     </div>
+    <div class="section vsDecisionSection" id="vsDecisionSection">
+      <div class="sectionTitle"><h3>🧠 <span data-i18n="vs_decision_engine">Décision VS</span></h3><span id="vsUrgencyPill" class="pill vsUrgency unknown">—</span></div>
+      <div class="vsDecisionHero"><small data-i18n="vs_recommended_action">Action recommandée</small><strong id="vsDecisionAction">—</strong><p id="vsDecisionReason" class="heroText">—</p></div>
+      <div class="vsDecisionGrid">
+        <div><span>⚡ <span data-i18n="vs_use_now">Utiliser aujourd’hui</span></span><b id="vsDecisionUse">—</b></div>
+        <div><span>🛡️ <span data-i18n="vs_keep_now">À conserver</span></span><b id="vsDecisionKeep">—</b></div>
+        <div><span>⏱️ <span data-i18n="vs_next_scan">Prochain contrôle</span></span><b id="vsDecisionRescan">—</b></div>
+        <div><span>🚨 <span data-i18n="vs_comeback_risk">Risque de remontée</span></span><b id="vsDecisionRisk">—</b></div>
+      </div>
+      <button id="vsPlanBtn" class="secondaryBtn wideBtn" type="button">💎 <span data-i18n="vs_detailed_analysis">Analyse détaillée</span></button>
+      <p id="vsPlanText" class="heroText vsPlanDetail" data-i18n="vs_empty">Scanne le duel puis WarBoost te dit s’il faut pousser, surveiller ou économiser tes ressources.</p>
+    </div>
     <div class="section" id="vsLiveSection">
       <div class="sectionTitle"><h3 data-i18n="vs_live_situation">Situation live</h3><span id="vsSituationPill" class="pill">—</span></div>
       <div class="summaryBar four vsLiveStats">
         <div class="stat"><span data-i18n="vs_theme">Thème</span><b id="vsTheme">—</b></div>
         <div class="stat"><span data-i18n="vs_remaining">Temps restant</span><b id="vsRemaining">—</b></div>
         <div class="stat"><span data-i18n="vs_gap">Écart</span><b id="vsGap">—</b></div>
-        <div class="stat"><span data-i18n="vs_personal">Ton classement</span><b id="vsPersonal">—</b></div>
+        <div class="stat"><span data-i18n="vs_urgency">Urgence</span><b id="vsUrgency">—</b></div>
       </div>
       <div id="vsShareLine" class="notice hidden"></div>
       <div id="vsTrendLine" class="notice hidden"></div>
       <div id="vsFreshness" class="privacyText"></div>
     </div>
-    <div class="section"><div class="sectionTitle"><h3 data-i18n="vs_ai_decision">Décision IA maintenant</h3><button id="vsPlanBtn" class="smallBtn">💎 <span data-i18n="analyze_now">Analyser</span></button></div><p id="vsPlanText" class="heroText" style="margin:0" data-i18n="vs_empty">Scanne le duel puis WarBoost te dit s’il faut pousser, surveiller ou économiser tes ressources.</p></div>
-    <div class="section hidden" id="vsVisibleRankingSection"><div class="sectionTitle"><h3 data-i18n="vs_visible_ranking">Classement visible sur le scan</h3><span class="pill" data-i18n="scan_source">Scan</span></div><div id="vsVisibleRanking" class="list"></div><div class="privacyText" data-i18n="vs_ranking_guard">Uniquement les lignes visibles sur la capture. Un joueur absent de cette liste n’est jamais considéré comme inactif.</div></div>
+    <details class="compactDetails participationDetails hidden" id="vsVisibleRankingSection"><summary><span data-i18n="vs_scan_details">Détails du scan</span> · <span id="vsPersonal">—</span></summary><div class="privacyText" data-i18n="vs_ranking_secondary">Le classement est secondaire : WarBoost l’utilise seulement comme contexte, jamais comme raison de gaspiller des ressources.</div><div id="vsVisibleRanking" class="list"></div><div class="privacyText" data-i18n="vs_ranking_guard">Uniquement les lignes visibles sur la capture. Un joueur absent de cette liste n’est jamais considéré comme inactif.</div></details>
   </section>
 
   <section id="seasonDrawer" class="drawer" aria-hidden="true">

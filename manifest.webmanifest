@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.2 VS Live Coach Beta",
+  "name": "WarBoost V2.5.28 HF8.3 VS Decision Engine Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.2 — VS Live Coach adds scan-based live Duel analysis, personal rank context and safe resource decisions; beta payments and external game access remain hard-disabled.",
+  "description": "WarBoost V2.5.28 HF8.3 — decision-first VS coaching with urgency, resource use/keep guidance, trend and conditional comeback projection; ranking is secondary and beta payments/external game access remain disabled.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

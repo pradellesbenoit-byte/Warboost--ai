@@ -1,35 +1,31 @@
-# WarBoost V2.5.28 HF8.2 — VS Live Coach
+# WarBoost V2.5.28 HF8.3 — VS Decision Engine
 
-HF8.2 est la version **Public Beta Safe Launch**, en **bêta publique sur invitation**, qui transforme le module VS en coach de Duel piloté par les données visibles d'une capture joueur, tout en conservant HF8.1 PRO Visible UX et les protections HF7 Serveur + Alliance.
+HF8.3 est la version Public Beta Safe Launch **sur invitation** qui rend le module VS **orienté décision**. WarBoost n'utilise plus le classement visible comme élément principal : il met en avant la décision, l'urgence, les ressources à utiliser/conserver, la tendance et le risque conditionnel de remontée.
 
-## VS Live Coach
-- Le bouton **Scanner le VS maintenant** ouvre directement WarBoost Scan en mode VS.
-- Le scan peut lire uniquement ce qui est visible : thème du jour, temps restant, serveurs, tags/alliances, scores, pourcentages, rang/score du joueur et jusqu'à 10 lignes visibles du classement.
-- Un ancien `0–0` non confirmé n'est plus affiché comme un vrai score : WarBoost indique **Score non synchronisé**.
-- WarBoost calcule l'écart, la part de score, la situation (forte avance / duel serré / retard) et le contexte personnel.
-- Si plusieurs scans du même Jour VS sont disponibles, WarBoost compare la progression entre les captures et indique quelle alliance a accéléré sur l'intervalle.
-- La décision IA tient compte du Jour VS, du score réel scanné, du temps restant et des priorités du Diagnostic PRO. Une large avance ne déclenche pas une recommandation de gaspiller des ressources uniquement pour gonfler le score.
-- Le classement est strictement limité aux lignes visibles sur la capture. Absence de la liste ne signifie jamais inactivité.
+## VS Decision Engine
+- Un scan donne le score réel visible, thème, temps restant et contexte du duel.
+- La décision IA est : scanner, économiser, surveiller, protéger l'avance, pousser ou pousser fort.
+- Le moteur combine écart réel, part du score, temps restant et, à partir du deuxième scan, rythme de progression des deux alliances.
+- Les projections de rattrapage sont conditionnelles au rythme observé et ne prédisent jamais un résultat garanti.
+- Le classement joueur est replié dans Détails du scan et reste un simple contexte. WarBoost ne recommande pas une dépense pour courir après un rang sans bénéfice vérifié.
+- Une absence du classement visible n'est jamais interprétée comme une inactivité.
 
-## Exemple de non-régression HF8.2
-Fixture issue d'une capture joueur réelle du 10/09/2026 : ALL FOR 1 [ALL4] #884 contre Fire and Brimstone [Mep] #872, 1 440 270 940 contre 667 494 056, joueur `les gladiateurs81` #3 à 43 195 000. Le moteur classe cette situation en forte avance, calcule un écart de 772 776 884 et un écart personnel de 10 200 524 vers le #2 visible, sans inventer les données non visibles.
+## Non-régression conservée
+- Diagnostic PRO personnalisé TOP 3 et Boutique IA alignée.
+- WarBoost PRO visible, futur prix 4,99 €/mois, aucun paiement en bêta.
+- Alliance HF7 cloisonnée par serveur + alliance + pseudo exact ; invitations R5/R4 sécurisées.
+- Suivi Alliance fondé sur preuves ; donnée manquante ≠ absent/inactif.
+- S6 terminée / entre-saisons ; aucune S7 inventée.
+- Scan fiable, équipements/EX/Drone conservés.
+- Support, récupération de mot de passe et invitations bêta conservés.
+- 23 langues explicites + Auto.
+- 12 fonctions serverless.
+- Aucun accès Last War externe, scraping ou automatisation de gameplay.
 
-## PRO et Safe Launch
-- La carte **WarBoost PRO** reste visible depuis HF8.1.
-- Prix commercial préparé : **4,99 € / mois**, mais aucun paiement n'est prélevé pendant la bêta.
-- Aucun accès Last War externe non autorisé, aucun scraping, aucune automatisation de gameplay.
-- Le VS Live Coach est **scan-driven** : il ne prétend pas disposer d'une télémétrie Last War temps réel.
+## Migrations déjà installées à conserver
+- `supabase/migration_v2_5_24_support.sql`
+- `supabase/migration_v2_5_26_beta_invites.sql`
+- `supabase/migration_v2_5_28_hf7_alliance_scope.sql`
 
-## Données et compatibilité
-- Les données Joueur, Scan, escouades, Drone, Boutique IA, VS, Saison, Alliance, activité et historique restent conservées.
-- L'historique VS est stocké dans l'état WarBoost existant ; **aucune migration Supabase HF8.2 n'est requise**.
-- Maximum 24 snapshots VS récents sont conservés dans l'état pour l'analyse de tendance.
-- 23 langues explicites + Auto et 12 fonctions serverless sont conservées.
-
-## Déploiement
-Branche : `public-beta-safe-launch` uniquement. Ne pas toucher `main/Production` ni `publisher-demo`.
-
-Lire `UPLOAD_GUIDE_V2_5_28_HF8_2_VS_LIVE_COACH.txt` avant installation. Le PATCH HF8.2 livré est cumulatif et peut être appliqué à HF8 Commercial Readiness ou HF8.1 PRO Visible UX.
-
-## Socle Supabase historique à conserver
-Les migrations déjà installées restent nécessaires et ne doivent pas être supprimées, notamment `supabase/migration_v2_5_24_support.sql`, `supabase/migration_v2_5_26_beta_invites.sql` et `supabase/migration_v2_5_28_hf7_alliance_scope.sql`. HF8.2 n'ajoute aucune migration de base de données.
+## Données / déploiement
+HF8.3 n'ajoute aucune migration Supabase et ne supprime aucune donnée. Le PATCH cible uniquement `public-beta-safe-launch` sur la base HF8.2. Lire `UPLOAD_GUIDE_V2_5_28_HF8_3_VS_DECISION_ENGINE.txt` avant déploiement.
