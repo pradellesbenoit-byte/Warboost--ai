@@ -10,7 +10,7 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const html=read('index.html'),app=read('app.js'),advice=read('api/advice.js'),health=read('api/health.js'),sw=read('sw.js'),pkg=JSON.parse(read('package.json'));
 
 // HF8.3 visible UI: decision first, raw leaderboard secondary/collapsed.
-assert.match(html,/WarBoost V2\.5\.28 HF8\.3/);
+assert.match(html,/WarBoost V2\.5\.28 HF8\.[34]/);
 for(const id of ['vsDecisionSection','vsUrgencyPill','vsDecisionAction','vsDecisionReason','vsDecisionUse','vsDecisionKeep','vsDecisionRescan','vsDecisionRisk','vsUrgency','vsVisibleRankingSection','vsVisibleRanking'])assert.match(html,new RegExp(`id=["']${id}["']`));
 assert.match(html,/<details[^>]+id=["']vsVisibleRankingSection["']/);
 assert.match(html,/vs_ranking_secondary/);
@@ -59,8 +59,8 @@ for(const item of LANGUAGES.filter(x=>x.code!=='auto')){
 const fr=translator('fr');assert.match(fr('safe_external_disabled'),/Accès Last War désactivé/i);assert.match(fr('safe_external_disabled'),/Safe Launch actif/i);assert.doesNotMatch(fr('safe_external_disabled'),/^Désactivé\s*·\s*Safe Launch$/i);
 
 // Release/service worker metadata and hard constraints.
-assert.match(sw,/hf8-3-vs-decision-engine/);assert.match(health,/ui_revision:"hf8\.3-vs-decision-engine"/);assert.match(health,/vs_decision_engine:true/);assert.match(health,/vs_ranking_secondary:true/);assert.match(health,/safe_launch_status_wording_unambiguous:true/);
-assert.match(pkg.description,/HF8\.3/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-3\.mjs/);
+assert.match(sw,/hf8-3-vs-decision-engine/);assert.match(health,/(?:ui_revision|previous_ui_revision):"hf8\.(?:3-vs-decision-engine|4-alliance-lifecycle-reliability)"/);assert.match(health,/vs_decision_engine:true/);assert.match(health,/vs_ranking_secondary:true/);assert.match(health,/safe_launch_status_wording_unambiguous:true/);
+assert.match(pkg.description,/HF8\.[34]/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-3\.mjs/);
 const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12,'serverless API function budget must remain 12');
 assert.doesNotMatch(app,/localStorage\.clear\s*\(/);assert.doesNotMatch(app,/WARBOOST_PUBLIC_LASTWAR_URL|LASTWAR_API_KEY/);
 const hf83Migrations=fs.readdirSync(path.join(root,'supabase')).filter(x=>/hf8[_-]?3/i.test(x));assert.equal(hf83Migrations.length,0,'HF8.3 must not add a Supabase migration');

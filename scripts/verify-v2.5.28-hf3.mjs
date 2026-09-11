@@ -10,8 +10,9 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const log=x=>console.log(`✓ ${x}`);
-const now='2026-09-08T10:46:00.000Z';
-const stale='2026-08-20T10:46:00.000Z';
+const now=new Date().toISOString();
+const stale=new Date(Date.now()-19*864e5).toISOString();
+const oldActive=new Date(Date.now()-20*864e5).toISOString();
 
 // Exact Preview-like regression: 94 stale members must not create a false "0 inactive" verdict.
 {
@@ -61,7 +62,7 @@ const stale='2026-08-20T10:46:00.000Z';
 
 // A real probable-inactive verdict still works when fresh negative evidence is actually present.
 {
-  const inactive={name:'Observed',role:'R2',updated_at:now,last_active_at:'2026-08-20T00:00:00.000Z',delta_m:0,vs_points:0,season_points:0};
+  const inactive={name:'Observed',role:'R2',updated_at:now,last_active_at:oldActive,delta_m:0,vs_points:0,season_points:0};
   const out=buildAllianceAdvice({alliance:{members:[inactive]}},'fr-FR');
   assert.equal(out.activity.inactive,1);assert.equal(out.activity.refresh,0);assert.equal(out.inactivity_evaluated,true);
   assert.match(out.advice,/1 inactifs probables/i);
