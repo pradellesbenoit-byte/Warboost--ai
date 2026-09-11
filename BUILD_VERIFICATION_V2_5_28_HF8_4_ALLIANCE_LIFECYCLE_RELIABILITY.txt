@@ -1,0 +1,62 @@
+WARBOOST V2.5.28 HF8.4 — ALLIANCE LIFECYCLE RELIABILITY
+BUILD VERIFICATION
+Date : 2026-09-11
+Base : WarBoost V2.5.28 HF8.3 VS Decision Engine
+Target : public-beta-safe-launch / beta.warboost.fr
+
+RESULT SOURCE : PASS
+
+SOURCE / REGRESSION
+- npm run check : PASS
+- npm run verify complet HF3 -> HF8.4 : PASS
+- test dédié HF8.4 Alliance Lifecycle : PASS
+- 12 fonctions Vercel serverless conservées : PASS
+- 23 langues explicites + Auto conservées : PASS
+- aucune migration Supabase HF8.4 : PASS
+- aucune suppression de fichier/donnée : PASS
+- aucun localStorage.clear() : PASS
+
+HF8.4 ALLIANCE LIFECYCLE
+- R5 accepté dans un roster complet même si Last War l'affiche séparément : PASS
+- ajout du R5 + disparition d'un membre sans inflation artificielle du compteur actif : PASS
+- membre manquant -> À vérifier, jamais départ/inactivité automatique : PASS
+- départ exige confirmation R5/R4 : PASS
+- ancien membre conserve l'historique : PASS
+- retour réactive la fiche et ajoute un événement de retour : PASS
+- changement de grade historisé : PASS
+- import partiel ne retire jamais un membre absent : PASS
+- snapshot complet peut réduire le roster canonique serveur seulement s'il est explicitement plus récent : PASS
+- preuves de participation préservées pendant le remplacement canonique : PASS
+- comptes WarBoost en attente visibles avec relance de correspondance exacte : PASS
+
+PARTICIPATION
+- compteur ❓ Non renseigné calculé par événement sur le roster actif : PASS
+- membre sans donnée VS compté inconnu, jamais absent : PASS
+- événement sans donnée -> tous les membres actifs inconnus : PASS
+
+VS 0H00
+- decision = ended : PASS
+- rescan_minutes = 0 : PASS
+- tendance active supprimée : PASS
+- aucune recommandation de dépense ou second scan : PASS
+
+SAFE LAUNCH / NON-RÉGRESSION
+- aucun accès Last War externe non autorisé : PASS
+- aucun scraping / automatisation gameplay : PASS
+- paiements bêta désactivés : PASS
+- Diagnostic PRO / Scan / Boutique IA / Saison / Support / Auth / Invitations conservés par les suites de régression : PASS
+
+PACKAGE VERIFICATION
+- FULL file count : 212
+- PATCH file count : 26
+- intégrité ZIP FULL : PASS
+- intégrité ZIP PATCH : PASS
+- FULL extrait = source finale byte-for-byte : PASS
+- HF8.3 FULL + PATCH HF8.4 = source finale byte-for-byte : PASS
+- npm run check sur FULL extrait : PASS
+- npm run verify sur FULL extrait : PASS
+- npm run check sur PATCH appliqué à HF8.3 : PASS
+- npm run verify sur PATCH appliqué à HF8.3 : PASS
+
+LIMITATION LIVE
+Ce rapport vérifie la source locale et les paquets. Il ne remplace pas le smoke test réel après déploiement Vercel sur public-beta-safe-launch / beta.warboost.fr.

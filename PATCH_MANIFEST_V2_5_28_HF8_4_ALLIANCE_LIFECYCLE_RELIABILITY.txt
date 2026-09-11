@@ -1,0 +1,40 @@
+WARBOOST V2.5.28 HF8.4 — ALLIANCE LIFECYCLE RELIABILITY
+PATCH SUR HF8.3 VS DECISION ENGINE
+
+BASE OBLIGATOIRE
+- WarBoost V2.5.28 HF8.3 VS Decision Engine FULL
+- SHA-256 de l'archive de base récupérée : 3433fc238dddc2c203685bdb05f14aa4909b771f36d687136ad8c45c396203f7
+
+SUPPRESSIONS
+- Aucune.
+
+FICHIERS DU PATCH (contenu complet)
+- BUILD_VERIFICATION_V2_5_28_HF8_4_ALLIANCE_LIFECYCLE_RELIABILITY.txt
+- DELETE_FILES_V2_5_28_HF8_4_ALLIANCE_LIFECYCLE_RELIABILITY.txt
+- PATCH_MANIFEST_V2_5_28_HF8_4_ALLIANCE_LIFECYCLE_RELIABILITY.txt
+- README.md
+- UPLOAD_GUIDE_V2_5_28_HF8_4_ALLIANCE_LIFECYCLE_RELIABILITY.txt
+- WARBOOST_V2_5_28_HF8_4_ALLIANCE_LIFECYCLE_RELIABILITY.md
+- api/advice.js
+- api/health.js
+- api/sync.js
+- app.js
+- i18n.js
+- index.html
+- lib/alliance-participation-insights.js
+- lib/alliance-roster-lifecycle.js
+- lib/alliance-scope.js
+- lib/normalize.js
+- lib/vs-live.js
+- manifest.webmanifest
+- package.json
+- scripts/verify-v2.5.28-hf3.mjs
+- scripts/verify-v2.5.28-hf8-1.mjs
+- scripts/verify-v2.5.28-hf8-2.mjs
+- scripts/verify-v2.5.28-hf8-3.mjs
+- scripts/verify-v2.5.28-hf8-4.mjs
+- styles.css
+- sw.js
+
+RÈGLE
+Décompresser puis envoyer le CONTENU du PATCH à la racine de public-beta-safe-launch en conservant les dossiers. Ne supprimer aucun fichier absent du PATCH. Aucune migration Supabase HF8.4.

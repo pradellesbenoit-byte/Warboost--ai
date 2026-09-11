@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.3 VS Decision Engine Beta",
+  "name": "WarBoost V2.5.28 HF8.4 Alliance Lifecycle Reliability Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.3 — decision-first VS coaching with urgency, resource use/keep guidance, trend and conditional comeback projection; ranking is secondary and beta payments/external game access remain disabled.",
+  "description": "WarBoost V2.5.28 HF8.4 — reliable alliance roster lifecycle with explicit complete snapshots, R5/R4 review, preserved history, unknown participation visibility, and VS ended-state safety; beta payments and external game access remain disabled.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

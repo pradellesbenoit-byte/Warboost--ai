@@ -1,0 +1,47 @@
+WARBOOST V2.5.28 HF8.4 — ALLIANCE LIFECYCLE RELIABILITY — GUIDE D'INSTALLATION
+Date : 2026-09-11
+
+CIBLE UNIQUEMENT
+- Branche GitHub : public-beta-safe-launch
+- Domaine de test : https://beta.warboost.fr
+- NE PAS modifier main / Production / publisher-demo.
+
+BASE DU PATCH
+- WarBoost V2.5.28 HF8.3 — VS Decision Engine FULL.
+- Le PATCH HF8.4 est conçu pour être appliqué directement sur HF8.3.
+
+INSTALLATION RECOMMANDÉE
+1. Décompresser WarBoost_V2.5.28_HF8.4_ALLIANCE_LIFECYCLE_RELIABILITY_PATCH.zip.
+2. Envoyer le CONTENU extrait à la racine de public-beta-safe-launch, en conservant les dossiers.
+3. Remplacer les fichiers de même nom lorsque GitHub le demande.
+4. Ne supprimer aucun autre fichier.
+5. Commit sur public-beta-safe-launch uniquement.
+6. Attendre le Preview Vercel vert / Ready.
+7. Ouvrir https://beta.warboost.fr et vérifier l'en-tête WarBoost V2.5.28 HF8.4.
+
+SUPABASE
+- AUCUNE migration HF8.4.
+- Ne rien exécuter dans Supabase pour ce correctif.
+- Ne supprimer/modifier aucune donnée existante.
+
+PAIEMENTS / LAST WAR
+- Paiements bêta : toujours OFF.
+- Ne pas activer Stripe pour ce test.
+- Accès externe Last War : OFF.
+- Aucun scraping / automatisation / API Last War non autorisée.
+
+SMOKE TEST RÉEL OBLIGATOIRE
+1. Vérifier que profil, escouades, Drone, Boutique IA, Alliance, VS, Saison, Support et historique sont toujours présents sans rescan.
+2. Alliance : vérifier les fenêtres R5/R4/R3/R2/R1 et le nombre total actuel.
+3. Import roster : le texte précise d'inclure le R5 même s'il est séparé dans Last War.
+4. Import partiel : vérifier qu'aucun membre non présent dans le fichier n'est retiré.
+5. Roster complet : cocher explicitement la case seulement avec une liste réellement complète ; les noms manquants doivent passer à « À vérifier », jamais à inactif/parti.
+6. Confirmer un départ uniquement si réellement connu ; vérifier l'apparition dans « Anciens membres » et la conservation de l'historique.
+7. Si un ancien membre revient dans un nouvel import, vérifier sa réactivation et son historique de retour.
+8. Événements : vérifier le compteur ❓ Non renseigné ; une donnée manquante ne doit jamais devenir une absence.
+9. Comptes WarBoost à associer : si un compte est en attente, il doit être visible avec « Vérifier l'association ».
+10. VS à 0h00 : état VS TERMINÉ, aucune dépense supplémentaire, aucun nouveau scan demandé.
+11. Vérifier « Accès Last War désactivé · Safe Launch actif ».
+12. Vérifier WarBoost PRO visible 4,99 €/mois futur, sans possibilité d'encaissement en bêta.
+
+Si un contrôle live échoue, conserver le dernier déploiement HF8.3 fonctionnel et ne pas promouvoir HF8.4 ailleurs.

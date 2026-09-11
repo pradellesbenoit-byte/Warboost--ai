@@ -1,6 +1,16 @@
-# WarBoost V2.5.28 HF8.3 — VS Decision Engine
+# WarBoost V2.5.28 HF8.4 — Alliance Lifecycle Reliability
 
-HF8.3 est la version Public Beta Safe Launch **sur invitation** qui rend le module VS **orienté décision**. WarBoost n'utilise plus le classement visible comme élément principal : il met en avant la décision, l'urgence, les ressources à utiliser/conserver, la tendance et le risque conditionnel de remontée.
+HF8.4 est la Public Beta Safe Launch **sur invitation**. Elle conserve intégralement le moteur VS HF8.3 et renforce la gestion R5/R4 : roster complet explicite, R5 importé même s’il est affiché séparément dans Last War, membres à vérifier avant tout départ, anciens membres conservés, retours et changements de grade historisés, données non renseignées visibles et comptes WarBoost en attente réellement actionnables. Le Safe Launch reste inchangé : aucun accès Last War non autorisé, aucun scraping, aucune automatisation de gameplay et aucun paiement bêta.
+
+## Alliance Lifecycle Reliability
+- Un import partiel reste additif et ne retire jamais un membre absent du fichier.
+- Un R5/R4 peut cocher **roster complet actuel** : seuls les membres absents de ce snapshot passent en **À vérifier**, jamais en inactif/absent.
+- Le départ exige une confirmation R5/R4 ; l’historique et les participations sont conservés dans **Anciens membres**.
+- Si un ancien membre réapparaît, sa fiche est réactivée avec l’historique de retour.
+- Les changements R5/R4/R3/R2/R1 sont historisés.
+- Les événements affichent `❓ Non renseigné` pour les membres sans preuve connue sur la période.
+- Les comptes WarBoost non associés restent hors roster et proposent une nouvelle vérification par correspondance exacte.
+- À `0h00`, le VS passe en état terminé : aucune dépense ni nouveau scan n’est recommandé.
 
 ## VS Decision Engine
 - Un scan donne le score réel visible, thème, temps restant et contexte du duel.
@@ -28,4 +38,4 @@ HF8.3 est la version Public Beta Safe Launch **sur invitation** qui rend le modu
 - `supabase/migration_v2_5_28_hf7_alliance_scope.sql`
 
 ## Données / déploiement
-HF8.3 n'ajoute aucune migration Supabase et ne supprime aucune donnée. Le PATCH cible uniquement `public-beta-safe-launch` sur la base HF8.2. Lire `UPLOAD_GUIDE_V2_5_28_HF8_3_VS_DECISION_ENGINE.txt` avant déploiement.
+HF8.4 n'ajoute aucune migration Supabase et ne supprime aucune donnée. Le PATCH cible uniquement `public-beta-safe-launch` et s'applique sur la base HF8.3. Lire `UPLOAD_GUIDE_V2_5_28_HF8_4_ALLIANCE_LIFECYCLE_RELIABILITY.txt` avant déploiement.

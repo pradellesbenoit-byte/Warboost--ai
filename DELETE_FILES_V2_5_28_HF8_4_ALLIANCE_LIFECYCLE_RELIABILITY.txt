@@ -1,0 +1,4 @@
+WarBoost V2.5.28 HF8.4 — Alliance Lifecycle Reliability
+AUCUNE SUPPRESSION DE FICHIER REQUISE.
+Aucune table/donnée Supabase à supprimer.
+Aucune donnée joueur, roster, participation, historique ou compte WarBoost à effacer.
