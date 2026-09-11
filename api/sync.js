@@ -3,7 +3,8 @@ import {configured,userConfigured,getProfile,upsertProfile,getProfileForUser,ups
 import {requireBetaUser} from "../lib/beta-access.js";
 import {mergeCloudRosterPreservingManual,mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
-import {managerProofFromState,joinProofForAlliance,isManagerRole,mergeCanonicalRoster} from "../lib/alliance-scope.js";
+import {managerProofFromState,joinProofForAlliance,isManagerRole,mergeCanonicalRoster,replaceCanonicalRosterFromCompleteSnapshot} from "../lib/alliance-scope.js";
+import {mergeRosterLifecycleMetadata} from "../lib/alliance-roster-lifecycle.js";
 void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remains exported and audited
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
@@ -25,11 +26,14 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
           let managementVerified=Boolean(existingJoinProof.ok&&isManagerRole(existingJoinProof.roster_role)&&isManagerRole(ctx.membership?.role));
 
           // R5/R4 may refresh the canonical Last War roster for their own exact server+alliance
-          // scope. A smaller/partial local roster never overwrites a larger canonical roster.
+          // scope. Partial imports remain additive. A smaller roster may replace the canonical
+          // list only after the manager explicitly marked the import as a COMPLETE roster snapshot.
           if(managementVerified){
             const managerProof=managerProofFromState(merged),existingCount=Array.isArray(ctx.alliance?.roster)?ctx.alliance.roster.length:0;
-            if(managerProof.ok&&managerProof.scope.server_id===targetServer&&managerProof.scope.alliance_tag===targetTag&&managerProof.roster.length>0&&managerProof.roster.length>=existingCount){
-              const canonicalMerged=mergeCanonicalRoster(ctx.alliance?.roster,managerProof.roster,{serverId:targetServer,allianceTag:targetTag});
+            const snapshotAt=Date.parse(merged.alliance?.roster_snapshot_complete_at||""),serverRosterAt=Date.parse(ctx.alliance?.roster_updated_at||"");
+            const completeSnapshotFresh=Number.isFinite(snapshotAt)&&snapshotAt>0&&(!Number.isFinite(serverRosterAt)||snapshotAt>serverRosterAt);
+            if(managerProof.ok&&managerProof.scope.server_id===targetServer&&managerProof.scope.alliance_tag===targetTag&&managerProof.roster.length>0&&(completeSnapshotFresh||managerProof.roster.length>=existingCount)){
+              const canonicalMerged=completeSnapshotFresh?replaceCanonicalRosterFromCompleteSnapshot(ctx.alliance?.roster,managerProof.roster,{serverId:targetServer,allianceTag:targetTag}):mergeCanonicalRoster(ctx.alliance?.roster,managerProof.roster,{serverId:targetServer,allianceTag:targetTag});
               await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,roster:canonicalMerged});
               ctx=await getAllianceRoster(playerId).catch(()=>ctx);
             }
@@ -39,7 +43,8 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
           const canonical=Array.isArray(ctx.roster)?ctx.roster:[];
           const ownLink=linkCurrentPlayerIdentityIntoRoster(canonical,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag,activityEvents:merged.activity_events,updatedAt:now});
           const identityMerge=mergeCloudRosterWithIdentity(ownLink.members,ctx.cloud_roster||[],context);
-          const roster=mergeCurrentPlayerActivityIntoRoster(identityMerge.roster,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag,activityEvents:merged.activity_events,updatedAt:now});
+          const rosterWithActivity=mergeCurrentPlayerActivityIntoRoster(identityMerge.roster,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag,activityEvents:merged.activity_events,updatedAt:now});
+          const roster=mergeRosterLifecycleMetadata(merged.alliance?.members,rosterWithActivity);
           const refreshedProof=joinProofForAlliance(merged,{...ctx.alliance,roster:canonical});
           managementVerified=Boolean(refreshedProof.ok&&isManagerRole(refreshedProof.roster_role)&&isManagerRole(ctx.membership?.role));
           merged.alliance={...merged.alliance,id:ctx.alliance.id,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name||merged.alliance.name,invite_code:ctx.alliance.invite_code||merged.alliance.invite_code,role:ctx.membership.role||"R1",management_verified:managementVerified,identity_link_status:ownLink.status,members:roster,unlinked_accounts:identityMerge.unlinked_accounts,updated_at:now};merged.sync.sources.alliance=true;await upsertProfile(playerId,merged)}
