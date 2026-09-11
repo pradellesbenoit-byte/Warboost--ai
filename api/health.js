@@ -27,7 +27,7 @@ export default async function handler(req,res){
     app:"WarBoost",
     version:"2.5.28",
     build:"hf8-commercial-readiness",
-    ui_revision:"hf8.2-vs-live-coach",
+    ui_revision:"hf8.3-vs-decision-engine",
     mode:"public-beta-invite-safe-launch",
     commercial:{mode:commerce.mode,ready:commerce.configured,payments_enabled:commerce.payments_enabled,plan:commerce.plan,activation_requirements:commerce.activation_requirements},
 
@@ -242,6 +242,12 @@ export default async function handler(req,res){
       alliance_participation_insight_labels_evidence_only:true,
       latest_game_update_1_0_362_reviewed_2026_09_09:true,
       vs_today_keep_avoid_plan:true,
+      vs_decision_engine:true,
+      vs_ranking_secondary:true,
+      vs_two_scan_comeback_projection:true,
+      vs_missing_rank_never_inactivity:true,
+      vs_no_rank_chasing_without_verified_reward:true,
+      safe_launch_status_wording_unambiguous:true,
       player_declared_rank_r1_r5:true,
       declared_rank_separated_from_verified_management_role:true,
       declared_rank_never_unlocks_management:true
