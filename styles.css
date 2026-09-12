@@ -296,3 +296,9 @@ a.metaSourceRow{color:inherit;text-decoration:none}a.metaSourceRow:focus-visible
 .rankPreviewChanges span{padding:7px 10px;border-radius:12px;background:rgba(45,92,133,.18);font-size:13px}
 .rankManagerButtons{margin-top:12px}
 @media (max-width:520px){.rankManagerRow{align-items:flex-start}.rankMove{padding-top:2px}.rankManagerButtons{display:grid;grid-template-columns:1fr}.rankManagerButtons>*{width:100%}}
+/* HF8.6.5 — simple private beta access code */
+.betaCodeBox{margin-top:10px;padding:12px;border:1px solid #314467;background:#0d1728;border-radius:14px}
+.betaCodeActions{display:flex;gap:9px;align-items:center;margin-top:7px;flex-wrap:wrap}
+.betaCodeActions .adminInviteInput{flex:1 1 220px;text-transform:uppercase;letter-spacing:.04em}
+.betaCodeActions .smallBtn{flex:0 0 auto;min-height:44px}
+@media(max-width:520px){.betaCodeActions .smallBtn{width:100%}}
