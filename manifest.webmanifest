@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.1 — Additive Roster Capture Queue Beta",
+  "name": "WarBoost V2.5.28 HF8.6.2 — Reliable Roster Identity Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.1 — Android-safe additive roster screenshot queue, dated account/squad progression, squad-power-first R5/R4 battle planning, former-member exclusion and VS freshness protections.",
+  "description": "WarBoost V2.5.28 HF8.6.2 — Reliable roster identity matching with additive Android roster capture queue, dated account/squad progression, squad-power-first R5/R4 battle planning, former-member exclusion and VS freshness protections.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

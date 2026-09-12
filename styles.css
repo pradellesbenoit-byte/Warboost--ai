@@ -269,3 +269,10 @@ a.metaSourceRow{color:inherit;text-decoration:none}a.metaSourceRow:focus-visible
 
 /* HF8.6.1 · additive roster capture queue */
 .rosterScanFileList{display:grid;gap:7px;margin-top:8px}.rosterScanFileItem{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid rgba(125,180,255,.15);border-radius:11px;background:rgba(8,17,31,.72)}.rosterScanFileItem>div{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:7px;align-items:center;min-width:0;flex:1}.rosterScanFileItem b{display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:#142541;color:#7edfff;font-size:10px}.rosterScanFileItem span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:#dbe8ff}.rosterScanFileItem small{font-size:9px;color:var(--muted);white-space:nowrap}.rosterScanFileItem button{width:30px;height:30px;border-radius:9px;border:1px solid #4a2a34;background:#231117;color:#ffb6c0;font-size:18px;line-height:1;cursor:pointer}
+
+/* HF8.6.2 · roster identity safety */
+.rosterIdentityStatus{grid-column:1/-1;margin-top:8px;padding:9px 10px;border-radius:12px;border:1px solid rgba(148,163,184,.22);font-size:.86rem;line-height:1.35;background:rgba(15,23,42,.45)}
+.rosterIdentityStatus.existing,.rosterIdentityStatus.review,.rosterIdentityStatus.former{border-color:rgba(34,197,94,.35);background:rgba(20,83,45,.18)}
+.rosterIdentityStatus.new{border-color:rgba(59,130,246,.28);background:rgba(30,64,175,.12)}
+.rosterIdentityStatus.possible,.rosterIdentityStatus.ambiguous,.rosterIdentityStatus.invalid{border-color:rgba(245,158,11,.4);background:rgba(120,53,15,.18)}
+.rosterIdentityStatus .smallBtn{margin-left:8px;margin-top:4px}
