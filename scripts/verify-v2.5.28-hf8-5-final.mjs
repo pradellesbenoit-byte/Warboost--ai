@@ -100,7 +100,7 @@ const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.l
 for(const [code] of explicit){const tr=translator(code);for(const k of ['roster_remove','roster_reintegrate','ds_title','ds_intro','ds_registration_guard','ds_generate','ds_copy','ds_order_objectives','ds_order_center','ds_order_help'])assert.notEqual(tr(k),k,`${code} missing ${k}`)}
 
 // Metadata/Safe Launch/non-regression guards.
-assert.match(health,/ui_revision_final:"hf8\.(?:5-final-alliance-desert-storm|6-roster-scan-progression-combat-ai|6\.1-additive-roster-capture-queue)"/);
+assert.match(health,/ui_revision_final:"hf8\.(?:5-final-alliance-desert-storm|6-roster-scan-progression-combat-ai|6\.1-additive-roster-capture-queue|6\.2-reliable-roster-identity)"/);
 for(const guard of ['alliance_direct_remove_preserves_history','alliance_direct_reintegration_preserves_history','alliance_removed_member_excluded_from_active_counts','desert_storm_registered_not_participated_guard','desert_storm_r5_r4_registered_player_picker','desert_storm_twenty_starters_ten_substitutes_cap','desert_storm_balanced_groups','desert_storm_short_copyable_orders','desert_storm_no_fixed_phase_timer_assumptions','desert_storm_missing_power_never_inactive','vs_current_server_day_required_for_live','vs_stale_scan_history_only'])assert.match(health,new RegExp(`${guard}:true`));
 assert.match(sw,/hf8-(?:5-final-alliance-desert-storm|6-roster-scan-progression-combat-ai)/);assert.match(sw,/desert-storm-plan\.js/);
 assert.match(pkg.description,/HF8\.(?:5 FINAL|6)/);assert.match(pkg.scripts.check,/desert-storm-plan\.js/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-5-final\.mjs/);assert.match(manifest.name,/HF8\.(?:5 FINAL|6)/);

@@ -37,11 +37,11 @@ assert.match(html,/id="rosterScanFiles"[^>]*multiple/);
 assert.match(styles,/\.rosterScanFileList/);assert.match(styles,/\.rosterScanFileItem/);
 
 // Version/cache/health contracts.
-assert.match(html,/V2\.5\.28 HF8\.6\.1/);assert.match(manifest.name,/HF8\.6\.1/);
-assert.match(sw,/hf8-6-1-additive-roster-capture-queue/);
-assert.match(health,/ui_revision_final:"hf8\.6\.1-additive-roster-capture-queue"/);
+assert.match(html,/V2\.5\.28 HF8\.6\.(?:1|2)/);assert.match(manifest.name,/HF8\.6\.(?:1|2)/);
+assert.match(sw,/hf8-6-(?:1-additive-roster-capture-queue|2-reliable-roster-identity)/);
+assert.match(health,/ui_revision_final:"hf8\.6\.(?:1-additive-roster-capture-queue|2-reliable-roster-identity)"/);
 for(const flag of ['alliance_roster_android_additive_capture_queue','alliance_roster_capture_picker_resets_without_clearing_queue','alliance_roster_capture_deduplication','alliance_roster_capture_individual_remove','alliance_roster_capture_queue_limit_24'])assert.match(health,new RegExp(`${flag}:true`));
-assert.match(pkg.description,/HF8\.6\.1/);assert.match(pkg.scripts.check,/roster-scan-queue\.js/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-6-1\.mjs/);
+assert.match(pkg.description,/HF8\.6\.(?:1|2)/);assert.match(pkg.scripts.check,/roster-scan-queue\.js/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-6-1\.mjs/);
 
 // Core safeguards remain intact.
 assert.doesNotMatch(app,/localStorage\.clear\s*\(/);
