@@ -1,0 +1,39 @@
+WARBOOST V2.5.28 HF8.5 FINAL — ALLIANCE CONTROL + DESERT STORM AI
+PATCH DIRECT SUR HF8.4 ALLIANCE LIFECYCLE RELIABILITY
+
+BASE OBLIGATOIRE
+- WarBoost V2.5.28 HF8.4 Alliance Lifecycle Reliability FULL
+- SHA-256 archive base vérifiée : daefff30b422a2c00fba5e4e9e4b104a6145ace5cdb86be7bb1e40abfb3bbd44
+- Le brouillon HF8.5 VS Freshness Guard n'a pas besoin d'être installé.
+
+SUPPRESSIONS
+- Aucune.
+
+CONTENU DU PATCH
+- BUILD_VERIFICATION_V2_5_28_HF8_5_FINAL_ALLIANCE_DESERT_STORM.txt
+- DELETE_FILES_V2_5_28_HF8_5_FINAL_ALLIANCE_DESERT_STORM.txt
+- PATCH_MANIFEST_V2_5_28_HF8_5_FINAL_ALLIANCE_DESERT_STORM.txt
+- README.md
+- UPLOAD_GUIDE_V2_5_28_HF8_5_FINAL_ALLIANCE_DESERT_STORM.txt
+- WARBOOST_V2_5_28_HF8_5_FINAL_ALLIANCE_DESERT_STORM.md
+- api/advice.js
+- api/health.js
+- app.js
+- i18n.js
+- index.html
+- lib/alliance-roster-lifecycle.js
+- lib/desert-storm-plan.js
+- lib/vs-live.js
+- manifest.webmanifest
+- package.json
+- scripts/verify-v2.5.28-hf8-1.mjs
+- scripts/verify-v2.5.28-hf8-2.mjs
+- scripts/verify-v2.5.28-hf8-3.mjs
+- scripts/verify-v2.5.28-hf8-4.mjs
+- scripts/verify-v2.5.28-hf8-5.mjs
+- scripts/verify-v2.5.28-hf8-5-final.mjs
+- styles.css
+- sw.js
+
+RÈGLE
+Décompresser et envoyer le CONTENU à la racine de public-beta-safe-launch. Remplacer uniquement les fichiers de même nom. Ne rien supprimer. Aucune migration Supabase HF8.5 FINAL.

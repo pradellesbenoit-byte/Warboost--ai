@@ -1,0 +1,73 @@
+WARBOOST V2.5.28 HF8.5 FINAL — ALLIANCE CONTROL + DESERT STORM AI
+BUILD VERIFICATION
+Date : 2026-09-11
+Base déploiement : HF8.4 Alliance Lifecycle Reliability
+Target : public-beta-safe-launch uniquement
+
+RESULT: PASS
+
+SOURCE / REGRESSION
+- npm run check : PASS
+- npm run verify complet (toutes suites historiques jusqu'à HF8.5 FINAL) : PASS
+- 12 fonctions Vercel serverless préservées : PASS
+- 23 langues explicites + Auto : PASS
+- aucune migration Supabase HF8.5 FINAL : PASS
+- aucun localStorage.clear() : PASS
+- Safe Launch / paiements bêta OFF / accès Last War externe OFF : PASS
+
+ALLIANCE — CYCLE DE VIE DIRECT
+- R5/R4 peut retirer directement un membre actif : PASS
+- retrait enlève le joueur du roster actif sans détruire l'historique : PASS
+- preuves de participation antérieures préservées : PASS
+- ancien membre réintégrable directement plusieurs mois plus tard : PASS
+- futur import exact reconnaît l'ancien membre et le réactive sans doublon : PASS
+- joueur retiré supprimé de la sélection Tempête du Désert active : PASS
+- absence d'une liste partielle ne devient jamais un départ automatique : PASS
+
+TEMPÊTE DU DÉSERT IA
+- sélection R5/R4 limitée au roster actif : PASS
+- inscription séparée de la preuve de participation : PASS
+- 20 titulaires + 10 remplaçants maximum : PASS
+- 20 titulaires => 5 groupes équilibrés de 4 : PASS
+- plus de 30 inscrits => 20 + 10, surplus signalé : PASS
+- moins de 20 inscrits => plan compact sans joueur inventé : PASS
+- puissance/QG manquants => confiance réduite, jamais faible/inactif inventé : PASS
+- ordres courts copiables : PASS
+- plan début / centre ouvert / fin, aucun timing de phase public codé en dur : PASS
+
+RÉFÉRENCE BÂTIMENTS — CAPTURES LAST WAR 11/09/2026
+- Silo nucléaire Alliance +80/s : PASS
+- Raffinerie Alliance +50/s : PASS
+- Hôpital Alliance +30/s : PASS
+- Science / Info / Arsenal / Mercenaires Alliance +10/s : PASS
+- Science déplacement -50 % cooldown : PASS
+- Info production bâtiments +10 % : PASS
+- Arsenal ATQ/DEF/PV alliés +15 % : PASS
+- Mercenaires ATQ/DEF/PV ennemis -15 % : PASS
+
+VS FRESHNESS GUARD CONSERVÉ
+- scan d'un jour serveur précédent = historique uniquement : PASS
+- ancien 0h00 ne ferme pas le VS actuel : PASS
+- stale scan bloque timer live / projection / conseil de dépense : PASS
+- vrai scan courant 0h00 = VS terminé, sans rescan : PASS
+- fixture réelle ALL4 821 407 081 vs Mep 508 264 286, 05:53:55, écart +313 142 795 : PASS
+
+IDENTITÉ ALLIANCE
+- compte WarBoost en correspondance non résolue matérialisé dans Comptes à associer : PASS
+- pseudo + serveur + alliance restent la base ; aucune association devinée : PASS
+
+PACKAGE VERIFICATION
+- source finale : 220 fichiers
+- PATCH HF8.4 -> HF8.5 FINAL : 24 fichiers
+- suppressions requises : 0
+- FULL extrait = source finale byte-for-byte : PASS
+- HF8.4 FULL + PATCH = source finale byte-for-byte : PASS
+- npm run check sur FULL extrait : PASS
+- npm run verify sur FULL extrait : PASS
+- npm run check sur HF8.4 + PATCH : PASS
+- npm run verify sur HF8.4 + PATCH : PASS
+- intégrité ZIP FULL : PASS
+- intégrité ZIP PATCH : PASS
+
+LIVE LIMIT
+Ce rapport vérifie le code et les packages localement. Après déploiement, un smoke test réel sur le Preview Vercel puis beta.warboost.fr reste obligatoire avant validation live.

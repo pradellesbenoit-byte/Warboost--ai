@@ -1,0 +1,59 @@
+WARBOOST V2.5.28 HF8.5 FINAL — ALLIANCE CONTROL + DESERT STORM AI
+GUIDE D'INSTALLATION
+
+IMPORTANT
+- Le précédent brouillon HF8.5 VS_FRESHNESS_GUARD n'a pas besoin d'être installé.
+- Ce PATCH s'applique DIRECTEMENT sur la HF8.4 actuellement déployée.
+- Cible : branche GitHub public-beta-safe-launch uniquement.
+- Ne pas modifier main / Production / publisher-demo.
+- AUCUNE migration Supabase pour HF8.5 FINAL.
+
+INSTALLATION
+1. Télécharger WarBoost_V2.5.28_HF8.5_FINAL_ALLIANCE_DESERT_STORM_PATCH.zip.
+2. Décompresser le ZIP.
+3. Envoyer le CONTENU extrait à la racine de public-beta-safe-launch en conservant les dossiers.
+4. Remplacer les fichiers portant le même nom lorsque GitHub le demande.
+5. Ne supprimer aucun fichier absent du PATCH.
+6. Commit sur public-beta-safe-launch uniquement.
+7. Attendre que le Preview Vercel soit Ready.
+8. Vérifier d'abord le Preview Vercel, puis beta.warboost.fr.
+
+TESTS RÉELS OBLIGATOIRES APRÈS DÉPLOIEMENT
+A. EN-TÊTE
+- WarBoost V2.5.28 HF8.5 doit être affiché.
+- Safe Launch actif / accès Last War externe désactivé.
+
+B. ALLIANCE — DÉPART/RETOUR
+- Ouvrir un membre test non présent dans l'alliance.
+- Le R5/R4 doit voir Retirer de l'alliance.
+- Après confirmation : il disparaît des actifs et apparaît dans Anciens membres.
+- Son historique/participations précédentes restent conservés.
+- Réintégrer doit le remettre dans les actifs sans doublon.
+
+C. TEMPÊTE DU DÉSERT
+- Ouvrir Alliance R5/R4 > Tempête du Désert IA.
+- Sélectionner uniquement des joueurs inscrits.
+- À 20 inscrits : 20 titulaires répartis en 5 groupes équilibrés de 4.
+- À 21–30 inscrits : 20 titulaires + jusqu'à 10 remplaçants.
+- Avec moins de 20 : le plan doit s'adapter sans inventer des joueurs.
+- Copier les consignes : le message doit être court et directement partageable.
+- Sélectionner un joueur ne doit PAS créer automatiquement une participation confirmée.
+
+D. VS FRESHNESS
+- Un scan de la veille ne doit plus apparaître comme Situation live.
+- Sans scan du jour : demander un nouveau scan et conserver les ressources.
+- Un vrai scan du jour à 0h00 : VS terminé, sans demande de rescan/dépense.
+
+E. NON-RÉGRESSION
+- Profil, escouades, Drone, EX, Boutique IA, Diagnostic PRO, Alliance, VS, Saison, Support présents sans rescan forcé.
+- 23 langues + Auto.
+- Comptes WarBoost à associer visible lorsqu'une correspondance est réellement en attente.
+
+SUPABASE
+- Ne rien exécuter pour HF8.5 FINAL.
+- Ne supprimer/modifier aucune donnée existante.
+
+PAIEMENTS / LAST WAR
+- Paiements bêta OFF.
+- Accès externe Last War OFF.
+- Aucun scraping, aucune automatisation de gameplay, aucune API non autorisée.

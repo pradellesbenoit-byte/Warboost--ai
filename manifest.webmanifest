@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.4 Alliance Lifecycle Reliability Beta",
+  "name": "WarBoost V2.5.28 HF8.5 FINAL — Alliance + Desert Storm AI Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.4 — reliable alliance roster lifecycle with explicit complete snapshots, R5/R4 review, preserved history, unknown participation visibility, and VS ended-state safety; beta payments and external game access remain disabled.",
+  "description": "WarBoost V2.5.28 HF8.5 FINAL — current-day VS safety, direct alliance departures/returns with history preserved, and R5/R4 Desert Storm registered-player tactical planning with short copyable orders; Safe Launch remains active.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
