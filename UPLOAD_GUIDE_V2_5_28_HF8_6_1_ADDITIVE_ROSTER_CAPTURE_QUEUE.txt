@@ -1,0 +1,39 @@
+WARBOOST V2.5.28 HF8.6.1 — ADDITIVE ROSTER CAPTURE QUEUE — GUIDE
+Date : 2026-09-12
+
+CIBLE
+- Branche : public-beta-safe-launch
+- Base obligatoire : WarBoost V2.5.28 HF8.6 actuellement déployée
+- Ne pas modifier main / Production / publisher-demo pendant le test.
+
+INSTALLATION
+1. Décompresser le PATCH HF8.6.1.
+2. Envoyer le CONTENU extrait à la racine de public-beta-safe-launch en conservant les dossiers.
+3. Remplacer les fichiers de même nom lorsque GitHub le demande.
+4. Ne supprimer aucun autre fichier.
+5. Attendre Vercel Preview = Ready.
+6. Ouvrir le Preview puis beta.warboost.fr seulement après validation.
+
+SUPABASE
+- AUCUNE migration HF8.6.1.
+- Ne rien exécuter dans Supabase.
+- Ne supprimer aucune donnée.
+
+TEST ANDROID OBLIGATOIRE
+1. Scanner le roster Last War.
+2. Ajouter une capture -> compteur 1.
+3. Rouvrir « Ajouter les captures du roster » et choisir une autre capture -> compteur 2.
+4. Refaire l'opération plusieurs fois : le compteur doit monter sans perdre les précédentes.
+5. Choisir deux fois la même image : pas de doublon dans la file.
+6. Retirer une image avec × : les autres restent.
+7. Appuyer sur Analyser les captures : toutes les captures de la file sont traitées.
+8. Vérifier le brouillon avant import ; ne cocher « roster complet » que si tout le roster a réellement été capturé.
+
+NON-RÉGRESSION
+- Anciens membres toujours exclus des outils actifs.
+- Réintégration conservée.
+- Tempête du Désert IA conservée.
+- Puissance escouade prioritaire pour les plans de guerre.
+- Progression datée / actualisation rapide conservées.
+- VS Freshness Guard, Support, Auth, PRO, Saison, Boutique IA conservés.
+- Paiements bêta OFF ; aucun accès Last War non autorisé.

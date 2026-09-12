@@ -15,10 +15,11 @@ import {playerParticipationInsight,allianceParticipationOverview,alliancePartici
 import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine,vsSnapshotFreshness} from "./lib/vs-live.js";
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan.js";
 import {appendProgressionSnapshot,mergeProgressionSnapshots,progressionComparison,strongestSquadFromState} from "./lib/progression-history.js";
+import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMIT} from "./lib/roster-scan-queue.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6";
+const RELEASE_LABEL="HF8.6.1";
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const BACKUP_KEY="warboost_last_good_state", ACCOUNT_STATE_PREFIX="warboost_account_state:", VOICE_ENABLED_KEY="warboost_voice_enabled", VOICE_ID_KEY="warboost_voice_id";
 const BETA_CONSENT_KEY="warboost_beta_consent_2026_09_05_safe_launch_v2", BETA_CONSENT_VERSION="2026-09-05-safe-launch-v2";
@@ -179,6 +180,7 @@ let state=loadState(),serverNow=new Date(),pushTimer=null,suppressPush=false,clo
 if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.progression_snapshots=appendProgressionSnapshot([],state,{source:"baseline",at:state.updated_at||new Date().toISOString()});
 let desertStormSearchTerm="";
 let rosterScanFiles=[],rosterScanDraft=[];
+const ROSTER_SCAN_FILE_LIMIT=DEFAULT_ROSTER_SCAN_FILE_LIMIT;
 reconcileCurrentPlayerAllianceIdentity();
 let voiceGreetedSections=new Set(),availableVoices=[];
 const openRosterRoles=new Set();
@@ -942,9 +944,23 @@ function applyRosterRows(imported,{complete=false,status=null,source="manual_imp
   if(!rows.length){if(status){status.className="notice warn";status.textContent=t("import_error");status.classList.remove("hidden")}return null}
   const result=applyRosterImportLifecycle({members:state.alliance.members,review:state.alliance.roster_review,former:state.alliance.former_members},rows,{complete,now});state.alliance.members=result.members;state.alliance.roster_review=result.review;state.alliance.former_members=result.former;if(complete)state.alliance.roster_snapshot_complete_at=now;reconcileCurrentPlayerAllianceIdentity({touch:true});state.alliance.updated_at=now;state.sync.sources={...state.sync.sources,alliance:true};saveState();if(status){status.className="notice";status.textContent=complete?t("roster_import_complete_result",{active:result.summary.active_count,review:result.summary.review_count,added:result.summary.added,returned:result.summary.returned}):t("roster_import_partial_result",{count:result.summary.imported,added:result.summary.added,returned:result.summary.returned});status.classList.remove("hidden")}return result;
 }
-$("#rosterScanFiles")?.addEventListener("change",e=>{rosterScanFiles=[...(e.target.files||[])].slice(0,12);const info=$("#rosterScanFileInfo");if(info)info.textContent=rosterScanFiles.length?t("roster_scan_files",{count:rosterScanFiles.length}):""});
+function renderRosterScanFiles(){
+  const info=$("#rosterScanFileInfo"),list=$("#rosterScanFileList");
+  if(info)info.textContent=rosterScanFiles.length?t("roster_scan_files",{count:rosterScanFiles.length}):"";
+  if(!list)return;
+  list.innerHTML=rosterScanFiles.map((file,i)=>`<div class="rosterScanFileItem"><div><b>${i+1}</b><span>${esc(file?.name||`capture-${i+1}`)}</span><small>${Number(file?.size)>0?`${Math.max(1,Math.round(Number(file.size)/1024))} Ko`:""}</small></div><button type="button" data-roster-file-remove="${i}" aria-label="${esc(t("roster_scan_remove_row"))}" title="${esc(t("roster_scan_remove_row"))}">×</button></div>`).join("");
+  list.querySelectorAll("[data-roster-file-remove]").forEach(btn=>btn.addEventListener("click",()=>{rosterScanFiles=removeRosterScanFile(rosterScanFiles,Number(btn.dataset.rosterFileRemove));renderRosterScanFiles()}));
+}
+$("#rosterScanFiles")?.addEventListener("change",e=>{
+  const result=appendRosterScanFiles(rosterScanFiles,e.target.files,{limit:ROSTER_SCAN_FILE_LIMIT});
+  rosterScanFiles=result.files;
+  // Android can return one screenshot per picker opening. Reset only the native
+  // input so the next tap appends another image to our persistent queue.
+  e.target.value="";
+  renderRosterScanFiles();
+});
 $("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus"),btn=$("#rosterScanAnalyzeBtn");if(!hasDeclaredAllianceCommandRole()){if(status){status.className="notice warn";status.textContent=managerOnlyMessage();status.classList.remove("hidden")}return}if(!rosterScanFiles.length){if(status){status.className="notice warn";status.textContent=t("roster_scan_choose_first");status.classList.remove("hidden")}return}if(!requireBetaAccess()||!requireBetaConsent())return;if(!cloudSession?.access_token){openDrawer("account");return}btn.disabled=true;const old=btn.textContent;btn.textContent=t("scan_processing");if(status){status.className="notice";status.textContent=t("roster_scan_processing",{count:rosterScanFiles.length});status.classList.remove("hidden")}try{let rows=[];for(let i=0;i<rosterScanFiles.length;i++){const image=await imageToDataUrl(rosterScanFiles[i]),r=await fetch("/api/scan",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({scan_type:"alliance_roster",locale:lang,image_data_url:image})}),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||j.error||"scan_failed");rows=mergeRosterScanRows(rows,j.roster_rows||[]);if(status)status.textContent=t("roster_scan_progress",{done:i+1,total:rosterScanFiles.length,rows:rows.length})}rosterScanDraft=mergeRosterScanRows(rosterScanDraft,rows);renderRosterScanDraft();if(status){status.className="notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})}}catch(e){if(status){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}finally{btn.disabled=false;btn.textContent=old}});
-$("#rosterScanImportBtn")?.addEventListener("click",()=>{const status=$("#rosterScanStatus");collectRosterScanDraftFromDom();const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";if($("#rosterScanFileInfo"))$("#rosterScanFileInfo").textContent="";if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
+$("#rosterScanImportBtn")?.addEventListener("click",()=>{const status=$("#rosterScanStatus");collectRosterScanDraftFromDom();const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
 
 $("#rosterImportBtn")?.addEventListener("click",()=>{
   const status=$("#rosterImportStatus");if(!hasDeclaredAllianceCommandRole()){if(status){status.className="notice warn";status.textContent=managerOnlyMessage()}return}

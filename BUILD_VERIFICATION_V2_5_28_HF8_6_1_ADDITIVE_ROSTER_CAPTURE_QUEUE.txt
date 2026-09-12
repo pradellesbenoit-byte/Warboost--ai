@@ -1,0 +1,51 @@
+WARBOOST V2.5.28 HF8.6.1 — ADDITIVE ROSTER CAPTURE QUEUE
+BUILD VERIFICATION
+Date : 2026-09-12
+Base : WarBoost V2.5.28 HF8.6
+Target : public-beta-safe-launch Preview
+
+RESULT: PASS
+
+CODE / REGRESSION
+- npm run check: PASS
+- npm run verify: PASS
+- Legacy suites through HF8.6: PASS
+- HF8.6.1 dedicated queue suite: PASS
+- 12 Vercel serverless API functions preserved: PASS
+- No Supabase migration HF8.6.1: PASS
+- No localStorage.clear(): PASS
+
+HF8.6.1 QUEUE TESTS
+- sequential Android-style picks append 1 -> 2 -> 3 captures: PASS
+- exact duplicate capture ignored: PASS
+- individual removal preserves other captures: PASS
+- 24-capture queue cap: PASS
+- non-image input rejected by queue helper: PASS
+- native input resets after each pick without clearing WarBoost queue: PASS
+- legacy replacement handler removed: PASS
+- queue is visible before OCR analysis: PASS
+
+HF8.6 NON-REGRESSION
+- former-member filtering / reintegration: PASS
+- screenshot roster draft review: PASS
+- squad-power-first combat planning: PASS
+- dated account/squad/drone progression: PASS
+- quick refresh profile/squad/drone: PASS
+- Desert Storm AI: PASS
+- VS freshness protections: PASS
+- Safe Launch / beta payment lock: PASS
+
+PACKAGE TARGET
+- FULL final tree: 234 files
+- PATCH: 18 files
+- Deletions: 0
+- ZIP integrity FULL: PASS
+- ZIP integrity PATCH: PASS
+- HF8.6 FULL + HF8.6.1 PATCH matches HF8.6.1 FULL: PASS (234/234 files)
+- npm run check on extracted FULL: PASS
+- npm run verify on extracted FULL: PASS
+- npm run check on patch-applied HF8.6 tree: PASS
+- npm run verify on patch-applied HF8.6 tree: PASS
+
+LIVE LIMIT
+This report verifies source and package behavior locally. Final validation still requires the real Android + Vercel Preview smoke test.

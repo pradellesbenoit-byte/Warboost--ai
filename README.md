@@ -1,34 +1,44 @@
-# WarBoost V2.5.28 HF8.6 — Roster Scan + Progression + Combat AI
+# WarBoost V2.5.28 HF8.6.1 — Additive Roster Capture Queue
 
-HF8.6 est une mise à jour additive de **WarBoost V2.5.28 HF8.5 FINAL**, toujours en bêta publique **sur invitation**, destinée à la branche `public-beta-safe-launch`.
+HF8.6.1 est un correctif ciblé de **WarBoost V2.5.28 HF8.6**, toujours en bêta publique **sur invitation**, destiné à la branche `public-beta-safe-launch`.
 
-Cette build ajoute :
-- import principal du roster Alliance par **plusieurs captures Last War** avec vérification avant import ;
-- exclusion robuste des anciens membres dans tous les sélecteurs/événements même après resynchronisation cloud ;
-- plans de guerre qui utilisent **la puissance d’escouade en priorité**, la puissance du compte uniquement en fallback ;
-- historique de **progression joueur daté** (compte, escouades, QG, Drone) ;
-- boutons d’**actualisation rapide** Profil / Escouade principale / Drone ;
-- baisse de confiance quand les données d’escouade ont plus de 14 jours.
+Il corrige le sélecteur de captures du roster sur mobile/Android : ouvrir plusieurs fois le sélecteur ajoute maintenant les nouvelles captures à la file existante au lieu de remplacer les précédentes.
 
-Les protections VS Freshness Guard, Alliance Lifecycle, Tempête du Désert, Safe Launch, Auth, Support, Scan, PRO, Saison et Boutique IA des versions précédentes restent conservées.
+Cette build conserve intégralement HF8.6 :
+- import principal du roster Alliance par captures Last War avec brouillon vérifiable ;
+- anciens membres exclus des outils actifs et réintégrables sans doublon ;
+- puissance d’escouade prioritaire pour les plans de guerre, puissance compte en fallback ;
+- progression datée compte / escouades / QG / Drone ;
+- actualisation rapide Profil / Escouade / Drone ;
+- VS Freshness Guard, Tempête du Désert IA, Alliance Lifecycle, Safe Launch, Auth, Support, Scan, PRO, Saison et Boutique IA.
+
+## Correctif HF8.6.1
+- les captures sont conservées dans une **file cumulative** entre plusieurs ouvertures du sélecteur Android ;
+- le `FileList` natif est réinitialisé après chaque choix sans vider la file WarBoost ;
+- un doublon exact n’est ajouté qu’une fois ;
+- jusqu’à **24 captures** peuvent être préparées avant analyse ;
+- chaque capture ajoutée est visible dans la liste et peut être retirée individuellement ;
+- le bouton **Analyser les captures** traite la file cumulée ;
+- aucune modification du roster n’est appliquée avant validation du brouillon ;
+- l’import final vide la file seulement après réussite.
 
 ## Installation
-Appliquer uniquement le PATCH HF8.6 sur la HF8.5 FINAL actuellement déployée dans `public-beta-safe-launch`. Ne pas modifier `main`, Production ou `publisher-demo` pendant le test.
+Appliquer uniquement le PATCH HF8.6.1 sur la **HF8.6 actuellement déployée** dans `public-beta-safe-launch`. Ne pas modifier `main`, Production ou `publisher-demo` pendant le test.
 
 ## Supabase
-**Aucune migration Supabase HF8.6.** Les nouveaux instantanés de progression sont stockés dans le payload JSON déjà existant.
+**Aucune migration Supabase HF8.6.1.** Ne rien exécuter dans Supabase.
 
 ## Smoke test obligatoire après Preview Vercel
-1. Vérifier que les données joueur existantes sont intactes.
-2. Retirer un membre puis vérifier qu’il disparaît aussi de Tempête du Désert après une synchronisation.
-3. Réintégrer le membre et vérifier son retour sans doublon.
-4. Scanner plusieurs captures du roster et vérifier/corriger le brouillon avant import.
-5. Vérifier qu’une liste partielle ne supprime personne.
-6. Vérifier le scénario 300 M / 38 M contre 250 M / 52 M : le second doit être prioritaire en combat grâce à son escouade.
-7. Vérifier une donnée d’escouade ancienne : confiance réduite, aucune puissance inventée.
-8. Vérifier la progression après deux états datés.
-9. Vérifier VS, Saison, Support, PRO, Boutique IA et Tempête du Désert pour non-régression.
+1. Ouvrir Scanner le roster.
+2. Ajouter une première capture : le compteur doit afficher 1.
+3. Rouvrir le sélecteur et ajouter une deuxième capture : le compteur doit afficher 2, pas revenir à 1.
+4. Répéter avec plusieurs captures choisies une par une sur Android.
+5. Ajouter deux fois la même capture : elle ne doit pas être dupliquée.
+6. Retirer une capture avec × : les autres restent présentes.
+7. Analyser la file et vérifier que les joueurs de toutes les captures sont fusionnés dans le brouillon.
+8. Vérifier/corriger le brouillon avant import.
+9. Vérifier que les données joueur, anciens membres, Tempête du Désert, progression, VS, Saison, Support et PRO sont intactes.
 10. Tester ensuite `beta.warboost.fr` sur un appareil non connecté à Vercel.
 
-## Migrations déjà installées à conserver
-HF8.6 n'ajoute rien au schéma. **Aucune nouvelle migration de base de données n’est nécessaire.** Les migrations historiques requises par la bêta restent notamment `migration_v2_5_24_support.sql` et `migration_v2_5_26_beta_invites.sql` ; ne pas les supprimer ni les rejouer inutilement.
+## Migrations historiques à conserver
+HF8.6.1 n’ajoute aucun schéma. Conserver les migrations déjà installées, notamment `migration_v2_5_24_support.sql` et `migration_v2_5_26_beta_invites.sql`. Ne pas les supprimer ni les rejouer inutilement.
