@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {previewAllianceRankChanges,applyAllianceRankChanges,permissionTransitions} from '../lib/alliance-rank-management.js';
+import {LANGUAGES,translator} from '../i18n.js';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const read=f=>fs.readFileSync(path.join(root,f),'utf8');
+const now='2026-09-12T10:00:00.000Z';
+const mk=(name,role,power=100,player_id=null)=>({name,role,power_m:power,hq_level:35,server_id:'884',alliance_tag:'ALL4',player_id,warboost_linked:Boolean(player_id),management_role:role==='R4'?'R4':'R1',membership_history:[],joined_at:'2026-01-01T00:00:00.000Z',updated_at:'2026-09-10T00:00:00.000Z'});
+const members=[mk('Nono 50','R5',275.7,'p-r5')];
+for(let i=1;i<=10;i++)members.push(mk(`R4-${i}`,'R4',300-i,i<=2?`p-r4-${i}`:null));
+for(let i=1;i<=69;i++)members.push(mk(`R3-${i}`,'R3',250-i,i<=2?`p-r3-${i}`:null));
+for(let i=1;i<=11;i++)members.push(mk(`R2-${i}`,'R2',180-i));
+for(let i=1;i<=2;i++)members.push(mk(`R1-${i}`,'R1',100-i));
+const keyOf=name=>{const row=members.find(x=>x.name===name);return `${row.name.toLowerCase()}|884|ALL4`.normalize('NFD').replace(/[\u0300-\u036f]/g,'')};
+// lifecycle key normalization is simple for these test names; get real keys from preview helper input via a small import-free mirror
+import {rankManagementKey} from '../lib/alliance-rank-management.js';
+const k=n=>rankManagementKey(members.find(x=>x.name===n));
+const swap=[{key:k('R4-1'),to_role:'R3'},{key:k('R4-2'),to_role:'R3'},{key:k('R3-1'),to_role:'R4'},{key:k('R3-2'),to_role:'R4'},{key:k('R1-1'),to_role:'R2'},{key:k('R2-1'),to_role:'R1'}];
+const preview=previewAllianceRankChanges(members,swap,{maxR4:10});
+assert.equal(preview.ok,true);assert.equal(preview.before.R4,10);assert.equal(preview.after.R4,10);assert.equal(preview.after.R3,69);assert.equal(preview.after.R2,11);assert.equal(preview.after.R1,2);assert.equal(preview.changes.length,6);
+const applied=applyAllianceRankChanges(members,swap,{now,maxR4:10});assert.equal(applied.changed,true);
+const aR41=applied.members.find(x=>x.name==='R4-1'),aR31=applied.members.find(x=>x.name==='R3-1');assert.equal(aR41.role,'R3');assert.equal(aR31.role,'R4');assert.equal(aR41.power_m,299);assert.equal(aR41.joined_at,'2026-01-01T00:00:00.000Z');assert.ok(aR41.membership_history.some(x=>x.type==='role_changed'&&x.from_role==='R4'&&x.to_role==='R3'));
+const transitions=permissionTransitions(preview);assert.equal(transitions.length,4);assert.equal(transitions.find(x=>x.name==='R4-1').management_role,'R1');assert.equal(transitions.find(x=>x.name==='R3-1').management_role,'R4');
+const overflow=previewAllianceRankChanges(members,[{key:k('R3-3'),to_role:'R4'}],{maxR4:10});assert.equal(overflow.ok,false);assert.ok(overflow.errors.some(x=>x.code==='r4_limit'));
+const r5=previewAllianceRankChanges(members,[{key:k('Nono 50'),to_role:'R4'}],{maxR4:10});assert.equal(r5.ok,false);assert.ok(r5.errors.some(x=>x.code==='r5_protected'));
+const app=read('app.js'),html=read('index.html'),api=read('api/alliance-role.js'),pkg=JSON.parse(read('package.json')),sw=read('sw.js');
+assert.match(app,/RELEASE_LABEL="HF8\.6\.3"/);assert.match(app,/previewAllianceRankChanges/);assert.match(app,/applyRankManagerChanges/);assert.match(app,/rankChangeDraft/);assert.match(html,/id="rankManagerSection"/);assert.match(html,/id="rankManagerApplyBtn"/);assert.match(api,/actorRole==="R4"/);assert.match(api,/r5_protected/);assert.match(api,/owner_required_for_r5/);assert.match(sw,/hf8-6-3-alliance-rank-manager/);assert.match(pkg.description,/HF8\.6\.3/);
+const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.length,23);for(const [code] of explicit){const tr=translator(code);for(const key of ['rank_manager_title','rank_manager_help','rank_manager_apply','rank_manager_self_guard']){assert.notEqual(tr(key),key,`${code} missing ${key}`)}}
+const migrations=fs.readdirSync(path.join(root,'supabase')).filter(x=>/hf8[_-]?6[_-]?3/i.test(x));assert.equal(migrations.length,0,'HF8.6.3 must not add a Supabase migration');
+console.log('WarBoost V2.5.28 HF8.6.3 Alliance Rank Manager verification: PASS');
