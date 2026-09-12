@@ -68,9 +68,9 @@ const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.l
 for(const [code] of explicit){const tr=translator(code);for(const key of ['roster_full_snapshot_label','roster_review_title','roster_review_departed','former_members_title','identity_retry_match','participation_unknown_members_guard','vs_decision_ended','vs_no_rescan_ended'])assert.notEqual(tr(key),key,`${code} missing ${key}`)}
 
 // Release metadata, Safe Launch and regressions.
-assert.match(health,/(?:ui_revision|previous_ui_revision):"hf8\.4-alliance-lifecycle-reliability"/);
+assert.match(health,/(?:ui_revision|previous_ui_revision|ui_revision_final):"hf8\.(?:4-alliance-lifecycle-reliability|5-final-alliance-desert-storm|6-roster-scan-progression-combat-ai)"/);
 for(const guard of ['alliance_complete_roster_snapshot_explicit','alliance_missing_complete_snapshot_member_review_not_departure','alliance_departure_requires_r5_r4_confirmation','alliance_former_member_history_preserved','alliance_return_reactivates_history','alliance_role_change_history','alliance_r5_separate_lastwar_header_supported','alliance_unknown_event_member_count_visible','alliance_unlinked_account_exact_match_retry','vs_zero_time_final_state_no_spend_or_rescan','vs_ended_suppresses_second_scan'])assert.match(health,new RegExp(`${guard}:true`));
-assert.match(sw,/hf8-4-alliance-lifecycle-reliability/);assert.match(sw,/alliance-roster-lifecycle\.js/);assert.match(pkg.description,/HF8\.(?:4|5)/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-4\.mjs/);assert.match(manifest.name,/HF8\.(?:4|5)/);
+assert.match(sw,/hf8-4-alliance-lifecycle-reliability/);assert.match(sw,/alliance-roster-lifecycle\.js/);assert.match(pkg.description,/HF8\.(?:4|5|6)/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-4\.mjs/);assert.match(manifest.name,/HF8\.(?:4|5|6)/);
 assert.match(health,/safe_launch_no_scraping:true/);assert.match(health,/safe_launch_no_gameplay_automation:true/);assert.match(health,/beta_payments_disabled:true/);
 assert.doesNotMatch(app,/localStorage\.clear\s*\(/);assert.doesNotMatch(app,/WARBOOST_PUBLIC_LASTWAR_URL|LASTWAR_API_KEY/);
 const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);

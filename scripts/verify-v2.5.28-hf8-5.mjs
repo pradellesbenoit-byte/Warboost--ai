@@ -47,7 +47,7 @@ const staleAdvice=buildVsAdvice({vs:staleForApi,updated_at:new Date().toISOStrin
 assert.equal(staleAdvice.live_decision.stale,true);assert.equal(staleAdvice.live_decision.decision_key,'scan');assert.equal(staleAdvice.score_gap,null);assert.equal(staleAdvice.time_remaining_seconds,null);assert.equal(staleAdvice.trend,null);assert.match(staleAdvice.advice,/ancien|scanne|scan du jour/i);assert.doesNotMatch(staleAdvice.advice,/second scan est nécessaire|deuxième scan est nécessaire/i);
 
 // UI: stale score cannot remain labelled live; pending account details must open when present.
-assert.match(html,/WarBoost V2\.5\.28 HF8\.5/);assert.match(html,/id=["']vsLiveSituationTitle["']/);
+assert.match(html,/WarBoost V2\.5\.28 HF8\.(?:5|6)/);assert.match(html,/id=["']vsLiveSituationTitle["']/);
 for(const token of ['vsSnapshotFreshness','vs_stale_notice','vs_status_stale','vs_last_scan_stale','pendingDetails.open=pending.length>0'])assert.match(app,new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
 assert.match(app,/liveKnown=known&&freshness\.current/);assert.match(app,/\$\("#vsRemaining"\)\.textContent=stale\?"—"/);assert.match(app,/\$\("#vsGap"\)\.textContent=liveKnown\?/);
 
@@ -58,7 +58,7 @@ for(const [code] of explicit){const tr=translator(code);for(const key of ['vs_st
 // Release metadata and non-regression guard rails.
 assert.match(health,/ui_revision:"hf8\.5-vs-freshness-guard"/);
 for(const guard of ['vs_current_server_day_required_for_live','vs_stale_scan_history_only','vs_stale_scan_blocks_spend_projection_and_timer','vs_real_fixture_2026_09_11_all4_mep_guard','alliance_pending_identity_details_auto_open'])assert.match(health,new RegExp(`${guard}:true`));
-assert.match(sw,/hf8-5-vs-freshness-guard/);assert.match(pkg.description,/HF8\.5/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-5\.mjs/);assert.match(manifest.name,/HF8\.5/);
+assert.match(sw,/hf8-5-vs-freshness-guard/);assert.match(pkg.description,/HF8\.(?:5|6)/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-5\.mjs/);assert.match(manifest.name,/HF8\.(?:5|6)/);
 assert.match(health,/safe_launch_no_scraping:true/);assert.match(health,/safe_launch_no_gameplay_automation:true/);assert.match(health,/beta_payments_disabled:true/);
 assert.doesNotMatch(app,/localStorage\.clear\s*\(/);assert.doesNotMatch(app,/WARBOOST_PUBLIC_LASTWAR_URL|LASTWAR_API_KEY/);
 const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);

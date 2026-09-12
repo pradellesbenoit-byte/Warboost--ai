@@ -13,7 +13,7 @@ assert.match(app,/openDrawer\("account"\)/);
 assert.match(app,/proSection/);
 assert.match(i18n,/HF8\.1 · visible PRO entry on home/);
 assert.match(sw,/hf8-commercial-readiness-hf8-(?:1-pro-visible|2-vs-live-coach|3-vs-decision-engine)(?:-hf8-4-alliance-lifecycle-reliability|5-vs-freshness-guard)?(?:-hf8-5-vs-freshness-guard)?/);
-assert.equal(['HF8.1','HF8.2','HF8.3','HF8.4','HF8.5'].some(v=>manifest.name.includes(v)),true);
+assert.equal(['HF8.1','HF8.2','HF8.3','HF8.4','HF8.5','HF8.6'].some(v=>manifest.name.includes(v)),true);
 assert.match(health,/(?:ui_revision|previous_ui_revision):"hf8\.(?:1-pro-visible|2-vs-live-coach|3-vs-decision-engine|4-alliance-lifecycle-reliability|5-vs-freshness-guard)"/);
 assert.match(health,/commercial_pro_home_entry_visible:true/);
 assert.match(health,/safe_launch_payments_code_disabled:true/);
