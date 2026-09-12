@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.2 — Reliable Roster Identity Beta",
+  "name": "WarBoost V2.5.28 HF8.6.3 — Alliance Rank Manager Beta · HF8.6.2 identity included",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.2 — Reliable roster identity matching with additive Android roster capture queue, dated account/squad progression, squad-power-first R5/R4 battle planning, former-member exclusion and VS freshness protections.",
+  "description": "WarBoost V2.5.28 HF8.6.3 — Batch R1/R2/R3/R4 rank management with protected R5, reliable roster identity, progression, combat planning and VS freshness protections.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

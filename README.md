@@ -1,6 +1,21 @@
-# WarBoost V2.5.28 HF8.6.2 — Reliable Roster Identity
+# WarBoost V2.5.28 HF8.6.3 — Alliance Rank Manager
 
 HF8.6.2 est un correctif ciblé de **WarBoost V2.5.28 HF8.6.1**, toujours en bêta publique **sur invitation**, destiné à `public-beta-safe-launch`.
+
+## HF8.6.3 — Gestion des grades Alliance
+Cette version reprend intégralement **HF8.6.2 — Reliable Roster Identity** et ajoute une gestion groupée des grades Last War **R1/R2/R3/R4** pour les R5/R4 WarBoost :
+- changements multiples préparés dans un seul brouillon, avec aperçu **avant → après** ;
+- permutations R4↔R3 et R2↔R1 appliquées comme une seule opération ;
+- limite de **10 R4** contrôlée avant validation ;
+- **R5 protégé** et traité séparément ;
+- le propre grade du gestionnaire n'est pas modifiable depuis ce batch afin d'éviter une perte accidentelle de droits ;
+- aucune fiche joueur n'est recréée : progression, compte WarBoost lié, participations, escouades et historique restent attachés au même membre ;
+- chaque changement ajoute un événement `role_changed` dans `membership_history` ;
+- les droits de gestion WarBoost R4 sont synchronisés pour les comptes liés lors d'un passage vers/depuis R4, avec rollback best-effort si une mise à jour échoue ;
+- le scan roster HF8.6.2 reste capable de confirmer un changement de grade sans créer de doublon.
+
+**HF8.6.3 n'ajoute aucune migration Supabase.** Elle s'applique sur HF8.6.2 et conserve toutes les migrations historiques déjà installées.
+
 
 Il corrige le point critique observé avec Kaufik : un membre déjà connu ne doit jamais être recréé comme nouveau simplement parce que sa puissance, son QG ou son grade ont changé.
 

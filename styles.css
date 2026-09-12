@@ -276,3 +276,23 @@ a.metaSourceRow{color:inherit;text-decoration:none}a.metaSourceRow:focus-visible
 .rosterIdentityStatus.new{border-color:rgba(59,130,246,.28);background:rgba(30,64,175,.12)}
 .rosterIdentityStatus.possible,.rosterIdentityStatus.ambiguous,.rosterIdentityStatus.invalid{border-color:rgba(245,158,11,.4);background:rgba(120,53,15,.18)}
 .rosterIdentityStatus .smallBtn{margin-left:8px;margin-top:4px}
+
+/* HF8.6.3 · Alliance Rank Manager */
+.rankManagerSection{border-color:rgba(92,194,255,.34)}
+.rankManagerSection.managerLocked{opacity:.78}
+.rankManagerR5Guard{margin:10px 0 12px}
+.rankManagerList{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;padding-right:2px;margin-top:10px}
+.rankManagerRow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:16px;background:rgba(8,17,33,.55)}
+.rankManagerRow.changed{border-color:rgba(76,220,168,.45);background:rgba(18,56,49,.28)}
+.rankManagerRow>div:first-child{min-width:0;display:flex;flex-direction:column;gap:3px}
+.rankManagerRow b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rankManagerRow small{color:var(--muted);font-size:12px}
+.rankMove{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.rankMove span{font-weight:800;color:var(--muted)}
+.rankMove select{min-width:68px;border:1px solid var(--line);border-radius:12px;background:#0c1729;color:var(--text);padding:8px 9px;font-weight:800}
+.rankManagerPreview{margin-top:12px}
+.rankPreviewCounts{display:grid;grid-template-columns:1fr;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(12,23,41,.6);font-size:13px}
+.rankPreviewChanges{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.rankPreviewChanges span{padding:7px 10px;border-radius:12px;background:rgba(45,92,133,.18);font-size:13px}
+.rankManagerButtons{margin-top:12px}
+@media (max-width:520px){.rankManagerRow{align-items:flex-start}.rankMove{padding-top:2px}.rankManagerButtons{display:grid;grid-template-columns:1fr}.rankManagerButtons>*{width:100%}}
