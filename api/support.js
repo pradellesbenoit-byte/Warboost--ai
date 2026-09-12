@@ -1,4 +1,4 @@
-import {randomBytes} from "node:crypto";
+import {createHash,randomBytes,timingSafeEqual} from "node:crypto";
 import {requireUser} from "../lib/auth.js";
 import {betaAccessForUserAsync} from "../lib/beta-access.js";
 
@@ -7,6 +7,13 @@ const sbUrl=()=>pick("SUPABASE_URL","NEXT_PUBLIC_SUPABASE_URL","VITE_SUPABASE_UR
 const serviceKey=()=>pick("SUPABASE_SERVICE_ROLE_KEY");
 const configured=()=>Boolean(sbUrl()&&serviceKey());
 function adminEmails(){return [...new Set(String(process.env.WARBOOST_SUPPORT_ADMINS||"").split(/[;,\n]/).map(x=>x.trim().toLowerCase()).filter(Boolean))]}
+const DEFAULT_BETA_CODE_HASH="13da15f59b83d395f6a637de15953870754436f9069d2819f78becb9a8bf2a32";
+const BETA_CODE_SOURCE="beta-code-hf8.6.5";
+const BETA_CODE_MAX_USERS=25;
+const BETA_CODE_ACCEPT_UNTIL=Date.parse("2026-10-31T23:59:59Z");
+function normalizeBetaCode(v){return String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,80)}
+function betaCodeHash(){const raw=String(process.env.WARBOOST_BETA_CODE_HASH||DEFAULT_BETA_CODE_HASH).trim().toLowerCase();return /^[a-f0-9]{64}$/.test(raw)?raw:DEFAULT_BETA_CODE_HASH}
+function betaCodeMatches(v){const got=createHash("sha256").update(normalizeBetaCode(v)).digest(),want=Buffer.from(betaCodeHash(),"hex");return got.length===want.length&&timingSafeEqual(got,want)}
 function isAdmin(user){return adminEmails().includes(String(user?.email||"").trim().toLowerCase())}
 function safeText(v,max=4000){return String(v??"").replace(/\u0000/g,"").trim().slice(0,max)}
 function cleanCategory(v){const x=String(v||"").toLowerCase();return ["login","scan","data","ai","alliance","bug","suggestion","other"].includes(x)?x:"other"}
@@ -46,6 +53,21 @@ async function anyTicket(id){const rows=await rest(`wb1_support_tickets?id=eq.${
 async function inviteByEmail(email){const rows=await rest(`wb1_beta_invites?email=eq.${encodeURIComponent(cleanEmail(email))}&select=*&limit=1`);return rows?.[0]||null}
 async function inviteById(id){const rows=await rest(`wb1_beta_invites?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);return rows?.[0]||null}
 async function listInvites(){return await rest("wb1_beta_invites?select=*&order=updated_at.desc&limit=1000")}
+async function betaCodeUserCount(){const rows=await rest(`wb1_beta_invites?invited_by_user_id=eq.${encodeURIComponent(BETA_CODE_SOURCE)}&status=in.(pending,accepted)&select=id&limit=1000`);return Array.isArray(rows)?rows.length:0}
+async function activateByBetaCode({code,user}){
+  const email=cleanEmail(user?.email);if(!validEmail(email))throw Object.assign(new Error("BETA_ACCESS_EMAIL_REQUIRED"),{status:400,code:"BETA_ACCESS_EMAIL_REQUIRED"});
+  const existing=await inviteByEmail(email),now=new Date().toISOString();
+  if(existing?.status==="revoked")throw Object.assign(new Error("Cet accès bêta a été révoqué."),{status:403,code:"BETA_ACCESS_REVOKED"});
+  if(existing&&["pending","accepted"].includes(String(existing.status||"").toLowerCase())){
+    await rest(`wb1_beta_invites?id=eq.${encodeURIComponent(existing.id)}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status:"accepted",accepted_at:existing.accepted_at||now,accepted_user_id:String(user?.id||"")||existing.accepted_user_id||null,updated_at:now})});
+    return {allowed:true,already_allowed:true};
+  }
+  if(Date.now()>BETA_CODE_ACCEPT_UNTIL)throw Object.assign(new Error("Ce code bêta n’accepte plus de nouveaux comptes."),{status:403,code:"BETA_CODE_EXPIRED"});
+  if(!betaCodeMatches(code))throw Object.assign(new Error("Code d’accès bêta incorrect."),{status:403,code:"BETA_CODE_INVALID"});
+  const count=await betaCodeUserCount();if(count>=BETA_CODE_MAX_USERS)throw Object.assign(new Error("La limite de testeurs de ce code bêta est atteinte."),{status:403,code:"BETA_CODE_FULL"});
+  await rest("wb1_beta_invites",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({email,status:"accepted",note:"Accès par code bêta privé HF8.6.5",invited_by_user_id:BETA_CODE_SOURCE,invited_by_email:null,invited_at:now,accepted_at:now,accepted_user_id:String(user?.id||"")||null,updated_at:now})});
+  return {allowed:true,already_allowed:false,remaining:Math.max(0,BETA_CODE_MAX_USERS-count-1)};
+}
 function splitInviteEmails(body){
   const raw=Array.isArray(body?.emails)?body.emails:[body?.email||""];
   const expanded=raw.flatMap(v=>String(v||"").split(/[;,\n\s]+/)).map(cleanEmail).filter(Boolean);
@@ -88,6 +110,8 @@ export default async function handler(req,res){
     }
     if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
     const action=safeText(req.body?.action,40)||"create";
+
+    if(action==="beta_code_activate"){const result=await activateByBetaCode({code:req.body?.code,user});return res.status(200).json({ok:true,...result})}
 
     if(action==="invite_add"){
       if(!admin)return res.status(403).json({error:"SUPPORT_ADMIN_REQUIRED"});
