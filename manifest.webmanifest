@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.5 FINAL — Alliance + Desert Storm AI Beta",
+  "name": "WarBoost V2.5.28 HF8.6 — Roster Scan + Progression + Combat AI Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.5 FINAL — current-day VS safety, direct alliance departures/returns with history preserved, and R5/R4 Desert Storm registered-player tactical planning with short copyable orders; Safe Launch remains active.",
+  "description": "WarBoost V2.5.28 HF8.6 — screenshot-first alliance roster updates, dated account/squad progression, squad-power-first R5/R4 battle planning, former-member exclusion and VS freshness protections.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

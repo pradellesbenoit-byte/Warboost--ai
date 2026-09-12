@@ -1,0 +1,40 @@
+WARBOOST V2.5.28 HF8.6 — ROSTER SCAN + PROGRESSION + COMBAT AI
+PATCH SUR HF8.5 FINAL
+
+BASE OBLIGATOIRE
+- WarBoost V2.5.28 HF8.5 FINAL — Alliance + Desert Storm AI
+
+SUPPRESSIONS
+- Aucune.
+
+FICHIERS DU PATCH (contenu complet)
+- BUILD_VERIFICATION_V2_5_28_HF8_6_ROSTER_SCAN_PROGRESSION_COMBAT_AI.txt
+- DELETE_FILES_V2_5_28_HF8_6_ROSTER_SCAN_PROGRESSION_COMBAT_AI.txt
+- PATCH_MANIFEST_V2_5_28_HF8_6_ROSTER_SCAN_PROGRESSION_COMBAT_AI.txt
+- README.md
+- UPLOAD_GUIDE_V2_5_28_HF8_6_ROSTER_SCAN_PROGRESSION_COMBAT_AI.txt
+- WARBOOST_V2_5_28_HF8_6_ROSTER_SCAN_PROGRESSION_COMBAT_AI.md
+- api/health.js
+- api/scan.js
+- api/sync.js
+- app.js
+- i18n.js
+- index.html
+- lib/alliance-roster-lifecycle.js
+- lib/desert-storm-plan.js
+- lib/normalize.js
+- lib/progression-history.js
+- lib/supabase.js
+- manifest.webmanifest
+- package.json
+- scripts/verify-v2.5.28-hf8-1.mjs
+- scripts/verify-v2.5.28-hf8-3.mjs
+- scripts/verify-v2.5.28-hf8-4.mjs
+- scripts/verify-v2.5.28-hf8-5-final.mjs
+- scripts/verify-v2.5.28-hf8-5.mjs
+- scripts/verify-v2.5.28-hf8-6.mjs
+- styles.css
+- sw.js
+
+RÈGLE
+Décompresser puis envoyer le CONTENU du PATCH à la racine de public-beta-safe-launch. Ne supprimer aucun fichier absent du PATCH. Aucune migration Supabase HF8.6.

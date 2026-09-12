@@ -1,0 +1,68 @@
+WARBOOST V2.5.28 HF8.6 — ROSTER SCAN + PROGRESSION + COMBAT AI
+GUIDE D'INSTALLATION
+Date : 2026-09-12
+
+CIBLE UNIQUEMENT
+- Base obligatoire : WarBoost V2.5.28 HF8.5 FINAL — Alliance + Desert Storm AI.
+- Branche GitHub : public-beta-safe-launch.
+- Vercel : Preview de cette branche, puis beta.warboost.fr après validation réelle.
+- NE PAS modifier main / Production / publisher-demo pour ce test.
+
+INSTALLATION RECOMMANDÉE
+1. Décompresser WarBoost_V2.5.28_HF8.6_ROSTER_SCAN_PROGRESSION_COMBAT_AI_PATCH.zip.
+2. Envoyer le CONTENU extrait à la racine de public-beta-safe-launch en conservant les dossiers.
+3. Remplacer les fichiers de même nom lorsque GitHub le demande.
+4. Ne supprimer aucun autre fichier : HF8.6 ne demande aucune suppression.
+5. Commit sur public-beta-safe-launch uniquement.
+6. Attendre Vercel Ready.
+7. Ouvrir d'abord le Preview Vercel puis beta.warboost.fr.
+8. Vérifier l'en-tête WarBoost V2.5.28 HF8.6.
+
+SUPABASE
+- AUCUNE migration HF8.6.
+- Ne rien exécuter dans Supabase pour cette version.
+- Ne supprimer/modifier aucune donnée existante.
+
+SMOKE TEST RÉEL OBLIGATOIRE
+A. Non-régression joueur
+- Profil, escouades, Drone, Boutique IA, Alliance, VS, Saison et historique sont toujours présents sans rescan complet.
+- Une actualisation Profil ne doit PAS rendre artificiellement récente une vieille escouade.
+- Actualisation rapide Profil / Escouade / Drone fonctionne séparément.
+
+B. Alliance / anciens membres
+- Un joueur retiré (ex. Dengrengola) reste dans Anciens membres et disparaît immédiatement des outils actifs.
+- Il ne doit plus apparaître dans Tempête du Désert, même après synchronisation/rechargement.
+- Réintégrer le joueur le rend à nouveau disponible sans doublon et conserve son historique.
+
+C. Import roster par captures
+- Ajouter plusieurs captures de la liste Last War.
+- Vérifier que le R5 affiché séparément est détectable lorsqu'il est visible.
+- Vérifier/corriger le brouillon avant import.
+- Une capture partielle ne retire personne.
+- Ne cocher “roster complet actuel, R5 inclus” que si TOUT le roster a réellement été capturé.
+
+D. Plan de guerre
+- Si une puissance d'escouade réelle est connue, elle est prioritaire sur la puissance totale du compte.
+- Si elle manque, la puissance compte sert seulement de fallback avec confiance réduite.
+- Une escouade ancienne (>14 j) doit réduire la confiance et demander une actualisation.
+- Ne jamais inventer une puissance d'escouade.
+
+E. Progression
+- Deux observations datées doivent afficher l'évolution réelle.
+- Exemple attendu : compte 250M -> 255M en 11 j = +5M / +2% / ~+0,45M/j.
+- Escouade 45M -> 47M en 11 j = +2M / +4,4% / ~+0,18M/j.
+- Pas de nouvelle observation = donnée ancienne, jamais “aucune progression”.
+
+F. VS / Safe Launch
+- Un ancien scan VS n'est jamais affiché comme situation live du jour.
+- Un ancien 0h00 ne termine jamais le VS actuel.
+- Accès Last War non autorisé, scraping et automatisation gameplay restent désactivés.
+- Paiements bêta restent désactivés.
+
+NOTE MISE À JOUR JOUEURS
+- Le futur bandeau “Nouvelle version disponible” n'est PAS activé dans HF8.6.
+- Il sera ajouté après validation de cette version si nécessaire, comme décidé pendant les tests.
+
+EN CAS D'ÉCHEC
+- Ne pas promouvoir la version.
+- Conserver HF8.5 FINAL fonctionnelle et noter la capture/étape exacte qui échoue.

@@ -1,0 +1,59 @@
+WARBOOST V2.5.28 HF8.6 — ROSTER SCAN + PROGRESSION + COMBAT AI
+BUILD VERIFICATION
+Date : 2026-09-12
+Base : WarBoost V2.5.28 HF8.5 FINAL — Alliance + Desert Storm AI
+Target : public-beta-safe-launch Preview
+
+RESULT SOURCE : PASS
+
+CORRECTIFS / FONCTIONS HF8.6
+- Ancien membre bloqué durablement des outils actifs, y compris après synchro cloud/canonique : PASS
+- Réintégration ultérieure sans doublon et historique conservé : PASS
+- Tempête du Désert purge une ancienne sélection devenue inactive : PASS
+- Import roster multi-captures avec brouillon éditable : PASS
+- R5 affiché séparément au-dessus de R4 supporté par le contrat Vision : PASS
+- Capture partielle ne signifie jamais départ : PASS
+- Puissance escouade réelle prioritaire pour le combat : PASS
+- Puissance compte utilisée uniquement en fallback si escouade inconnue : PASS
+- Escouade >14 jours réduit la confiance : PASS
+- Historique progression daté compte / escouades / Drone / QG : PASS
+- Profil actualisé seul ne rafraîchit jamais artificiellement une vieille escouade : PASS
+- Actualisation rapide Profil / Escouade / Drone : PASS
+- Donnée manquante ou non actualisée n'est jamais transformée en “aucune progression” : PASS
+
+NON-RÉGRESSION
+- npm run check : PASS
+- npm run verify complet HF3 -> HF8.6 : PASS
+- HF8.5 VS Freshness Guard conservé : PASS
+- HF8.5 FINAL Tempête du Désert conservé : PASS
+- Safe Launch / paiements bêta OFF / aucun scraping / aucune automatisation gameplay : PASS
+- 12 fonctions Vercel serverless : PASS
+- 23 langues explicites + Auto : PASS
+- Aucun localStorage.clear() : PASS
+- Aucune migration Supabase HF8.6 : PASS
+- Aucune suppression de fichier requise : PASS
+
+CAS DE NON-RÉGRESSION COMBAT
+- Joueur A : compte 300M / escouade 38M.
+- Joueur B : compte 250M / escouade 52M.
+- Attendu : Joueur B prioritaire pour une mission de combat : PASS.
+
+CAS DE NON-RÉGRESSION PROGRESSION
+- 250M / 45M puis 11 jours plus tard 255M / 47M.
+- Compte : +5M, +2%, ~+0,45M/j : PASS.
+- Escouade : +2M, +4,4%, ~+0,18M/j : PASS.
+- Profil seul mis à jour avec escouade toujours datée du jour 1 : l'escouade reste datée du jour 1 : PASS.
+
+LIMITE LIVE
+Ce rapport vérifie le code et les tests automatisés. Il ne remplace pas le smoke test réel après déploiement Vercel sur téléphone. HF8.6 doit d'abord être testée sur public-beta-safe-launch / Preview puis beta.warboost.fr avant diffusion plus large.
+
+PACKAGE VERIFICATION — FINAL TREE
+- FULL file count : 227
+- PATCH file count : 27
+- ZIP extraction FULL : PASS
+- ZIP extraction PATCH : PASS
+- HF8.5 FINAL exact base + PATCH HF8.6 = FULL HF8.6 byte-for-byte : PASS
+- npm run check sur FULL extrait : PASS
+- npm run verify sur FULL extrait : PASS
+- npm run check sur HF8.5 FINAL + PATCH : PASS
+- npm run verify sur HF8.5 FINAL + PATCH : PASS

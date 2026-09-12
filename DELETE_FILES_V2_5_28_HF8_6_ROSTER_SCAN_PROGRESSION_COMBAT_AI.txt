@@ -1,0 +1,3 @@
+WARBOOST V2.5.28 HF8.6 — DELETE FILES
+AUCUNE SUPPRESSION.
+Ne supprimer aucun fichier de HF8.5 FINAL lors de l'application du PATCH HF8.6.
