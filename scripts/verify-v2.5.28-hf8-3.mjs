@@ -23,7 +23,7 @@ let state=mergeVsState({},sample);
 const sit=vsSituation(state),pos=personalVsPosition(state),d1=vsDecisionEngine(state);
 assert.equal(sit.status,'strong_lead');assert.equal(sit.gap,772776884);assert.equal(pos.rank,3);assert.equal(pos.gap_to_next,10200524);
 assert.equal(d1.decision,'save');assert.equal(d1.urgency,'low');assert.equal(d1.rescan_minutes,45);assert.equal(d1.risk,'no_trend');
-const frAdvice=buildVsAdvice({vs:state,updated_at:sample.updated_at},'fr-FR');
+const frAdvice=buildVsAdvice({vs:state,updated_at:sample.updated_at},'fr-FR',{now:new Date('2026-09-10T20:00:00.000Z')});
 assert.equal(frAdvice.live_decision.decision_key,'save');
 assert.match(frAdvice.advice,/Décision\s*:\s*ÉCONOMISER/);
 assert.match(frAdvice.advice,/classement brut reste secondaire/i);
@@ -47,7 +47,7 @@ const late=vsDecisionEngine({...trailing,time_remaining_seconds:3300});assert.eq
 const unknown=vsDecisionEngine({our_score:0,their_score:0});assert.equal(unknown.known,false);assert.equal(unknown.decision,'scan');assert.equal(unknown.risk,'score_unknown');
 
 // Advice keeps HF8.2 compatibility while exposing the new decision engine.
-assert.match(advice,/warboost-vs-decision-ai-v/);assert.match(advice,/warboost-vs-live-ai-v/);assert.match(advice,/vsDecisionEngine\(v\)/);
+assert.match(advice,/warboost-vs-decision-ai-v/);assert.match(advice,/warboost-vs-live-ai-v/);assert.match(advice,/vsDecisionEngine\(v,\{now:decisionNow\}\)/);
 assert.match(advice,/R5\/R4 should coordinate confirmed contributors|R5\/R4 doivent coordonner les contributeurs confirmés/);
 assert.doesNotMatch(advice,/Ne chasse pas ce rang|Gap to next rank|Écart vers le rang supérieur/);
 
@@ -59,7 +59,7 @@ for(const item of LANGUAGES.filter(x=>x.code!=='auto')){
 const fr=translator('fr');assert.match(fr('safe_external_disabled'),/Accès Last War désactivé/i);assert.match(fr('safe_external_disabled'),/Safe Launch actif/i);assert.doesNotMatch(fr('safe_external_disabled'),/^Désactivé\s*·\s*Safe Launch$/i);
 
 // Release/service worker metadata and hard constraints.
-assert.match(sw,/hf8-3-vs-decision-engine/);assert.match(health,/(?:ui_revision|previous_ui_revision):"hf8\.(?:3-vs-decision-engine|4-alliance-lifecycle-reliability)"/);assert.match(health,/vs_decision_engine:true/);assert.match(health,/vs_ranking_secondary:true/);assert.match(health,/safe_launch_status_wording_unambiguous:true/);
+assert.match(sw,/hf8-3-vs-decision-engine/);assert.match(health,/(?:ui_revision|previous_ui_revision):"hf8\.(?:3-vs-decision-engine|4-alliance-lifecycle-reliability|5-vs-freshness-guard)"/);assert.match(health,/vs_decision_engine:true/);assert.match(health,/vs_ranking_secondary:true/);assert.match(health,/safe_launch_status_wording_unambiguous:true/);
 assert.match(pkg.description,/HF8\.[34]/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-3\.mjs/);
 const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12,'serverless API function budget must remain 12');
 assert.doesNotMatch(app,/localStorage\.clear\s*\(/);assert.doesNotMatch(app,/WARBOOST_PUBLIC_LASTWAR_URL|LASTWAR_API_KEY/);

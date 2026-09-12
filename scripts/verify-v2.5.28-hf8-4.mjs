@@ -55,10 +55,10 @@ assert.equal(rollup.by_event.desert_storm.unknown_members,3);assert.equal(rollup
 // VS at exactly 0h00 is a final state: no spending recommendation, no rescan, no trend prompt.
 const endedVs={day:4,theme:'Former des Héros',score_confirmed:true,our_score:1500000000,their_score:740000000,time_remaining_seconds:0,updated_at:t1,snapshots:[{day:4,week:37,our_score:1400000000,their_score:600000000,score_confirmed:true,updated_at:'2026-09-11T17:30:00.000Z'},{day:4,week:37,our_score:1500000000,their_score:740000000,score_confirmed:true,updated_at:t1}]};
 const ended=vsDecisionEngine(endedVs);assert.equal(ended.ended,true);assert.equal(ended.decision,'ended');assert.equal(ended.rescan_minutes,0);assert.equal(ended.risk,'event_ended');assert.equal(ended.trend,null);
-const endedAdvice=buildVsAdvice({vs:endedVs,updated_at:t1},'fr-FR');assert.equal(endedAdvice.live_decision.decision_key,'ended');assert.equal(endedAdvice.live_decision.rescan_minutes,0);assert.equal(endedAdvice.trend,null);assert.match(endedAdvice.advice,/VS TERMINÉ|terminée/i);assert.match(endedAdvice.advice,/aucune dépense|aucun.*scan|Évite tout nouveau scan/i);assert.doesNotMatch(endedAdvice.advice,/second scan est nécessaire|deuxième scan est nécessaire/i);
+const endedAdvice=buildVsAdvice({vs:endedVs,updated_at:t1},'fr-FR',{now:new Date(t1)});assert.equal(endedAdvice.live_decision.decision_key,'ended');assert.equal(endedAdvice.live_decision.rescan_minutes,0);assert.equal(endedAdvice.trend,null);assert.match(endedAdvice.advice,/VS TERMINÉ|terminée/i);assert.match(endedAdvice.advice,/aucune dépense|aucun.*scan|Évite tout nouveau scan/i);assert.doesNotMatch(endedAdvice.advice,/second scan est nécessaire|deuxième scan est nécessaire/i);
 
 // HF8.4 UI/reliability guards.
-assert.match(html,/WarBoost V2\.5\.28 HF8\.4/);assert.match(html,/id=["']rosterFullSnapshot["']/);assert.match(html,/data-i18n=["']import_roster_help["'][^>]*>[^<]*R5/i);assert.doesNotMatch(html,/Nono 50/);
+assert.match(html,/WarBoost V2\.5\.28 HF8\.(?:4|5)/);assert.match(html,/id=["']rosterFullSnapshot["']/);assert.match(html,/data-i18n=["']import_roster_help["'][^>]*>[^<]*R5/i);assert.doesNotMatch(html,/Nono 50/);
 for(const token of ['roster_review_title','former_members_title','identity_retry_match','participation_unknown_members_guard','vs_no_rescan_ended'])assert.match(app,new RegExp(token));
 assert.match(app,/allianceParticipationByEvent/);assert.match(app,/confirmRosterDeparture/);assert.match(app,/restoreRosterReviewMember/);
 assert.match(sync,/roster_snapshot_complete_at/);assert.match(sync,/replaceCanonicalRosterFromCompleteSnapshot/);assert.doesNotMatch(sync,/roster_updated_at\|\|ctx\.alliance\?\.updated_at/);
@@ -68,9 +68,9 @@ const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.l
 for(const [code] of explicit){const tr=translator(code);for(const key of ['roster_full_snapshot_label','roster_review_title','roster_review_departed','former_members_title','identity_retry_match','participation_unknown_members_guard','vs_decision_ended','vs_no_rescan_ended'])assert.notEqual(tr(key),key,`${code} missing ${key}`)}
 
 // Release metadata, Safe Launch and regressions.
-assert.match(health,/ui_revision:"hf8\.4-alliance-lifecycle-reliability"/);
+assert.match(health,/(?:ui_revision|previous_ui_revision):"hf8\.4-alliance-lifecycle-reliability"/);
 for(const guard of ['alliance_complete_roster_snapshot_explicit','alliance_missing_complete_snapshot_member_review_not_departure','alliance_departure_requires_r5_r4_confirmation','alliance_former_member_history_preserved','alliance_return_reactivates_history','alliance_role_change_history','alliance_r5_separate_lastwar_header_supported','alliance_unknown_event_member_count_visible','alliance_unlinked_account_exact_match_retry','vs_zero_time_final_state_no_spend_or_rescan','vs_ended_suppresses_second_scan'])assert.match(health,new RegExp(`${guard}:true`));
-assert.match(sw,/hf8-4-alliance-lifecycle-reliability/);assert.match(sw,/alliance-roster-lifecycle\.js/);assert.match(pkg.description,/HF8\.4/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-4\.mjs/);assert.match(manifest.name,/HF8\.4/);
+assert.match(sw,/hf8-4-alliance-lifecycle-reliability/);assert.match(sw,/alliance-roster-lifecycle\.js/);assert.match(pkg.description,/HF8\.(?:4|5)/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-4\.mjs/);assert.match(manifest.name,/HF8\.(?:4|5)/);
 assert.match(health,/safe_launch_no_scraping:true/);assert.match(health,/safe_launch_no_gameplay_automation:true/);assert.match(health,/beta_payments_disabled:true/);
 assert.doesNotMatch(app,/localStorage\.clear\s*\(/);assert.doesNotMatch(app,/WARBOOST_PUBLIC_LASTWAR_URL|LASTWAR_API_KEY/);
 const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);
