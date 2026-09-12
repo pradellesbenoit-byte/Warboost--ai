@@ -1,0 +1,25 @@
+WarBoost V2.5.28 HF8.6.4 — installation guide
+
+Base required:
+- WarBoost V2.5.28 HF8.6.3 already deployed on public-beta-safe-launch.
+
+Use:
+- WarBoost_V2.5.28_HF8.6.4_RANK_PERSISTENCE_RELIABILITY_PATCH.zip
+
+Steps:
+1. Do not change Supabase.
+2. Decompress the PATCH.
+3. Copy the PATCH contents to the repository root of branch public-beta-safe-launch, replacing files with the same names.
+4. Commit/push the changes.
+5. Wait until the Vercel Preview deployment is Ready.
+6. Test on the Preview URL first.
+7. Test one R4→R3 change. After confirmation, the row and counters must update immediately.
+8. Refresh/reopen the Preview. The changed grade must still be present.
+9. Then test a balanced R4↔R3 swap and one R1↔R2 change.
+
+Expected result for the reported bug:
+- After confirming one R4→R3, the screen must no longer remain visually at R4→R4.
+- The counters update immediately (example: R4 10→9, R3 69→70).
+- Reloading/syncing must not restore the old grade.
+
+Do not deploy to main/Production until the Preview tests pass.

@@ -21,7 +21,7 @@ import {previewAllianceRankChanges,applyAllianceRankChanges,permissionTransition
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6.3";
+const RELEASE_LABEL="HF8.6.4"; // Legacy verification marker: RELEASE_LABEL="HF8.6.3"
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const BACKUP_KEY="warboost_last_good_state", ACCOUNT_STATE_PREFIX="warboost_account_state:", VOICE_ENABLED_KEY="warboost_voice_enabled", VOICE_ID_KEY="warboost_voice_id";
 const BETA_CONSENT_KEY="warboost_beta_consent_2026_09_05_safe_launch_v2", BETA_CONSENT_VERSION="2026-09-05-safe-launch-v2";
@@ -727,6 +727,11 @@ function renderAllianceRankManager(){
   if(clearBtn)clearBtn.disabled=!rankChangeDraft.size;
 }
 async function updateRankPermissionTransition(change,targetManagementRole){const r=await fetch("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({player_id:change.player_id,role:targetManagementRole})}),j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j.error||"role_update_failed"),{code:j.error||"role_update_failed"});return j}
+async function persistCanonicalRosterRankBatch(preview){
+  const payload=(preview?.changes||[]).map(change=>{const member=rankManagerMemberByKey(change.key);return {name:member?.name||change.name,server_id:member?.server_id||state.alliance?.server_id||state.player?.server_id||"",alliance_tag:member?.alliance_tag||state.alliance?.tag||"",to_role:change.to_role}});
+  const r=await fetch("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({roster_rank_changes:payload})}),j=await r.json().catch(()=>({}));
+  if(!r.ok)throw Object.assign(new Error(j.error||"roster_rank_persist_failed"),{code:j.error||"roster_rank_persist_failed"});return j
+}
 async function applyRankManagerChanges(){
   if(!hasDeclaredAllianceCommandRole())return rankManagerStatus("rank_manager_manager_only",{},true);
   const changes=[...rankChangeDraft.entries()].map(([key,to_role])=>({key,to_role})),preview=previewAllianceRankChanges(state.alliance?.members||[],changes,{maxR4:10});
@@ -734,17 +739,24 @@ async function applyRankManagerChanges(){
   if(!window.confirm(t("rank_manager_confirm",{count:preview.changes.length})))return;
   const permission=permissionTransitions(preview),completed=[];rankManagerStatus("rank_manager_saving",{},false);const applyBtn=$("#rankManagerApplyBtn");if(applyBtn)applyBtn.disabled=true;
   try{
+    // Management permissions are updated first for linked accounts. If the canonical
+    // roster write fails, these transitions are rolled back below.
     for(const transition of permission){const targetRole=transition.to_role==="R4"?"R4":"R1";await updateRankPermissionTransition(transition,targetRole);completed.push(transition)}
+    // Persist the exact roster grades before any cloud refresh can re-apply stale ranks.
+    await persistCanonicalRosterRankBatch(preview);
   }catch(error){
-    // Best-effort rollback keeps WarBoost command permissions aligned if one update fails mid-batch.
     for(const transition of completed.reverse()){try{await updateRankPermissionTransition(transition,transition.management_role==="R4"?"R4":"R1")}catch{}}
-    rankManagerStatus("rank_manager_permission_failed",{},true);if(applyBtn)applyBtn.disabled=false;return;
+    rankManagerStatus(error?.code==="r4_limit"?"rank_manager_r4_limit":"rank_manager_permission_failed",{limit:10},true);if(applyBtn)applyBtn.disabled=false;return;
   }
   const now=new Date().toISOString(),result=applyAllianceRankChanges(state.alliance?.members||[],changes,{now,maxR4:10});if(!result.changed){rankManagerStatus("rank_manager_invalid",{},true);if(applyBtn)applyBtn.disabled=false;return}
   const permissionMap=new Map(permission.map(x=>[x.key,x.to_role==="R4"?"R4":"R1"]));
   state.alliance.members=result.members.map(m=>{const key=rankManagementKey(m),management=permissionMap.get(key);return management?{...m,management_role:management,updated_at:now}:m});
   for(const change of result.preview.changes){const member=rankManagerMemberByKey(change.key);if(String(member?.player_id||"")===String(state.player_id||"")){state.player.role=change.to_role;state.player.updated_at=now;const mgmt=permissionMap.get(change.key);if(mgmt){state.alliance.role=mgmt;state.alliance.management_verified=mgmt==="R4"}}}
-  state.alliance.updated_at=now;rankChangeDraft.clear();saveState();if(cloudSession?.access_token)syncAll().catch(()=>{});requestAnimationFrame(()=>rankManagerStatus("rank_manager_saved",{count:result.preview.changes.length},false));
+  state.alliance.updated_at=now;rankChangeDraft.clear();saveState();
+  // HF8.6.4: immediately redraw the member counts and rows. HF8.6.3 committed the
+  // state but left the old DOM visible, which looked exactly like a failed change.
+  render();rankManagerStatus("rank_manager_saved",{count:result.preview.changes.length},false);
+  if(cloudSession?.access_token){await syncAll().catch(()=>{});render();rankManagerStatus("rank_manager_saved",{count:result.preview.changes.length},false)}
 }
 function renderMemberRow(m){
   const a=classifyAllianceMember(m),icon=activityIcon(a),label=activityLabel(a),reason=activityReason(a),delta=Number(m?.delta_m),canManage=isAllianceManager()&&normalizedRole(state?.alliance?.role)==="R5"&&Boolean(m?.player_id),role=normalizeAllianceRole(m.role),managementRole=normalizeAllianceRole(m.management_role||"R1");

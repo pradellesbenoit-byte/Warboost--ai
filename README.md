@@ -1,3 +1,7 @@
+# WarBoost V2.5.28 HF8.6.4 — Rank Persistence Reliability
+
+HF8.6.4 corrige la gestion des grades : les changements R1/R2/R3/R4 sont persistés dans le roster canonique avant la resynchronisation cloud et l’interface est rafraîchie immédiatement après confirmation. Le R5 reste protégé.
+
 # WarBoost V2.5.28 HF8.6.3 — Alliance Rank Manager
 
 HF8.6.2 est un correctif ciblé de **WarBoost V2.5.28 HF8.6.1**, toujours en bêta publique **sur invitation**, destiné à `public-beta-safe-launch`.

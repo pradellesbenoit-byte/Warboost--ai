@@ -1,0 +1,14 @@
+WarBoost V2.5.28 HF8.6.4 PATCH files
+
+package.json
+sw.js
+BUILD_VERIFICATION_V2_5_28_HF8_6_4_RANK_PERSISTENCE_RELIABILITY.txt
+README.md
+app.js
+UPLOAD_GUIDE_V2_5_28_HF8_6_4_RANK_PERSISTENCE_RELIABILITY.txt
+WARBOOST_V2_5_28_HF8_6_4_RANK_PERSISTENCE_RELIABILITY.md
+scripts/verify-v2.5.28-hf8-6-4.mjs
+api/alliance-role.js
+api/health.js
+
+Total: 10 files

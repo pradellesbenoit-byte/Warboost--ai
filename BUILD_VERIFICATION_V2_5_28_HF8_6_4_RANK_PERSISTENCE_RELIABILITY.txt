@@ -1,0 +1,34 @@
+WarBoost V2.5.28 HF8.6.4 — Rank Persistence Reliability
+Build verification
+Date: 2026-09-12
+
+Purpose
+- Fix grade changes that were confirmed but still appeared as the old grade in the Alliance UI.
+- Persist R1/R2/R3/R4 grade changes to the canonical alliance roster before cloud refresh.
+- Refresh the Alliance UI immediately after confirmation.
+
+Root cause fixed
+1. HF8.6.3 committed the local rank change but did not redraw the Alliance UI immediately.
+2. A later cloud refresh could re-apply an older canonical roster rank when the local active roster was smaller than the canonical roster after confirmed departures.
+
+HF8.6.4 behavior
+- Exact batch rank changes are written server-side through the existing /api/alliance-role function.
+- Exact identity remains nickname + server + alliance.
+- R5 is protected and cannot be changed in this batch.
+- The 10-R4 limit is verified again server-side after the whole batch is applied.
+- Linked-account WarBoost management permissions are updated for R4 transitions and rolled back if persistence fails.
+- The member rows and grade counters are redrawn immediately after confirmation.
+- A cloud sync runs after persistence, then the UI is redrawn again.
+- No Supabase migration is required.
+- Serverless function count remains unchanged: 12.
+
+Verification
+- npm run check: PASS
+- npm run verify: PASS
+- HF8.6.4 dedicated regression: PASS
+- Scenario R4 10 / R3 69 + one R4→R3 => R4 9 / R3 70: PASS
+- Membership history role_changed preserved: PASS
+- Canonical batch persistence contract present: PASS
+- Immediate UI refresh contract present: PASS
+- R5 protection: PASS
+- R4 max 10 guard: PASS
