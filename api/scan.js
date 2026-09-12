@@ -2,6 +2,7 @@ import {requireBetaUser} from "../lib/beta-access.js";
 import {HERO_CATALOG,canonicalHeroName,catalogHeroName,heroType} from "../lib/heroes.js";
 import {sanitizeGear} from "../lib/gear.js";
 import {normalizeSeasonLifecycle} from "../lib/season-lifecycle.js";
+import {cleanRosterOcrName,rosterIdentityKey} from "../lib/roster-identity-resolution.js";
 function env(n){return String(process.env[n]||"").trim()}
 function textFromResponse(j){if(typeof j?.output_text==="string")return j.output_text;for(const item of j?.output||[])for(const c of item?.content||[])if(typeof c?.text==="string")return c.text;return ""}
 function jsonFromText(text){const s=String(text||"").trim().replace(/^```(?:json)?\s*/i,"").replace(/```$/,"" ).trim();return JSON.parse(s)}
@@ -61,18 +62,18 @@ function rosterRowsFromExtracted(extracted){
   if(Array.isArray(extracted?.members))return extracted.members;
   return [];
 }
-function sanitizeRosterRows(extracted,now){
+function sanitizeRosterRows(extracted,now,allianceTag=''){
   const out=[];const seen=new Set();
   for(const raw of rosterRowsFromExtracted(extracted).slice(0,40)){
-    const name=str(raw?.name||raw?.player_name||raw?.nickname,80),role=rosterRole(raw?.role||raw?.rank),hq=num(raw?.hq_level??raw?.hq),power=num(raw?.power_m??raw?.power),confidence=num(raw?.confidence);
-    if(!name||!role)continue;const key=name.toLowerCase().replace(/\s+/g,' ');if(seen.has(key))continue;seen.add(key);
+    const rawName=str(raw?.name||raw?.player_name||raw?.nickname,80),name=cleanRosterOcrName(rawName,allianceTag),role=rosterRole(raw?.role||raw?.rank),hq=num(raw?.hq_level??raw?.hq),power=num(raw?.power_m??raw?.power),confidence=num(raw?.confidence);
+    if(!name||!role)continue;const key=rosterIdentityKey(name,allianceTag);if(!key||seen.has(key))continue;seen.add(key);
     out.push({name,role,hq_level:hq!==null?Math.round(hq):null,power_m:power!==null?power:null,confidence:confidence!==null?Math.max(0,Math.min(1,confidence)):null,updated_at:now,source:'roster_scan'});
   }
   return out;
 }
-async function openaiAllianceRosterVision({image,locale}){
+async function openaiAllianceRosterVision({image,locale,allianceTag=''}){
   const key=env('OPENAI_API_KEY');if(!key)return null;const model=env('WARBOOST_VISION_MODEL')||'gpt-5.6-luna';
-  const prompt=`You are WarBoost Vision. This screenshot is from Last War: Survival and shows an alliance member list or its top leader area. Extract ONLY members visibly present. The R5 leader may be displayed separately at the top above the R4/R3/R2/R1 lists; include that leader when visible. For each visible player, read exact nickname, rank R1-R5, HQ/base level, and total account power in millions. Power format examples: 326.2M -> 326.2, 187M -> 187. Never infer hidden rows, never guess a rank or number, and never mark a missing player as departed. If a row is partly cut off, include it only when nickname and rank are clearly readable. Return JSON only: {"alliance_roster":[{"name":string,"role":"R1|R2|R3|R4|R5","hq_level":number,"power_m":number,"confidence":number}]}. Confidence is 0..1 and should reflect visible text quality. User locale: ${locale}.`;
+  const prompt=`You are WarBoost Vision. This screenshot is from Last War: Survival and shows an alliance member list or its top leader area. Extract ONLY members visibly present. The R5 leader may be displayed separately at the top above the R4/R3/R2/R1 lists; include that leader when visible. For each visible player, read exact nickname, rank R1-R5, HQ/base level, and total account power in millions. IMPORTANT NICKNAME RULES: an alliance tag displayed in square brackets before the nickname (for example [ALL4]Player) is NOT part of the nickname and must be omitted when it equals the alliance tag ${allianceTag||'(unknown)'}. Never delete a bare token that is genuinely inside the nickname (for example xXx Kaufik ALL4 xXx). Preserve trailing digits, spaces, punctuation and symbols that are visibly part of the nickname (for example Nono 50 must stay Nono 50). Power format examples: 326.2M -> 326.2, 187M -> 187. Power, HQ and rank can change over time and must never be used to decide that a person is a different player. Never infer hidden rows, never guess a rank or number, and never mark a missing player as departed. If a row is partly cut off, include it only when nickname and rank are clearly readable. Return JSON only: {"alliance_roster":[{"name":string,"role":"R1|R2|R3|R4|R5","hq_level":number,"power_m":number,"confidence":number}]}. Confidence is 0..1 and should reflect visible text quality. User locale: ${locale}.`;
   return openaiRequest({image,prompt,model});
 }
 
@@ -80,8 +81,9 @@ async function openaiVision({image,scanType,locale,currentState}){const key=env(
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});try{await requireBetaUser(req,{consent:true});const image=String(req.body?.image_data_url||""),scanType=String(req.body?.scan_type||"profile"),locale=String(req.body?.locale||"en"),currentState=req.body?.current_state&&typeof req.body.current_state==="object"?req.body.current_state:null;if(!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(image))return res.status(400).json({error:"invalid_image",message:"Invalid image"});if(image.length>4_200_000)return res.status(413).json({error:"image_too_large",message:"Image too large"});let extracted=null,engine="custom";
 if(scanType==="alliance_roster"){
   try{extracted=await customVision({image_data_url:image,scan_type:scanType,locale,current_state:currentState})}catch(err){console.warn("WarBoost custom roster vision skipped",{message:err?.message});extracted=null}
-  let rows=sanitizeRosterRows(extracted,new Date().toISOString());
-  if(!rows.length&&env("OPENAI_API_KEY")){extracted=await openaiAllianceRosterVision({image,locale});engine="openai";rows=sanitizeRosterRows(extracted,new Date().toISOString())}
+  const rosterAllianceTag=currentState?.alliance?.tag||'';
+  let rows=sanitizeRosterRows(extracted,new Date().toISOString(),rosterAllianceTag);
+  if(!rows.length&&env("OPENAI_API_KEY")){extracted=await openaiAllianceRosterVision({image,locale,allianceTag:rosterAllianceTag});engine="openai";rows=sanitizeRosterRows(extracted,new Date().toISOString(),rosterAllianceTag)}
   if(!rows.length&&!extracted)return res.status(503).json({error:"scan_not_configured",code:"SCAN_NOT_CONFIGURED",message:"WarBoost Vision is not configured"});
   return res.status(200).json({ok:true,engine,scanned_at:new Date().toISOString(),roster_rows:rows,quality:{row_count:rows.length,requires_confirmation:true}});
 }
