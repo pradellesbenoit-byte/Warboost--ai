@@ -28,7 +28,11 @@ export default async function handler(req,res){
     version:"2.5.28",
     build:"hf8-commercial-readiness",
     ui_revision:"hf8.5-vs-freshness-guard",
-    ui_revision_final:"hf8.6.6-scan-persistence-reliability",
+    ui_revision_final:"hf8.6.7-alliance-association-reliability",
+    previous_scan_persistence_revision:"hf8.6.6-scan-persistence-reliability",
+    alliance_identity_leading_tag_normalization:true,
+    alliance_identity_preserve_canonical_roster_name:true,
+    alliance_identity_retry_feedback:true,
     // Legacy verification marker retained: ui_revision_final:"hf8.6.2-reliable-roster-identity"
     alliance_rank_manager_batch_r1_r4:true,
     alliance_rank_manager_r5_protected:true,
