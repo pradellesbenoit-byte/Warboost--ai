@@ -28,7 +28,8 @@ export default async function handler(req,res){
     version:"2.5.28",
     build:"hf8-commercial-readiness",
     ui_revision:"hf8.5-vs-freshness-guard",
-    ui_revision_final:"hf8.6.11-future-player-reliability",
+    ui_revision_final:"hf8.6.12-cloud-restore-guard",
+    previous_future_player_revision:"hf8.6.11-future-player-reliability",
     previous_roster_integrity_revision:"hf8.6.10-roster-integrity",
     previous_association_revision:"hf8.6.8-association-keeps-roster-identity",
     // Legacy verification marker: ui_revision_final:"hf8.6.2-reliable-roster-identity"
@@ -44,6 +45,12 @@ export default async function handler(req,res){
     vs_available_all_invited_roles:true,
     season_available_all_invited_roles:true,
     missing_data_actionable_not_locked:true,
+    cloud_state_blank_overwrite_guard:true,
+    cloud_state_direct_server_hydration:true,
+    cloud_state_pull_retry:true,
+    large_mobile_keepalive_guard:true,
+    transient_sync_error_not_persisted:true,
+    server_cloud_restore_before_sync:true,
     // Legacy verification marker retained: ui_revision_final:"hf8.6.2-reliable-roster-identity"
     alliance_rank_manager_batch_r1_r4:true,
     alliance_rank_manager_r5_protected:true,
