@@ -74,8 +74,13 @@ export default async function handler(req,res){
 
     if(req.method==="GET"){
       const row=await getOwn();
-      if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:userMode?"user-rls":"service"});
+      const fastRestore=String(req.query?.restore||"")==="1"||(()=>{try{return new URL(req.url||"/","http://localhost").searchParams.get("restore")==="1"}catch{return false}})();
+      if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:userMode?"user-rls":"service",restore_mode:fastRestore?"fast-profile":"full"});
       const current=normalizeState({...row.state,player_id:playerId});
+      // HF8.6.18 login restore: return the authenticated player row immediately. Historical hero
+      // recovery and canonical alliance reconciliation remain available on the normal GET/POST path
+      // but can be too expensive for the login-critical path on mobile/Vercel cold starts.
+      if(fastRestore)return res.status(200).json({ok:true,state:current,updated_at:row?.updated_at||current.updated_at,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"deferred_fast_restore"},access_mode:userMode?"user-rls":"service",restore_mode:"fast-profile"});
       let snapshots=[];try{snapshots=await historyOwn(100)}catch{}
       const recovered=recoverHeroData(current,{historicalStates:(snapshots||[]).map(x=>({state:x?.state,captured_at:x?.captured_at,source:x?.source||"wb1_snapshots"}))});
       let finalState=normalizeState({...recovered.state,player_id:playerId}),updatedAt=row.updated_at||finalState.updated_at;
