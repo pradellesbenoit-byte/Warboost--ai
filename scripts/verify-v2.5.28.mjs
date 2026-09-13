@@ -721,7 +721,7 @@ log('Non-owner switching requires exact target roster proof and keeps the Last W
   assert.match(app,/if\(oldOwner&&oldOwner!==localOwner&&oldOwner!==userId&&hasMeaningfulCore\(state\)\)rememberAccountState\(oldOwner,state\)/);
   assert.match(app,/state=loginSeed\?mergeState\(initialState\(\),loginSeed\):initialState\(\)/,'A different account without its own cache must start from an empty state');
   assert.doesNotMatch(app,/logoutBtn[\s\S]*?state\.player_id=clientId\(\)/,'Logout must keep the stored account owner so another account cannot claim it as legacy data');
-  assert.match(app,/betaState=\{\.\.\.betaState,allowed:false,access_status:"checking"\}/,'Auth transitions must fail closed while the allowlist is rechecked');
+  assert.match(app,/betaState=\{\.\.\.betaState,[^}]*allowed:false,[^}]*access_status:"checking"\}/,'Auth transitions must fail closed while the allowlist is rechecked');
   assert.match(app,/betaConsent[\s\S]*?render\(\);renderBeta\(\);renderPro\(\)/,'Consent changes must immediately rerender the privacy boundary');
   log('Signed-out, unconsented and cross-account beta sessions isolate private data without deleting saved state');
 }

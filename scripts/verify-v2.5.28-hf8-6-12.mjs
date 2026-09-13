@@ -55,11 +55,11 @@ const blankBranch=apply.match(/else\{\n\s*\/\/ Critical HF8\.6\.12 guard[\s\S]*?
 assert.ok(blankBranch,'blank-login guard branch missing');
 assert.doesNotMatch(blankBranch,/safeLocalSet\(STORE_KEY/,'blank placeholder must never overwrite local storage before cloud pull');
 assert.match(apply,/state=loginSeed\?mergeState\(initialState\(\),loginSeed\):initialState\(\)/);
-assert.match(apply,/const pulled=await pullServerState\(loginSeed\)/);
+assert.match(apply,/(?:const|let) pulled=await pullServerState\(loginSeed\)/);
 assert.match(apply,/scheduleCloudPullRetry\(\)/);
 
 // 5) Blank state can never be POSTed over a valid cloud profile.
-const push=app.match(/async function pushServerState\(\{keepalive=false\}=\{\}\)\{[\s\S]*?\n\}\nasync function pullServerState/)?.[0]||'';
+const push=app.match(/async function pushServerState\(\{keepalive=false\}=\{\}\)\{[\s\S]*?\n\}\nasync function (?:pullDirectOwnProfile|pullServerState)/)?.[0]||'';
 assert.ok(push,'pushServerState block missing');
 assert.match(push,/if\(!hasMeaningfulCore\(state\)\)return \{skipped:true,reason:"empty_state_guard"\}/);
 assert.match(push,/if\(keepalive&&!canUseKeepaliveBody\(body\)\)/);
@@ -78,7 +78,7 @@ assert.match(app,/function scheduleCloudPullRetry\(delay=2500\)/);
 // 7) Sync/foreground lifecycle first restores cloud state when this device is blank.
 const sync=app.match(/async function syncAll\(\)\{[^\n]+\}/)?.[0]||'';
 assert.match(sync,/if\(!hasMeaningfulCore\(state\)&&cloudSession\?\.access_token\)\{const recovered=await pullServerState/);
-assert.match(app,/visibilityState==="visible"\)\{if\(!hasMeaningfulCore\(state\).*pullServerState/);
+assert.match(app,/visibilityState==="visible"\)\{if\((?:!hasMeaningfulCore\(state\)|!cloudProfileVerified).*pullServerState/);
 assert.match(app,/pagehide.*pushServerState\(\{keepalive:true\}\)/);
 
 // 8) Service worker ships the new recovery helper and forces a fresh cache generation.
@@ -88,7 +88,7 @@ assert.match(sw,/\/lib\/cloud-state-recovery\.js/);
 
 // 9) Release / health markers advertise the exact safeguards.
 assert.match(html,/HF8\.6\.12/);assert.match(html,/HF8\.6\.11/);
-assert.match(manifest,/HF8\.6\.12/);
+assert.match(manifest,/HF8\.6\.(?:12|17)/);
 assert.match(health,/ui_revision_final:"hf8\.6\.12-cloud-restore-guard"/);
 assert.match(health,/previous_future_player_revision:"hf8\.6\.11-future-player-reliability"/);
 for(const flag of ['cloud_state_blank_overwrite_guard','cloud_state_direct_server_hydration','cloud_state_pull_retry','large_mobile_keepalive_guard','transient_sync_error_not_persisted','server_cloud_restore_before_sync'])assert.match(health,new RegExp(`${flag}:true`));

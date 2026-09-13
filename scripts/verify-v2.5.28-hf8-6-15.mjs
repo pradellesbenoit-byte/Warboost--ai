@@ -21,7 +21,7 @@ assert.match(sw,/hf8-6-15-player-presentation-reliability/);
 assert.match(health,/ui_revision_player_presentation_reliability:"hf8\.6\.15-player-presentation-reliability"/);
 assert.match(health,/auth_requests_bounded:true/);
 assert.match(health,/foreground_cloud_writes_bounded:true/);
-assert.match(pkg.description,/HF8\.6\.15/);
+assert.match(pkg.description,/HF8\.6\.(?:15|17)/);
 
 const hangingFetch=(_url,init={})=>new Promise((_,reject)=>{
   const signal=init.signal;

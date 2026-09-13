@@ -18,7 +18,7 @@ const applied=applyAllianceRankChanges(members,[{key,to_role:'R3'}],{now:'2026-0
 assert.equal(applied.members.find(x=>x.name==='R4-1').role,'R3');
 assert.ok(applied.members.find(x=>x.name==='R4-1').membership_history.some(x=>x.type==='role_changed'&&x.from_role==='R4'&&x.to_role==='R3'));
 const app=read('app.js'),api=read('api/alliance-role.js'),health=read('api/health.js'),sw=read('sw.js'),pkg=JSON.parse(read('package.json'));
-assert.match(app,/RELEASE_LABEL="HF8\.6\.4"/);
+assert.match(app,/RELEASE_LABEL="HF8\.6\.(?:4|17)"/);
 assert.match(app,/persistCanonicalRosterRankBatch/);
 assert.match(app,/await persistCanonicalRosterRankBatch\(preview\)/);
 assert.match(app,/render\(\);rankManagerStatus\("rank_manager_saved"/);
@@ -32,6 +32,6 @@ assert.match(health,/alliance_rank_manager_immediate_render:true/);
 assert.match(health,/alliance_rank_manager_canonical_batch_persistence:true/);
 assert.match(health,/alliance_rank_manager_cloud_refresh_no_revert:true/);
 assert.match(sw,/hf8-6-4-rank-persistence/);
-assert.match(pkg.description,/HF8\.6\.4/);
+assert.match(pkg.description,/HF8\.6\.(?:4|17)/);
 const migrations=fs.readdirSync(path.join(root,'supabase')).filter(x=>/hf8[_-]?6[_-]?4/i.test(x));assert.equal(migrations.length,0,'HF8.6.4 must not add a Supabase migration');
 console.log('WarBoost V2.5.28 HF8.6.4 Rank Persistence Reliability verification: PASS');

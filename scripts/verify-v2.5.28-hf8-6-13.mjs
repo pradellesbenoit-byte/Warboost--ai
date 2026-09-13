@@ -18,11 +18,11 @@ assert.equal(beta.allowed,false);assert.equal(beta.access_status,'revoked');
 beta=betaStateAfterVerifiedStateRead({allowed:true,enforced:true,configured:true,access_status:'accepted'},{ok:false,status:503,error:'TEMP'});
 assert.equal(beta.allowed,true);
 
-assert.match(app,/if\(betaConsentAccepted\(\)\)\{\n\s+const pulled=await pullServerState\(loginSeed\)/);
+assert.match(app,/if\(betaConsentAccepted\(\)\)\{\n\s+(?:const|let) pulled=await pullServerState\(loginSeed\)/);
 assert.doesNotMatch(app,/if\(betaAccessAllowed\(\)&&betaConsentAccepted\(\)\)\{\n\s+const pulled=await pullServerState\(loginSeed\)/);
 assert.match(app,/betaState=betaStateAfterVerifiedStateRead\(betaState,\{ok:true,status:r\.status/);
 const retry=app.match(/function scheduleCloudPullRetry\(delay=2500\)\{[^\n]+\}/)?.[0]||'';
-assert.ok(retry);assert.match(retry,/!betaConsentAccepted\(\)/);assert.match(retry,/hasMeaningfulCore\(state\)/);assert.doesNotMatch(retry,/!betaAccessAllowed\(\)/);
+assert.ok(retry);assert.match(retry,/!betaConsentAccepted\(\)/);assert.match(retry,/cloudProfileVerified/);assert.doesNotMatch(retry,/hasMeaningfulCore\(state\)/);assert.doesNotMatch(retry,/!betaAccessAllowed\(\)/);
 assert.match(app,/const previouslyVerified=betaState\?\.allowed===true/);
 assert.match(app,/allowed:definitive\?false:previouslyVerified/);
 assert.match(html,/HF8\.6\.13/);assert.match(sw,/hf8-6-13-verified-cloud-access-restore/);assert.match(health,/ui_revision_verified_access_restore:"hf8\.6\.13-verified-cloud-access-restore"/);

@@ -33,7 +33,7 @@ assert.equal(own.members[0].player_id,"p-own");
 const app=fs.readFileSync(path.resolve("app.js"),"utf8");
 const sw=fs.readFileSync(path.resolve("sw.js"),"utf8");
 const health=fs.readFileSync(path.resolve("api/health.js"),"utf8");
-assert.match(app,/RELEASE_LABEL="HF8\.6\.7"/);
+assert.match(app,/RELEASE_LABEL="HF8\.6\.(?:7|17)"/);
 assert.match(app,/identity_exact_match_guard/);
 assert.match(sw,/hf8-6-7-alliance-association-reliability/);
 assert.match(health,/alliance_identity_leading_tag_normalization:true/);

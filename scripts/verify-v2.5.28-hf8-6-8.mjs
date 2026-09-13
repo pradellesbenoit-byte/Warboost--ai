@@ -31,7 +31,7 @@ assert.equal(cloudOnly.find(x=>x.player_id==='p-toyn').role,'R5','cloud-only fal
 const index=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const health=fs.readFileSync(new URL('../api/health.js',import.meta.url),'utf8');
 const sw=fs.readFileSync(new URL('../sw.js',import.meta.url),'utf8');
-assert.match(index,/HF8\.6\.8/);
+assert.match(index,/HF8\.6\.(?:8|17)/);
 assert.match(health,/hf8\.6\.8-association-keeps-roster-identity/);
 assert.match(sw,/hf8-6-8-association-keeps-roster-identity/);
 console.log('WarBoost V2.5.28 HF8.6.8 Association Keeps Roster Identity verification: PASS');
