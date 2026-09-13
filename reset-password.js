@@ -30,14 +30,15 @@ function friendly(error){
 }
 
 let cloud=null,recoverySession=null;
+async function boundedFetch(input,init={},ms=8000){const c=new AbortController(),timer=setTimeout(()=>c.abort(),ms);try{return await fetch(input,{...init,signal:c.signal})}finally{clearTimeout(timer)}}
 
 async function init(){
   setReady(false);
   try{
-    const r=await fetch("/api/cloud-config",{cache:"no-store"});
+    const r=await boundedFetch("/api/cloud-config",{cache:"no-store"},8000);
     const cfg=await r.json().catch(()=>({}));
     if(!r.ok||!cfg?.configured||!cfg?.url||!cfg?.key)throw Object.assign(new Error(t("auth_cloud_missing")),{code:"auth_cloud_missing"});
-    cloud=createWarBoostSupabaseAuthClient({url:cfg.url,key:cfg.key});
+    cloud=createWarBoostSupabaseAuthClient({url:cfg.url,key:cfg.key,requestTimeoutMs:12000});
     const consumed=await cloud.auth.consumeRecoverySessionFromUrl(location.href,{cleanUrl:true});
     if(consumed.error)throw consumed.error;
     recoverySession=consumed.data?.event==="PASSWORD_RECOVERY"?consumed.data?.session||null:null;

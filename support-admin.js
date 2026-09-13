@@ -1,5 +1,6 @@
 import {createWarBoostSupabaseAuthClient} from "./lib/browser-auth.js";
 const $=s=>document.querySelector(s);let cloud=null,session=null,tickets=[],invites=[];
+async function boundedFetch(input,init={},ms=20000){const c=new AbortController(),timer=setTimeout(()=>c.abort(),ms);try{return await fetch(input,{...init,signal:c.signal})}finally{clearTimeout(timer)}}
 const STATUS_LABELS={received:"Reçu",in_progress:"En cours",waiting_player:"Attente joueur",resolved:"Résolu"};
 const CATEGORY_LABELS={login:"Connexion / compte",scan:"Scan / capture",data:"Données / escouades",ai:"IA / diagnostic",alliance:"Alliance R5/R4",bug:"Bug",suggestion:"Suggestion",other:"Autre"};
 const INVITE_LABELS={pending:"En attente",accepted:"Accepté",revoked:"Révoqué"};
@@ -38,7 +39,7 @@ async function load(){
   if(!session?.access_token)return status("Connecte-toi d’abord à WarBoost sur ce même domaine, puis recharge cette page.",true);
   status("Chargement des tickets et invitations…");
   try{
-    const r=await fetch("/api/support?admin=1&invites=1",{cache:"no-store",headers:authHeaders()}),j=await r.json().catch(()=>({}));
+    const r=await boundedFetch("/api/support?admin=1&invites=1",{cache:"no-store",headers:authHeaders()},20000),j=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(j.error==="SUPPORT_ADMIN_REQUIRED"?"Ce compte n’est pas autorisé comme administrateur WarBoost. Vérifie WARBOOST_SUPPORT_ADMINS dans Vercel.":(j.message||j.error||"Erreur administration"));
     tickets=Array.isArray(j.tickets)?j.tickets:[];invites=Array.isArray(j.invites)?j.invites:[];
     if(j.invite_error==="BETA_INVITES_SCHEMA_MISSING")inviteMessage("La migration Supabase V2.5.26 doit être appliquée avant d’utiliser les invitations.",true);
@@ -48,7 +49,7 @@ async function load(){
     status(e.message||"Erreur administration",true)
   }
 }
-async function post(body){const r=await fetch("/api/support",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(body)}),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||j.error||"Erreur administration");return j}
+async function post(body){const r=await boundedFetch("/api/support",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(body)},25000),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||j.error||"Erreur administration");return j}
 async function addInvites(){
   const raw=String($("#inviteEmails")?.value||"").trim(),note=String($("#inviteNote")?.value||"").trim();if(!raw)return inviteMessage("Ajoute au moins une adresse e-mail.",true);
   const btn=$("#inviteAddBtn");if(btn)btn.disabled=true;
@@ -63,5 +64,5 @@ async function copyBetaLink(){const url=location.origin.replace(/\/support-admin
 async function saveTicketStatus(id){const sel=[...document.querySelectorAll("[data-admin-status]")].find(x=>x.dataset.adminStatus===String(id));try{await post({action:"status",ticket_id:id,status:sel?.value||"received"});await load()}catch(e){status(e.message,true)}}
 async function reply(id){const input=[...document.querySelectorAll("[data-admin-reply-input]")].find(x=>x.dataset.adminReplyInput===String(id)),body=String(input?.value||"").trim();if(body.length<2)return;try{await post({action:"reply",ticket_id:id,body,as_support:true});if(input)input.value="";await load()}catch(e){status(e.message,true)}}
 async function attachment(id){try{const j=await post({action:"attachment",ticket_id:id,as_support:true});if(j.url)window.open(j.url,"_blank","noopener,noreferrer")}catch(e){status(e.message,true)}}
-async function init(){try{const r=await fetch("/api/cloud-config",{cache:"no-store"}),cfg=await r.json();if(!r.ok||!cfg?.configured)throw new Error("Cloud WarBoost non configuré.");cloud=createWarBoostSupabaseAuthClient({url:cfg.url,key:cfg.key});const got=await cloud.auth.getSession();session=got.data?.session||null;cloud.auth.onAuthStateChange((_e,s)=>{session=s||null;load()});await load()}catch(e){status(e.message||"Impossible d’ouvrir la console administrateur.",true)}}
+async function init(){try{const r=await boundedFetch("/api/cloud-config",{cache:"no-store"},8000),cfg=await r.json();if(!r.ok||!cfg?.configured)throw new Error("Cloud WarBoost non configuré.");cloud=createWarBoostSupabaseAuthClient({url:cfg.url,key:cfg.key,requestTimeoutMs:12000});const got=await cloud.auth.getSession();session=got.data?.session||null;cloud.auth.onAuthStateChange((_e,s)=>{session=s||null;load()});await load()}catch(e){status(e.message||"Impossible d’ouvrir la console administrateur.",true)}}
 $("#adminRefresh")?.addEventListener("click",load);$("#inviteAddBtn")?.addEventListener("click",addInvites);$("#copyBetaLinkBtn")?.addEventListener("click",copyBetaLink);init();

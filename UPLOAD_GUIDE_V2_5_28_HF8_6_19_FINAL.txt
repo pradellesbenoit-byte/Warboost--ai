@@ -1,0 +1,18 @@
+WarBoost V2.5.28 HF8.6.19 — PUBLIC BETA FULL RELIABILITY — FINAL PATCH
+
+Base requise : HF8.6.18 sur la branche public-beta-safe-launch.
+
+Installation GitHub :
+1. Ouvrir public-beta-safe-launch.
+2. Décompresser cette archive.
+3. Envoyer le CONTENU de l'archive à la racine du dépôt en remplaçant les fichiers existants.
+4. Ne supprimer aucun autre fichier.
+5. Attendre le déploiement Vercel.
+6. Vérifier que WarBoost affiche HF8.6.19.
+
+Aucune migration Supabase n'est requise par ce patch.
+Aucun fichier existant ne doit être supprimé.
+
+Contrôles intégrés : authentification, invitation bêta, restauration cloud, onboarding nouveau joueur,
+persistance, Joueur/Scan/PRO, Alliance R1-R5/R4-R5, VS, Saison, support, 23 langues,
+12 fonctions Vercel, timeouts réseau et diagnostics de restauration.

@@ -1,4 +1,5 @@
-const CACHE="warboost-v2-5-28-hf8-6-18-fast-login-restore";
+const CACHE="warboost-v2-5-28-hf8-6-19-public-beta-full-reliability";
+// Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
 // Legacy verification marker: warboost-v2-5-28-hf8-6-15-player-presentation-reliability
 // Legacy verification marker: warboost-v2-5-28-hf8-6-14-session-apply-unblock

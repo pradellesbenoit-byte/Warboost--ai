@@ -1,0 +1,22 @@
+WarBoost V2.5.28 HF8.6.19 — FINAL BUILD VERIFICATION
+
+Base vérifiée : HF8.6.18
+Cible : HF8.6.19 Public Beta Full Reliability
+
+Résultats avant emballage :
+- npm run check : PASS
+- npm run verify complet : PASS
+- HF8.6.19 specific verifier : PASS
+- 12 fonctions Vercel conservées
+- aucun raw fetch serveur hors helper de timeout
+- parcours mocked returning player : PASS
+- parcours mocked first-time invited player : PASS
+- profil cloud vide = onboarding valide
+- restauration cloud existante = PASS
+- clock endpoint indépendant des probes DB : PASS
+- aucun localStorage.clear() : PASS
+- aucune suppression de fichier requise
+- aucune migration Supabase requise
+
+L'archive finale est ensuite réappliquée sur une copie propre de HF8.6.18 et la suite complète
+check + verify est relancée avant livraison.
