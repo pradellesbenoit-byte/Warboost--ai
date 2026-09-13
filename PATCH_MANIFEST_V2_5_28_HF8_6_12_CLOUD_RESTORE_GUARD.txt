@@ -1,0 +1,22 @@
+WARBOOST V2.5.28 HF8.6.12 — CLOUD RESTORE GUARD
+PATCH MANIFEST
+
+BASE OBLIGATOIRE
+- WarBoost V2.5.28 HF8.6.11 déjà installé sur public-beta-safe-launch.
+- HF8.6.10 / HF8.6.11 sont déjà inclus dans la branche actuelle ; ne pas les réinstaller séparément.
+
+FICHIERS À REMPLACER
+- app.js
+- index.html
+- manifest.webmanifest
+- package.json
+- sw.js
+- api/health.js
+
+NOUVEAUX FICHIERS À AJOUTER
+- lib/cloud-state-recovery.js
+- scripts/verify-v2.5.28-hf8-6-12.mjs
+
+AUCUNE SUPPRESSION DE FICHIER.
+AUCUNE MIGRATION SUPABASE.
+AUCUN EFFACEMENT DE localStorage, scans, escouades, Drone, Alliance, VS, Saison ou historique.

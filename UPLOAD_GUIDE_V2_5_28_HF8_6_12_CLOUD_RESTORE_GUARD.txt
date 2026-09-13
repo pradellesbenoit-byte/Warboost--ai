@@ -1,0 +1,40 @@
+WARBOOST V2.5.28 HF8.6.12 — CLOUD RESTORE GUARD
+GUIDE D’INSTALLATION
+
+CIBLE
+- Branche : public-beta-safe-launch UNIQUEMENT.
+- Base : HF8.6.11 déjà installée.
+- Ne pas toucher main / Production / publisher-demo.
+
+INSTALLATION
+1. Décompresser ce ZIP.
+2. Envoyer LE CONTENU extrait à la racine de public-beta-safe-launch en conservant api/, lib/ et scripts/.
+3. Remplacer les fichiers de même nom lorsque GitHub le demande.
+4. Ne supprimer aucun autre fichier.
+5. Ne rien modifier dans Supabase.
+6. Attendre que le déploiement Vercel soit Ready.
+7. Fermer complètement WarBoost sur le téléphone puis le rouvrir.
+
+IMPORTANT — DONNÉES
+- NE PAS rescanner avant le contrôle.
+- NE PAS se déconnecter pour tenter de réparer.
+- NE PAS vider le cache/données du navigateur ou désinstaller l’application.
+- Le correctif recharge automatiquement l’état cloud du compte authentifié si le téléphone affiche un profil vide.
+
+CE QUE HF8.6.12 CORRIGE
+- Un état local vide ne peut plus écraser un profil cloud existant.
+- Au démarrage, si le téléphone n’a plus de copie fiable, WarBoost hydrate directement les données renvoyées par le serveur.
+- En cas d’échec temporaire du chargement cloud, WarBoost réessaie automatiquement et conserve toute copie locale fiable.
+- Une synchronisation lancée depuis un téléphone vide commence par récupérer le cloud au lieu d’envoyer un état vide.
+- Les gros profils ne sont plus envoyés avec fetch keepalive lors du passage en arrière-plan lorsque le corps est trop volumineux ; la sauvegarde est différée jusqu’au retour au premier plan.
+- Les erreurs réseau temporaires ne sont plus sauvegardées comme données durables du joueur.
+
+SMOKE TEST APRÈS DÉPLOIEMENT
+A. Ouvrir le compte qui apparaissait vide : pseudo, serveur, QG et alliance doivent revenir automatiquement sans rescan.
+B. Vérifier Escouades 1/2/3 et Drone.
+C. Vérifier Joueur, VS, Saison et Alliance.
+D. Mettre WarBoost en arrière-plan 10 secondes puis revenir : les données doivent rester visibles.
+E. Fermer complètement et rouvrir : les données doivent rester visibles.
+F. Tester ensuite un joueur bêta plus léger : aucun changement de comportement attendu.
+
+Ne considérer le correctif validé en réel qu’après ce smoke test téléphone.

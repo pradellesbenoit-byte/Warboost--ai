@@ -1,0 +1,38 @@
+WARBOOST V2.5.28 HF8.6.12 — CLOUD RESTORE GUARD
+BUILD VERIFICATION
+Date : 2026-09-13
+Base : WarBoost V2.5.28 HF8.6.11 — Future Player Reliability
+Target : public-beta-safe-launch / beta.warboost.fr après validation réelle
+
+INCIDENT REPRODUIT / DIAGNOSTIC
+- Le profil cloud concerné est toujours présent et complet.
+- Taille observée de l’état cloud mature : 87 881 octets.
+- L’état cloud contenait un last_error = TypeError au moment du problème mobile.
+- Les sauvegardes historiques sont toujours présentes (39 snapshots observés lors de l’audit).
+- Le défaut est donc un défaut de restitution/sauvegarde navigateur, pas une suppression de données.
+
+PROTECTIONS HF8.6.12
+- garde anti-écrasement par état vide : PASS
+- hydratation directe depuis état serveur authentifié : PASS
+- retry automatique du pull cloud : PASS
+- sync depuis état vide => pull cloud d’abord : PASS
+- garde keepalive pour gros payload mobile : PASS
+- fixture >64 KiB refusée en keepalive et différée : PASS
+- petite sauvegarde keepalive autorisée : PASS
+- erreur sync transitoire retirée du payload durable : PASS
+- Service Worker charge lib/cloud-state-recovery.js : PASS
+
+NON-RÉGRESSION
+- npm run check : PASS
+- npm run verify complet : PASS
+- HF3 -> HF8.6.8 : PASS
+- HF8.6.10 roster integrity : PASS
+- HF8.6.11 future-player reliability : PASS
+- HF8.6.12 cloud restore guard : PASS
+- 12 fonctions serverless conservées : PASS
+- aucune migration Supabase : PASS
+- aucune suppression de fichier : PASS
+- aucun localStorage.clear() ajouté : PASS
+
+LIMITATION DE VALIDATION
+Ces contrôles certifient le code et les tests locaux. Le smoke test réel sur le téléphone après déploiement reste obligatoire avant diffusion à d’autres joueurs.
