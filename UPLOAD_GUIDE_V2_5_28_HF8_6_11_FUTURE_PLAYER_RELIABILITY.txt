@@ -1,0 +1,76 @@
+WARBOOST V2.5.28 HF8.6.11 — FUTURE PLAYER RELIABILITY
+GUIDE D'INSTALLATION
+Date : 13/09/2026
+
+CIBLE UNIQUE
+- Dépôt : pradellesbenoit-byte/Warboost--ai
+- Branche : public-beta-safe-launch
+- Base contrôlée : commit 216fa59a574f87ab7613be3d5269935b2b1bf055
+- Ne pas modifier main / Production / publisher-demo.
+
+IMPORTANT
+- Ce patch est CONSOLIDÉ.
+- Il inclut les protections prévues dans HF8.6.10 : NE PAS installer HF8.6.10 avant ou après.
+- Il se pose directement sur l'état actuel de public-beta-safe-launch indiqué ci-dessus.
+- Aucune migration Supabase n'est nécessaire.
+- Aucun fichier existant ne doit être supprimé.
+- Ne pas vider localStorage ni les tables wb1_*.
+- Conserver les variables Vercel/Supabase existantes.
+
+INSTALLATION
+1. Décompresser ce ZIP.
+2. Envoyer le CONTENU extrait à la racine de public-beta-safe-launch en conservant exactement les dossiers api/, lib/ et scripts/.
+3. Remplacer les fichiers de même nom lorsque GitHub le demande.
+4. Les fichiers .txt de documentation peuvent rester à la racine.
+5. Commit sur public-beta-safe-launch uniquement.
+6. Attendre que le déploiement Vercel soit Ready.
+7. Ouvrir d'abord le Preview puis beta.warboost.fr.
+8. Fermer complètement WarBoost et le rouvrir une fois afin de laisser le Service Worker prendre la nouvelle version.
+
+SMOKE TEST RÉEL À FAIRE APRÈS DÉPLOIEMENT
+A. Joueur existant / continuité cloud
+- Déconnexion/reconnexion : profil, escouades, Drone, Alliance, VS, Saison et historique réapparaissent sans rescan imposé.
+- Un état corrigé par le serveur est repris par le téléphone et ne reste pas bloqué dans une ancienne copie locale.
+
+B. Nouveau joueur R1/R2/R3
+- Connexion + consentement bêta OK.
+- Après scan Profil : Profil devient validé même si la puissance compte n'est pas lisible.
+- WarBoost propose ensuite Escouade principale, puis Drone, avec boutons de scan directs.
+- Diagnostic PRO bêta : si l'escouade principale manque, WarBoost explique précisément quoi scanner au lieu d'afficher une fonction inaccessible.
+- PRO reste inclus pour un testeur autorisé même si /api/pro répond lentement temporairement.
+- Alliance affiche clairement “gestion réservée R4/R5” au lieu d'une interface qui semble cassée.
+- VS et Saison restent accessibles à tous les testeurs invités et proposent le scan correspondant si les données manquent.
+
+C. R4/R5
+- Les outils de gestion Alliance restent visibles pour R4/R5.
+- Les actions sensibles continuent d'exiger l'autorisation de gestion WarBoost vérifiée ; un simple grade déclaré ne suffit pas.
+- Import roster partiel/complet, rangs, anciens membres et historique restent fonctionnels.
+
+D. Roster / ToyN
+- ToyN reste R4 dans le roster canonique.
+- Une puissance absente ne devient jamais 0.
+- Aucun faux -231 M quand la nouvelle puissance est inconnue.
+- Une donnée vide ne doit pas effacer une puissance/QG déjà connue.
+
+E. VS / Saison
+- VS score inconnu : demande de scan, jamais un faux 0-0.
+- VS obsolète : demande d'actualisation, pas de décision présentée comme live.
+- Saison inter-saison : état historique clairement indiqué ; aucun conseil de saison active inventé.
+
+F. Mobile
+- Fermer/réouvrir l'app et vérifier que les données et droits sont identiques.
+- Refaire au moins un essai sur un second téléphone/une seconde session avant d'élargir la bêta.
+
+STATUT DE VALIDATION AVANT DÉPLOIEMENT
+- npm run check : PASS
+- npm run verify complet : PASS
+- HF3 -> HF8.6.8 non-régression : PASS
+- HF8.6.10 roster integrity : PASS
+- HF8.6.11 Future Player Reliability : PASS
+- 12 fonctions Vercel serverless conservées : PASS
+- aucune nouvelle migration Supabase : PASS
+- aucune suppression de fichier : PASS
+- audit Supabase lecture seule : aucun rôle canonique invalide, aucun doublon d'identité dans un même roster, aucun faux delta sur puissance vide.
+
+LIMITATION IMPORTANTE
+Ces contrôles valident le code, les tests automatisés et la cohérence actuelle de la base. Ils ne remplacent pas le smoke test réel sur le Preview/Vercel et sur téléphone après upload. Ne pas élargir la bêta avant ce smoke test.

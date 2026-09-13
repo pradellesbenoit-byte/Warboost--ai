@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.6 — Scan Persistence Reliability Beta · HF8.6.2 identity included",
+  "name": "WarBoost V2.5.28 HF8.6.11 — Future Player Reliability Beta · HF8.6.2 identity included",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.6 — account-scoped pending scan persistence, reliable cloud save retries, protected player history, Alliance tools, VS and Desert Storm.",
+  "description": "WarBoost V2.5.28 HF8.6.11 — guided new-player onboarding, reliable beta PRO access, clear Alliance R5/R4 gating, VS/Season access, scan persistence and canonical roster integrity.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -1,0 +1,14 @@
+api/health.js
+api/state.js
+app.js
+i18n.js
+index.html
+lib/alliance-roster-merge.js
+lib/alliance-scope.js
+lib/roster-identity-resolution.js
+manifest.webmanifest
+package.json
+scripts/verify-hf8-6-10.mjs
+scripts/verify-v2.5.28-hf8-6-11.mjs
+styles.css
+sw.js

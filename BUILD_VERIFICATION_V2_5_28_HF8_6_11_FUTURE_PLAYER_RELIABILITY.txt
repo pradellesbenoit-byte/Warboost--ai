@@ -1,0 +1,58 @@
+WARBOOST V2.5.28 HF8.6.11 — FUTURE PLAYER RELIABILITY
+BUILD VERIFICATION
+Date : 13/09/2026
+Base GitHub contrôlée : public-beta-safe-launch @ 216fa59a574f87ab7613be3d5269935b2b1bf055
+
+RESULTAT SOURCE : PASS
+
+PORTÉE CONSOLIDÉE
+- HF8.6.10 Canonical Roster Guard / Roster Integrity intégré : PASS
+- onboarding futur joueur guidé Profil -> Escouade principale -> Drone : PASS
+- puissance compte optionnelle pour valider le profil : PASS
+- Diagnostic PRO bêta ne paraît plus verrouillé lorsque les données de combat manquent : PASS
+- entitlement PRO Safe Launch robuste à un retard réseau /api/pro : PASS
+- Alliance R1/R2/R3 : message clair réservé R4/R5 : PASS
+- Alliance R4/R5 : outils de gestion conservés : PASS
+- autorisations sensibles séparées du grade Last War déclaré : PASS
+- VS accessible à tous les testeurs invités ; données manquantes -> scan : PASS
+- Saison accessible à tous les testeurs invités ; données manquantes -> scan : PASS
+- réponse canonique de /api/state réappliquée au navigateur : PASS
+- merges sync/scan protégés contre l'écrasement par null/vide : PASS
+- Service Worker versionné HF8.6.11 : PASS
+- textes onboarding/access localisés sur toutes les langues WarBoost : PASS
+
+ROSTER / DONNÉES
+- rôle canonique conservé malgré ancien rôle cloud : PASS
+- null/chaîne vide de puissance ne devient pas 0 : PASS
+- power manquante ne produit pas de faux delta : PASS
+- HQ/power manquants ne détruisent pas une valeur connue : PASS
+- import roster partiel préserve les données connues : PASS
+- identité roster sans doublon dans un même profil : PASS (audit DB)
+- rôles canoniques invalides : 0 (audit DB)
+- faux delta avec puissance vide : 0 (audit DB)
+
+NON-RÉGRESSION AUTOMATISÉE
+- npm run check : PASS
+- npm run verify : PASS
+- HF5, HF6, HF7 : PASS
+- HF8, HF8.1, HF8.2, HF8.3, HF8.4, HF8.5, HF8.5 FINAL : PASS
+- HF8.6, HF8.6.1, HF8.6.2, HF8.6.3, HF8.6.4, HF8.6.5, HF8.6.6, HF8.6.7, HF8.6.8 : PASS
+- HF8.6.10 : PASS
+- HF8.6.11 : PASS
+
+SÉCURITÉ / SAFE LAUNCH
+- 12 api/*.js : PASS
+- aucune nouvelle migration Supabase : PASS
+- aucune suppression de fichier : PASS
+- aucun localStorage.clear() dans le runtime : PASS
+- paiements bêta toujours OFF : PASS via suites existantes
+- aucun accès Last War/API/scraping non autorisé ajouté : PASS via suites existantes
+
+PACKAGING
+- patch calculé par diff exact contre la base GitHub courante reconstruite : PASS
+- patch ne contient que fichiers modifiés/ajoutés + documentation : PASS
+- application du patch sur la base reproduit les fichiers runtime HF8.6.11 octet pour octet : PASS
+- ZIP path safety : PASS
+
+NOTE
+La validation réelle Vercel/Android/iOS reste obligatoire après upload. Ce rapport n'affirme pas qu'un téléphone réel a déjà exécuté HF8.6.11 en production/Preview.
