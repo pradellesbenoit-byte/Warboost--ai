@@ -1,0 +1,17 @@
+WARBOOST V2.5.28 HF8.6.15 — BUILD VERIFICATION
+
+RESULTAT LOCAL : PASS
+- npm run check : PASS
+- npm run verify complet V2.5.28 -> HF8.6.15 : PASS
+- HF8.6.14 Session Apply Unblock : PASS
+- HF8.6.13 Verified Cloud Access Restore : PASS
+- HF8.6.12 Cloud Restore Guard : PASS
+- HF8.6.11 Future Player Reliability : PASS
+- simulation requête Supabase Auth bloquée : arrêt contrôlé par timeout : PASS
+- foreground /api/state POST borné à 12 s : PASS
+- pending scan IndexedDB toujours non bloquant pour applySession : PASS
+- aucune migration Supabase HF8.6.15
+- aucun localStorage.clear()
+- 12 fonctions serverless historiques préservées
+
+IMPORTANT : les tests locaux et simulés ne remplacent pas le smoke test réel Vercel + Supabase sur téléphone.

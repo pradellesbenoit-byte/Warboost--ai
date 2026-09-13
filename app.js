@@ -23,7 +23,9 @@ import {hasMeaningfulCoreState,hydrateCloudState,canUseKeepaliveBody,betaStateAf
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6.13"; // Verified Cloud Access Restore · includes HF8.6.12 cloud restore guard + HF8.6.11/HF8.6.10
+const RELEASE_LABEL="HF8.6.15"; // Player Presentation Reliability · bounded auth + cloud save · includes HF8.6.14 session unblock
+// Legacy verification marker: const RELEASE_LABEL="HF8.6.14" · Session Apply Unblock
+// Legacy verification marker: RELEASE_LABEL="HF8.6.13" · Verified Cloud Access Restore
 // Legacy VS scan verification marker: scanType option value="vs"
 // Legacy release label verification markers: RELEASE_LABEL="HF8.6.3" · RELEASE_LABEL="HF8.6.4" · RELEASE_LABEL="HF8.6.6" · RELEASE_LABEL="HF8.6.7"
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
@@ -297,6 +299,10 @@ function scheduleCloudRetry(delay=8000){if(cloudRetryTimer||!cloudDirty||!naviga
 function markCloudPending(error="cloud_save_failed"){cloudDirty=true;state.sync={...state.sync,status:navigator.onLine?"waiting":"offline",last_error:error,pending_cloud_save:true};safeLocalSet(STORE_KEY,JSON.stringify(state));renderProvider();scheduleCloudRetry()}
 function scheduleCloudPullRetry(delay=2500){if(cloudPullRetryTimer||!navigator.onLine||!cloudSession?.access_token||!betaConsentAccepted()||hasMeaningfulCore(state))return;const wait=Math.max(1500,Math.min(15000,Number(delay)||2500));cloudPullRetryTimer=setTimeout(async()=>{cloudPullRetryTimer=null;const seed=readAccountState(cloudSession?.user?.id);const result=await pullServerState(seed);if(!result?.ok&&!result?.cloud_empty&&!hasMeaningfulCore(state))scheduleCloudPullRetry(Math.min(15000,wait*2))},wait)}
 function markLargeKeepaliveDeferred(){cloudDirty=true;state.sync={...state.sync,status:"waiting",pending_cloud_save:true};safeLocalSet(STORE_KEY,JSON.stringify(state));renderProvider()}
+async function fetchSessionCritical(input,init={},timeoutMs=10000){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),Math.max(1500,Number(timeoutMs)||10000));
+  try{return await fetch(input,{...init,signal:controller.signal})}finally{clearTimeout(timer)}
+}
 
 async function initCloudAuth(){
   cloud=null;cloudSession=null;cloudRecoveryRedirect="";cloudInit={status:"loading-config",configured:false,transport:"direct-supabase-auth-api",error:null};renderAuth();
@@ -321,66 +327,93 @@ async function initCloudAuth(){
     cloud.auth.onAuthStateChange((_event,session)=>applySession(session||null));
   }catch(error){cloudInit={status:"auth-unreachable",configured:true,transport:"direct-supabase-auth-api",error:error?.code||"auth_unreachable"};renderAuth();renderBeta()}
 }
-async function refreshBeta(){if(!cloudSession?.access_token){betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};renderBeta();return betaState}const previouslyVerified=betaState?.allowed===true;try{const r=await fetch("/api/pro",{cache:"no-store",headers:authHeaders()}),j=await r.json().catch(()=>({}));if(r.ok&&j.beta){betaState={...betaState,release:j.release!==false,enforced:Boolean(j.enforced??j.beta_enforced),configured:Boolean(j.beta_configured??j.enforced??j.beta_enforced),allowed:Boolean(j.allowed??j.active),access_status:j.access_status||j.beta_access||(j.active?"invited":"invite-required"),consent_version:j.consent_version||BETA_CONSENT_VERSION,payments_enabled:false,pro_included:Boolean(j.pro_included)}}else{const code=String(j?.error||"").toUpperCase(),definitive=r.status===403||["BETA_INVITE_REQUIRED","BETA_INVITE_REVOKED","BETA_INVITE_EXPIRED"].includes(code);betaState={...betaState,allowed:definitive?false:previouslyVerified,access_status:definitive?(code==="BETA_INVITE_REVOKED"?"revoked":code==="BETA_INVITE_EXPIRED"?"expired":"invite-required"):(previouslyVerified?(betaState.access_status||"accepted"):(j.access_status||j.beta_access||j.error||"beta-status-error"))}}}catch{betaState={...betaState,allowed:previouslyVerified,access_status:previouslyVerified?(betaState.access_status||"accepted"):"beta-status-error"}}renderBeta();return betaState}
+async function refreshBeta(){if(!cloudSession?.access_token){betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};renderBeta();return betaState}const previouslyVerified=betaState?.allowed===true;try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok&&j.beta){betaState={...betaState,release:j.release!==false,enforced:Boolean(j.enforced??j.beta_enforced),configured:Boolean(j.beta_configured??j.enforced??j.beta_enforced),allowed:Boolean(j.allowed??j.active),access_status:j.access_status||j.beta_access||(j.active?"invited":"invite-required"),consent_version:j.consent_version||BETA_CONSENT_VERSION,payments_enabled:false,pro_included:Boolean(j.pro_included)}}else{const code=String(j?.error||"").toUpperCase(),definitive=r.status===403||["BETA_INVITE_REQUIRED","BETA_INVITE_REVOKED","BETA_INVITE_EXPIRED"].includes(code);betaState={...betaState,allowed:definitive?false:previouslyVerified,access_status:definitive?(code==="BETA_INVITE_REVOKED"?"revoked":code==="BETA_INVITE_EXPIRED"?"expired":"invite-required"):(previouslyVerified?(betaState.access_status||"accepted"):(j.access_status||j.beta_access||j.error||"beta-status-error"))}}}catch{betaState={...betaState,allowed:previouslyVerified,access_status:previouslyVerified?(betaState.access_status||"accepted"):"beta-status-error"}}renderBeta();return betaState}
 async function activateBetaCode(){const input=$("#betaAccessCode"),status=$("#betaCodeStatus"),btn=$("#betaCodeActivateBtn"),code=String(input?.value||"").trim();if(!cloudSession?.access_token){if(status){status.className="notice warn";status.textContent=t("beta_signin_required");status.classList.remove("hidden")}return}if(!code){if(status){status.className="notice warn";status.textContent=t("beta_code_enter");status.classList.remove("hidden")}return}if(btn){btn.disabled=true;btn.textContent=t("beta_code_activating")}try{const r=await fetch("/api/support",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action:"beta_code_activate",code})}),j=await r.json().catch(()=>({}));if(!r.ok){const key=j.error==="BETA_CODE_INVALID"?"beta_code_invalid":j.error==="BETA_CODE_EXPIRED"?"beta_code_expired":j.error==="BETA_CODE_FULL"?"beta_code_full":j.error==="BETA_ACCESS_REVOKED"?"beta_access_revoked":"beta_code_error";throw Object.assign(new Error(t(key)),{code:j.error||"BETA_CODE_ERROR"})}await refreshBeta();if(input)input.value="";if(status){status.className="notice";status.textContent=t("beta_code_success");status.classList.remove("hidden")}setTimeout(()=>{if(betaAccessAllowed())status?.classList.add("hidden")},2200)}catch(e){if(status){status.className="notice warn";status.textContent=e.message||t("beta_code_error");status.classList.remove("hidden")}}finally{if(btn){btn.disabled=false;btn.textContent=t("beta_code_activate")}}}
 async function applySession(session){
   const previousPendingOwner=pendingScanOwner(cloudSession);
   const preSessionState=safeClone(state);
   cloudSession=session||null;
   const nextPendingOwner=pendingScanOwner(cloudSession);
-  if(cloudSession?.user?.id&&previousPendingOwner.startsWith("device:")&&previousPendingOwner!==nextPendingOwner)await movePendingScans(previousPendingOwner,nextPendingOwner);
-  resetPendingScanUi();
-  if(cloudSession?.user?.id){
-    // Fail closed while the server re-checks this account against the beta invitation registry.
-    betaState={...betaState,allowed:false,access_status:"checking"};
-    cloudHydrationPending=true;
-    const userId=String(cloudSession.user.id),oldOwner=String(state?.player_id||""),localOwner=clientId();
-    // Preserve the previous authenticated account before switching, but never offer its state to another user.
-    if(oldOwner&&oldOwner!==localOwner&&oldOwner!==userId&&hasMeaningfulCore(state))rememberAccountState(oldOwner,state);
-    const loginSeed=safestLoginSeed(userId,state);
-    // Keep the long-standing cross-account isolation invariant: a different account with no
-    // own cache starts in memory from an empty state. HF8.6.12 changes only persistence: the
-    // empty placeholder is never written over the device's last good copy before cloud restore.
-    state=loginSeed?mergeState(initialState(),loginSeed):initialState();
-    state.player_id=userId;
-    if(hasMeaningfulCore(loginSeed)){
-      rememberLastGoodState(loginSeed,"before-login-own-state");
-      state=hydrateCloudState(loginSeed,initialState(),userId);
-      safeLocalSet(STORE_KEY,JSON.stringify(state));
-      rememberAccountState(userId,state);
-    }else{
-      // Critical HF8.6.12 guard: never persist this empty in-memory placeholder before
-      // the authenticated cloud read has succeeded.
-    }
-    await refreshBeta();
-    // /api/state performs the authoritative invitation + consent check itself.
-    // A temporary /api/pro failure must never prevent restoration of an existing cloud profile.
-    if(betaConsentAccepted()){
-      const pulled=await pullServerState(loginSeed);
-      if(pulled?.cloud_empty&&hasMeaningfulCore(loginSeed)){
+
+  // HF8.6.15 keeps HF8.6.14 immediate session rendering and additionally bounds every foreground auth/cloud write.
+  // Pending screenshot storage is useful,
+  // but it is never allowed to block or cancel a valid Supabase session on Android/WebView.
+  renderAuth();renderBeta();
+
+  try{
+    if(cloudSession?.user?.id){
+      betaState={...betaState,allowed:false,access_status:"checking"};
+      cloudHydrationPending=true;
+      const userId=String(cloudSession.user.id),oldOwner=String(state?.player_id||""),localOwner=clientId();
+
+      // Isolate accounts before any optional asynchronous work can stall.
+      if(oldOwner&&oldOwner!==localOwner&&oldOwner!==userId&&hasMeaningfulCore(state))rememberAccountState(oldOwner,state);
+      const loginSeed=safestLoginSeed(userId,state);
+      state=loginSeed?mergeState(initialState(),loginSeed):initialState();
+      state.player_id=userId;
+      if(hasMeaningfulCore(loginSeed)){
+        rememberLastGoodState(loginSeed,"before-login-own-state");
         state=hydrateCloudState(loginSeed,initialState(),userId);
-        state.player_id=userId;saveState();await pushServerState();
-      }else if(!pulled?.ok&&!pulled?.cloud_empty){
-        if(hasMeaningfulCore(loginSeed)){
-          state=hydrateCloudState(loginSeed,initialState(),userId);
-          safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull-failed-local-fallback");rememberAccountState(userId,state);
-        }else if(hasMeaningfulCore(preSessionState)&&String(preSessionState?.player_id||"")===userId){
-          state=hydrateCloudState(preSessionState,initialState(),userId);
-          safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull-failed-session-fallback");rememberAccountState(userId,state);
-        }else scheduleCloudPullRetry();
+        safeLocalSet(STORE_KEY,JSON.stringify(state));
+        rememberAccountState(userId,state);
+      }else{
+        // Critical HF8.6.12 guard: never persist this empty in-memory placeholder before
+        // the authenticated cloud read has succeeded.
       }
+
+      // Render the correctly isolated account now, before cloud/profile requests.
+      render();renderAuth();renderBeta();renderPro();renderSupportAccess();
+
+      // Pending scans are best-effort device convenience only. Never await this migration in
+      // the authentication critical path: IndexedDB can be slow or remain pending on Android.
+      if(previousPendingOwner.startsWith("device:")&&previousPendingOwner!==nextPendingOwner){
+        void movePendingScans(previousPendingOwner,nextPendingOwner)
+          .then(()=>{if(pendingScanOwner()===nextPendingOwner)return restorePendingScans()})
+          .catch(()=>{});
+      }
+      try{resetPendingScanUi()}catch{}
+
+      await refreshBeta();
+      // /api/state performs the authoritative invitation + consent check itself.
+      // A temporary /api/pro failure must never prevent restoration of an existing cloud profile.
+      if(betaConsentAccepted()){
+        const pulled=await pullServerState(loginSeed);
+        if(pulled?.cloud_empty&&hasMeaningfulCore(loginSeed)){
+          state=hydrateCloudState(loginSeed,initialState(),userId);
+          state.player_id=userId;saveState();await pushServerState();
+        }else if(!pulled?.ok&&!pulled?.cloud_empty){
+          if(hasMeaningfulCore(loginSeed)){
+            state=hydrateCloudState(loginSeed,initialState(),userId);
+            safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull-failed-local-fallback");rememberAccountState(userId,state);
+          }else if(hasMeaningfulCore(preSessionState)&&String(preSessionState?.player_id||"")===userId){
+            state=hydrateCloudState(preSessionState,initialState(),userId);
+            safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull-failed-session-fallback");rememberAccountState(userId,state);
+          }else scheduleCloudPullRetry();
+        }
+      }
+      await refreshPro();
+      // Restoration of temporary screenshots is never session-critical.
+      void restorePendingScans();
+    }else{
+      cloudHydrationPending=false;
+      clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
+      proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};
+      betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};
+      try{resetPendingScanUi()}catch{}
+      void restorePendingScans();
     }
+  }catch(error){
+    // Last-resort session guard: one optional subsystem must never leave the account drawer in
+    // the pre-login state after Supabase has already authenticated the user.
+    if(cloudSession?.user?.id){
+      const userId=String(cloudSession.user.id);
+      if(String(state?.player_id||"")!==userId){state=initialState();state.player_id=userId}
+      state.sync={...state.sync,status:navigator.onLine?"waiting":"offline",last_error:error?.name||"session_apply_degraded"};
+    }
+  }finally{
     cloudHydrationPending=false;
-    await refreshPro();
-    await restorePendingScans();
-  }else{
-    cloudHydrationPending=false;
-    clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
-    proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};
-    betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};
-    await restorePendingScans();
+    render();renderAuth();renderBeta();renderPro();renderSupportAccess();
   }
-  render();renderAuth();renderBeta();renderPro();renderSupportAccess();
 }
 function cloudAuthFailureMessage(){
   if(cloudInit.status==="config-missing")return t("auth_cloud_missing");
@@ -423,7 +456,7 @@ function authFriendlyError(error){
   if(code==="invalid_credentials"||/invalid login credentials/i.test(message))return t("auth_invalid_credentials");
   if(code==="user_already_exists"||code==="email_exists"||/already registered|already exists/i.test(message))return t("auth_account_exists");
   if(Number(error?.status)===429||code.includes("rate_limit")||/rate limit|too many requests/i.test(message))return t("auth_rate_limited");
-  if(code==="auth_network_unavailable")return t("auth_cloud_unreachable");
+  if(code==="auth_network_unavailable"||code==="auth_request_timeout")return t("auth_cloud_unreachable");
   return message||t("auth_cloud_unreachable");
 }
 function setAuthBusy(busy){
@@ -445,7 +478,8 @@ async function pushServerState({keepalive=false}={}){
       markLargeKeepaliveDeferred();
       return {skipped:true,reason:"keepalive_payload_too_large"};
     }
-    const r=await fetch("/api/state",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body,keepalive:Boolean(keepalive)}),j=await r.json().catch(()=>({}));
+    const requestInit={method:"POST",headers:authHeaders({"content-type":"application/json"}),body,keepalive:Boolean(keepalive)};
+    const r=keepalive?await fetch("/api/state",requestInit):await fetchSessionCritical("/api/state",requestInit,12000),j=await r.json().catch(()=>({}));
     if(!r.ok){markCloudPending(j?.error||`state_http_${r.status}`);return {ok:false,error:j?.error||r.status}}
     suppressPush=true;
     if(j?.state){
@@ -469,7 +503,7 @@ async function pullServerState(loginSeed=null){
   const userId=String(cloudSession.user?.id||""),localFallback=hasMeaningfulCore(loginSeed)?safeClone(loginSeed):(hasMeaningfulCore(state)?safeClone(state):null);
   cloudHydrationPending=true;renderBeta();
   try{
-    const r=await fetch("/api/state",{cache:"no-store",headers:authHeaders()}),j=await r.json().catch(()=>({}));
+    const r=await fetchSessionCritical("/api/state",{cache:"no-store",headers:authHeaders()},12000),j=await r.json().catch(()=>({}));
     if(!r.ok){
       if(j?.error==="database_schema_missing"){state.sync.last_error=t("cloud_schema_missing");state.sync.status="offline";renderProvider()}
       betaState=betaStateAfterVerifiedStateRead(betaState,{ok:false,status:r.status,error:j?.error||"",consentVersion:BETA_CONSENT_VERSION});
@@ -1250,7 +1284,7 @@ $("#supportRefreshBtn")?.addEventListener("click",refreshSupportTickets);
 function proMessage(text,ok=false){const el=$("#proMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
 function renderCommercialPreview(){const box=$("#proCommercialPreview"),price=$("#commercialPreviewPrice"),note=$("#commercialPreviewNote");if(!box)return;box.classList.toggle("hidden",proState.beta===false);if(price)price.textContent=formatProPrice(proState.plan||{amount:499,currency:"eur"});if(note)note.textContent=t("commercial_preview_note")}
 function renderPro(){const pill=$("#proPill"),btn=$("#proActionBtn"),title=$("#proTitle"),price=$("#proPrice"),section=$("#proSection");if(!pill||!btn)return;const logged=Boolean(cloudSession?.user),beta=safeLaunchBetaMode(),included=Boolean(beta&&logged&&betaAccessAllowed());section?.classList.toggle("betaIncluded",beta);renderCommercialPreview();if(beta){pill.textContent=included?t("beta_pro_short"):t("beta_badge");pill.classList.toggle("active",included);title.textContent=included?t("beta_pro_included"):t("beta_pro_title");if(!logged){price.textContent=t("beta_pro_signin");btn.textContent=t("login");btn.disabled=false;return}if(betaState.enforced&&!betaState.allowed){price.textContent=t("beta_invite_required");btn.textContent=t("beta_invite_short");btn.disabled=true;return}price.textContent=t("beta_pro_free");btn.textContent=t("beta_pro_included");btn.disabled=true;return}pill.textContent=proState.active?"PRO":t("free");pill.classList.toggle("active",proState.active);title.textContent=proState.active?t("pro_active"):t("upgrade");if(!logged){price.textContent=t("connect_for_pro");btn.textContent=t("login");btn.disabled=false;return}if(!proState.configured){price.textContent=t("pro_config");btn.textContent=t("pro_soon");btn.disabled=true;return}const formatted=formatProPrice(proState.plan);price.textContent=proState.active?t("subscription_active",{price:formatted}):formatted;btn.textContent=proState.active?t("manage_subscription"):t("go_pro");btn.disabled=!proState.payments_enabled}
-async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetch("/api/pro",{cache:"no-store",headers:authHeaders()}),j=await r.json().catch(()=>({}));if(r.ok)proState={active:Boolean(j.active),status:j.status||"free",configured:Boolean(j.configured),plan:j.plan||null,beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),commercial_preview:Boolean(j.commercial_preview),subscription:j.subscription||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null}}renderPro()}
+async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok)proState={active:Boolean(j.active),status:j.status||"free",configured:Boolean(j.configured),plan:j.plan||null,beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),commercial_preview:Boolean(j.commercial_preview),subscription:j.subscription||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null}}renderPro()}
 function requirePro(){if(safeLaunchBetaMode()){if(!requireBetaAccess()||!requireBetaConsent())return false;return true}if(proState.active)return true;openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"center"}),160);proMessage(cloudSession?.user?t("pro_required"):t("connect_pro"));return false}
 async function openProAction(){if(proState.beta!==false){proMessage(t("beta_payment_disabled"),true);return}if(!cloudSession?.user){openDrawer("account");return}if(!proState.payments_enabled){proMessage(t("commercial_payment_not_ready"));return}const btn=$("#proActionBtn"),original=btn?.textContent;if(btn){btn.disabled=true;btn.textContent="…"}try{const action=proState.active?"portal":"checkout",r=await fetch("/api/pro",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action})}),j=await r.json().catch(()=>({}));if(!r.ok||!/^https:\/\//i.test(String(j.url||"")))throw new Error(j.message||j.error||t("commercial_payment_not_ready"));location.href=j.url}catch(e){proMessage(e.message||t("commercial_payment_not_ready"))}finally{if(btn){btn.disabled=false;btn.textContent=original||t(proState.active?"manage_subscription":"go_pro")}}}
 $("#betaConsent")?.addEventListener("change",async e=>{const key=betaConsentStorageKey();if(!key){e.target.checked=false;return}if(e.target.checked){localStorage.setItem(key,"1");if(cloudSession?.access_token&&betaAccessAllowed()){await pullServerState(safeClone(state));await pushServerState();await refreshPro()}}else localStorage.removeItem(key);render();renderBeta();renderPro()});
