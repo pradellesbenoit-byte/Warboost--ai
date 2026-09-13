@@ -1,5 +1,6 @@
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-20-verified-login-isolation
 // Legacy verification marker: warboost-v2-5-28-hf8-6-19-public-beta-full-reliability
-const CACHE="warboost-v2-5-28-hf8-6-20-verified-login-isolation";
+const CACHE="warboost-v2-5-28-hf8-6-21-render-boundary-reliability";
 // Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
 // Legacy verification marker: warboost-v2-5-28-hf8-6-15-player-presentation-reliability

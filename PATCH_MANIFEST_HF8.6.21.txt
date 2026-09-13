@@ -1,0 +1,14 @@
+WarBoost V2.5.28 HF8.6.21 — Render Boundary Reliability
+Base: HF8.6.20 public-beta-safe-launch
+Target branch: public-beta-safe-launch only
+
+Purpose:
+- Bind Compte identity fields before heavy Player/Alliance/VS/Season rendering.
+- Re-bind Compte fields every time the account drawer opens.
+- Isolate module render failures so one module cannot leave another module stale/blank.
+- Record render-stage errors in bootstrap diagnostics.
+- Preserve HF8.6.20 login/privacy/cloud safeguards.
+
+No database migration.
+No file deletion.
+No player data reset.

@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.20 — Verified Login Isolation · HF8.6.17 / HF8.6.18 / HF8.6.19 lineage",
+  "name": "WarBoost V2.5.28 HF8.6.21 — Render Boundary Reliability · HF8.6.17 / HF8.6.18 / HF8.6.19 / HF8.6.20 lineage",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.20 — parallel verified-login restore, strict private-data isolation while access is checking, and HF8.6.17 / HF8.6.18 / HF8.6.19 safeguards retained.",
+  "description": "WarBoost V2.5.28 HF8.6.21 — account form rendered independently from Player, Alliance, VS and Season; HF8.6.17 / HF8.6.18 / HF8.6.19 / HF8.6.20 safeguards retained.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

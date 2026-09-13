@@ -1,0 +1,8 @@
+HF8.6.21 final verification requirements:
+- npm run check: PASS
+- npm run verify: PASS through HF8.6.21
+- Account binding precedes Squad/Alliance/VS/Season heavy render steps
+- Account drawer rebinds current state on every open
+- Module render failures are isolated and diagnostic
+- HF8.6.20 verified-login/privacy regression suite retained
+- No Supabase migration or data deletion

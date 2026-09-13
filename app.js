@@ -24,7 +24,8 @@ import {readOwnProfileDirect} from "./lib/cloud-profile-direct.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6.20"; // Verified Login Isolation · parallel fast restore + strict sync privacy · includes HF8.6.19
+const RELEASE_LABEL="HF8.6.21"; // Render Boundary Reliability · account binding first + isolated module renders · includes HF8.6.20
+// Legacy HF8.6.20 verification marker: const RELEASE_LABEL="HF8.6.20"
 // Legacy HF8.6.19 verification marker: const RELEASE_LABEL="HF8.6.19"
 // HF8.6.19 legacy verification markers retained after bounded-fetch hardening:
 // function betaPrivateDataVisible(){return Boolean(cloudSession?.user)&&betaAccessAllowed()&&betaConsentAccepted()}
@@ -209,6 +210,15 @@ function appendServerRestoreTrace(trace){for(const entry of Array.isArray(trace)
 function finishBootstrapDiagnostics(status="done"){bootstrapDiagnostics.status=status;bootstrapDiagnostics.finished_at=new Date().toISOString()}
 function compactBootstrapDiagnostics(){return {release:RELEASE_LABEL,run_id:bootstrapDiagnostics.run_id,status:bootstrapDiagnostics.status,started_at:bootstrapDiagnostics.started_at,finished_at:bootstrapDiagnostics.finished_at,stages:(bootstrapDiagnostics.stages||[]).slice(-16)}}
 function lastBootstrapFailure(){return [...(bootstrapDiagnostics.stages||[])].reverse().find(x=>x.status==="error")||null}
+function safeRenderStep(stage,fn){
+  try{return fn()}
+  catch(error){
+    const code=String(error?.message||error?.name||"render_error").slice(0,80);
+    pushBootstrapStage(`RENDER_${String(stage||"UNKNOWN").slice(0,32)}`,0,"error",code,"browser");
+    try{console.error(`[WarBoost render] ${stage}`,error)}catch{}
+    return null;
+  }
+}
 function pendingJoinCode(){try{return String(localStorage.getItem(PENDING_JOIN_CODE_KEY)||"").trim().toUpperCase()}catch{return ""}}
 function rememberPendingJoinCode(code){const clean=String(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,80);if(clean)safeLocalSet(PENDING_JOIN_CODE_KEY,clean);return clean}
 function clearPendingJoinCode(){try{localStorage.removeItem(PENDING_JOIN_CODE_KEY)}catch{}}
@@ -740,6 +750,8 @@ function render(){
   // V2.5.20 privacy boundary: saved local/cloud data is preserved in state but is never rendered
   // until an invited WarBoost session is active and beta consent is accepted.
   if(!reveal){
+    // Account fields are a security boundary: clear them immediately, independently of every other module render.
+    safeRenderStep("ACCOUNT_FIELDS",renderAccountFields);
     $("#playerMeta").textContent=t("to_connect");
     $("#allianceMeta").textContent="—";
     $("#vsMeta").textContent="—";
@@ -774,7 +786,7 @@ function render(){
     if($("#warPlanText"))$("#warPlanText").textContent=t("war_plan_empty");
     if($("#desertStormRosterPicker"))$("#desertStormRosterPicker").innerHTML=`<div class="notice">${esc(t("beta_signin_required"))}</div>`;
     if($("#desertStormPlan")){ $("#desertStormPlan").classList.add("hidden"); $("#desertStormPlan").innerHTML=""; }
-    renderAdvice();renderAccountFields();renderProvider();
+    safeRenderStep("ADVICE",renderAdvice);safeRenderStep("PROVIDER",renderProvider);
     return;
   }
 
@@ -782,13 +794,23 @@ function render(){
   $("#allianceMeta").textContent=a.tag?`${a.tag} · ${normalizedRole(p.role)}`:"—";
   const homeVsSituation=vsSituation(v),homeVsFreshness=vsSnapshotFreshness(v,{now:serverNow});$("#vsMeta").textContent=scoreKnown(v)&&homeVsFreshness.current&&homeVsSituation.our_share!==null?`${Math.round(homeVsSituation.our_share)}%${Number(v.personal_rank)>0?` · #${Number(v.personal_rank)}`:""}`:scoreKnown(v)&&!homeVsFreshness.current?t("vs_status_stale"):`${t("week")} ${currentVsWeek()}`;
   $("#pName").textContent=p.name||"—";$("#pHq").textContent=p.hq_level?`${t("hq")} ${p.hq_level}`:t("to_fill");$("#pPower").textContent=Number(p.power_m)>0?fmtPower(p.power_m):t("to_fill");$("#pDrone").textContent=d.level?`${t("level")}${d.level}${d.power_m?` · ${fmtPower(d.power_m)}`:""}`:Number(d.power_m)>0?fmtPower(d.power_m):t("to_fill");
-  renderPlayerOnboarding();renderSquads();renderPlayerProgression();renderExclusiveWeapons();renderPlayerActivity();renderAllianceAccess();renderVsAccess();renderSeasonAccess();
+  // Critical HF8.6.21 ordering: bind the account form immediately after the core player state.
+  // A later Alliance/VS/Season render error can no longer leave Compte blank while Joueur is populated.
+  safeRenderStep("ACCOUNT_FIELDS",renderAccountFields);
+  safeRenderStep("PLAYER_ONBOARDING",renderPlayerOnboarding);
+  safeRenderStep("SQUADS",renderSquads);
+  safeRenderStep("PLAYER_PROGRESSION",renderPlayerProgression);
+  safeRenderStep("EXCLUSIVE_WEAPONS",renderExclusiveWeapons);
+  safeRenderStep("PLAYER_ACTIVITY",renderPlayerActivity);
+  safeRenderStep("ALLIANCE_ACCESS",renderAllianceAccess);
+  safeRenderStep("VS_ACCESS",renderVsAccess);
+  safeRenderStep("SEASON_ACCESS",renderSeasonAccess);
   $("#aTag").textContent=a.tag||"—";$("#aCount").textContent=String(a.members?.length||0);$("#aRole").textContent=p.role||"R1";
   const declaredManager=["R4","R5"].includes(normalizedRole(p.role)),verifiedManager=a.management_verified===true&&["R4","R5"].includes(normalizedRole(a.role)),cloudAlliance=Boolean(a.id||a.invite_code),canShareAllianceInvite=declaredManager&&(!cloudAlliance||verifiedManager);
   $("#inviteCode").textContent=canShareAllianceInvite?(state.alliance.invite_code||"—"):"—";const inviteNote=$("#inviteNote");if(inviteNote)inviteNote.textContent=t("invite_note_scoped",{server:p.server_id||"—",alliance:a.tag||"—"});
   const shareInvite=$("#shareInviteBtn");if(shareInvite)shareInvite.disabled=!canShareAllianceInvite;
-  $("#rosterFresh").textContent=a.updated_at?updatedLabel(a.updated_at):t("sync_needed");renderMembers();renderDesertStormPlanner();
-  renderVsLive();renderVsTimeline();
+  $("#rosterFresh").textContent=a.updated_at?updatedLabel(a.updated_at):t("sync_needed");safeRenderStep("ALLIANCE_MEMBERS",renderMembers);safeRenderStep("DESERT_STORM",renderDesertStormPlanner);
+  safeRenderStep("VS_LIVE",renderVsLive);safeRenderStep("VS_TIMELINE",renderVsTimeline);
 
   const seasonLife=seasonLifecycle(s),seasonActive=seasonIsActive(s),pct=activeSeasonProgress(s),baseSeasonName=s.name||(s.number?`S${s.number}`:"—"),seasonHistorical=(seasonLife==="ended"||seasonLife==="interseason");
   $("#seasonMeta").textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):baseSeasonName;
@@ -798,7 +820,7 @@ function render(){
   const bar=$("#seasonProgressBar"),label=$("#seasonProgressLabel"),progressWrap=bar?.closest(".progress");if(progressWrap)progressWrap.classList.toggle("hidden",!seasonActive||pct===null);if(bar)bar.style.width=`${pct??0}%`;if(label)label.textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):pct===null?t("season_unknown"):`${pct}%`;
   const lifeSelect=$("#seasonLifecycleSelect");if(lifeSelect)lifeSelect.value=seasonLife;
   const lifeStatus=seasonLife==="interseason"?t("season_interseason_note",{name:baseSeasonName,profession:s.profession||"—"}):seasonLife==="ended"?t("season_ended_note",{name:baseSeasonName,profession:s.profession||"—"}):seasonLife==="unknown"?t("season_unknown_note"):s.updated_at?`${t("last_update",{ago:fmtAgo(s.updated_at)})} · ${s.resistance??"—"}`:t("season_wait");$("#seasonStatus").textContent=lifeStatus;
-  renderAdvice();renderAccountFields();renderProvider();
+  safeRenderStep("ADVICE",renderAdvice);safeRenderStep("PROVIDER",renderProvider);
 }
 function squadHasSavedData(sq){return Boolean(sq?.updated_at||Number(sq?.power)>0||(sq?.heroes||[]).some(h=>h?.name||h?.level||h?.stars||h?.power||h?.exclusive||h?.gear))}
 function formatGear(raw){return formatGearSummary(raw,{gearItems:t("gear_items"),level:t("level"),rarity:t("rarity"),rarityLabel:x=>{const k=`rarity_${x}`;return t(k)===k?x:t(k)}})}
@@ -1270,7 +1292,13 @@ function renderProvider(){
   box.className=`notice${reveal?"":" warn"}`;
   box.textContent=reveal?(s.pending_cloud_save?t("offline_keep"):t("safe_sync_note")):t("beta_signin_required");
 }
-function openDrawer(name){closeDrawers();$("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false");if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)}}
+function openDrawer(name){
+  closeDrawers();
+  // Re-bind account UI from the current authenticated state on every open. This is intentionally
+  // independent from the large cross-module render pipeline.
+  if(name==="account"){safeRenderStep("ACCOUNT_OPEN_FIELDS",renderAccountFields);safeRenderStep("ACCOUNT_OPEN_AUTH",renderAuth);safeRenderStep("ACCOUNT_OPEN_BETA",renderBeta);safeRenderStep("ACCOUNT_OPEN_PRO",renderPro)}
+  $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false");if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)}
+}
 function closeDrawers(){$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")})}
 
 $$('[data-open]').forEach(b=>b.addEventListener("click",()=>{if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer(b.dataset.open)}));$("#homeProBtn")?.addEventListener("click",()=>{openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"start"}),140)});$$('[data-close]').forEach(b=>b.addEventListener("click",closeDrawers));$("#backdrop").addEventListener("click",closeDrawers);$("#accountBtn").addEventListener("click",()=>openDrawer("account"));$("#adviceAction").addEventListener("click",()=>{if(state.player.name&&(!requireBetaAccess()||!requireBetaConsent()))return;if(playerNeedsOnboarding()&&betaPrivateDataVisible()){const next=playerOnboardingStatus().next_type||"profile";return openQuickScan(next)}openDrawer(state.player.name?"player":"account")});$("#languageSelect").addEventListener("change",e=>{languageChoice=e.target.value;safeLocalSet(LANG_KEY,languageChoice);applyLanguage()});
