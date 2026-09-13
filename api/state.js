@@ -9,9 +9,8 @@ import {mergeRosterLifecycleMetadata,currentActiveRosterMembers} from "../lib/al
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 function recoverySummary(r){return {changed:Boolean(r?.changed),recovered_fields:Number(r?.recovered_fields||0),recovered_heroes:Array.isArray(r?.recovered_heroes)?r.recovered_heroes:[],conflicts:Array.isArray(r?.conflicts)?r.conflicts:[],sources:Array.isArray(r?.sources)?r.sources:[]}}
 
-// HF8.6.9: generic player-state saves must never overwrite the canonical Last War
-// alliance roster identity/rank with stale browser data. The canonical alliance roster
-// stays authoritative; WarBoost account data may enrich the matching member only.
+// HF8.6.10: a generic player-state save must never overwrite the authoritative
+// Last War roster identity/rank/known metrics with stale browser data.
 async function canonicalizeAllianceState(input,playerId){
   let state=normalizeState({...input,player_id:playerId});
   if(!configured())return {state,changed:false,status:"service_unavailable"};
