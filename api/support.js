@@ -1,6 +1,7 @@
 import {createHash,randomBytes,timingSafeEqual} from "node:crypto";
 import {requireUser} from "../lib/auth.js";
 import {betaAccessForUserAsync} from "../lib/beta-access.js";
+import {fetchWithTimeout} from "../lib/http-timeout.js";
 
 function pick(...names){for(const n of names){const v=process.env[n];if(typeof v==="string"&&v.trim())return v.trim()}return ""}
 const sbUrl=()=>pick("SUPABASE_URL","NEXT_PUBLIC_SUPABASE_URL","VITE_SUPABASE_URL").replace(/\/$/,"");
@@ -34,18 +35,18 @@ async function parse(r,path=""){
 }
 async function rest(path,options={}){
   if(!configured())throw Object.assign(new Error("Support database not configured"),{status:503,code:"SUPPORT_NOT_CONFIGURED"});
-  return parse(await fetch(`${sbUrl()}/rest/v1/${path}`,{...options,headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":"application/json",...(options.headers||{})}}),path);
+  return parse(await fetchWithTimeout(`${sbUrl()}/rest/v1/${path}`,{...options,headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":"application/json",...(options.headers||{})}},7000,{code:"SUPPORT_DATABASE_TIMEOUT",message:"Support database timed out"}),path);
 }
 async function uploadAttachment({ticketNo:tn,dataUrl,name}){
   const m=String(dataUrl||"").match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/i);if(!m)return null;
   const bytes=Buffer.from(m[2],"base64");if(!bytes.length||bytes.length>2*1024*1024)throw Object.assign(new Error("Capture trop volumineuse (2 Mo maximum après compression)."),{status:413,code:"ATTACHMENT_TOO_LARGE"});
   const ext=m[1].toLowerCase()==="image/png"?"png":m[1].toLowerCase()==="image/webp"?"webp":"jpg";
   const path=`${tn}/${Date.now()}-${randomBytes(4).toString("hex")}.${ext}`;
-  const r=await fetch(`${sbUrl()}/storage/v1/object/warboost-support/${path}`,{method:"POST",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":m[1],"x-upsert":"false"},body:bytes});
+  const r=await fetchWithTimeout(`${sbUrl()}/storage/v1/object/warboost-support/${path}`,{method:"POST",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":m[1],"x-upsert":"false"},body:bytes},15000,{code:"ATTACHMENT_UPLOAD_TIMEOUT",message:"Support attachment upload timed out"});
   if(!r.ok){const body=await r.text().catch(()=>"");throw Object.assign(new Error(`Support attachment upload failed: ${body.slice(0,160)}`),{status:502,code:"ATTACHMENT_UPLOAD_FAILED"})}
   return {path,name:safeText(name||`capture.${ext}`,160)};
 }
-async function signedAttachment(path){if(!path)return null;const r=await fetch(`${sbUrl()}/storage/v1/object/sign/warboost-support/${path}`,{method:"POST",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":"application/json"},body:JSON.stringify({expiresIn:300})});if(!r.ok)return null;const j=await r.json().catch(()=>({}));const p=j?.signedURL||j?.signedUrl;return p?`${sbUrl()}/storage/v1${p.startsWith("/")?p:`/${p}`}`:null}
+async function signedAttachment(path){if(!path)return null;const r=await fetchWithTimeout(`${sbUrl()}/storage/v1/object/sign/warboost-support/${path}`,{method:"POST",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":"application/json"},body:JSON.stringify({expiresIn:300})},7000,{code:"ATTACHMENT_SIGN_TIMEOUT",message:"Support attachment link timed out"});if(!r.ok)return null;const j=await r.json().catch(()=>({}));const p=j?.signedURL||j?.signedUrl;return p?`${sbUrl()}/storage/v1${p.startsWith("/")?p:`/${p}`}`:null}
 async function messagesFor(ticketIds){if(!ticketIds.length)return [];const ids=ticketIds.map(x=>`"${String(x).replace(/"/g,"")}"`).join(",");return await rest(`wb1_support_messages?ticket_id=in.(${encodeURIComponent(ids)})&select=id,ticket_id,author_kind,author_player_id,author_email,body,created_at&order=created_at.asc&limit=1000`).catch(()=>[])}
 function enrich(tickets,messages){const map=new Map();for(const m of messages||[]){if(!map.has(m.ticket_id))map.set(m.ticket_id,[]);map.get(m.ticket_id).push(m)}return (tickets||[]).map(t=>({...t,messages:map.get(t.id)||[]}))}
 async function ownTicket(id,playerId){const rows=await rest(`wb1_support_tickets?id=eq.${encodeURIComponent(id)}&player_id=eq.${encodeURIComponent(playerId)}&select=*&limit=1`);return rows?.[0]||null}
