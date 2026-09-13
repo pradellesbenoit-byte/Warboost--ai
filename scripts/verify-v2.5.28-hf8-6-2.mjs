@@ -71,7 +71,7 @@ const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.l
 for(const [code] of explicit){const tr=translator(code);for(const k of ['roster_scan_reanalyze','roster_identity_existing','roster_identity_former','roster_identity_new','roster_identity_possible','roster_identity_use_match','roster_identity_ambiguous','roster_identity_unresolved_block'])assert.notEqual(tr(k),k,`${code} missing ${k}`)}
 
 // Version/cache/health/security contracts.
-assert.match(html,/V2\.5\.28 HF8\.6\.(?:2|17)/);assert.match(manifest.name,/HF8\.6\.(?:2|17)/);assert.match(pkg.description,/HF8\.6\.(?:2|17)/);assert.match(sw,/hf8-6-2-reliable-roster-identity/);assert.match(health,/ui_revision_final:"hf8\.6\.2-reliable-roster-identity"/);
+assert.match(html,/V2\.5\.28 HF8\.6\.(?:2|17|18)/);assert.match(manifest.name,/HF8\.6\.(?:2|17|18)/);assert.match(pkg.description,/HF8\.6\.(?:2|17|18)/);assert.match(sw,/hf8-6-2-reliable-roster-identity/);assert.match(health,/ui_revision_final:"hf8\.6\.2-reliable-roster-identity"/);
 for(const flag of ['alliance_roster_identity_power_never_identity','alliance_roster_identity_alliance_tag_prefix_removed','alliance_roster_identity_exact_existing_updates_in_place','alliance_roster_identity_fuzzy_match_requires_confirmation','alliance_roster_identity_unresolved_blocks_import','alliance_roster_member_power_history_preserved'])assert.match(health,new RegExp(`${flag}:true`));
 assert.match(pkg.scripts.check,/roster-identity-resolution\.js/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-6-2\.mjs/);
 assert.doesNotMatch(app,/localStorage\.clear\s*\(/);

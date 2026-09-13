@@ -10,15 +10,15 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const app=read('app.js'),html=read('index.html'),i18n=read('i18n.js'),health=read('api/health.js'),sw=read('sw.js'),manifest=read('manifest.webmanifest'),pkg=JSON.parse(read('package.json'));
 
 // Release identity must be trustworthy on the actual player device.
-assert.match(app,/const RELEASE_LABEL="HF8\.6\.17"/);
-assert.match(html,/HF8\.6\.17/);
-assert.match(html,/\/app\.js\?v=hf8617/);
-assert.match(html,/\/publisher-ui\.js\?v=hf8617/);
-assert.match(sw,/warboost-v2-5-28-hf8-6-17-cloud-profile-restore-reliability/);
+assert.match(app,/const RELEASE_LABEL="HF8\.6\.(?:17|18)"/);
+assert.match(html,/HF8\.6\.(?:17|18)/);
+assert.match(html,/\/app\.js\?v=hf861(?:7|8)/);
+assert.match(html,/\/publisher-ui\.js\?v=hf861(?:7|8)/);
+assert.match(sw,/(?:warboost-v2-5-28-hf8-6-17-cloud-profile-restore-reliability|warboost-v2-5-28-hf8-6-18-fast-login-restore)/);
 assert.match(sw,/"\/lib\/cloud-profile-direct\.js"/);
-assert.match(manifest,/HF8\.6\.17/);
-assert.match(pkg.description,/HF8\.6\.17/);
-assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.17/);
+assert.match(manifest,/HF8\.6\.(?:17|18)/);
+assert.match(pkg.description,/HF8\.6\.(?:17|18)/);
+assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.(?:17|18)/);
 assert.doesNotMatch(i18n.slice(i18n.lastIndexOf('V2528_HF8_6_11_PLAYER_RELIABILITY')),/target\.tagline=`V2\.5\.28 HF8\.6\.11/);
 
 // The exact current bug: a meaningful local fallback must never stop an authenticated cloud retry.
@@ -30,13 +30,13 @@ assert.match(sessionBlock,/scheduleCloudPullRetry\(\);/);
 assert.match(sessionBlock,/same token|cloudProfileVerified/);
 assert.match(app,/lastAppliedSessionKey===key[\s\S]{0,180}cloudProfileVerified/);
 assert.match(app,/await applySession\(session\);/);
-assert.match(app,/if\(betaConsentAccepted\(\)&&!cloudProfileVerified\)\{[\s\S]{0,500}await pullServerState\(seed\)/);
+assert.match(app,/if\(betaConsentAccepted\(\)&&!cloudProfileVerified\)\{[\s\S]{0,500}await pullServerState\(seed(?:,\{fastRestore:true\})?\)/);
 assert.match(sessionBlock,/catch\(error\)\{[\s\S]{0,700}scheduleCloudPullRetry\(1500\)/);
 assert.match(app,/if\(!cloudProfileVerified&&cloudSession\?\.access_token&&betaConsentAccepted\(\)\)pullServerState/);
 
 // Consent activation must attempt the authoritative state route even if betaState was not yet hydrated.
 const consentLine=app.match(/\$\("#betaConsent"\)\?\.addEventListener\("change",async e=>\{[^\n]+/s)?.[0]||'';
-assert.match(consentLine,/await pullServerState\(safeClone\(state\)\)/);
+assert.match(consentLine,/await pullServerState\(safeClone\(state\)(?:,\{fastRestore:true\})?\)/);
 assert.doesNotMatch(consentLine,/if\(cloudSession\?\.access_token&&betaAccessAllowed\(\)\)/);
 
 // While the invite lookup is running, never display the legacy "not configured" fail-open state.

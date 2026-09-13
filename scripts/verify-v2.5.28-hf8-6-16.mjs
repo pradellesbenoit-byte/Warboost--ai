@@ -6,7 +6,7 @@ import {createWarBoostSupabaseAuthClient} from '../lib/browser-auth.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const app=read('app.js'),html=read('index.html'),health=read('api/health.js'),sw=read('sw.js'),pkg=JSON.parse(read('package.json'));
-assert.match(app,/const RELEASE_LABEL="HF8\.6\.(?:16|17)"/);
+assert.match(app,/const RELEASE_LABEL="HF8\.6\.(?:16|17|18)"/);
 assert.match(app,/async function ensureAuthenticatedSessionApplied\(data\)/);
 assert.match(app,/const \{data,error\}=await cloud\.auth\.signInWithPassword/);
 assert.match(app,/await ensureAuthenticatedSessionApplied\(data\);[\s\S]{0,260}authMessage\(cloudProfileVerified\?t\("auth_success"\)/);
@@ -15,14 +15,14 @@ assert.match(app,/await ensureAuthenticatedSessionApplied\(data\);[\s\S]{0,320}a
 assert.match(app,/if\(data\?\.session\)\{await ensureAuthenticatedSessionApplied\(data\)/);
 assert.match(app,/await applySession\(session\)/);
 assert.match(app,/if\(!cloudSession\?\.user\?\.id\)throw Object\.assign\(new Error\("WarBoost session was not applied"\)/);
-assert.match(html,/HF8\.6\.(?:16|17)/);
-assert.match(html,/\/app\.js\?v=hf861(?:6|7)/);
-assert.match(html,/\/publisher-ui\.js\?v=hf861(?:6|7)/);
-assert.match(sw,/hf8-6-16-auth-session-commit-reliability/);
+assert.match(html,/HF8\.6\.(?:16|17|18)/);
+assert.match(html,/\/app\.js\?v=hf861(?:6|7|8)/);
+assert.match(html,/\/publisher-ui\.js\?v=hf861(?:6|7|8)/);
+assert.match(sw,/(?:hf8-6-16-auth-session-commit-reliability|hf8-6-18-fast-login-restore)/);
 assert.match(health,/auth_success_requires_applied_session:true/);
 assert.match(health,/auth_returned_session_direct_apply:true/);
 assert.match(health,/auth_module_cache_bust:true/);
-assert.match(pkg.description,/HF8\.6\.(?:16|17)/);
+assert.match(pkg.description,/HF8\.6\.(?:16|17|18)/);
 
 // Dynamic auth contract: a successful password call returns the same session and emits SIGNED_IN.
 const storageMap=new Map();

@@ -55,7 +55,7 @@ const blankBranch=apply.match(/else\{\n\s*\/\/ Critical HF8\.6\.12 guard[\s\S]*?
 assert.ok(blankBranch,'blank-login guard branch missing');
 assert.doesNotMatch(blankBranch,/safeLocalSet\(STORE_KEY/,'blank placeholder must never overwrite local storage before cloud pull');
 assert.match(apply,/state=loginSeed\?mergeState\(initialState\(\),loginSeed\):initialState\(\)/);
-assert.match(apply,/(?:const|let) pulled=await pullServerState\(loginSeed\)/);
+assert.match(apply,/(?:const|let) pulled=await pullServerState\(loginSeed(?:,\{fastRestore:true\})?\)/);
 assert.match(apply,/scheduleCloudPullRetry\(\)/);
 
 // 5) Blank state can never be POSTed over a valid cloud profile.
@@ -67,7 +67,7 @@ assert.match(push,/keepalive_payload_too_large/);
 assert.match(push,/outbound\.sync=\{[\s\S]*?last_error:null,pending_cloud_save:false/);
 
 // 6) Cloud pull has a direct recovery path that does not depend on legacy merge helpers.
-const pull=app.match(/async function pullServerState\(loginSeed=null\)\{[\s\S]*?\n\}\n\nasync function refreshServerTime/)?.[0]||'';
+const pull=app.match(/async function pullServerState\(loginSeed=null(?:,\{fastRestore=false\}=\{\})?\)\{[\s\S]*?\n\}\n\nasync function refreshServerTime/)?.[0]||'';
 assert.ok(pull,'pullServerState block missing');
 assert.match(pull,/const remote=hydrateCloudState\(j\.state,initialState\(\),userId\)/);
 assert.match(pull,/if\(!hasMeaningfulCore\(state\)&&hasMeaningfulCore\(remote\)\)merged=remote/);

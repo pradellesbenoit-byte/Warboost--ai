@@ -13,7 +13,7 @@ assert.match(block,/void movePendingScans\(previousPendingOwner,nextPendingOwner
 assert.match(block,/void restorePendingScans\(\)/);
 assert.match(block,/finally\{[\s\S]*cloudHydrationPending=false;[\s\S]*render\(\);renderAuth\(\);renderBeta\(\);renderPro\(\);renderSupportAccess\(\);/);
 assert.match(app,/fetchSessionCritical\("\/api\/pro",\{cache:"no-store",headers:authHeaders\(\)\},8000\)/);
-assert.match(app,/fetchSessionCritical\("\/api\/state",\{cache:"no-store",headers:authHeaders\(\)\},12000\)/);
+assert.match(app,/(?:fetchSessionCritical\("\/api\/state",\{cache:"no-store",headers:authHeaders\(\)\},12000\)|stateTimeout=fastRestore\?6500:12000)/);
 assert.match(html,/HF8\.6\.14/);
 assert.match(sw,/hf8-6-14-session-apply-unblock/);
 assert.match(health,/ui_revision_session_apply_unblock:"hf8\.6\.14-session-apply-unblock"/);
