@@ -29,6 +29,7 @@ export default async function handler(req,res){
     build:"hf8-commercial-readiness",
     ui_revision:"hf8.5-vs-freshness-guard",
     ui_revision_final:"hf8.6.12-cloud-restore-guard",
+    ui_revision_verified_access_restore:"hf8.6.13-verified-cloud-access-restore",
     previous_future_player_revision:"hf8.6.11-future-player-reliability",
     previous_roster_integrity_revision:"hf8.6.10-roster-integrity",
     previous_association_revision:"hf8.6.8-association-keeps-roster-identity",
@@ -51,6 +52,9 @@ export default async function handler(req,res){
     large_mobile_keepalive_guard:true,
     transient_sync_error_not_persisted:true,
     server_cloud_restore_before_sync:true,
+    verified_state_read_unlocks_private_data:true,
+    pro_status_failure_does_not_hide_verified_data:true,
+    state_restore_attempts_without_pro_status:true,
     // Legacy verification marker retained: ui_revision_final:"hf8.6.2-reliable-roster-identity"
     alliance_rank_manager_batch_r1_r4:true,
     alliance_rank_manager_r5_protected:true,
