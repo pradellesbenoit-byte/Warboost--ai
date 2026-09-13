@@ -1,3 +1,7 @@
+## HF8.6.8 — Association Keeps Roster Identity
+
+Corrige un cas réel observé après « Vérifier l’association » : un compte WarBoost pouvait avoir un ancien rang déclaré (ex. `[ALL4]ToyN` = R5) alors que le roster canonique Last War contenait `ToyN` = R4. L’association enrichit désormais le membre sans jamais remplacer son pseudo canonique, son rang de roster ni son historique de présence. Le joueur reste visible dans son grade actuel après association. Aucune migration Supabase.
+
 # WarBoost V2.5.28 HF8.6.6 — Scan Persistence Reliability
 
 HF8.6.6 corrige la persistance des captures pour les nouveaux comptes et les téléphones mobiles : captures Scan et file de captures roster conservées temporairement sur l’appareil (IndexedDB, cloisonnées par compte, TTL 48 h), résultats structurés sauvegardés localement + WarBoost Cloud, reprise automatique des sauvegardes cloud après réseau/fermeture mobile, détection des scans vides et rafraîchissement PWA/service worker plus fiable. Les images brutes ne sont pas enregistrées dans le profil cloud. Aucun changement de schéma Supabase n’est requis.
