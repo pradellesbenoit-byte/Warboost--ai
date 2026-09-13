@@ -1,0 +1,12 @@
+WARBOOST V2.5.28 HF8.6.18 — INSTALLATION
+
+Base required: HF8.6.17 on branch public-beta-safe-launch.
+1. Decompress the PATCH.
+2. Upload its CONTENTS to the repository root, replacing same-name files.
+3. Do not delete any other file.
+4. Do not modify Supabase.
+5. Wait for Vercel Preview/branch deployment to be Ready.
+6. Open /api/health and verify ui_revision_fast_login_restore = hf8.6.18-fast-login-restore and auth_fast_profile_restore_endpoint = true.
+7. Open beta.warboost.fr/?hf=8618, wait up to 8 seconds, then verify Account + Player profile restore.
+
+Do not deploy to main / Production until the real phone smoke test passes.

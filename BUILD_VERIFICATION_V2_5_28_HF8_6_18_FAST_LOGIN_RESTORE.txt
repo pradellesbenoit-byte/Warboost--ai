@@ -1,0 +1,12 @@
+WARBOOST V2.5.28 HF8.6.18 — FAST LOGIN RESTORE
+
+Target: public-beta-safe-launch only.
+
+Fix:
+- Login-critical cloud restore uses /api/state?restore=1.
+- Fast route validates authenticated beta access + consent exactly like /api/state.
+- Fast route returns wb1_profiles state before historical hero recovery and canonical alliance reconciliation.
+- Heavy full GET/POST behavior remains unchanged for normal synchronization.
+- Existing cloud, scan, alliance, VS, season, support and Safe Launch safeguards retained.
+
+No Supabase migration. No file deletion. Payments remain disabled.

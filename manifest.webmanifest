@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.17 — Cloud Profile Restore Reliability Beta",
+  "name": "WarBoost V2.5.28 HF8.6.18 — Fast Login Restore Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.17 — session bootstrap single-flight, cloud profile retry even with meaningful local fallback, and read-only own-profile Supabase RLS recovery after verified beta access. HF8.6.16 auth session commit and prior Safe Launch safeguards retained.",
+  "description": "WarBoost V2.5.28 HF8.6.18 — lightweight authenticated profile restore on login before expensive history and alliance reconciliation. HF8.6.17 cloud recovery and prior Safe Launch safeguards retained.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
