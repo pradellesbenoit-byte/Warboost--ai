@@ -1,0 +1,30 @@
+WarBoost V2.5.28 HF8.6.20 — Verified Login Isolation
+Base required: HF8.6.19 Public Beta Full Reliability
+Branch: public-beta-safe-launch only
+
+Purpose:
+- Fix authenticated session stuck on “Synchronisation…” while local squads remain visible.
+- Run beta invitation verification and profile read in parallel after one authenticated-user verification.
+- Hide all private Player/Alliance/VS/Season data while beta access is still in the checking state.
+- Keep account-scoped cached data only as a fallback after access is verified.
+- Preserve all HF8.6.19 Player / Scan / PRO / Alliance R1-R5 / R4-R5 / VS / Season / Support safeguards.
+
+Files replaced:
+app.js
+i18n.js
+index.html
+manifest.webmanifest
+package.json
+sw.js
+api/health.js
+api/state.js
+lib/beta-access.js
+lib/supabase.js
+scripts/verify-v2.5.28-hf8-6-19.mjs
+
+File added:
+scripts/verify-v2.5.28-hf8-6-20.mjs
+
+No Supabase migration.
+No file deletion.
+Do not apply to main or publisher-demo.

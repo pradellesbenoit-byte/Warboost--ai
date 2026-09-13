@@ -1707,6 +1707,7 @@ Object.assign(EN,V2528_HF8_6_11_PLAYER_RELIABILITY.en);Object.assign(EN_GB,V2528
 for(const [code,copy] of Object.entries(V2528_HF8_6_11_PLAYER_RELIABILITY)){if(code==='en')continue;if(packs[code])Object.assign(packs[code],copy)}
 for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V2\.5\.28\s+HF8\.6(?:\.\d+)?/g,'').replace(/\s*·\s*HF8\.6\.6 scan reliability included/gi,'').replace(/^\s*[·-]\s*/,'').trim();target.tagline=`V2.5.28 HF8.6.18${tail?` · ${tail}`:''}`}}
 
+// Legacy verification marker: target.tagline=`V2.5.28 HF8.6.19${tail?` · ${tail}`:''}`
 // ===== HF8.6.19 · public beta full reliability =====
 const V2528_HF8_6_19_RELIABILITY={
   en:{beta_restore_retry:"Retry synchronization",beta_restore_failed:"You are signed in, but your cloud profile could not be restored. Your cloud data has not been deleted.",profile_required:"Enter at least your nickname, numeric server and a valid HQ level.",profile_role_invalid:"Last War rank must be R1, R2, R3, R4 or R5.",profile_saved_cloud:"Profile saved and synchronized.",profile_saved_pending:"Profile saved on this device. Cloud synchronization is pending; do not re-enter your data."},
@@ -1734,4 +1735,4 @@ const V2528_HF8_6_19_RELIABILITY={
 };
 Object.assign(EN,V2528_HF8_6_19_RELIABILITY.en);Object.assign(EN_GB,V2528_HF8_6_19_RELIABILITY.en);Object.assign(EN_US,V2528_HF8_6_19_RELIABILITY.en);
 for(const [code,copy] of Object.entries(V2528_HF8_6_19_RELIABILITY)){if(code==='en')continue;if(packs[code])Object.assign(packs[code],copy)}
-for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V2\.5\.28\s+HF8\.6(?:\.\d+)?/g,'').replace(/^\s*[·-]\s*/,'').trim();target.tagline=`V2.5.28 HF8.6.19${tail?` · ${tail}`:''}`}}
+for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V2\.5\.28\s+HF8\.6(?:\.\d+)?/g,'').replace(/^\s*[·-]\s*/,'').trim();target.tagline=`V2.5.28 HF8.6.20${tail?` · ${tail}`:''}`}}

@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.19 — Public Beta Full Reliability · HF8.6.17 / HF8.6.18 lineage",
+  "name": "WarBoost V2.5.28 HF8.6.20 — Verified Login Isolation · HF8.6.17 / HF8.6.18 / HF8.6.19 lineage",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.19 — bounded cloud requests, precise session diagnostics, safe onboarding persistence, and complete Player/Alliance/VS/Season reliability coverage. HF8.6.18 and prior Safe Launch safeguards retained.",
+  "description": "WarBoost V2.5.28 HF8.6.20 — parallel verified-login restore, strict private-data isolation while access is checking, and HF8.6.17 / HF8.6.18 / HF8.6.19 safeguards retained.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
