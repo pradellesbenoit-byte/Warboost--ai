@@ -1,13 +1,18 @@
 import {configured,userConfigured,getProfile,upsertProfile,getProfileForUser,upsertProfileForUser,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster} from "../lib/supabase.js";
 import {normalizeState} from "../lib/normalize.js";
 import {recoverHeroData,heroDataSignature} from "../lib/hero-history.js";
-import {requireBetaUser} from "../lib/beta-access.js";
+import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../lib/beta-access.js";
+import {requireUser} from "../lib/auth.js";
 import {mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {mergeRosterLifecycleMetadata,currentActiveRosterMembers} from "../lib/alliance-roster-lifecycle.js";
 
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 function recoverySummary(r){return {changed:Boolean(r?.changed),recovered_fields:Number(r?.recovered_fields||0),recovered_heroes:Array.isArray(r?.recovered_heroes)?r.recovered_heroes:[],conflicts:Array.isArray(r?.conflicts)?r.conflicts:[],sources:Array.isArray(r?.sources)?r.sources:[]}}
+function fastRestoreRequested(req){return String(req.query?.restore||"")==="1"||(()=>{try{return new URL(req.url||"/","http://localhost").searchParams.get("restore")==="1"}catch{return false}})()}
+function betaConsentHeader(req){return String(req.headers?.["x-warboost-beta-consent"]||"").trim()}
+function betaAccessError(beta){if(!beta?.configured)return {status:503,code:"BETA_INVITES_NOT_CONFIGURED",message:"Le registre d’invitations WarBoost doit être configuré avant l’ouverture de la bêta."};if(beta?.allowed)return null;const status=String(beta?.access_status||"");return {status:403,code:status==="revoked"?"BETA_INVITE_REVOKED":status==="expired"?"BETA_INVITE_EXPIRED":"BETA_INVITE_REQUIRED",message:status==="revoked"?"Accès bêta WarBoost révoqué":status==="expired"?"Invitation bêta WarBoost expirée":"Invitation bêta WarBoost requise"}}
+function orderedRestoreTrace(trace){const order={AUTH_USER:0,BETA_INVITE:1,BETA_ACCEPT:2,PROFILE_READ:3};return [...trace].sort((a,b)=>(order[a?.stage]??50)-(order[b?.stage]??50))}
 
 // HF8.6.10: a generic player-state save must never overwrite the authoritative
 // Last War roster identity/rank/known metrics with stale browser data.
@@ -67,7 +72,29 @@ export default async function handler(req,res){
   const restoreTrace=[],trace=entry=>{if(entry&&restoreTrace.length<12)restoreTrace.push(entry)};
   try{
     if(!configured()&&!userConfigured())return res.status(503).json({error:"database_not_configured",message:"Le serveur fonctionne en mode local tant que Supabase V1 n'est pas configuré."});
-    const {user}=await requireBetaUser(req,{consent:true,trace}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access);
+    const access=accessToken(req),fastRestore=req.method==="GET"&&fastRestoreRequested(req);
+
+    // HF8.6.20 login-critical path: authenticate once, then validate the invitation and read the
+    // verified user's profile in parallel. HF8.6.19 performed AUTH -> INVITE -> PROFILE serially
+    // while the browser aborted at 6.5 s; on a Vercel cold start this could never reliably finish.
+    if(fastRestore){
+      const authStarted=Date.now();let user;
+      try{user=await requireUser(req);trace({stage:"AUTH_USER",ms:Math.max(0,Date.now()-authStarted),status:"ok",error:null})}
+      catch(error){trace({stage:"AUTH_USER",ms:Math.max(0,Date.now()-authStarted),status:"error",error:String(error?.code||error?.name||"auth_failed")});throw error}
+      if(betaConsentHeader(req)!==BETA_CONSENT_VERSION)return res.status(428).json({error:"BETA_CONSENT_REQUIRED",message:"Consentement bêta requis avant l'envoi de données",restore_trace:orderedRestoreTrace(restoreTrace)});
+      const playerId=String(user.id),profileStarted=Date.now();
+      const profilePromise=(configured()?getProfile(playerId,{timeoutMs:4000}):getProfileForUser(playerId,access,{timeoutMs:4000}))
+        .then(row=>{trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"ok",error:null});return row})
+        .catch(error=>{trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"error",error:String(error?.code||error?.name||"profile_read_failed")});throw error});
+      const betaPromise=betaAccessForUserAsync(user,{trace,inviteTimeoutMs:3500,acceptTimeoutMs:900});
+      const [beta,row]=await Promise.all([betaPromise,profilePromise]);
+      const accessError=betaAccessError(beta);if(accessError)return res.status(accessError.status).json({error:accessError.code,message:accessError.message,restore_trace:orderedRestoreTrace(restoreTrace)});
+      if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
+      const current=normalizeState({...row.state,player_id:playerId});
+      return res.status(200).json({ok:true,state:current,updated_at:row?.updated_at||current.updated_at,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"deferred_fast_restore"},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
+    }
+
+    const {user}=await requireBetaUser(req,{consent:true,trace}),playerId=user.id,userMode=userConfigured()&&Boolean(access);
     const getOwn=()=>userMode?getProfileForUser(playerId,access):getProfile(playerId);
     const saveOwn=state=>userMode?upsertProfileForUser(playerId,state,access):upsertProfile(playerId,state);
     const snapshotOwn=(state,source)=>userMode?insertSnapshotForUser(playerId,state,access,source):insertSnapshot(playerId,state,source);
@@ -78,13 +105,9 @@ export default async function handler(req,res){
       let row;
       try{row=await getOwn();trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"ok",error:null})}
       catch(error){trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"error",error:String(error?.code||error?.name||"profile_read_failed")});throw error}
-      const fastRestore=String(req.query?.restore||"")==="1"||(()=>{try{return new URL(req.url||"/","http://localhost").searchParams.get("restore")==="1"}catch{return false}})();
-      if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:userMode?"user-rls":"service",restore_mode:fastRestore?"fast-profile":"full",restore_trace:restoreTrace});
+      if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:userMode?"user-rls":"service",restore_mode:"full",restore_trace:restoreTrace});
       const current=normalizeState({...row.state,player_id:playerId});
-      // HF8.6.18 login restore: return the authenticated player row immediately. Historical hero
-      // recovery and canonical alliance reconciliation remain available on the normal GET/POST path
-      // but can be too expensive for the login-critical path on mobile/Vercel cold starts.
-      if(fastRestore)return res.status(200).json({ok:true,state:current,updated_at:row?.updated_at||current.updated_at,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"deferred_fast_restore"},access_mode:userMode?"user-rls":"service",restore_mode:"fast-profile",restore_trace:restoreTrace});
+      // Legacy HF8.6.18 verifier marker only: fastRestore; restore_mode:"fast-profile"; status:"deferred_fast_restore"; if(fastRestore)return
       let snapshots=[];try{snapshots=await historyOwn(100)}catch{}
       const recovered=recoverHeroData(current,{historicalStates:(snapshots||[]).map(x=>({state:x?.state,captured_at:x?.captured_at,source:x?.source||"wb1_snapshots"}))});
       let finalState=normalizeState({...recovered.state,player_id:playerId}),updatedAt=row.updated_at||finalState.updated_at;

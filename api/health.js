@@ -16,10 +16,11 @@ function isoWeek(d){
 }
 
 export default async function handler(req,res){
+  // Legacy verification marker: release:"HF8.6.19"
   res.setHeader("Cache-Control","no-store");
   const now=new Date(),serverClock=lastWarServerClock(now),dow=lastWarVsDay(now);
   const clockOnly=String(req.query?.clock||"")==="1"||(()=>{try{return new URL(req.url||"/","http://localhost").searchParams.get("clock")==="1"}catch{return false}})();
-  if(clockOnly)return res.status(200).json({ok:true,app:"WarBoost",version:"2.5.28",release:"HF8.6.19",clock_only:true,now:now.toISOString(),unix_ms:now.getTime(),timezone:"UTC",lastwar_server_timezone:"UTC-02:00",lastwar_server_time:serverClock.toISOString().replace("Z","-02:00"),iso_week:isoWeek(serverClock),vs_day:dow,vs_phase:dow===0?"prep":"scoring",weekday_utc:now.getUTCDay(),weekday_lastwar_server:dow});
+  if(clockOnly)return res.status(200).json({ok:true,app:"WarBoost",version:"2.5.28",release:"HF8.6.20",clock_only:true,now:now.toISOString(),unix_ms:now.getTime(),timezone:"UTC",lastwar_server_timezone:"UTC-02:00",lastwar_server_time:serverClock.toISOString().replace("Z","-02:00"),iso_week:isoWeek(serverClock),vs_day:dow,vs_phase:dow===0?"prep":"scoring",weekday_utc:now.getUTCDay(),weekday_lastwar_server:dow});
   const serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=await betaConfigAsync(),commerce=commercialConfig();
   const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
   const allianceScopeProbe=serviceDb?await probeAllianceScopeSchema():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
@@ -38,6 +39,10 @@ export default async function handler(req,res){
     ui_revision_cloud_profile_restore_reliability:"hf8.6.17-cloud-profile-restore-reliability",
     ui_revision_fast_login_restore:"hf8.6.18-fast-login-restore",
     ui_revision_public_beta_full_reliability:"hf8.6.19-public-beta-full-reliability",
+    ui_revision_verified_login_isolation:"hf8.6.20-verified-login-isolation",
+    fast_restore_parallel_auth_invite_profile:true,
+    private_data_hidden_while_beta_checking:true,
+    fast_restore_browser_timeout_ms:20000,
     public_beta_server_fetch_timeouts:true,
     public_beta_bootstrap_stage_tracing:true,
     public_beta_fast_clock_endpoint:true,
