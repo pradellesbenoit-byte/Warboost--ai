@@ -1,0 +1,10 @@
+WarBoost V2.5.28 HF8.6.16 patch files:
+- app.js
+- index.html
+- sw.js
+- package.json
+- api/health.js
+- scripts/verify-v2.5.28-hf8-6-16.mjs
+- README_HF8.6.16.txt
+- UPLOAD_GUIDE_V2_5_28_HF8_6_16_AUTH_SESSION_COMMIT_RELIABILITY.txt
+- PATCH_MANIFEST_V2_5_28_HF8_6_16.txt

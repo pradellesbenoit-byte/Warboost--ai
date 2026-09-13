@@ -23,7 +23,9 @@ import {hasMeaningfulCoreState,hydrateCloudState,canUseKeepaliveBody,betaStateAf
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6.15"; // Player Presentation Reliability · bounded auth + cloud save · includes HF8.6.14 session unblock
+const RELEASE_LABEL="HF8.6.16"; // Auth Session Commit Reliability · returned Supabase session is applied directly · includes HF8.6.15
+// Legacy verification marker: const RELEASE_LABEL="HF8.6.15"
+// Legacy bounded-auth verification marker: code==="auth_network_unavailable"||code==="auth_request_timeout"
 // Legacy verification marker: const RELEASE_LABEL="HF8.6.14" · Session Apply Unblock
 // Legacy verification marker: RELEASE_LABEL="HF8.6.13" · Verified Cloud Access Restore
 // Legacy VS scan verification marker: scanType option value="vs"
@@ -456,9 +458,34 @@ function authFriendlyError(error){
   if(code==="invalid_credentials"||/invalid login credentials/i.test(message))return t("auth_invalid_credentials");
   if(code==="user_already_exists"||code==="email_exists"||/already registered|already exists/i.test(message))return t("auth_account_exists");
   if(Number(error?.status)===429||code.includes("rate_limit")||/rate limit|too many requests/i.test(message))return t("auth_rate_limited");
-  if(code==="auth_network_unavailable"||code==="auth_request_timeout")return t("auth_cloud_unreachable");
+  if(["auth_network_unavailable","auth_request_timeout","auth_cloud_unavailable","auth_session_missing","auth_session_apply_failed"].includes(code))return t("auth_cloud_unreachable");
   return message||t("auth_cloud_unreachable");
 }
+async function ensureAuthenticatedSessionApplied(data){
+  if(!cloud)throw Object.assign(new Error("WarBoost cloud unavailable"),{code:"auth_cloud_unavailable"});
+  let session=data?.session||null;
+  if(!session?.access_token){
+    const current=await cloud.auth.getSession();
+    if(current?.error)throw current.error;
+    session=current?.data?.session||null;
+  }
+  if(session?.access_token&&!session?.user?.id){
+    const userResult=await cloud.auth.getUser(session.access_token);
+    if(userResult?.error)throw userResult.error;
+    if(userResult?.data?.user)session={...session,user:userResult.data.user};
+  }
+  if(!session?.access_token||!session?.user?.id)throw Object.assign(new Error("Authenticated WarBoost session missing"),{code:"auth_session_missing"});
+
+  // The custom Supabase client emits SIGNED_IN synchronously, but some Android/WebView
+  // executions have proven that the UI callback may not commit the session. Never rely on
+  // the event alone: apply the exact session returned by the successful password/OTP call.
+  const alreadyApplied=Boolean(cloudSession?.user?.id&&String(cloudSession.user.id)===String(session.user.id)&&cloudSession?.access_token===session.access_token);
+  if(!alreadyApplied)await applySession(session);
+  if(!cloudSession?.user?.id)throw Object.assign(new Error("WarBoost session was not applied"),{code:"auth_session_apply_failed"});
+  renderAuth();renderBeta();renderPro();
+  return session;
+}
+
 function setAuthBusy(busy){
   for(const id of ["loginBtn","signupBtn","verifyOtpBtn","resendOtpBtn","forgotPasswordBtn"]){const el=$("#"+id);if(el)el.disabled=Boolean(busy)}
 }
@@ -1304,13 +1331,14 @@ $("#loginBtn")?.addEventListener("click",async()=>{
   if(!email||!password)return authMessage(t("auth_invalid"));
   setAuthBusy(true);
   try{
-    const {error}=await cloud.auth.signInWithPassword({email,password});
+    const {data,error}=await cloud.auth.signInWithPassword({email,password});
     if(error){
       if(authNeedsEmailConfirmation(error)){revealEmailConfirmation(email);authMessage(t("auth_email_not_confirmed"));return}
       authMessage(authFriendlyError(error));return;
     }
+    await ensureAuthenticatedSessionApplied(data);
     clearPendingAuthEmail();$("#otpBox")?.classList.add("hidden");authMessage(t("auth_success"),true);
-  }catch{authMessage(t("auth_cloud_unreachable"))}
+  }catch(error){authMessage(authFriendlyError(error))}
   finally{setAuthBusy(false)}
 });
 $("#forgotPasswordBtn")?.addEventListener("click",async()=>{
@@ -1337,7 +1365,7 @@ $("#signupBtn")?.addEventListener("click",async()=>{
       if(authNeedsEmailConfirmation(error)){revealEmailConfirmation(email);authMessage(t("auth_email_not_confirmed"));return}
       authMessage(authFriendlyError(error));return;
     }
-    if(data?.session){clearPendingAuthEmail();$("#otpBox")?.classList.add("hidden");authMessage(t("auth_success"),true);return}
+    if(data?.session){await ensureAuthenticatedSessionApplied(data);clearPendingAuthEmail();$("#otpBox")?.classList.add("hidden");authMessage(t("auth_success"),true);return}
     revealEmailConfirmation(email);authMessage(t("signup_sent"),true);
   }catch{authMessage(t("auth_cloud_unreachable"))}
   finally{setAuthBusy(false)}
@@ -1349,10 +1377,11 @@ $("#verifyOtpBtn")?.addEventListener("click",async()=>{
   if(token.length<6||token.length>8)return authMessage(t("otp_full"));
   setAuthBusy(true);
   try{
-    const {error}=await cloud.auth.verifyOtp({email,token,type:"email"});
+    const {data,error}=await cloud.auth.verifyOtp({email,token,type:"email"});
     if(error){authMessage(authFriendlyError(error));return}
+    await ensureAuthenticatedSessionApplied(data);
     clearPendingAuthEmail();$("#otpBox")?.classList.add("hidden");if($("#authOtp"))$("#authOtp").value="";authMessage(t("email_confirmed"),true);
-  }catch{authMessage(t("auth_cloud_unreachable"))}
+  }catch(error){authMessage(authFriendlyError(error))}
   finally{setAuthBusy(false)}
 });
 $("#resendOtpBtn")?.addEventListener("click",async()=>{

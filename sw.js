@@ -1,4 +1,5 @@
-const CACHE="warboost-v2-5-28-hf8-6-15-player-presentation-reliability";
+const CACHE="warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability";
+// Legacy verification marker: warboost-v2-5-28-hf8-6-15-player-presentation-reliability
 // Legacy verification marker: warboost-v2-5-28-hf8-6-14-session-apply-unblock
 // Legacy verification marker: warboost-v2-5-28-hf8-6-13-verified-cloud-access-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-12-cloud-restore-guard

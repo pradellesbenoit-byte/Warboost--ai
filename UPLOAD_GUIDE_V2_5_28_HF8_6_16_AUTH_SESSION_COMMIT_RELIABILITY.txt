@@ -1,0 +1,37 @@
+WARBOOST V2.5.28 HF8.6.16 — AUTH SESSION COMMIT RELIABILITY
+
+TARGET ONLY
+- GitHub branch: public-beta-safe-launch
+- Test URL: beta.warboost.fr after Vercel Preview is Ready
+- DO NOT modify main / Production / publisher-demo.
+
+BASE REQUIRED
+- WarBoost V2.5.28 HF8.6.15 already present on public-beta-safe-launch.
+
+WHY THIS PATCH EXISTS
+- A real Android case showed “Connexion réussie” while WarBoost still displayed Local.
+- Supabase password authentication succeeded, but the login handler ignored the returned session and relied only on onAuthStateChange.
+- HF8.6.16 directly applies the exact successful Supabase session before a success message is allowed.
+- If the auth event does not update the UI, the returned session is the fallback source of truth.
+- app.js and publisher-ui.js use an HF8.6.16 cache-busting URL so a stale mobile module cannot silently survive the deployment.
+
+INSTALLATION
+1. Decompress the PATCH.
+2. Copy the extracted CONTENT to the repository root of public-beta-safe-launch.
+3. Replace files with the same names.
+4. Do not delete any other file.
+5. Commit/push on public-beta-safe-launch only.
+6. Wait for the Vercel Preview deployment to be Ready.
+7. Fully close the old WarBoost tab/app once, then reopen beta.warboost.fr.
+8. Before login, confirm the home header says: WarBoost V2.5.28 HF8.6.16.
+9. Login. “Connexion réussie” must never coexist with the Local badge. The account section must switch to Connected and show the WarBoost account identity.
+
+NO SUPABASE CHANGE
+- No migration.
+- No table deletion.
+- No player data deletion.
+- No localStorage.clear().
+
+SAFE LAUNCH
+- Payments remain OFF.
+- Unauthorized Last War API/scraping/gameplay automation remain OFF.

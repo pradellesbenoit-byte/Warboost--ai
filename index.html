@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.28 HF8.6.15 — Player Presentation Reliability Beta</title>
+  <title>WarBoost V2.5.28 HF8.6.16 — Auth Session Commit Reliability Beta</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -13,7 +13,7 @@
   <!-- Legacy verification marker: WarBoost V2.5.28 HF8.6.11 -->
 </head>
 <body>
-  <!-- HF8.6.15: bounded Supabase Auth + foreground cloud writes; HF8.6.14 session unblock preserved. -->
+  <!-- HF8.6.16: successful Supabase auth session is committed directly before success is shown; HF8.6.15 safeguards preserved. -->
   <!-- Legacy HF8.6.14: Supabase session apply cannot be blocked by pending-scan IndexedDB work on Android. -->
   <!-- Legacy HF8.6.13: verified cloud access restore + HF8.6.12 cloud restore guard + large mobile state protection. -->
   <!-- Legacy HF8.6.8 verification marker: HF8.6.8 Association Keeps Roster Identity -->
@@ -26,7 +26,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.28 HF8.6.15 · Bêta publique · connexion renforcée · paiements désactivés</small></div>
+        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.28 HF8.6.16 · Bêta publique · session vérifiée · paiements désactivés</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -34,7 +34,7 @@
 
 
     <section class="publisherStrip" aria-label="Safe Launch beta status">
-      <div><b>WarBoost V2.5.28 HF8.6.15</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
+      <div><b>WarBoost V2.5.28 HF8.6.16</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
       <span class="publisherPill" data-i18n="safe_external_disabled">External game access disabled</span>
     </section>
 
@@ -259,7 +259,7 @@
     </div>
   </section>
 
-  <script type="module" src="/app.js"></script>
-  <script type="module" src="/publisher-ui.js"></script>
+  <script type="module" src="/app.js?v=hf8616"></script>
+  <script type="module" src="/publisher-ui.js?v=hf8616"></script>
 </body>
 </html>
