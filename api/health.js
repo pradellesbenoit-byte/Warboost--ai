@@ -28,7 +28,7 @@ export default async function handler(req,res){
     version:"2.5.28",
     build:"hf8-commercial-readiness",
     ui_revision:"hf8.5-vs-freshness-guard",
-    ui_revision_final:"hf8.6.7-alliance-association-reliability",
+    ui_revision_final:"hf8.6.8-association-keeps-roster-identity",
     previous_scan_persistence_revision:"hf8.6.6-scan-persistence-reliability",
     alliance_identity_leading_tag_normalization:true,
     alliance_identity_preserve_canonical_roster_name:true,
