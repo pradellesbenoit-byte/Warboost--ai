@@ -1,0 +1,35 @@
+WARBOOST V2.5.28 HF8.6.17 — PATCH MANIFEST
+Base: HF8.6.16
+Target: public-beta-safe-launch only
+
+Files added/updated:
+- BUILD_VERIFICATION_V2_5_28_HF8_6_17_CLOUD_PROFILE_RESTORE_RELIABILITY.txt
+- DELETE_FILES_V2_5_28_HF8_6_17.txt
+- README_HF8.6.17.txt
+- UPLOAD_GUIDE_V2_5_28_HF8_6_17_CLOUD_PROFILE_RESTORE_RELIABILITY.txt
+- api/health.js
+- app.js
+- i18n.js
+- index.html
+- lib/cloud-profile-direct.js
+- manifest.webmanifest
+- package.json
+- scripts/verify-v2.5.28-hf8-6-1.mjs
+- scripts/verify-v2.5.28-hf8-6-12.mjs
+- scripts/verify-v2.5.28-hf8-6-13.mjs
+- scripts/verify-v2.5.28-hf8-6-14.mjs
+- scripts/verify-v2.5.28-hf8-6-15.mjs
+- scripts/verify-v2.5.28-hf8-6-16.mjs
+- scripts/verify-v2.5.28-hf8-6-17.mjs
+- scripts/verify-v2.5.28-hf8-6-2.mjs
+- scripts/verify-v2.5.28-hf8-6-3.mjs
+- scripts/verify-v2.5.28-hf8-6-4.mjs
+- scripts/verify-v2.5.28-hf8-6-6.mjs
+- scripts/verify-v2.5.28-hf8-6-7.mjs
+- scripts/verify-v2.5.28-hf8-6-8.mjs
+- scripts/verify-v2.5.28.mjs
+- sw.js
+- PATCH_MANIFEST_V2_5_28_HF8_6_17_CLOUD_PROFILE_RESTORE_RELIABILITY.txt
+
+No application file deletion required.
+No Supabase migration required.

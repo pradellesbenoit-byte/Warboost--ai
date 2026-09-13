@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.15 — Player Presentation Reliability Beta · HF8.6.14 Session Apply Unblock preserved · HF8.6.13 Verified Cloud Restore preserved · HF8.6.12 Cloud Restore Guard preserved · HF8.6.11 reliability · HF8.6.2 identity included · HF8.6.3/HF8.6.4/HF8.6.6 preserved",
+  "name": "WarBoost V2.5.28 HF8.6.17 — Cloud Profile Restore Reliability Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.15 — bounded Supabase Auth requests and foreground cloud writes; valid sessions render immediately and pending scan/IndexedDB work cannot block Android login. HF8.6.14 session unblock, HF8.6.13 verified cloud restore, HF8.6.12 blank-state/large-state guards, HF8.6.10 roster integrity and legacy reliability HF8.6.2 · HF8.6.3 · HF8.6.4 · HF8.6.5 · HF8.6.6 · HF8.6.7 · HF8.6.8 · HF8.6.10 · HF8.6.11 · HF8.6.12 · HF8.6.13 · HF8.6.14 retained.",
+  "description": "WarBoost V2.5.28 HF8.6.17 — session bootstrap single-flight, cloud profile retry even with meaningful local fallback, and read-only own-profile Supabase RLS recovery after verified beta access. HF8.6.16 auth session commit and prior Safe Launch safeguards retained.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -1,0 +1,49 @@
+WARBOOST V2.5.28 HF8.6.17 — CLOUD PROFILE RESTORE RELIABILITY
+BUILD VERIFICATION
+Date: 2026-09-13
+Base: WarBoost V2.5.28 HF8.6.16
+Target: public-beta-safe-launch Preview
+
+RESULT SOURCE: PASS
+
+VALIDATED FIXES
+- Successful Supabase session still commits immediately: PASS
+- Same-token degraded bootstrap is NOT reused until cloud profile verification succeeds: PASS
+- Concurrent SIGNED_IN/direct-login session bootstrap joins one in-flight promise: PASS
+- Meaningful local fallback no longer blocks authenticated cloud retry: PASS
+- Failed cloud pull with local fallback schedules another pull: PASS
+- online/foreground retry is based on cloudProfileVerified, not whether local data happens to exist: PASS
+- Consent activation calls authoritative /api/state without requiring an already-hydrated betaState: PASS
+- Successful /api/state marks invitation/access verified and reveals restored profile: PASS
+- Read-only own-profile fallback is available only after beta access is verified: PASS
+- RLS fallback queries only the authenticated player's player_id: PASS
+- Release label is HF8.6.17 and legacy i18n no longer rewrites it to HF8.6.11: PASS
+- Service-worker cache bumped and new fallback module included: PASS
+- Beta verification no longer displays legacy “not configured” while checking: PASS
+- /api/health now exposes non-secret cloud_profile_restore_server_ready + database invite readiness so a missing Preview server configuration can be caught before player testing: PASS
+
+DYNAMIC FIXTURE
+- Restores player name/server/HQ/role, 4 squads and a 92-member alliance from a realistic cloud-state fixture: PASS
+- Direct RLS read mock verifies user-id filter, publishable key and bearer token: PASS
+- Unauthorized direct read returns failure: PASS
+
+FULL REGRESSION
+- npm run check: PASS
+- npm run verify: PASS
+- All historical verification gates through HF8.6.17: PASS
+- 12 Vercel serverless functions preserved: PASS
+- 23 explicit languages + Auto preserved: PASS
+- no localStorage.clear(): PASS
+- no HF8.6.17 Supabase migration: PASS
+- no application data deletion required: PASS
+
+LIVE DIAGNOSIS BEFORE PATCH
+- Supabase project healthy: confirmed
+- affected user auth sign-in recorded: confirmed
+- populated wb1_profiles state exists: confirmed
+- beta invitation accepted: confirmed
+- authenticated wb1_profiles RLS SELECT policy/grant present: confirmed
+- profile state is small enough that payload size is not the cause: confirmed
+
+LIMIT
+This verifies code/package plus live database facts. It cannot replace the final real-phone smoke test after Vercel deploy.

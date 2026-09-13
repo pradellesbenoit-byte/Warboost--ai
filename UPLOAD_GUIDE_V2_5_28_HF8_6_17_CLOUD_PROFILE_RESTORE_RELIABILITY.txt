@@ -1,0 +1,35 @@
+WARBOOST V2.5.28 HF8.6.17 — INSTALLATION GUIDE
+
+BASE REQUIRED
+- WarBoost V2.5.28 HF8.6.16 already on branch public-beta-safe-launch.
+
+TARGET ONLY
+- GitHub branch: public-beta-safe-launch
+- Test domain: beta.warboost.fr / Preview linked to that branch
+- Do NOT modify main / Production / publisher-demo.
+
+INSTALLATION
+1. Decompress WarBoost_V2.5.28_HF8.6.17_CLOUD_PROFILE_RESTORE_RELIABILITY_FINAL_PATCH.zip.
+2. Copy the CONTENTS of the extracted ZIP to the repository root of public-beta-safe-launch.
+3. Replace files with the same names.
+4. Do not delete any other file.
+5. Do not run any Supabase SQL migration for HF8.6.17.
+6. Commit/push and wait for Vercel Preview to be Ready.
+7. Open /api/health and confirm cloud_profile_restore_server_ready=true and beta.database_invites_available=true. If either is false, the Preview server configuration is incomplete and player presentation must stop until it is corrected.
+8. Fully close the browser/PWA once, reopen beta.warboost.fr and confirm the visible header says HF8.6.17.
+
+MANDATORY REAL-PHONE SMOKE TEST
+- Sign in with an invited existing account.
+- Account drawer must show Connected.
+- Beta area must become invited/accepted, not “À CONFIGURER”.
+- Player identity (nickname/server/HQ) must repopulate from cloud without manual entry.
+- Player home card, squads, Drone and Alliance must repopulate without rescanning.
+- Fully close and reopen; data must still return.
+- Repeat once with a second invited test account before sharing widely.
+
+DO NOT DO
+- Do not clear local storage.
+- Do not delete/recreate the Supabase user.
+- Do not delete the wb1_profiles row.
+- Do not rescan merely to repair this login bug.
+- Do not enable payments, scraping, external Last War API/provider access or gameplay automation.

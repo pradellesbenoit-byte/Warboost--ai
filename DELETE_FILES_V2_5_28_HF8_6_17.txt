@@ -1,0 +1,3 @@
+WARBOOST V2.5.28 HF8.6.17
+No file deletion is required.
+No Supabase migration is required.
