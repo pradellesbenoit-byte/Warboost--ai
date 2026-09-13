@@ -4,14 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.28 HF8.6.3 — Alliance Rank Manager Beta</title>
+  <title>WarBoost V2.5.28 HF8.6.6 — Scan Persistence Reliability Beta</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/publisher-ui.css" />
 </head>
 <body>
-  <!-- HF8.6.3: batch R1/R2/R3/R4 rank management + protected R5 + reliable roster identity + HF8.6 safeguards. -->
+  <!-- HF8.6.6: account-scoped pending scan persistence + cloud save retry + HF8.6.5 beta code + HF8.6.4 rank persistence. -->
   <!-- Regression lineage: V2.5.28 HF8.6.2 Reliable Roster Identity remains fully included. -->
   <!-- Regression lineage: WarBoost V2.5.28 HF8.4 Alliance Lifecycle Reliability remains fully included. -->
 
@@ -19,7 +19,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.28 HF8.6.3 · Bêta publique · gestion des grades · paiements désactivés</small></div>
+        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.28 HF8.6.6 · Bêta privée · scans persistants · paiements désactivés</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -27,7 +27,7 @@
 
 
     <section class="publisherStrip" aria-label="Safe Launch beta status">
-      <div><b>WarBoost V2.5.28 HF8.6.3</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
+      <div><b>WarBoost V2.5.28 HF8.6.6</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
       <span class="publisherPill" data-i18n="safe_external_disabled">External game access disabled</span>
     </section>
 
@@ -194,6 +194,7 @@
         <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="drone">Drone</option><option value="exclusive">Arme exclusive</option><option value="shop">Boutique du jeu</option><option value="vs">VS</option><option value="season">Saison</option></select></div>
         <label class="captureButton" for="scanFile"><span>🖼️</span><b data-i18n="choose_capture">Prendre ou choisir une capture</b></label><input id="scanFile" class="hidden" type="file" accept="image/png,image/jpeg,image/webp" />
         <img id="scanPreview" class="scanPreview hidden" alt="Screenshot preview" />
+        <button id="clearScanCaptureBtn" class="secondaryBtn wideBtn hidden" type="button" data-i18n="clear_capture">Effacer la capture de cet appareil</button>
         <button id="analyzeScanBtn" class="primaryAction" data-i18n="analyze">Analyser la capture</button>
         <div id="scanStatus" class="notice" data-i18n="scan_wait">Choisis d'abord une capture.</div>
         <div id="heroConfirmPanel" class="heroConfirmPanel hidden">
@@ -203,7 +204,7 @@
           <div class="buttonRow"><button id="skipHeroNamesBtn" class="secondaryBtn" data-i18n="hero_skip">Garder sans noms</button><button id="saveHeroNamesBtn" class="primaryAction" data-i18n="hero_save">Enregistrer les noms</button></div>
         </div>
 
-        <div class="privacyText" data-i18n="privacy_scan">La capture est redimensionnée puis envoyée au service de vision configuré pour l’analyse. WarBoost n’enregistre pas l’image brute dans le profil joueur après l’analyse.</div>
+        <div class="privacyText" data-i18n="privacy_scan">La capture est gardée temporairement sur cet appareil jusqu’à 48 h pour éviter de la sélectionner à nouveau. Elle n’est jamais enregistrée comme image brute dans le profil cloud WarBoost.</div>
       </div>
     </div>
   </section>

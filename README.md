@@ -1,3 +1,7 @@
+# WarBoost V2.5.28 HF8.6.6 — Scan Persistence Reliability
+
+HF8.6.6 corrige la persistance des captures pour les nouveaux comptes et les téléphones mobiles : captures Scan et file de captures roster conservées temporairement sur l’appareil (IndexedDB, cloisonnées par compte, TTL 48 h), résultats structurés sauvegardés localement + WarBoost Cloud, reprise automatique des sauvegardes cloud après réseau/fermeture mobile, détection des scans vides et rafraîchissement PWA/service worker plus fiable. Les images brutes ne sont pas enregistrées dans le profil cloud. Aucun changement de schéma Supabase n’est requis.
+
 # WarBoost V2.5.28 HF8.6.5 — Simple Beta Access Code
 
 Base actuelle : HF8.6.4 + accès bêta simplifié. La bêta reste **sur invitation**, mais l’invitation se fait désormais avec un code privé partagé au lieu d’ajouter chaque e-mail manuellement.
