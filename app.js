@@ -22,7 +22,7 @@ import {savePendingSingleScan,loadPendingSingleScan,clearPendingSingleScan,saveP
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6.6"; // Legacy verification markers: RELEASE_LABEL="HF8.6.5" · RELEASE_LABEL="HF8.6.4" · RELEASE_LABEL="HF8.6.3"
+const RELEASE_LABEL="HF8.6.7"; // Legacy verification markers: RELEASE_LABEL="HF8.6.6" · RELEASE_LABEL="HF8.6.5" · RELEASE_LABEL="HF8.6.4" · RELEASE_LABEL="HF8.6.3"
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const BACKUP_KEY="warboost_last_good_state", ACCOUNT_STATE_PREFIX="warboost_account_state:", VOICE_ENABLED_KEY="warboost_voice_enabled", VOICE_ID_KEY="warboost_voice_id";
 const BETA_CONSENT_KEY="warboost_beta_consent_2026_09_05_safe_launch_v2", BETA_CONSENT_VERSION="2026-09-05-safe-launch-v2";
@@ -701,7 +701,7 @@ function renderAllianceIdentityLinks(members){
   if(pendingDetails){pendingDetails.classList.toggle("hidden",!pending.length);pendingDetails.open=pending.length>0}
   if(pendingBox){
     pendingBox.innerHTML=pending.length?pending.map((x,i)=>`<div class="unlinkedAccountRow"><div><b>⚪ ${esc(x.name||t("player"))}</b><small>${esc(t("server"))} ${esc(x.server_id||"—")} · ${esc(t("alliance"))} ${esc(x.alliance_tag||state.alliance?.tag||"—")}</small><small>${esc(t("identity_exact_match_guard"))}</small></div><button class="smallBtn" type="button" data-identity-retry="${i}">${esc(t("identity_retry_match"))}</button></div>`).join(""):"";
-    pendingBox.querySelectorAll("[data-identity-retry]").forEach(btn=>btn.addEventListener("click",async()=>{btn.disabled=true;const old=btn.textContent;btn.textContent=t("identity_retrying");try{await syncAll()}finally{btn.disabled=false;btn.textContent=old}}));
+    pendingBox.querySelectorAll("[data-identity-retry]").forEach(btn=>btn.addEventListener("click",async()=>{const index=Number(btn.dataset.identityRetry),target=pending[index]||null;if(!target)return;btn.disabled=true;const old=btn.textContent;btn.textContent=t("identity_retrying");try{await syncAll();const wanted=String(target.name||"").trim().toLowerCase(),stillPending=(state.alliance?.unlinked_accounts||[]).some(x=>String(x?.name||"").trim().toLowerCase()===wanted);const statusBox=$("#allianceIdentitySummary");if(stillPending&&statusBox){statusBox.className="notice identityLinkSummary warn";statusBox.textContent=`${statusBox.textContent} · ⚠️ ${t("identity_exact_match_guard")}`}else if(statusBox){statusBox.className="notice identityLinkSummary";statusBox.textContent=`${statusBox.textContent} · ✅ ${String(target.name||t("player"))}`}}catch(e){const statusBox=$("#allianceIdentitySummary");if(statusBox){statusBox.className="notice identityLinkSummary warn";statusBox.textContent=`⚠️ ${e?.message||t("identity_exact_match_guard")}`}}finally{btn.disabled=false;btn.textContent=old}}));
   }
 }
 

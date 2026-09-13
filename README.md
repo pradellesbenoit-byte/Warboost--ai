@@ -13,3 +13,8 @@ Garanties principales : Safe Launch conservé, code non exposé côté navigateu
 Voir `WARBOOST_V2_5_28_HF8_6_5_SIMPLE_BETA_ACCESS_CODE.md` pour le détail.
 
 Compatibilité Supabase : HF8.6.5 réutilise le registre créé par `migration_v2_5_26_beta_invites.sql`; aucune nouvelle migration n’est nécessaire.
+
+
+## HF8.6.7 — Alliance Association Reliability
+
+Corrige les associations de comptes lorsque le profil contient un préfixe visuel `[TAG]` correspondant à l’alliance (ex. `[ALL4]ToyN` ↔ `ToyN`), sans toucher aux occurrences internes du tag dans un vrai pseudo. Le bouton de vérification donne désormais un retour visible. Aucune migration Supabase.
