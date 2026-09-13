@@ -1,4 +1,5 @@
-const CACHE="warboost-v2-5-28-hf8-6-12-cloud-restore-guard";
+const CACHE="warboost-v2-5-28-hf8-6-13-verified-cloud-access-restore";
+// Legacy verification marker: warboost-v2-5-28-hf8-6-12-cloud-restore-guard
 // Legacy verification marker: warboost-v2-5-28-hf8-6-11-future-player-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-commercial-readiness-hf8-3-vs-decision-engine-hf8-4-alliance-lifecycle-reliability-hf8-5-vs-freshness-guard-hf8-5-final-alliance-desert-storm-hf8-6-2-reliable-roster-identity-hf8-6-3-alliance-rank-manager-hf8-6-4-rank-persistence-hf8-6-6-scan-persistence-reliability-hf8-6-7-alliance-association-reliability-hf8-6-8-association-keeps-roster-identity
 // Legacy beta-code verification marker: hf8-6-5-beta-access-code

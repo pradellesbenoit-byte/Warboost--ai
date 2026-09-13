@@ -1,10 +1,8 @@
-WarBoost V2.3.4 FULL HERO AUDIT PATCH
-Base required: WarBoost V2.3.3
-Purpose: apply all V2.3.4 reliability corrections plus the global 31-hero identity audit.
-
-Important:
-- Preserve folder paths exactly when uploading to GitHub.
-- lib/heroes.js is new and is the shared identity source for Scan, AI, cloud normalization and UI.
-- assets/heroes contains 31 WarBoost demo visuals (not official Last War artwork).
-- No Supabase schema change is required.
-- Do not delete unrelated V2.3.3 files.
+app.js
+manifest.webmanifest
+package.json
+sw.js
+index.html
+api/health.js
+lib/cloud-state-recovery.js
+scripts/verify-v2.5.28-hf8-6-13.mjs
