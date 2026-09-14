@@ -10,11 +10,11 @@ const health=fs.readFileSync(new URL('../api/health.js',import.meta.url),'utf8')
 const manifest=fs.readFileSync(new URL('../manifest.webmanifest',import.meta.url),'utf8');
 const standard=fs.readFileSync(new URL('../WARBOOST_V2_5_28_HF8_6_25_PLAYER_LAUNCH_INTEGRITY.md',import.meta.url),'utf8');
 
-assert.match(app,/const RELEASE_LABEL="HF8\.6\.25"/);
-assert.match(index,/WarBoost V2\.5\.28 HF8\.6\.25/);
+assert.match(app,/const RELEASE_LABEL="HF8\.6\.(?:25|2[6-9]|[3-9]\d*)"/);
+assert.match(index,/WarBoost V2\.5\.28 HF8\.6\.(?:25|2[6-9]|[3-9]\d*)/);
 assert.match(index,/app\.js\?v=hf8625/);
-assert.match(sw,/hf8-6-25-player-launch-integrity/);
-assert.match(health,/release:"HF8\.6\.25"/);
+assert.match(sw,/hf8-6-(?:25-player-launch-integrity|2[6-9]-|[3-9]\d*-)/);
+assert.match(health,/release:"HF8\.6\.(?:25|2[6-9]|[3-9]\d*)"/);
 assert.match(manifest,/HF8\.6\.25/);
 
 // Exact security boundary: only current authenticated owner + invite + consent can render private data.

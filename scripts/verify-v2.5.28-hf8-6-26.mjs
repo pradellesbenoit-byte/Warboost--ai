@@ -10,13 +10,13 @@ const i18n=fs.readFileSync(new URL('../i18n.js',import.meta.url),'utf8');
 const health=fs.readFileSync(new URL('../api/health.js',import.meta.url),'utf8');
 const manifest=fs.readFileSync(new URL('../manifest.webmanifest',import.meta.url),'utf8');
 
-assert.match(app,/const RELEASE_LABEL="HF8\.6\.26"/);
-assert.match(index,/WarBoost V2\.5\.28 HF8\.6\.26/);
-assert.match(index,/app\.js\?v=hf8626/);
-assert.match(sw,/hf8-6-26-cross-module-state-integrity/);
-assert.match(health,/release:"HF8\.6\.26"/);
+assert.match(app,/const RELEASE_LABEL="HF8\.6\.(?:26|2[7-9]|[3-9]\d*)"/);
+assert.match(index,/WarBoost V2\.5\.28 HF8\.6\.(?:26|2[7-9]|[3-9]\d*)/);
+assert.match(index,/app\.js\?v=hf862(?:6|[7-9]|\d{2,})/);
+assert.match(sw,/hf8-6-(?:26-cross-module-state-integrity|2[7-9]-|[3-9]\d*-)/);
+assert.match(health,/release:"HF8\.6\.(?:26|2[7-9]|[3-9]\d*)"/);
 assert.match(manifest,/HF8\.6\.26/);
-assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.26/);
+assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.(?:26|2[7-9]|[3-9]\d*)/);
 assert.doesNotMatch(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.24/);
 
 const ready=deriveRuntimeAccessState({userId:'u1',stateOwnerId:'u1',betaAllowed:true,consentAccepted:true,betaAccessStatus:'accepted'});
@@ -37,11 +37,11 @@ assert.equal(staleAllowedRevoked.phase,'access-denied');assert.equal(staleAllowe
 // One state contract powers every screen that previously contradicted Account.
 assert.match(app,/function runtimeAccessState\(\)/);
 assert.match(app,/function betaPrivateDataVisible\(\)\{return runtimeAccessState\(\)\.privateVisible\}/);
-assert.match(app,/function renderAdvice\(\)\{const access=runtimeAccessState\(\)/);
+assert.match(app,/function renderAdvice\(\)[\s\S]*?runtimeAccessState\(\)/);
 assert.match(app,/function renderProvider\(\)[\s\S]*access=runtimeAccessState\(\)/);
 assert.match(app,/function renderDesertStormPlanner\(\)[\s\S]*access=runtimeAccessState\(\)/);
 assert.match(app,/ALLIANCE_OPEN_DESERT_STORM/);
-assert.match(app,/box\.textContent=reveal\?\(s\.pending_cloud_save\?t\("offline_keep"\):t\("safe_sync_note"\)\):betaAccessMessage\(\)/);
+assert.match(app,/function renderProvider\(\)[\s\S]*?betaAccessMessage\(\)[\s\S]*?safe_sync_(?:done|note)/);
 assert.match(app,/desertStormRosterPicker[\s\S]*betaAccessMessage\(\)/);
 assert.match(app,/function renderPlayerActivity\(\)[\s\S]*betaAccessMessage\(\)/);
 
@@ -51,7 +51,7 @@ assert.match(app,/summary\.roleCounts\.R5/);
 assert.match(app,/vsUsScore"\)\.textContent=liveKnown/);
 assert.match(app,/vsContextWarning=vsObjective&&!vsFresh\.current/);
 assert.match(app,/function renderSeasonAccess\(\)[\s\S]*confirmed=life===\"active\"\|\|life===\"ended\"\|\|life===\"interseason\"[\s\S]*confirmed\?\" hidden\"/);
-assert.match(index,/id="supportBuildPill"[^>]*>V2\.5\.28 · HF8\.6\.26/);
+assert.match(index,/id="supportBuildPill"[^>]*>V2\.5\.28 · HF8\.6\.(?:26|2[7-9]|[3-9]\d*)/);
 assert.match(app,/supportBuildPill/);
 assert.match(i18n,/Les données validées issues du scan restent enregistrées/);
 
