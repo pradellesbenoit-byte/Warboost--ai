@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.25 — Player Launch Integrity · HF8.6.24 lineage",
+  "name": "WarBoost V2.5.28 HF8.6.26 — Cross-Module State Integrity · HF8.6.25 lineage",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.25 — unified authenticated runtime recovery, account-safe persistence, owned-state visibility, and Player/PRO/Alliance/VS/Season launch integrity. HF8.6.24 safeguards retained.",
+  "description": "WarBoost V2.5.28 HF8.6.26 — one access-state contract across Coach/Sync/Alliance/Desert Storm/VS/Season/PRO, roster integrity warnings, stale-VS separation, and all HF8.6.25 launch safeguards retained.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

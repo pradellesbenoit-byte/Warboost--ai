@@ -21,12 +21,18 @@ import {previewAllianceRankChanges,applyAllianceRankChanges,permissionTransition
 import {savePendingSingleScan,loadPendingSingleScan,clearPendingSingleScan,savePendingRosterFiles,loadPendingRosterFiles,clearPendingRosterFiles,movePendingScans} from "./lib/pending-scan-storage.js";
 import {hasMeaningfulCoreState,hydrateCloudState,canUseKeepaliveBody,betaStateAfterVerifiedStateRead} from "./lib/cloud-state-recovery.js";
 import {readOwnProfileDirect} from "./lib/cloud-profile-direct.js";
-import {shouldPreserveVerifiedSessionAccess,betaStateForSessionBootstrap,preserveAllowedAfterTransient,restoreAttemptSucceeded,canRevealOwnedPrivateState} from "./lib/session-bootstrap.js";
+import {shouldPreserveVerifiedSessionAccess,betaStateForSessionBootstrap,preserveAllowedAfterTransient,restoreAttemptSucceeded,canRevealOwnedPrivateState,deriveRuntimeAccessState} from "./lib/session-bootstrap.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6.25"; // Player Launch Integrity · unified runtime recovery + account-safe persistence + module consistency · includes HF8.6.24
+const RELEASE_LABEL="HF8.6.26"; // Cross-Module State Integrity · one access state for Coach/Sync/Alliance/DS/VS/Season + UX audit fixes
+// Legacy HF8.6.25 verification marker: const RELEASE_LABEL="HF8.6.25"
 // Legacy HF8.6.24 verification marker: const RELEASE_LABEL="HF8.6.24"
+// Legacy HF8.6.24 access-contract verification markers retained verbatim:
+// canRevealOwnedPrivateState({userId,stateOwnerId,betaAllowed:betaAccessAllowed(),consentAccepted:betaConsentAccepted(),betaAccessStatus:betaState?.access_status})
+// function betaPrivateDataVisible(){const userId=String(cloudSession?.user?.id||""),stateOwnerId=String(state?.player_id||"");return canRevealOwnedPrivateState({userId,stateOwnerId,betaAllowed:betaAccessAllowed(),consentAccepted:betaConsentAccepted(),betaAccessStatus:betaState?.access_status})}
+// Legacy advice-path marker: logged&&invited&&consented
+// Legacy HF8.6.25 hydration-gate marker: cloudHydrationPending&&betaConsentAccepted()&&!betaPrivateDataVisible()
 // Legacy HF8.6.23 verification marker: const RELEASE_LABEL="HF8.6.23"
 // Legacy HF8.6.20 verification marker: const RELEASE_LABEL="HF8.6.20"
 // Legacy HF8.6.21 verification marker: const RELEASE_LABEL="HF8.6.21"
@@ -302,11 +308,12 @@ function betaConsentStorageKey(){const id=String(cloudSession?.user?.id||"").tri
 function betaConsentAccepted(){const key=betaConsentStorageKey();return Boolean(key&&localStorage.getItem(key)==="1")}
 function authHeaders(extra={}){return {...extra,...(cloudSession?.access_token?{authorization:`Bearer ${cloudSession.access_token}`}:{}) ,...(betaConsentAccepted()?{"x-warboost-beta-consent":BETA_CONSENT_VERSION}:{})}}
 function betaAccessAllowed(){return Boolean(cloudSession?.user)&&(!betaState.enforced||betaState.allowed)}
-function betaPrivateDataVisible(){const userId=String(cloudSession?.user?.id||""),stateOwnerId=String(state?.player_id||"");return canRevealOwnedPrivateState({userId,stateOwnerId,betaAllowed:betaAccessAllowed(),consentAccepted:betaConsentAccepted(),betaAccessStatus:betaState?.access_status})}
+function runtimeAccessState(){return deriveRuntimeAccessState({userId:String(cloudSession?.user?.id||""),stateOwnerId:String(state?.player_id||""),betaAllowed:betaAccessAllowed(),consentAccepted:betaConsentAccepted(),betaAccessStatus:betaState?.access_status})}
+function betaPrivateDataVisible(){return runtimeAccessState().privateVisible}
 function safeLaunchBetaMode(){return Boolean(proState?.beta!==false||(betaState?.allowed===true&&proState?.configured!==true&&proState?.payments_enabled!==true))}
 function safeLaunchBetaProIncluded(){return Boolean(safeLaunchBetaMode()&&cloudSession?.user&&betaAccessAllowed()&&betaConsentAccepted())}
 function proFeatureAllowed(){return safeLaunchBetaProIncluded()||Boolean(!safeLaunchBetaMode()&&proState?.active)}
-function betaAccessMessage(){if(!cloudSession?.user)return t("beta_signin_required");if(betaState.access_status==="checking")return t("syncing");if(betaState.restore_error&&betaConsentAccepted()&&!cloudProfileVerified)return `${t("beta_restore_failed")}${lastBootstrapFailure()?.stage?` · ${lastBootstrapFailure().stage}`:""}`;if(betaState.enforced&&!betaState.allowed){if(betaState.access_status==="revoked")return t("beta_access_revoked");if(betaState.access_status==="expired")return t("beta_access_expired");return t("beta_code_required")}if(!betaState.enforced)return t("beta_allowlist_setup");if(cloudHydrationPending&&betaConsentAccepted()&&!betaPrivateDataVisible())return t("syncing");return t("beta_invited")}
+function betaAccessMessage(){const access=runtimeAccessState();if(!access.logged)return t("beta_signin_required");if(!betaState.enforced)return t("beta_allowlist_setup");if(access.phase==="syncing")return t("syncing");if(betaState.restore_error&&access.consented&&!cloudProfileVerified&&!access.privateVisible)return `${t("beta_restore_failed")}${lastBootstrapFailure()?.stage?` · ${lastBootstrapFailure().stage}`:""}`;if(access.phase==="access-denied"){if(betaState.access_status==="revoked")return t("beta_access_revoked");if(betaState.access_status==="expired")return t("beta_access_expired");return t("beta_code_required")}if(access.phase==="consent-required")return t("beta_consent_required");if(access.phase==="ready")return state?.sync?.pending_cloud_save?t("offline_keep"):t("safe_sync_done");return t("syncing")}
 function requireBetaAccess(){if(betaAccessAllowed())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);return false}
 function requireBetaConsent(){if(betaConsentAccepted())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);const el=$("#betaAccessStatus");if(el){el.className="notice warn";el.textContent=t("beta_consent_required")}return false}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
@@ -782,8 +789,9 @@ function renderVsAccess(){
 }
 function renderSeasonAccess(){
   const notice=$("#seasonAccessNotice"),life=seasonLifecycle(state?.season||{});if(!notice)return;
-  const historical=life==="ended"||life==="interseason";notice.className=`notice${life==="unknown"?" warn":""}`;
-  notice.textContent=historical?t("season_access_historical"):life==="active"?t("season_access_active"):t("season_start_notice");
+  const confirmed=life==="active"||life==="ended"||life==="interseason";
+  notice.className=`notice${confirmed?" hidden":" warn"}`;
+  notice.textContent=confirmed?"":t("season_start_notice");
 }
 function openQuickScan(type){if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("scan");renderScanTypeOptions();if($("#scanType"))$("#scanType").value=type}
 
@@ -816,10 +824,10 @@ function render(){
     if($("#exclusiveWeaponCount"))$("#exclusiveWeaponCount").textContent="0";
     safeRenderStep("MASK_ALLIANCE",maskAlliancePrivateSummary);
     $("#rosterFresh").textContent=t("sync_needed");
-    const members=$("#memberList");if(members)members.innerHTML=`<div class="notice">${esc(t("beta_signin_required"))}</div>`;
+    const members=$("#memberList");if(members)members.innerHTML=`<div class="notice">${esc(betaAccessMessage())}</div>`;
     const activity=$("#activitySummary");if(activity)activity.innerHTML=`<div><b>🟢 0</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>🟠 0</b><small>${esc(t("activity_refresh"))}</small></div><div><b>⚪ —</b><small>${esc(t("activity_inactivity_not_evaluated"))}</small></div>`;
-    if($("#activityNote"))$("#activityNote").textContent=t("beta_signin_required");
-    if($("#activityEventGrid"))$("#activityEventGrid").innerHTML="";if($("#playerActivityStatus"))$("#playerActivityStatus").textContent=t("beta_signin_required");if($("#playerActivityPill"))$("#playerActivityPill").textContent="—";if($("#allianceEventSummary"))$("#allianceEventSummary").innerHTML="";if($("#allianceIdentitySummary"))$("#allianceIdentitySummary").textContent=t("beta_signin_required");if($("#allianceParticipationTable"))$("#allianceParticipationTable").innerHTML="";if($("#unlinkedWarBoostAccounts"))$("#unlinkedWarBoostAccounts").innerHTML="";$("#unlinkedWarBoostDetails")?.classList.add("hidden");
+    if($("#activityNote"))$("#activityNote").textContent=betaAccessMessage();
+    if($("#activityEventGrid"))$("#activityEventGrid").innerHTML="";if($("#playerActivityStatus"))$("#playerActivityStatus").textContent=betaAccessMessage();if($("#playerActivityPill"))$("#playerActivityPill").textContent="—";if($("#allianceEventSummary"))$("#allianceEventSummary").innerHTML="";if($("#allianceIdentitySummary"))$("#allianceIdentitySummary").textContent=betaAccessMessage();if($("#allianceParticipationTable"))$("#allianceParticipationTable").innerHTML="";if($("#unlinkedWarBoostAccounts"))$("#unlinkedWarBoostAccounts").innerHTML="";$("#unlinkedWarBoostDetails")?.classList.add("hidden");
     $("#vsWeekTitle").textContent=t("vs_week",{week:currentVsWeek()});
     $("#vsDayPill").textContent=currentVsDay()===0?t("vs_prep_day"):t("day_n",{day:currentVsDay()});
     $("#vsUs").textContent="—";$("#vsThem").textContent=t("unknown_opponent");$("#vsUsScore").textContent="—";$("#vsThemScore").textContent="—";
@@ -830,12 +838,12 @@ function render(){
     const bar=$("#seasonProgressBar"),progressWrap=bar?.closest(".progress");if(progressWrap)progressWrap.classList.add("hidden");if(bar)bar.style.width="0%";
     if($("#seasonProgressLabel"))$("#seasonProgressLabel").textContent="—";
     if($("#seasonLifecycleSelect"))$("#seasonLifecycleSelect").value="unknown";
-    if($("#seasonStatus"))$("#seasonStatus").textContent=t("beta_signin_required");
+    if($("#seasonStatus"))$("#seasonStatus").textContent=betaAccessMessage();
     $("#proPriorityPanel")?.classList.add("hidden");
     if($("#allianceImmediate")){ $("#allianceImmediate").classList.add("hidden"); $("#allianceImmediate").innerHTML=""; }
     if($("#alliancePlanB")){ $("#alliancePlanB").classList.add("hidden"); $("#alliancePlanB").innerHTML=""; }
     if($("#warPlanText"))$("#warPlanText").textContent=t("war_plan_empty");
-    if($("#desertStormRosterPicker"))$("#desertStormRosterPicker").innerHTML=`<div class="notice">${esc(t("beta_signin_required"))}</div>`;
+    if($("#desertStormRosterPicker"))$("#desertStormRosterPicker").innerHTML=`<div class="notice">${esc(betaAccessMessage())}</div>`;
     if($("#desertStormPlan")){ $("#desertStormPlan").classList.add("hidden"); $("#desertStormPlan").innerHTML=""; }
     safeRenderStep("ADVICE",renderAdvice);safeRenderStep("PROVIDER",renderProvider);
     return;
@@ -972,8 +980,9 @@ function renderProPriority(analysis){
   if(!panel||!analysis)return;
   if(note)note.classList.add("hidden");panel.classList.remove("hidden");
   const top=Array.isArray(analysis.priorities)?analysis.priorities[0]:null;
+  const vsObjective=String(state?.player_context?.objective||"").toLowerCase()==="vs",vsFresh=vsSnapshotFreshness(state?.vs||{},{now:serverNow}),vsContextWarning=vsObjective&&!vsFresh.current?`⚠️ ${t("vs_stale_notice")} · `:"";
   if(summary){
-    if(native){const mi=analysis.meta_intelligence,composition=analysis.composition?.label?` · ${analysis.composition.label}`:"";summary.textContent=`${analysis.summary||""}${composition}${analysis.candidates_evaluated?` · ${t("options_compared_count",{count:analysis.candidates_evaluated})}`:""}${mi?.source_count?` · ${ui.sources} ${mi.source_count} · ${ui.meta} ${mi.confidence}% · ${t("meta_updated")} ${mi.knowledge_date||"—"}`:""}`}
+    if(native){const mi=analysis.meta_intelligence,composition=analysis.composition?.label?` · ${analysis.composition.label}`:"";summary.textContent=`${vsContextWarning}${analysis.summary||""}${composition}${analysis.candidates_evaluated?` · ${t("options_compared_count",{count:analysis.candidates_evaluated})}`:""}${mi?.source_count?` · ${ui.sources} ${mi.source_count} · ${ui.meta} ${mi.confidence}% · ${t("meta_updated")} ${mi.knowledge_date||"—"}`:""}`}
     else{const target=top?structuredPriorityTitle(top):t("plan7_scan");summary.textContent=`${`${t("plan7_focus")}: ${target}`}${analysis.candidates_evaluated?` · ${t("options_compared_count",{count:analysis.candidates_evaluated})}`:""}`}
   }
   if(contextBox){const text=adaptiveContextSummary(analysis.adaptive_context);contextBox.textContent=text;contextBox.classList.toggle("hidden",!text)}
@@ -1013,7 +1022,7 @@ function participationSourceLabel(source){const key=`participation_source_${sour
 function participationStatusIcon(status){return status==="participated"?"✅":status==="absent_confirmed"?"❌":status==="not_selected"?"🔵":status==="excused"?"🟠":"❓"}
 function renderPlayerActivity(){
   const grid=$("#activityEventGrid"),status=$("#playerActivityStatus"),pill=$("#playerActivityPill");if(!grid)return;
-  if(!betaPrivateDataVisible()){grid.innerHTML="";if(status)status.textContent=t("beta_signin_required");if(pill)pill.textContent="—";return}
+  if(!betaPrivateDataVisible()){grid.innerHTML="";if(status)status.textContent=betaAccessMessage();if(pill)pill.textContent="—";return}
   const today=lastWarDateKey(),events=mergeActivityEvents(state.activity_events),confirmedToday=new Set(events.filter(x=>x.event_date===today&&x.confirmed===true).map(x=>x.event_type));
   grid.innerHTML=PLAYER_ACTIVITY_EVENT_TYPES.map(type=>{const active=confirmedToday.has(type);return `<button type="button" class="activityEventBtn${active?" confirmed":""}" data-activity-event="${esc(type)}"><span>${active?"✅":"○"}</span><b>${esc(activityEventLabel(type))}</b><small>${esc(t(active?"activity_remove":"activity_confirm"))}</small></button>`}).join("");
   grid.querySelectorAll("[data-activity-event]").forEach(btn=>btn.addEventListener("click",()=>togglePlayerActivityEvent(btn.dataset.activityEvent)));
@@ -1158,6 +1167,7 @@ function renderMembers(){
   const summary=renderAllianceActivity(),roles=["R5","R4","R3","R2","R1"];
   if(!members.length&&!review.length&&!former.length){box.innerHTML=`<div class="notice">${t("no_members")}</div>`;return}
   const chips=roles.map(role=>`<span class="roleCountChip"><b>${role}</b><small>${summary.roleCounts[role]||0}</small></span>`).join("");
+  const rosterIntegrityWarning=members.length>0&&Number(summary.roleCounts.R5||0)===0?`<div class="notice warn rosterIntegrityWarning">⚠️ R5 · ${esc(t("role_empty"))} · ${esc(t("sync_needed"))}</div>`:"";
   const groups=roles.map(role=>{
     const rows=members.filter(m=>normalizeAllianceRole(m.role)===role).sort((a,b)=>(Number(b.power_m)||0)-(Number(a.power_m)||0));
     const open=openRosterRoles.has(role)?" open":"";
@@ -1166,7 +1176,7 @@ function renderMembers(){
   }).join("");
   const reviewHtml=review.length?`<details class="roleRosterGroup rosterReviewGroup" open><summary><span class="roleRosterTitle"><b>⚠️ ${esc(t("roster_review_title"))}</b><small>${review.length}</small></span><span class="roleRosterChevron" aria-hidden="true">⌄</span></summary><div class="roleRosterBody">${review.map(m=>{const key=rosterLifecycleKey(m),history=membershipHistoryLine(m,2);return `<div class="member compactMember rosterLifecycleRow"><div><b>${esc(m.name||t("player"))}</b><small>${esc(t("roster_review_reason"))} · ${esc(normalizeAllianceRole(m.role))}</small>${history?`<span class="membershipHistoryLine">${esc(history)}</span>`:""}</div><div class="rosterLifecycleActions"><button class="smallBtn" type="button" data-roster-review-action="keep" data-roster-key="${esc(key)}">${esc(t("roster_review_keep"))}</button><button class="smallBtn dangerBtn" type="button" data-roster-review-action="leave" data-roster-key="${esc(key)}">${esc(t("roster_review_departed"))}</button></div></div>`}).join("")}</div></details>`:"";
   const formerHtml=former.length?`<details class="roleRosterGroup formerRosterGroup"><summary><span class="roleRosterTitle"><b>🗂️ ${esc(t("former_members_title"))}</b><small>${former.length}</small></span><span class="roleRosterChevron" aria-hidden="true">⌄</span></summary><div class="roleRosterBody">${former.slice().sort((a,b)=>String(b.left_at||"").localeCompare(String(a.left_at||""))).map(m=>{const history=membershipHistoryLine(m,4),key=rosterLifecycleKey(m);return `<div class="member compactMember rosterLifecycleRow"><div><b>${esc(m.name||t("player"))}</b><small>${esc(t("roster_status_former"))}${m.left_at?` · ${esc(participationDateLabel(m.left_at))}`:""} · ${esc(normalizeAllianceRole(m.role))}</small>${history?`<span class="membershipHistoryLine">${esc(history)}</span>`:""}</div>${hasDeclaredAllianceCommandRole()?`<div class="rosterLifecycleActions"><button class="smallBtn" type="button" data-roster-former-reinstate="${esc(key)}" data-roster-name="${esc(m.name||t("player"))}">${esc(t("roster_reintegrate"))}</button></div>`:""}</div>`}).join("")}</div></details>`:"";
-  box.innerHTML=`<div class="rosterOverview"><div><b>${esc(t("roster_by_role"))}</b><small>${esc(t("roster_hint"))}</small></div><div class="roleCountRow">${chips}</div></div>${review.length?`<div class="notice warn rosterReviewNotice">${esc(t("roster_review_guard",{count:review.length}))}</div>`:""}<div class="roleRosterList">${groups}${reviewHtml}${formerHtml}</div>`;
+  box.innerHTML=`${rosterIntegrityWarning}<div class="rosterOverview"><div><b>${esc(t("roster_by_role"))}</b><small>${esc(t("roster_hint"))}</small></div><div class="roleCountRow">${chips}</div></div>${review.length?`<div class="notice warn rosterReviewNotice">${esc(t("roster_review_guard",{count:review.length}))}</div>`:""}<div class="roleRosterList">${groups}${reviewHtml}${formerHtml}</div>`;
   box.querySelectorAll("details[data-roster-role]").forEach(d=>d.addEventListener("toggle",()=>{const role=d.dataset.rosterRole;if(d.open)openRosterRoles.add(role);else openRosterRoles.delete(role)}));
   box.querySelectorAll("select[data-member-management-id]").forEach(sel=>sel.addEventListener("change",async()=>{const playerId=sel.dataset.memberManagementId,nextRole=sel.value,row=(state.alliance.members||[]).find(m=>String(m.player_id)===String(playerId)),previous=row?.management_role||"R1";sel.disabled=true;try{const {response:r,json:j}=await fetchJsonBounded("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({player_id:playerId,role:nextRole})},15000);if(!r.ok)throw new Error(j.error||"role_update_failed");if(row){row.management_role=nextRole;row.updated_at=new Date().toISOString()}saveState()}catch{sel.value=previous;const status=$("#rosterImportStatus");if(status){status.className="notice warn";status.textContent=`⚠️ ${t("management_permission")}`}}finally{sel.disabled=false}}));
   box.querySelectorAll("[data-roster-review-action]").forEach(btn=>btn.addEventListener("click",()=>{if(!hasDeclaredAllianceCommandRole())return;const key=btn.dataset.rosterKey,action=btn.dataset.rosterReviewAction,now=new Date().toISOString();if(action==="leave"){const r=confirmRosterDeparture({review:state.alliance.roster_review,former:state.alliance.former_members},key,{now});if(r.changed){state.alliance.roster_review=r.review;state.alliance.former_members=r.former;state.alliance.updated_at=now;saveState()}}else{const r=restoreRosterReviewMember({members:state.alliance.members,review:state.alliance.roster_review},key,{now});if(r.changed){state.alliance.members=r.members;state.alliance.roster_review=r.review;state.alliance.updated_at=now;saveState()}}}));
@@ -1231,8 +1241,11 @@ function renderDesertStormPlan(){
   if(copyBtn){copyBtn.classList.remove("hidden");copyBtn.onclick=async()=>{try{await navigator.clipboard.writeText(desertStormCopyText(plan));const old=copyBtn.textContent;copyBtn.textContent=t("copy");setTimeout(()=>copyBtn.textContent=old,1200)}catch{}}}
 }
 function renderDesertStormPlanner(){
-  const section=$("#desertStormPlanner");if(!section)return;const ds=ensureDesertStormState(),manager=hasDeclaredAllianceCommandRole();section.classList.toggle("managerLocked",!manager);
-  const search=$("#desertStormSearch"),team=$("#desertStormTeam"),time=$("#desertStormTime");if(search&&search.value!==desertStormSearchTerm)search.value=desertStormSearchTerm;if(team)team.value=ds.team;if(time)time.value=ds.battle_time||"";
+  const section=$("#desertStormPlanner");if(!section)return;const ds=ensureDesertStormState(),manager=hasDeclaredAllianceCommandRole(),access=runtimeAccessState(),box=$("#desertStormRosterPicker"),counter=$("#desertStormCount");section.classList.toggle("managerLocked",!manager);
+  const search=$("#desertStormSearch"),team=$("#desertStormTeam"),time=$("#desertStormTime"),clear=$("#desertStormClearBtn"),generate=$("#desertStormGenerateBtn");
+  const disabled=!access.privateVisible||!manager;for(const el of [search,team,time,clear,generate])if(el)el.disabled=disabled;
+  if(!access.privateVisible){if(counter)counter.textContent="0";if(box)box.innerHTML=`<div class="notice warn">${esc(betaAccessMessage())}</div>`;renderDesertStormPlan();return}
+  if(search&&search.value!==desertStormSearchTerm)search.value=desertStormSearchTerm;if(team)team.value=ds.team;if(time)time.value=ds.battle_time||"";
   renderDesertStormPicker();renderDesertStormPlan();
 }
 
@@ -1303,8 +1316,8 @@ function renderVsLive(){
   const v=state.vs||{},freshness=vsSnapshotFreshness(v,{now:serverNow}),sit=vsSituation(v),trend=vsTrend(v),personal=personalVsPosition(v),engine=vsDecisionEngine(v,{now:serverNow}),known=scoreKnown(v),liveKnown=known&&freshness.current,stale=known&&!freshness.current,unknown=$("#vsScoreUnknown");
   $("#vsWeekTitle").textContent=t("vs_week",{week:currentVsWeek()});$("#vsDayPill").textContent=currentVsDay()===0?t("vs_prep_day"):t("day_n",{day:currentVsDay()});
   $("#vsUs").textContent=vsSideLabel(v,"ours");$("#vsThem").textContent=vsSideLabel(v,"theirs");
-  $("#vsUsScore").textContent=known?fmtVsNumber(v.our_score):"—";$("#vsThemScore").textContent=known?fmtVsNumber(v.their_score):"—";
-  if(unknown){unknown.classList.toggle("hidden",known&&!stale);unknown.textContent=stale?t("vs_stale_notice"):t("vs_score_unknown")}
+  $("#vsUsScore").textContent=liveKnown?fmtVsNumber(v.our_score):"—";$("#vsThemScore").textContent=liveKnown?fmtVsNumber(v.their_score):"—";
+  if(unknown){unknown.classList.toggle("hidden",liveKnown);unknown.textContent=stale?`${t("vs_stale_notice")} · ${vsSideLabel(v,"ours")} ${fmtVsNumber(v.our_score)} / ${vsSideLabel(v,"theirs")} ${fmtVsNumber(v.their_score)}`:t("vs_score_unknown")}
   const key=stale?"vs_status_stale":({strong_lead:"vs_status_strong_lead",lead:"vs_status_lead",narrow_lead:"vs_status_narrow_lead",even:"vs_status_even",narrow_trail:"vs_status_narrow_trail",trail:"vs_status_trail",strong_trail:"vs_status_strong_trail",unknown:"vs_status_unknown"}[sit.status]||"vs_status_unknown");
   const pill=$("#vsSituationPill");if(pill){pill.textContent=t(key);pill.className=`pill vsSituation ${stale?"unknown":sit.status}`}
   const liveTitle=$("#vsLiveSituationTitle");if(liveTitle)liveTitle.textContent=t(stale?"vs_stale_title":"vs_live_situation");
@@ -1318,10 +1331,10 @@ function renderVsLive(){
   const sec=$("#vsVisibleRankingSection"),list=$("#vsVisibleRanking"),rows=Array.isArray(v.leaderboard)?v.leaderboard.slice(0,8):[];if(sec&&list){sec.classList.toggle("hidden",rows.length===0);list.innerHTML=rows.map(r=>`<div class="member"><div><b>#${esc(r.rank??"—")} · ${esc(r.player_name||"—")}</b><small>${r.alliance_tag?`[${esc(r.alliance_tag)}] · `:""}${esc(fmtVsNumber(r.score))}</small></div>${String(r.player_name||"").toLowerCase()===String(state.player?.name||"").toLowerCase()?`<span class="delta">${esc(t("you"))}</span>`:""}</div>`).join("")}
 }
 function renderVsTimeline(){const current=Number(currentVsDay()),prep=current===0,fmt=new Intl.DateTimeFormat(locale,{weekday:"short"}),monday=new Date(Date.UTC(2026,0,5));$("#vsTimeline").innerHTML=Array.from({length:6},(_,i)=>{const d=new Date(monday);d.setUTCDate(monday.getUTCDate()+i);if(prep&&i===0)return `<div class="day next"><span class="vsNextMarker">${esc(t("vs_next_day1"))}</span></div>`;return `<div class="day ${current===i+1?"active":""}">${fmt.format(d)}<br>${t("day_label")}${i+1}</div>`}).join("")}
-function renderAdvice(){if(!betaPrivateDataVisible()){const logged=Boolean(cloudSession?.user),invited=betaAccessAllowed(),consented=betaConsentAccepted();if(logged&&invited&&consented){$("#adviceTitle").textContent=t("syncing");$("#adviceText").textContent=betaAccessMessage();$("#adviceAction").textContent=t("update");return}$("#adviceTitle").textContent=t("configure_profile");$("#adviceText").textContent=logged?t("beta_consent_required"):t("beta_signin_required");$("#adviceAction").textContent=logged?t("configure"):t("login");return}const p=state.player;if(!p.name){$("#adviceTitle").textContent=t("configure_profile");$("#adviceText").textContent=t("configure_text");$("#adviceAction").textContent=t("configure");return}if(playerNeedsOnboarding()){$("#adviceTitle").textContent=t("hello",{name:p.name});$("#adviceText").textContent=t("sync_four");$("#adviceAction").textContent=t("scan_account");return}const primary=selectPrimarySquad(state);if(!primary){$("#adviceTitle").textContent=t("hello",{name:p.name});$("#adviceText").textContent=t("sync_four");$("#adviceAction").textContent=t("open_player");return}const primaryName=`${t("squad")} ${primary.i+1}`;let text=t("priority_text",{power:fmtPower(primary.s.power)});const primaryPower=Number(primary.s.power),strongestOther=state.squads.map((s,i)=>({s,i,p:Number(s?.power)})).filter(x=>x.i!==primary.i&&squadHasData(x.s)&&Number.isFinite(x.p)&&x.p>0).sort((a,b)=>b.p-a.p)[0];if(primary.i===0&&Number.isFinite(primaryPower)&&strongestOther&&strongestOther.p>primaryPower){text+=` ${t("stronger_squad_note",{name:`${t("squad")} ${strongestOther.i+1}`,power:fmtPower(strongestOther.p)})}`}$("#adviceTitle").textContent=t("priority",{name:primaryName});$("#adviceText").textContent=text;$("#adviceAction").textContent=t("view_squads")}
+function renderAdvice(){const access=runtimeAccessState();if(!access.privateVisible){const waiting=access.phase==="syncing";$("#adviceTitle").textContent=waiting?t("syncing"):t("configure_profile");$("#adviceText").textContent=betaAccessMessage();$("#adviceAction").textContent=!access.logged?t("login"):access.phase==="consent-required"?t("configure"):t("update");return}const p=state.player;if(!p.name){$("#adviceTitle").textContent=t("configure_profile");$("#adviceText").textContent=t("configure_text");$("#adviceAction").textContent=t("configure");return}if(playerNeedsOnboarding()){$("#adviceTitle").textContent=t("hello",{name:p.name});$("#adviceText").textContent=t("sync_four");$("#adviceAction").textContent=t("scan_account");return}const primary=selectPrimarySquad(state);if(!primary){$("#adviceTitle").textContent=t("hello",{name:p.name});$("#adviceText").textContent=t("sync_four");$("#adviceAction").textContent=t("open_player");return}const primaryName=`${t("squad")} ${primary.i+1}`;let text=t("priority_text",{power:fmtPower(primary.s.power)});const primaryPower=Number(primary.s.power),strongestOther=state.squads.map((s,i)=>({s,i,p:Number(s?.power)})).filter(x=>x.i!==primary.i&&squadHasData(x.s)&&Number.isFinite(x.p)&&x.p>0).sort((a,b)=>b.p-a.p)[0];if(primary.i===0&&Number.isFinite(primaryPower)&&strongestOther&&strongestOther.p>primaryPower){text+=` ${t("stronger_squad_note",{name:`${t("squad")} ${strongestOther.i+1}`,power:fmtPower(strongestOther.p)})}`}$("#adviceTitle").textContent=t("priority",{name:primaryName});$("#adviceText").textContent=text;$("#adviceAction").textContent=t("view_squads")}
 function renderAccountFields(){const p=state.player,ctx=state.player_context||{},reveal=betaPrivateDataVisible();if(!$("#fName"))return;const ids=["fName","fServer","fHq","fAlliance","fRole","fObjective","fAccountAge","fServerProfile"];if(!reveal){$("#fName").value="";$("#fServer").value="";$("#fHq").value="";$("#fAlliance").value="";$("#fRole").value="";if($("#fObjective"))$("#fObjective").value="auto";if($("#fAccountAge"))$("#fAccountAge").value="";if($("#fServerProfile"))$("#fServerProfile").value="auto"}else{$("#fName").value=p.name||"";$("#fServer").value=p.server_id||"";$("#fHq").value=p.hq_level||"";$("#fAlliance").value=state.alliance.tag||"";$("#fRole").value=p.role||"R1";if($("#fObjective"))$("#fObjective").value=ctx.objective||"auto";if($("#fAccountAge"))$("#fAccountAge").value=ctx.account_age_days??"";if($("#fServerProfile"))$("#fServerProfile").value=ctx.server_profile||"auto"}ids.forEach(id=>{const el=$("#"+id);if(el)el.disabled=!reveal});if($("#saveProfileBtn"))$("#saveProfileBtn").disabled=!reveal;renderVoiceSettings()}
 function renderProvider(){
-  const s=state.sync||{},sources=s.sources||{},pill=$("#providerPill"),box=$("#providerStatus"),reveal=betaPrivateDataVisible();
+  const s=state.sync||{},sources=s.sources||{},pill=$("#providerPill"),box=$("#providerStatus"),access=runtimeAccessState(),reveal=access.privateVisible;
   if(!pill||!box)return;
   pill.textContent=t("safe_external_disabled");pill.className="pill";
   $("#publicSourceState").textContent=t("safe_external_disabled");
@@ -1330,7 +1343,7 @@ function renderProvider(){
   if($("#openScanBtn"))$("#openScanBtn").disabled=!reveal;
   if($("#syncAllBtn"))$("#syncAllBtn").disabled=!reveal;
   box.className=`notice${reveal?"":" warn"}`;
-  box.textContent=reveal?(s.pending_cloud_save?t("offline_keep"):t("safe_sync_note")):t("beta_signin_required");
+  box.textContent=reveal?(s.pending_cloud_save?t("offline_keep"):t("safe_sync_note")):betaAccessMessage();
 }
 function openDrawer(name){
   // Re-render immediately before a user opens any data drawer. Because render() now has complete
@@ -1339,7 +1352,7 @@ function openDrawer(name){
   closeDrawers();
   if(name==="account"){safeRenderStep("ACCOUNT_OPEN_FIELDS",renderAccountFields);safeRenderStep("ACCOUNT_OPEN_AUTH",renderAuth);safeRenderStep("ACCOUNT_OPEN_BETA",renderBeta);safeRenderStep("ACCOUNT_OPEN_PRO",renderPro)}
   if(betaPrivateDataVisible()&&name==="player")safeRenderStep("PLAYER_OPEN_CORE",()=>renderPlayerCoreSummary(state.player,state.drone||{}));
-  if(betaPrivateDataVisible()&&name==="alliance"){safeRenderStep("ALLIANCE_OPEN_CORE",()=>renderAllianceCoreSummary(state.player,state.alliance));safeRenderStep("ALLIANCE_OPEN_MEMBERS",renderMembers);safeRenderStep("ALLIANCE_OPEN_ACCESS",renderAllianceAccess)}
+  if(betaPrivateDataVisible()&&name==="alliance"){safeRenderStep("ALLIANCE_OPEN_CORE",()=>renderAllianceCoreSummary(state.player,state.alliance));safeRenderStep("ALLIANCE_OPEN_MEMBERS",renderMembers);safeRenderStep("ALLIANCE_OPEN_ACCESS",renderAllianceAccess);safeRenderStep("ALLIANCE_OPEN_DESERT_STORM",renderDesertStormPlanner)}
   if(betaPrivateDataVisible()&&name==="vs")safeRenderStep("VS_OPEN_CORE",renderVsLive);
   if(betaPrivateDataVisible()&&name==="season")safeRenderStep("SEASON_OPEN_CORE",()=>renderSeasonCoreSummary(state.season));
   $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false");if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)}
@@ -1461,7 +1474,7 @@ function handleJoinLink(){const raw=new URLSearchParams(location.search).get("jo
 
 function supportStatusLabel(status){return t(`support_status_${String(status||"received")}`)}
 function renderSupportAccess(){
-  const logged=Boolean(cloudSession?.user),notice=$("#supportAuthNotice"),create=$("#supportCreateSection");
+  const logged=Boolean(cloudSession?.user),notice=$("#supportAuthNotice"),create=$("#supportCreateSection");if($("#supportBuildPill"))$("#supportBuildPill").textContent=`V${APP_VERSION} · ${RELEASE_LABEL}`;
   if(notice)notice.classList.toggle("hidden",logged);
   if(create)create.classList.toggle("hidden",!logged);
   if(!logged&&$("#supportTickets"))$("#supportTickets").innerHTML=`<div class="privacyText">${esc(t("support_login_required"))}</div>`;

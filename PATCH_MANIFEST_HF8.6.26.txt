@@ -1,0 +1,33 @@
+WarBoost V2.5.28 HF8.6.26 — Cross-Module State Integrity
+Target branch: public-beta-safe-launch
+Supersedes: HF8.6.24 and HF8.6.25 patch installation
+
+Functional files replaced:
+- app.js
+- i18n.js
+- index.html
+- sw.js
+- manifest.webmanifest
+- api/health.js
+- lib/session-bootstrap.js
+- package.json
+
+Verification/documentation files included:
+- scripts/verify-v2.5.28-hf8-6-19.mjs (lineage, retained)
+- scripts/verify-v2.5.28-hf8-6-24.mjs
+- scripts/verify-v2.5.28-hf8-6-25.mjs
+- scripts/verify-v2.5.28-hf8-6-26.mjs
+- BUILD_VERIFICATION_HF8.6.24.txt
+- BUILD_VERIFICATION_HF8.6.25.txt
+- BUILD_VERIFICATION_HF8.6.26.txt
+- PATCH_MANIFEST_HF8.6.24.txt
+- PATCH_MANIFEST_HF8.6.25.txt
+- PATCH_MANIFEST_HF8.6.26.txt
+- WARBOOST_V2_5_28_HF8_6_24_OWNED_STATE_VISIBILITY_RELIABILITY.md
+- WARBOOST_V2_5_28_HF8_6_25_PLAYER_LAUNCH_INTEGRITY.md
+- WARBOOST_V2_5_28_HF8_6_26_CROSS_MODULE_STATE_INTEGRITY.md
+
+No file deletion.
+No Supabase migration.
+No player-data reset.
+Do not deploy this patch to main or publisher-demo unless intentionally promoted later.

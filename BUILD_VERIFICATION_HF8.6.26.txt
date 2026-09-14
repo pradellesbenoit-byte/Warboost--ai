@@ -1,0 +1,32 @@
+WarBoost V2.5.28 HF8.6.26 — Final patch verification
+
+Verified on patch worktree:
+PASS node --check app.js
+PASS node --check i18n.js
+PASS node --check sw.js
+PASS node --check lib/session-bootstrap.js
+PASS node --check api/health.js
+PASS node --check scripts/verify-v2.5.28-hf8-6-26.mjs
+PASS scripts/verify-v2.5.28-hf8-6-24.mjs
+PASS scripts/verify-v2.5.28-hf8-6-25.mjs
+PASS scripts/verify-v2.5.28-hf8-6-26.mjs
+
+HF8.6.26 dedicated regression coverage:
+- one access-state contract across modules;
+- private-data account isolation;
+- accepted/consented/current-owner ready state;
+- checking, consent-required, owner mismatch and revoked fail-closed states;
+- stale allowed flag cannot override revoked access;
+- Coach / Sync / Desert Storm / Player activity use central access state;
+- Alliance opening refreshes Desert Storm;
+- missing R5 roster warning;
+- stale VS score not displayed as current live score;
+- stale VS context warning for VS-focused PRO;
+- confirmed season state hides empty access warning;
+- support exact release label;
+- scan temporary-image vs persistent-data wording;
+- no duplicate DOM ids;
+- static i18n keys resolve for every configured locale/fallback.
+
+Packaging verification is recorded by the archive SHA-256 supplied with the final ZIP.
+Historical full-repository npm verification was not claimed from this patch-only worktree.
