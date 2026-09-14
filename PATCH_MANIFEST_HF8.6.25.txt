@@ -1,0 +1,46 @@
+WarBoost V2.5.28 HF8.6.25 — PLAYER LAUNCH INTEGRITY
+
+BASE D'INSTALLATION
+- Conçu pour être appliqué directement sur public-beta-safe-launch actuellement en HF8.6.23.
+- HF8.6.24 n'a PAS besoin d'être installé avant : ce ZIP contient les fichiers HF8.6.24 nécessaires + le durcissement HF8.6.25.
+- Ne pas appliquer sur main ou publisher-demo.
+
+OBJECTIF
+- Unifier le comportement login / refresh token / reconnexion réseau / reprise mobile / BFCache / retry / synchronisation manuelle.
+- Empêcher toute contamination ou écriture cloud entre comptes.
+- Garder Account, Coach IA, Player, Alliance, VS et Season cohérents à partir d'un seul état authentifié.
+- Préserver les données locales pendant les pannes réseau et reprendre proprement le cloud ensuite.
+- Ajouter un gate de non-régression sur les fonctions critiques de lancement joueurs.
+
+FICHIERS PRINCIPAUX MODIFIÉS
+- app.js
+- index.html
+- sw.js
+- manifest.webmanifest
+- api/health.js
+- package.json
+
+FICHIERS DE FIABILITÉ CONSERVÉS / INCLUS DE HF8.6.24
+- lib/session-bootstrap.js
+- scripts/verify-v2.5.28-hf8-6-24.mjs
+- scripts/verify-v2.5.28-hf8-6-19.mjs
+- i18n.js
+
+NOUVEAUX FICHIERS HF8.6.25
+- scripts/verify-v2.5.28-hf8-6-25.mjs
+- WARBOOST_V2_5_28_HF8_6_25_PLAYER_LAUNCH_INTEGRITY.md
+- BUILD_VERIFICATION_HF8.6.25.txt
+- PATCH_MANIFEST_HF8.6.25.txt
+
+AUCUNE MIGRATION SUPABASE.
+AUCUN FICHIER À SUPPRIMER.
+AUCUNE DONNÉE JOUEUR À EFFACER.
+
+APRÈS DÉPLOIEMENT
+1. Vérifier l'en-tête HF8.6.25.
+2. Tester un compte existant.
+3. Tester un compte invité totalement neuf.
+4. Vérifier fermeture/réouverture et persistance.
+5. Tester perte réseau puis reconnexion.
+6. Vérifier Player, PRO, Alliance R4/R5, VS, Saison et Service client.
+7. Déconnexion puis connexion d'un autre compte : aucune donnée du premier compte ne doit apparaître.

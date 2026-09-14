@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.28 HF8.6.23 — Session State Machine Reliability</title>
+  <title>WarBoost V2.5.28 HF8.6.25 — Player Launch Integrity</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css" />
@@ -15,6 +15,10 @@
 </head>
 <body>
   <!-- Legacy cache-bust verification markers: /app.js?v=hf8618 · /publisher-ui.js?v=hf8618 -->
+  <!-- Legacy HF8.6.23 verification markers: WarBoost V2.5.28 HF8.6.23 · /app.js?v=hf8623 · /publisher-ui.js?v=hf8623 -->
+  <!-- HF8.6.25: one authenticated runtime reconciliation path; account-safe persistence; Player/Coach/Alliance/VS/Season stay coherent through reconnect/resume. -->
+  <!-- Legacy HF8.6.24 verification markers: WarBoost V2.5.28 HF8.6.24 · /app.js?v=hf8624 · /publisher-ui.js?v=hf8624 -->
+  <!-- Legacy HF8.6.24: authenticated+invited+consented rendering trusts only state owned by the current user id; cloud verification no longer masks already-owned data. -->
   <!-- HF8.6.23: same-user token refresh preserves verified access; beta check runs in parallel with profile restore and transient races cannot re-lock the UI. -->
   <!-- HF8.6.22: Home, Player, Alliance, VS, Season, Coach and Account render independently; drawers refresh from current state before opening. -->
   <!-- Legacy HF8.6.21: account form binds before heavy module rendering; render failures are isolated per module. -->
@@ -36,7 +40,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.28 HF8.6.23 · Bêta publique · session fiable · paiements désactivés</small></div>
+        <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.28 HF8.6.25 · Bêta publique · intégrité lancement joueurs · paiements désactivés</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -44,7 +48,7 @@
 
 
     <section class="publisherStrip" aria-label="Safe Launch beta status">
-      <div><b>WarBoost V2.5.28 HF8.6.23</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
+      <div><b>WarBoost V2.5.28 HF8.6.25</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
       <span class="publisherPill" data-i18n="safe_external_disabled">External game access disabled</span>
     </section>
 
@@ -269,7 +273,7 @@
     </div>
   </section>
 
-  <script type="module" src="/app.js?v=hf8623"></script>
-  <script type="module" src="/publisher-ui.js?v=hf8623"></script>
+  <script type="module" src="/app.js?v=hf8625"></script>
+  <script type="module" src="/publisher-ui.js?v=hf8625"></script>
 </body>
 </html>

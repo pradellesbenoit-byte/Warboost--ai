@@ -1,0 +1,9 @@
+WarBoost V2.5.28 HF8.6.24 — Owned State Visibility Reliability
+
+Required checks:
+- npm run check
+- npm run verify
+- install patch over a clean HF8.6.23 copy
+- repeat npm run check + npm run verify on installed copy
+- compare patched files byte-for-byte with audited work tree
+- unzip integrity test

@@ -1,0 +1,31 @@
+WarBoost V2.5.28 HF8.6.25 — BUILD VERIFICATION
+Date: 2026-09-14
+
+Contrôles exécutés sur le package consolidé :
+- node --check app.js : PASS
+- node --check i18n.js : PASS
+- node --check sw.js : PASS
+- node --check api/health.js : PASS
+- node --check lib/session-bootstrap.js : PASS
+- node --check scripts/verify-v2.5.28-hf8-6-19.mjs : PASS
+- node --check scripts/verify-v2.5.28-hf8-6-24.mjs : PASS
+- node --check scripts/verify-v2.5.28-hf8-6-25.mjs : PASS
+- verify-v2.5.28-hf8-6-24.mjs : PASS
+- verify-v2.5.28-hf8-6-25.mjs : PASS
+- package.json parse : PASS
+- manifest.webmanifest parse : PASS
+
+Le script HF8.6.25 vérifie notamment :
+- isolation stricte entre comptes ;
+- une seule voie de réconciliation authentifiée ;
+- retry / online / visibilité / BFCache / sync manuelle ;
+- garde propriétaire avant sauvegarde et avant push cloud ;
+- Player + scans + progression + armes exclusives ;
+- Diagnostic PRO TOP priorités + efficacité ressources + plan 7 jours + éviter maintenant + boutique ;
+- Alliance R4/R5 + rangs + participation + Desert Storm ;
+- VS Live Coach ;
+- Saison ;
+- Service client / feedback diagnostics ;
+- langues disponibles.
+
+Important : ces contrôles sont des tests code/régression. Le gate final reste un test réel sur le Preview Vercel avec au moins un compte existant ET un compte neuf.
