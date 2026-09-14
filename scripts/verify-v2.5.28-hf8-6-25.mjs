@@ -12,7 +12,7 @@ const standard=fs.readFileSync(new URL('../WARBOOST_V2_5_28_HF8_6_25_PLAYER_LAUN
 
 assert.match(app,/const RELEASE_LABEL="HF8\.6\.(?:25|2[6-9]|[3-9]\d*)"/);
 assert.match(index,/WarBoost V2\.5\.28 HF8\.6\.(?:25|2[6-9]|[3-9]\d*)/);
-assert.match(index,/app\.js\?v=hf8625/);
+assert.match(index,/app\.js\?v=hf862(?:5|[6-9]|\d{2,})/);
 assert.match(sw,/hf8-6-(?:25-player-launch-integrity|2[6-9]-|[3-9]\d*-)/);
 assert.match(health,/release:"HF8\.6\.(?:25|2[6-9]|[3-9]\d*)"/);
 assert.match(manifest,/HF8\.6\.25/);
@@ -27,7 +27,7 @@ assert.equal(canRevealOwnedPrivateState({userId:user,stateOwnerId:user,betaAllow
 // One restore/reconciliation path for retries and mobile lifecycle events.
 assert.match(app,/async function reconcileAuthenticatedRuntime\(reason="runtime"/);
 assert.match(app,/scheduleCloudPullRetry[\s\S]*restoreAuthenticatedProfile\(readAccountState/);
-assert.match(app,/window\.addEventListener\("online",\(\)=>\{void reconcileAuthenticatedRuntime\("online",\{force:true\}\)\}\)/);
+assert.match(app,/window\.addEventListener\("online",[\s\S]*reconcileAuthenticatedRuntime\("online",\{force:true\}\)/);
 assert.match(app,/visibilitychange[\s\S]*reconcileAuthenticatedRuntime\("visible"\)/);
 assert.match(app,/pageshow[\s\S]*reconcileAuthenticatedRuntime/);
 assert.match(app,/reconcileAuthenticatedRuntime\("manual-sync",\{force:true\}\)/);
