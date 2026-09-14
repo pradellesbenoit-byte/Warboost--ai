@@ -1736,7 +1736,7 @@ const V2528_HF8_6_19_RELIABILITY={
 };
 Object.assign(EN,V2528_HF8_6_19_RELIABILITY.en);Object.assign(EN_GB,V2528_HF8_6_19_RELIABILITY.en);Object.assign(EN_US,V2528_HF8_6_19_RELIABILITY.en);
 for(const [code,copy] of Object.entries(V2528_HF8_6_19_RELIABILITY)){if(code==='en')continue;if(packs[code])Object.assign(packs[code],copy)}
-for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V2\.5\.28\s+HF8\.6(?:\.\d+)?/g,'').replace(/^\s*[·-]\s*/,'').trim();target.tagline=`V2.5.28 HF8.6.27${tail?` · ${tail}`:''}`}}
+for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V2\.5\.28\s+HF8\.6(?:\.\d+)?/g,'').replace(/^\s*[·-]\s*/,'').trim();target.tagline=`V2.5.28 HF8.6.28${tail?` · ${tail}`:''}`}}
 // Legacy HF8.6.23 verification marker: target.tagline=`V2.5.28 HF8.6.23${tail?` · ${tail}`:''}`
 
 // Legacy HF8.6.20 verification marker: target.tagline=`V2.5.28 HF8.6.20${tail?` · ${tail}`:''}`

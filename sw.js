@@ -4,7 +4,8 @@
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-23-session-state-machine-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-24-owned-state-visibility-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-26-cross-module-state-integrity
-const CACHE="warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability";
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability
+const CACHE="warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization";
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-25-player-launch-integrity
 // Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability

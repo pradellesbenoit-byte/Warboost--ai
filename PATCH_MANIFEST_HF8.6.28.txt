@@ -1,0 +1,28 @@
+WarBoost V2.5.28 HF8.6.28 — Mobile UI Stabilization
+Base: HF8.6.27 Critical UI Repaint Reliability
+Database migration: NONE
+Delete files: NONE
+
+Files replaced/added by this patch:
+- app.js
+- index.html
+- i18n.js
+- sw.js
+- manifest.webmanifest
+- api/health.js
+- package.json
+- scripts/verify-v2.5.28-hf8-6-25.mjs (descendant-release/lifecycle compatible)
+- scripts/verify-v2.5.28-hf8-6-27.mjs (descendant-release compatible)
+- scripts/verify-v2.5.28-hf8-6-28.mjs
+- WARBOOST_V2_5_28_HF8_6_28_MOBILE_UI_STABILIZATION.md
+- PATCH_MANIFEST_HF8.6.28.txt
+- BUILD_VERIFICATION_HF8.6.28.txt
+
+Real-device regressions addressed:
+1. Player data visible but Coach IA still remains on Synchronisation....
+2. Player drawer data visible but self-reported Activity still remains on Synchronisation....
+3. One-shot Android/WebView repaint can miss the final READY state after session hydration/resume.
+
+Confirmed regressions preserved from HF8.6.27 screenshots:
+- Saison ended/interseason has no empty amber warning strip.
+- Desert Storm receives and displays the Alliance roster.

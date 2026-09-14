@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.27 — Critical UI Repaint Reliability · HF8.6.26 / HF8.6.25 lineage",
+  "name": "WarBoost V2.5.28 HF8.6.28 — Mobile UI Stabilization · HF8.6.27 / HF8.6.26 / HF8.6.25 lineage",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.27 — verified-state repaint for Coach/Sync/Season, preserving all HF8.6.26 cross-module access, Alliance, VS and Safe Launch safeguards.",
+  "description": "WarBoost V2.5.28 HF8.6.28 — repeated mobile READY repaint for Coach/Sync/Player Activity, preserving HF8.6.27 Season, Alliance, VS and Safe Launch safeguards.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

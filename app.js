@@ -25,7 +25,8 @@ import {shouldPreserveVerifiedSessionAccess,betaStateForSessionBootstrap,preserv
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6.27"; // Critical UI Repaint Reliability · Coach/Sync/Season cannot stay stale after verified profile hydration
+const RELEASE_LABEL="HF8.6.28"; // Mobile UI Stabilization · repeated READY repaint + player activity fail-safe
+// Legacy HF8.6.27 verification marker: const RELEASE_LABEL="HF8.6.27"
 // Legacy HF8.6.26 verification marker: const RELEASE_LABEL="HF8.6.26"
 // Legacy HF8.6.26 render-contract verification markers (non-executable):
 // function renderAdvice(){const access=runtimeAccessState()
@@ -237,20 +238,34 @@ function safeRenderStep(stage,fn){
     return null;
   }
 }
-let criticalUiRepaintQueued=false;
-function queueCriticalUiRepaint(){
-  if(criticalUiRepaintQueued)return;
-  criticalUiRepaintQueued=true;
-  const run=()=>{
-    criticalUiRepaintQueued=false;
-    safeRenderStep("CRITICAL_ADVICE",renderAdvice);
-    safeRenderStep("CRITICAL_PROVIDER",renderProvider);
-    if(betaPrivateDataVisible()){
-      safeRenderStep("CRITICAL_SEASON_ACCESS",renderSeasonAccess);
-      if(document.querySelector("#seasonDrawer.open"))safeRenderStep("CRITICAL_SEASON_SUMMARY",()=>renderSeasonCoreSummary(state.season));
+let criticalUiRepaintGeneration=0;
+function criticalUiRepaintPass(label="NOW"){
+  // HF8.6.28: paint every access-sensitive surface from the SAME current runtime contract.
+  // This pass is intentionally idempotent and safe to repeat while Android/WebView settles a session.
+  safeRenderStep(`CRITICAL_ADVICE_${label}`,renderAdvice);
+  safeRenderStep(`CRITICAL_PROVIDER_${label}`,renderProvider);
+  safeRenderStep(`CRITICAL_PLAYER_ACTIVITY_${label}`,renderPlayerActivity);
+  if(betaPrivateDataVisible()){
+    safeRenderStep(`CRITICAL_SEASON_ACCESS_${label}`,renderSeasonAccess);
+    if(document.querySelector("#seasonDrawer.open"))safeRenderStep(`CRITICAL_SEASON_SUMMARY_${label}`,()=>renderSeasonCoreSummary(state.season));
+    if(document.querySelector("#playerDrawer.open")){
+      safeRenderStep(`CRITICAL_PLAYER_CORE_${label}`,()=>renderPlayerCoreSummary(state.player,state.drone||{}));
+      safeRenderStep(`CRITICAL_PLAYER_ACTIVITY_OPEN_${label}`,renderPlayerActivity);
     }
-  };
-  try{requestAnimationFrame(run)}catch{setTimeout(run,0)}
+    if(document.querySelector("#allianceDrawer.open"))safeRenderStep(`CRITICAL_DESERT_STORM_${label}`,renderDesertStormPlanner);
+  }
+}
+function queueCriticalUiRepaint(){
+  // A single requestAnimationFrame proved insufficient on some Android devices: the browser could
+  // paint the transient CHECKING state and never repaint the small independent surfaces afterward.
+  // Run immediately, then repeat after the session/event loop has settled. Newer calls cancel old passes.
+  const generation=++criticalUiRepaintGeneration;
+  const run=label=>{if(generation!==criticalUiRepaintGeneration)return;criticalUiRepaintPass(label)};
+  run("NOW");
+  try{requestAnimationFrame(()=>run("RAF"))}catch{}
+  setTimeout(()=>run("T120"),120);
+  setTimeout(()=>run("T500"),500);
+  setTimeout(()=>run("T1500"),1500);
 }
 function pendingJoinCode(){try{return String(localStorage.getItem(PENDING_JOIN_CODE_KEY)||"").trim().toUpperCase()}catch{return ""}}
 function rememberPendingJoinCode(code){const clean=String(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,80);if(clean)safeLocalSet(PENDING_JOIN_CODE_KEY,clean);return clean}
@@ -1046,10 +1061,20 @@ function participationStatusIcon(status){return status==="participated"?"✅":st
 function renderPlayerActivity(){
   const grid=$("#activityEventGrid"),status=$("#playerActivityStatus"),pill=$("#playerActivityPill");if(!grid)return;
   if(!betaPrivateDataVisible()){grid.innerHTML="";if(status)status.textContent=betaAccessMessage();if(pill)pill.textContent="—";return}
+  // Paint a READY baseline before any secondary activity calculation. If one optional calculation
+  // fails, the player must never be left with the stale pre-authentication “Synchronisation…” text.
+  if(status)status.textContent=t("activity_no_confirmations");if(pill)pill.textContent="—";
   const today=lastWarDateKey(),events=mergeActivityEvents(state.activity_events),confirmedToday=new Set(events.filter(x=>x.event_date===today&&x.confirmed===true).map(x=>x.event_type));
   grid.innerHTML=PLAYER_ACTIVITY_EVENT_TYPES.map(type=>{const active=confirmedToday.has(type);return `<button type="button" class="activityEventBtn${active?" confirmed":""}" data-activity-event="${esc(type)}"><span>${active?"✅":"○"}</span><b>${esc(activityEventLabel(type))}</b><small>${esc(t(active?"activity_remove":"activity_confirm"))}</small></button>`}).join("");
   grid.querySelectorAll("[data-activity-event]").forEach(btn=>btn.addEventListener("click",()=>togglePlayerActivityEvent(btn.dataset.activityEvent)));
-  const recent=confirmedActivityEvents(events,{nowMs:serverNow.getTime(),days:7});if(pill)pill.textContent=recent.length?`${recent.length} · 7j`:"—";if(status)status.textContent=recent.length?t("activity_recent_summary",{count:recent.length}):t("activity_no_confirmations");
+  try{
+    const nowMs=serverNow instanceof Date&&!Number.isNaN(serverNow.getTime())?serverNow.getTime():Date.now();
+    const recent=confirmedActivityEvents(events,{nowMs,days:7});
+    if(pill)pill.textContent=recent.length?`${recent.length} · 7j`:"—";
+    if(status)status.textContent=recent.length?t("activity_recent_summary",{count:recent.length}):t("activity_no_confirmations");
+  }catch(error){
+    pushBootstrapStage("RENDER_PLAYER_ACTIVITY_RECENT",0,"error",error?.message||error?.name||"error","browser");
+  }
 }
 function togglePlayerActivityEvent(type){
   if(!betaPrivateDataVisible()||!PLAYER_ACTIVITY_EVENT_TYPES.includes(type))return;const date=lastWarDateKey(),id=activityEventId(type,date),events=mergeActivityEvents(state.activity_events),current=events.find(x=>x.id===id),now=new Date().toISOString(),confirmed=current?.confirmed===true,event={event_type:type,event_date:date,participation_status:!confirmed?"participated":"removed",confirmed:!confirmed,confirmed_at:!confirmed?now:null,updated_at:now,source:"player_self_report"};
@@ -1553,7 +1578,7 @@ async function submitSupportTicket(){
   const subject=String($("#supportSubject")?.value||"").trim(),description=String($("#supportDescription")?.value||"").trim(),consent=$("#supportConsent")?.checked===true;
   if(subject.length<3||description.length<8)return supportMessage(t("support_fields_required"));if(!consent)return supportMessage(t("support_consent_required"));
   supportBusy=true;const btn=$("#supportSubmitBtn");if(btn){btn.disabled=true;btn.textContent=t("support_sending")}
-  try{const file=$("#supportAttachment")?.files?.[0]||null,attachment=await supportImageData(file),drawer=document.querySelector(".drawer.open")?.id||"supportDrawer",diagnostics=$("#supportDiagnostics")?.checked!==false?{app_version:APP_VERSION,release:RELEASE_LABEL,locale:lang,screen:drawer.replace(/Drawer$/,""),platform:navigator.platform||"",online:navigator.onLine,bootstrap:compactBootstrapDiagnostics()}:{};const {response:r,json:j}=await fetchJsonBounded("/api/support",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action:"create",category:$("#supportCategory")?.value||"other",subject,description,nickname:state?.player?.name||"",app_version:APP_VERSION,locale:lang,screen:drawer.replace(/Drawer$/,""),diagnostics,attachment_data_url:attachment?.data_url||null,attachment_name:attachment?.name||null})},30000);if(!r.ok)throw new Error(j.message||j.error||t("support_error"));supportMessage(t("support_sent",{ticket:j.ticket?.ticket_no||""}),true);if($("#supportSubject"))$("#supportSubject").value="";if($("#supportDescription"))$("#supportDescription").value="";if($("#supportAttachment"))$("#supportAttachment").value="";await refreshSupportTickets()}catch(e){supportMessage(e.message||t("support_error"))}finally{supportBusy=false;if(btn){btn.disabled=false;btn.textContent=t("support_send")}}
+  try{const file=$("#supportAttachment")?.files?.[0]||null,attachment=await supportImageData(file),drawer=document.querySelector(".drawer.open")?.id||"supportDrawer",diagnostics=$("#supportDiagnostics")?.checked!==false?{app_version:APP_VERSION,release:RELEASE_LABEL,locale:lang,screen:drawer.replace(/Drawer$/,""),platform:navigator.platform||"",online:navigator.onLine,access:runtimeAccessState(),ui_consistency:{coach_title:$("#adviceTitle")?.textContent||"",provider_status:$("#providerStatus")?.textContent||"",player_activity_status:$("#playerActivityStatus")?.textContent||""},bootstrap:compactBootstrapDiagnostics()}:{};const {response:r,json:j}=await fetchJsonBounded("/api/support",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action:"create",category:$("#supportCategory")?.value||"other",subject,description,nickname:state?.player?.name||"",app_version:APP_VERSION,locale:lang,screen:drawer.replace(/Drawer$/,""),diagnostics,attachment_data_url:attachment?.data_url||null,attachment_name:attachment?.name||null})},30000);if(!r.ok)throw new Error(j.message||j.error||t("support_error"));supportMessage(t("support_sent",{ticket:j.ticket?.ticket_no||""}),true);if($("#supportSubject"))$("#supportSubject").value="";if($("#supportDescription"))$("#supportDescription").value="";if($("#supportAttachment"))$("#supportAttachment").value="";await refreshSupportTickets()}catch(e){supportMessage(e.message||t("support_error"))}finally{supportBusy=false;if(btn){btn.disabled=false;btn.textContent=t("support_send")}}
 }
 async function replySupportTicket(ticketId){
   const input=[...document.querySelectorAll("[data-support-reply-input]")].find(x=>x.dataset.supportReplyInput===String(ticketId)),body=String(input?.value||"").trim();if(body.length<2)return;
@@ -1660,9 +1685,10 @@ $("#logoutBtn")?.addEventListener("click",async()=>{const signedOutUserId=String
 document.addEventListener("click",e=>{const btn=e.target.closest?.("[data-inline-hero-save]");if(!btn)return;e.preventDefault();e.stopPropagation();const container=btn.closest?.("[data-inline-confirm]");saveInlineHeroNames(btn.dataset.inlineHeroSave,container,btn)});
 document.addEventListener("click",e=>{const btn=e.target.closest?.(".heroConfirmAction[data-hero-confirm]");if(!btn)return;e.preventDefault();e.stopPropagation();startHeroConfirmation(btn.dataset.heroConfirm)});
 $("#saveHeroNamesBtn")?.addEventListener("click",saveHeroConfirmation);$("#skipHeroNamesBtn")?.addEventListener("click",skipHeroConfirmation);
-window.addEventListener("online",()=>{void reconcileAuthenticatedRuntime("online",{force:true})});
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")void reconcileAuthenticatedRuntime("visible");else if(document.visibilityState==="hidden"&&cloudDirty)void pushServerState({keepalive:true})});
-window.addEventListener("pageshow",e=>{void reconcileAuthenticatedRuntime(e?.persisted?"pageshow-bfcache":"pageshow")});
+window.addEventListener("online",()=>{queueCriticalUiRepaint();void reconcileAuthenticatedRuntime("online",{force:true})});
+window.addEventListener("focus",()=>{queueCriticalUiRepaint();void reconcileAuthenticatedRuntime("focus")});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){queueCriticalUiRepaint();void reconcileAuthenticatedRuntime("visible")}else if(document.visibilityState==="hidden"&&cloudDirty)void pushServerState({keepalive:true})});
+window.addEventListener("pageshow",e=>{queueCriticalUiRepaint();void reconcileAuthenticatedRuntime(e?.persisted?"pageshow-bfcache":"pageshow")});
 window.addEventListener("pagehide",()=>{if(cloudDirty)void pushServerState({keepalive:true})});
 if("serviceWorker" in navigator)window.addEventListener("load",async()=>{try{let refreshing=false;const reg=await navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"});navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing)return;refreshing=true;location.reload()});await reg.update()}catch{}});
 handleJoinLink();applyLanguage();refreshServerTime();initCloudAuth();render();renderAuth();renderBeta();restorePendingScans();

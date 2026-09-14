@@ -1,0 +1,32 @@
+WarBoost V2.5.28 HF8.6.28 — Build Verification
+Date: 2026-09-14
+Base: HF8.6.27 Critical UI Repaint Reliability
+
+Targeted syntax checks: PASS
+- app.js
+- i18n.js
+- sw.js
+- api/health.js
+- verification scripts HF8.6.24 / HF8.6.25 / HF8.6.26 / HF8.6.27 / HF8.6.28
+
+Lineage regression checks available in the patch workspace: PASS
+- HF8.6.24 Owned State Visibility Reliability
+- HF8.6.25 Player Launch Integrity
+- HF8.6.26 Cross-Module State Integrity
+- HF8.6.27 Critical UI Repaint Reliability
+- HF8.6.28 Mobile UI Stabilization
+
+HF8.6.28 targeted integrity: PASS
+- same READY contract repaints Coach + Sync + Player Activity
+- immediate + delayed Android/WebView stabilization passes present
+- Player Activity READY baseline painted before secondary calculations
+- Player Activity safe clock fallback present
+- focus / online / visibility / pageshow resume repaint hooks present
+- support ticket diagnostics include runtime access + UI-consistency snapshot
+- Saison HF8.6.27 hard-hide preserved
+- provider READY semantics preserved
+- no duplicate HTML ids
+- HTML / i18n / service worker / health release identifiers synchronized to HF8.6.28
+
+Database migration: NONE
+Data deletion: NONE
