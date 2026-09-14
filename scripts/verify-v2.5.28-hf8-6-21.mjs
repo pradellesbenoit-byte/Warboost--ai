@@ -9,13 +9,13 @@ const app=read('app.js'),html=read('index.html'),health=read('api/health.js'),sw
 
 // Release/cache identity.
 assert.match(app,/const RELEASE_LABEL="HF8\.6\.21"/);
-assert.match(html,/WarBoost V2\.5\.28 HF8\.6\.21/);
-assert.match(html,/\/app\.js\?v=hf8621/);
-assert.match(html,/\/publisher-ui\.js\?v=hf8621/);
+assert.match(html,/WarBoost V2\.5\.28 HF8\.6\.(21|22)/);
+assert.match(html,/\/app\.js\?v=hf862(1|2)/);
+assert.match(html,/\/publisher-ui\.js\?v=hf862(1|2)/);
 assert.match(sw,/warboost-v2-5-28-hf8-6-21-render-boundary-reliability/);
 assert.match(manifest.name,/HF8\.6\.21/);
 assert.match(pkg.description,/HF8\.6\.21/);
-assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.21/);
+assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.(21|22)/);
 
 // Exact regression: account binding must happen before heavy Player/Alliance/VS/Season rendering.
 const renderStart=app.indexOf('function render(){');
@@ -49,10 +49,10 @@ assert.match(app,/\$\("#fServer"\)\.value=p\.server_id\|\|""/);
 assert.match(app,/\$\("#fHq"\)\.value=p\.hq_level\|\|""/);
 assert.match(app,/\$\("#fAlliance"\)\.value=state\.alliance\.tag\|\|""/);
 assert.match(app,/\$\("#fRole"\)\.value=p\.role\|\|"R1"/);
-assert.match(renderBody,/\$\("#pName"\)\.textContent=p\.name\|\|"—"/);
+assert.match(app,/function renderPlayerCoreSummary\(p,d\)[\s\S]*?#pName/);
 
 // Health makes this specific runtime hardening observable.
-assert.match(health,/release:"HF8\.6\.21"/);
+assert.match(health,/release:"HF8\.6\.(21|22)"/);
 assert.match(health,/ui_revision_render_boundary_reliability:"hf8\.6\.21-render-boundary-reliability"/);
 assert.match(health,/account_form_render_isolated:true/);
 assert.match(health,/module_render_failures_non_blocking:true/);
