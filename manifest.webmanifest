@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.22 — Full Module Render Isolation · HF8.6.18 / HF8.6.19 / HF8.6.20 / HF8.6.21 lineage",
+  "name": "WarBoost V2.5.28 HF8.6.23 — Session State Machine Reliability · HF8.6.17 / HF8.6.18 / HF8.6.19 / HF8.6.20 / HF8.6.21 / HF8.6.22 lineage",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.22 — Home, Player, Alliance, VS, Season, Coach and Account refresh independently; drawers rebind from current authenticated state before opening. HF8.6.17–HF8.6.21 safeguards retained.",
+  "description": "WarBoost V2.5.28 HF8.6.23 — same-user token refresh never re-locks a verified player; beta access verification runs in parallel with profile restore and transient races preserve a valid session. HF8.6.17–HF8.6.22 safeguards retained.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

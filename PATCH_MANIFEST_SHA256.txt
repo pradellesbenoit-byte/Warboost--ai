@@ -1,0 +1,19 @@
+WarBoost V2.5.28 HF8.6.23 FINAL PATCH
+Base: HF8.6.22
+Target branch: public-beta-safe-launch
+No Supabase migration. No deletions.
+
+Files:
+a6338487299055334fbb7b26626890649322adcee518950d1aab6ac003c5cd45  api/health.js
+681ad79fa985964e4a5b0778454797df19301d19915fe9beba9af115ab95461a  app.js
+4bf34568904ecbe0249fc35e9908aed5eab87f32999f5ede1ab36831692968d8  i18n.js
+632185ef9780a2b19860675cb2a127b58a692f030ffb35160921bae0047f621d  index.html
+5544d4ce6fa0970abed85584379b86af7c2b279e51892174521c82185ca117e6  manifest.webmanifest
+60f4909eb6023d1041d28b8a5b6a803de7fb945167479047ffe244353e27b68a  package.json
+6eb863e1b9e0cc34091903e39200397f2b8454debba627b81b1dfd71f4465e40  scripts/verify-v2.5.28-hf8-6-19.mjs
+2f7660d211667333bcff90d8a92635333db46659c53618ceb294f576bcb6a72e  scripts/verify-v2.5.28-hf8-6-21.mjs
+6465017c6e131826682f07370aadece48a7f33ebd73691762d99cca82aa8bd0e  scripts/verify-v2.5.28-hf8-6-22.mjs
+7456ad179c3c3ce1df4733d36f3397e856cbe2a25bf429afe8e6a1a869021b9c  sw.js
+ce2cef208b14809a5bb86bb2b96fa5b41e25d66f09b228dee12eb2485e6fb9d8  WARBOOST_V2_5_28_HF8_6_23_SESSION_STATE_MACHINE_RELIABILITY.md
+7290d762367d5c1fed63bdd7f29dc865534bf500fa6da398ea878bbdfddaa52e  lib/session-bootstrap.js
+465443b2768a5766fefb15c3aeaa24407c95136e6b9eafc4c67fec4ad30b1864  scripts/verify-v2.5.28-hf8-6-23.mjs

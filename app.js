@@ -21,12 +21,16 @@ import {previewAllianceRankChanges,applyAllianceRankChanges,permissionTransition
 import {savePendingSingleScan,loadPendingSingleScan,clearPendingSingleScan,savePendingRosterFiles,loadPendingRosterFiles,clearPendingRosterFiles,movePendingScans} from "./lib/pending-scan-storage.js";
 import {hasMeaningfulCoreState,hydrateCloudState,canUseKeepaliveBody,betaStateAfterVerifiedStateRead} from "./lib/cloud-state-recovery.js";
 import {readOwnProfileDirect} from "./lib/cloud-profile-direct.js";
+import {shouldPreserveVerifiedSessionAccess,betaStateForSessionBootstrap,preserveAllowedAfterTransient,restoreAttemptSucceeded} from "./lib/session-bootstrap.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6.22"; // Full Module Render Isolation · fresh drawers + independent Home/Player/Alliance/VS/Season/Coach · includes HF8.6.21
+const RELEASE_LABEL="HF8.6.23"; // Session State Machine Reliability · same-user token refresh never re-locks verified UI · includes HF8.6.22
 // Legacy HF8.6.20 verification marker: const RELEASE_LABEL="HF8.6.20"
 // Legacy HF8.6.21 verification marker: const RELEASE_LABEL="HF8.6.21"
+// Legacy HF8.6.22 verification marker: const RELEASE_LABEL="HF8.6.22"
+// Legacy privacy verification marker (new/different accounts still fail closed): betaState={...betaState,enforced:true,configured:true,allowed:false,access_status:"checking"}
+// Legacy HF8.6.13 transient-access verification marker: allowed:definitive?false:previouslyVerified
 // Legacy HF8.6.19 verification marker: const RELEASE_LABEL="HF8.6.19"
 // HF8.6.19 legacy verification markers retained after bounded-fetch hardening:
 // function betaPrivateDataVisible(){return Boolean(cloudSession?.user)&&betaAccessAllowed()&&betaConsentAccepted()}
@@ -333,7 +337,7 @@ function saveState(){state=repairLegacySquadIdentity(state).state;state.updated_
 function scheduleServerSave(delay=350){cloudDirty=true;clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushServerState(),Math.max(0,Number(delay)||0))}
 function scheduleCloudRetry(delay=8000){if(cloudRetryTimer||!cloudDirty||!navigator.onLine)return;cloudRetryTimer=setTimeout(()=>{cloudRetryTimer=null;if(cloudDirty)pushServerState()},Math.max(1500,Number(delay)||8000))}
 function markCloudPending(error="cloud_save_failed"){cloudDirty=true;state.sync={...state.sync,status:navigator.onLine?"waiting":"offline",last_error:error,pending_cloud_save:true};safeLocalSet(STORE_KEY,JSON.stringify(state));renderProvider();scheduleCloudRetry()}
-function scheduleCloudPullRetry(delay=2500){if(cloudPullRetryTimer||!navigator.onLine||!cloudSession?.access_token||!betaConsentAccepted()||cloudProfileVerified)return;const wait=Math.max(1500,Math.min(15000,Number(delay)||2500));cloudPullRetryTimer=setTimeout(async()=>{cloudPullRetryTimer=null;const seed=readAccountState(cloudSession?.user?.id);const result=await pullServerState(seed,{fastRestore:true});if(!result?.ok&&!result?.cloud_empty&&!cloudProfileVerified)scheduleCloudPullRetry(Math.min(15000,wait*2))},wait)}
+function scheduleCloudPullRetry(delay=2500){const needsRecovery=Boolean(!cloudProfileVerified||betaState?.restore_error);if(cloudPullRetryTimer||!navigator.onLine||!cloudSession?.access_token||!betaConsentAccepted()||!needsRecovery)return;const wait=Math.max(1500,Math.min(15000,Number(delay)||2500));cloudPullRetryTimer=setTimeout(async()=>{cloudPullRetryTimer=null;const seed=readAccountState(cloudSession?.user?.id);const result=await pullServerState(seed,{fastRestore:true});const stillNeedsRecovery=Boolean(!cloudProfileVerified||betaState?.restore_error);if(!result?.ok&&!result?.cloud_empty&&stillNeedsRecovery)scheduleCloudPullRetry(Math.min(15000,wait*2))},wait)}
 function markLargeKeepaliveDeferred(){cloudDirty=true;state.sync={...state.sync,status:"waiting",pending_cloud_save:true};safeLocalSet(STORE_KEY,JSON.stringify(state));renderProvider()}
 async function fetchSessionCritical(input,init={},timeoutMs=10000){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),Math.max(1500,Number(timeoutMs)||10000));
@@ -365,7 +369,7 @@ async function initCloudAuth(){
     cloud.auth.onAuthStateChange((_event,session)=>{void applySession(session||null)});
   }catch(error){cloudInit={status:"auth-unreachable",configured:true,transport:"direct-supabase-auth-api",error:error?.code||"auth_unreachable"};renderAuth();renderBeta()}
 }
-async function refreshBeta(){if(!cloudSession?.access_token){betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};renderBeta();return betaState}const previouslyVerified=betaState?.allowed===true;try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok&&j.beta){betaState={...betaState,release:j.release!==false,enforced:Boolean(j.enforced??j.beta_enforced),configured:Boolean(j.beta_configured??j.enforced??j.beta_enforced),allowed:Boolean(j.allowed??j.active),access_status:j.access_status||j.beta_access||(j.active?"invited":"invite-required"),consent_version:j.consent_version||BETA_CONSENT_VERSION,payments_enabled:false,pro_included:Boolean(j.pro_included)}}else{const code=String(j?.error||"").toUpperCase(),definitive=r.status===403||["BETA_INVITE_REQUIRED","BETA_INVITE_REVOKED","BETA_INVITE_EXPIRED"].includes(code);betaState={...betaState,allowed:definitive?false:previouslyVerified,access_status:definitive?(code==="BETA_INVITE_REVOKED"?"revoked":code==="BETA_INVITE_EXPIRED"?"expired":"invite-required"):(previouslyVerified?(betaState.access_status||"accepted"):(j.access_status||j.beta_access||j.error||"beta-status-error"))}}}catch{betaState={...betaState,allowed:previouslyVerified,access_status:previouslyVerified?(betaState.access_status||"accepted"):"beta-status-error"}}renderBeta();return betaState}
+async function refreshBeta(){if(!cloudSession?.access_token){betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};renderBeta();render();return betaState}const previouslyVerified=betaState?.allowed===true;try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok&&j.beta){betaState={...betaState,release:j.release!==false,enforced:Boolean(j.enforced??j.beta_enforced),configured:Boolean(j.beta_configured??j.enforced??j.beta_enforced),allowed:Boolean(j.allowed??j.active),access_status:j.access_status||j.beta_access||(j.active?"invited":"invite-required"),consent_version:j.consent_version||BETA_CONSENT_VERSION,payments_enabled:false,pro_included:Boolean(j.pro_included)}}else{const code=String(j?.error||"").toUpperCase(),definitive=r.status===403||["BETA_INVITE_REQUIRED","BETA_INVITE_REVOKED","BETA_INVITE_EXPIRED"].includes(code);betaState={...betaState,allowed:definitive?false:preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true}),access_status:definitive?(code==="BETA_INVITE_REVOKED"?"revoked":code==="BETA_INVITE_EXPIRED"?"expired":"invite-required"):(preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true})?((betaState.access_status&&betaState.access_status!=="checking")?betaState.access_status:"accepted"):(j.access_status||j.beta_access||j.error||"beta-status-error"))}}}catch{const keep=preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true});betaState={...betaState,allowed:keep,access_status:keep?((betaState.access_status&&betaState.access_status!=="checking")?betaState.access_status:"accepted"):"beta-status-error"}}renderBeta();render();return betaState}
 async function activateBetaCode(){const input=$("#betaAccessCode"),status=$("#betaCodeStatus"),btn=$("#betaCodeActivateBtn"),code=String(input?.value||"").trim();if(!cloudSession?.access_token){if(status){status.className="notice warn";status.textContent=t("beta_signin_required");status.classList.remove("hidden")}return}if(!code){if(status){status.className="notice warn";status.textContent=t("beta_code_enter");status.classList.remove("hidden")}return}if(btn){btn.disabled=true;btn.textContent=t("beta_code_activating")}try{const {response:r,json:j}=await fetchJsonBounded("/api/support",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action:"beta_code_activate",code})},15000);if(!r.ok){const key=j.error==="BETA_CODE_INVALID"?"beta_code_invalid":j.error==="BETA_CODE_EXPIRED"?"beta_code_expired":j.error==="BETA_CODE_FULL"?"beta_code_full":j.error==="BETA_ACCESS_REVOKED"?"beta_access_revoked":"beta_code_error";throw Object.assign(new Error(t(key)),{code:j.error||"BETA_CODE_ERROR"})}await refreshBeta();if(input)input.value="";if(status){status.className="notice";status.textContent=t("beta_code_success");status.classList.remove("hidden")}setTimeout(()=>{if(betaAccessAllowed())status?.classList.add("hidden")},2200)}catch(e){if(status){status.className="notice warn";status.textContent=e.message||t("beta_code_error");status.classList.remove("hidden")}}finally{if(btn){btn.disabled=false;btn.textContent=t("beta_code_activate")}}}
 function sessionApplyKey(session){return session?.access_token?`${String(session?.user?.id||"")}|${String(session.access_token).slice(-24)}`:"signed-out"}
 async function applySession(session){
@@ -373,7 +377,7 @@ async function applySession(session){
   if(sessionApplyInFlight?.key===key)return sessionApplyInFlight.promise;
   // Reuse a signed-in bootstrap only after the authenticated cloud profile has actually been
   // verified. A previous degraded/timeout attempt must be allowed to run again with the same token.
-  if(lastAppliedSessionKey===key&&((session?.access_token&&cloudSession?.access_token===session.access_token&&cloudProfileVerified)||(!session&&!cloudSession)))return {ok:true,reused:true,cloud_profile_verified:cloudProfileVerified};
+  if(lastAppliedSessionKey===key&&((session?.access_token&&cloudSession?.access_token===session.access_token&&cloudProfileVerified&&betaState?.allowed===true&&betaState?.access_status!=="checking"&&!betaState?.restore_error)||(!session&&!cloudSession)))return {ok:true,reused:true,cloud_profile_verified:cloudProfileVerified};
   const promise=applySessionCore(session).then(result=>{lastAppliedSessionKey=key;return result});
   sessionApplyInFlight={key,promise};
   try{return await promise}finally{if(sessionApplyInFlight?.promise===promise)sessionApplyInFlight=null}
@@ -384,6 +388,8 @@ if(betaConsentAccepted()){
 }
 */
 async function applySessionCore(session){
+  // Legacy HF8.6.17 fail-closed regression marker (new/different accounts only):
+  // enforced:true,configured:true,allowed:false,access_status:"checking"
   const previousUserId=String(cloudSession?.user?.id||"");
   const previousPendingOwner=pendingScanOwner(cloudSession);
   const preSessionState=safeClone(state);
@@ -400,11 +406,12 @@ async function applySessionCore(session){
   try{
     if(cloudSession?.user?.id){
       resetBootstrapDiagnostics("session");
-      // The public beta is server-invite gated. Never show the legacy fail-open “not configured”
-      // state while an authenticated invitation check is still running.
-      betaState={...betaState,enforced:true,configured:true,allowed:false,access_status:"checking"};
-      cloudHydrationPending=true;
+      // The public beta is server-invite gated. A same-user token refresh must never
+      // re-lock an already verified UI while a background revalidation runs.
       const userId=String(cloudSession.user.id),oldOwner=String(state?.player_id||""),localOwner=clientId();
+      const preserveVerifiedAccess=shouldPreserveVerifiedSessionAccess({previousUserId,nextUserId:userId,cloudProfileVerified,betaAllowed:betaState?.allowed===true,betaAccessStatus:betaState?.access_status});
+      betaState=betaStateForSessionBootstrap(betaState,{preserveVerified:preserveVerifiedAccess});
+      cloudHydrationPending=true;
 
       // Isolate accounts before any optional asynchronous work can stall.
       if(oldOwner&&oldOwner!==localOwner&&oldOwner!==userId&&hasMeaningfulCore(state))rememberAccountState(oldOwner,state);
@@ -690,12 +697,17 @@ setInterval(()=>{serverNow=new Date(serverNow.getTime()+1000);renderClock()},100
 async function restoreAuthenticatedProfile(loginSeed=null,{reason="session"}={}){
   if(!cloudSession?.access_token||!betaConsentAccepted())return {ok:false,skipped:true,error:"restore_not_ready"};
   cloudHydrationPending=true;betaState={...betaState,restore_error:null};renderBeta();
+  // Verify beta access in parallel with the profile read. This lets a returning player
+  // keep using trusted same-account local data even if /api/state is slower on mobile.
+  const betaCheckPromise=runBootstrapStage("BETA_CHECK_PARALLEL",()=>refreshBeta()).catch(()=>null);
   let pulled=await runBootstrapStage("STATE_API",()=>pullServerState(loginSeed,{fastRestore:true}));
+  await betaCheckPromise;
   if(!pulled?.ok&&!pulled?.cloud_empty){
-    await runBootstrapStage("BETA_CHECK",()=>refreshBeta());
     if(betaState.allowed===true&&!cloudProfileVerified)pulled=await runBootstrapStage("DIRECT_PROFILE",()=>pullDirectOwnProfile(loginSeed));
   }
-  const success=Boolean(pulled?.ok||pulled?.cloud_empty||cloudProfileVerified);
+  // Never treat an old cloudProfileVerified=true from a previous token as proof that
+  // this restore attempt succeeded. That stale flag caused the permanent "Synchronisation…" state.
+  const success=restoreAttemptSucceeded(pulled);
   if(success){betaState={...betaState,restore_error:null};finishBootstrapDiagnostics("ready")}
   else if(betaState.allowed===false&&["invite-required","revoked","expired"].includes(String(betaState.access_status||""))){finishBootstrapDiagnostics("access-blocked")}
   else{const failure=lastBootstrapFailure();betaState={...betaState,restore_error:failure?.error||pulled?.error||"profile_restore_failed",access_status:betaState.allowed?betaState.access_status:"restore-failed"};finishBootstrapDiagnostics("restore-failed");scheduleCloudPullRetry(3000)}
