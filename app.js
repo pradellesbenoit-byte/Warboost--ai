@@ -24,8 +24,9 @@ import {readOwnProfileDirect} from "./lib/cloud-profile-direct.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6.21"; // Render Boundary Reliability · account binding first + isolated module renders · includes HF8.6.20
+const RELEASE_LABEL="HF8.6.22"; // Full Module Render Isolation · fresh drawers + independent Home/Player/Alliance/VS/Season/Coach · includes HF8.6.21
 // Legacy HF8.6.20 verification marker: const RELEASE_LABEL="HF8.6.20"
+// Legacy HF8.6.21 verification marker: const RELEASE_LABEL="HF8.6.21"
 // Legacy HF8.6.19 verification marker: const RELEASE_LABEL="HF8.6.19"
 // HF8.6.19 legacy verification markers retained after bounded-fetch hardening:
 // function betaPrivateDataVisible(){return Boolean(cloudSession?.user)&&betaAccessAllowed()&&betaConsentAccepted()}
@@ -743,6 +744,18 @@ function renderSeasonAccess(){
   notice.textContent=historical?t("season_access_historical"):life==="active"?t("season_access_active"):t("season_start_notice");
 }
 function openQuickScan(type){if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("scan");renderScanTypeOptions();if($("#scanType"))$("#scanType").value=type}
+
+// HF8.6.22: each visible surface has its own render boundary. No optional module may
+// leave another surface stale simply because one formatting/render step throws.
+function renderHomePlayerMeta(p){const el=$("#playerMeta");if(el)el.textContent=p?.name?(p?.hq_level?`${t("hq")} ${p.hq_level}`:t("connected")):t("to_connect")}
+function renderHomeAllianceMeta(p,a){const el=$("#allianceMeta");if(el)el.textContent=a?.tag?`${a.tag} · ${normalizedRole(p?.role)}`:"—"}
+function renderHomeVsMeta(v){const el=$("#vsMeta");if(!el)return;const sit=vsSituation(v||{}),fresh=vsSnapshotFreshness(v||{},{now:serverNow});el.textContent=scoreKnown(v||{})&&fresh.current&&sit.our_share!==null?`${Math.round(sit.our_share)}%${Number(v?.personal_rank)>0?` · #${Number(v.personal_rank)}`:""}`:scoreKnown(v||{})&&!fresh.current?t("vs_status_stale"):`${t("week")} ${currentVsWeek()}`}
+function renderPlayerCoreSummary(p,d){if($("#pName"))$("#pName").textContent=p?.name||"—";if($("#pHq"))$("#pHq").textContent=p?.hq_level?`${t("hq")} ${p.hq_level}`:t("to_fill");if($("#pPower"))$("#pPower").textContent=Number(p.power_m)>0?fmtPower(p.power_m):t("to_fill");if($("#pDrone"))$("#pDrone").textContent=d?.level?`${t("level")}${d.level}${d.power_m?` · ${fmtPower(d.power_m)}`:""}`:Number(d?.power_m)>0?fmtPower(d.power_m):t("to_fill")}
+function renderAllianceCoreSummary(p,a){if($("#aTag"))$("#aTag").textContent=a?.tag||"—";if($("#aCount"))$("#aCount").textContent=String(a?.members?.length||0);if($("#aRole"))$("#aRole").textContent=p?.role||"R1";const declaredManager=["R4","R5"].includes(normalizedRole(p.role)),verifiedManager=a.management_verified===true&&["R4","R5"].includes(normalizedRole(a.role)),cloudAlliance=Boolean(a.id||a.invite_code),canShareAllianceInvite=declaredManager&&(!cloudAlliance||verifiedManager);if($("#inviteCode"))$("#inviteCode").textContent=canShareAllianceInvite?(a?.invite_code||"—"):"—";const inviteNote=$("#inviteNote");if(inviteNote)inviteNote.textContent=t("invite_note_scoped",{server:p?.server_id||"—",alliance:a?.tag||"—"});const shareInvite=$("#shareInviteBtn");if(shareInvite)shareInvite.disabled=!canShareAllianceInvite;if($("#rosterFresh"))$("#rosterFresh").textContent=a?.updated_at?updatedLabel(a.updated_at):t("sync_needed")}
+function renderSeasonCoreSummary(s){const seasonLife=seasonLifecycle(s||{}),seasonActive=seasonIsActive(s||{}),pct=activeSeasonProgress(s||{}),baseSeasonName=s?.name||(s?.number?`S${s.number}`:"—"),seasonHistorical=(seasonLife==="ended"||seasonLife==="interseason");if($("#seasonMeta"))$("#seasonMeta").textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):baseSeasonName;const seasonDesc=$("#seasonDesc");if(seasonDesc)seasonDesc.textContent=seasonLife==="interseason"?`${t("season_ended_short")} · ${t("season_interseason")}`:seasonLife==="ended"?t("season_ended_short"):t("season_desc");if($("#sName"))$("#sName").textContent=seasonHistorical?`${baseSeasonName} · ${t("season_ended_short")}`:baseSeasonName;if($("#sDay"))$("#sDay").textContent=seasonActive?(s?.day||"—"):"—";if($("#sProfession"))$("#sProfession").textContent=s?.profession||"—";const professionLabel=$("#seasonProfessionLabel"),seasonSectionTitle=$("#seasonSectionTitle");if(professionLabel)professionLabel.textContent=seasonHistorical?t("season_last_profession_short"):t("profession");if(seasonSectionTitle)seasonSectionTitle.textContent=seasonHistorical?t("season_state"):t("season_progress");const bar=$("#seasonProgressBar"),label=$("#seasonProgressLabel"),progressWrap=bar?.closest(".progress");if(progressWrap)progressWrap.classList.toggle("hidden",!seasonActive||pct===null);if(bar)bar.style.width=`${pct??0}%`;if(label)label.textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):pct===null?t("season_unknown"):`${pct}%`;const lifeSelect=$("#seasonLifecycleSelect");if(lifeSelect)lifeSelect.value=seasonLife;const lifeStatus=seasonLife==="interseason"?t("season_interseason_note",{name:baseSeasonName,profession:s?.profession||"—"}):seasonLife==="ended"?t("season_ended_note",{name:baseSeasonName,profession:s?.profession||"—"}):seasonLife==="unknown"?t("season_unknown_note"):s?.updated_at?`${t("last_update",{ago:fmtAgo(s.updated_at)})} · ${s?.resistance??"—"}`:t("season_wait");if($("#seasonStatus"))$("#seasonStatus").textContent=lifeStatus}
+function maskHomePrivateMeta(){if($("#playerMeta"))$("#playerMeta").textContent=t("to_connect");if($("#allianceMeta"))$("#allianceMeta").textContent="—";if($("#vsMeta"))$("#vsMeta").textContent="—";if($("#seasonMeta"))$("#seasonMeta").textContent="—"}
+function maskPlayerPrivateSummary(){if($("#pName"))$("#pName").textContent="—";if($("#pHq"))$("#pHq").textContent="—";if($("#pPower"))$("#pPower").textContent="—";if($("#pDrone"))$("#pDrone").textContent="—";const squadList=$("#squadList");if(squadList)squadList.innerHTML="";$("#playerOnboarding")?.classList.add("hidden")}
+function maskAlliancePrivateSummary(){if($("#aTag"))$("#aTag").textContent="—";if($("#aCount"))$("#aCount").textContent="0";if($("#aRole"))$("#aRole").textContent="—";if($("#inviteCode"))$("#inviteCode").textContent="—";if($("#shareInviteBtn"))$("#shareInviteBtn").disabled=true}
 function render(){
   const p=state.player,a=state.alliance,v=state.vs,s=state.season,d=state.drone||{},reveal=betaPrivateDataVisible();
   if(!$("#playerMeta"))return;
@@ -750,20 +763,16 @@ function render(){
   // V2.5.20 privacy boundary: saved local/cloud data is preserved in state but is never rendered
   // until an invited WarBoost session is active and beta consent is accepted.
   if(!reveal){
+    // Legacy privacy verification markers retained after HF8.6.22 render isolation:
+    // $("#playerMeta").textContent=t("to_connect"); $("#allianceMeta").textContent="—";
     // Account fields are a security boundary: clear them immediately, independently of every other module render.
     safeRenderStep("ACCOUNT_FIELDS",renderAccountFields);
-    $("#playerMeta").textContent=t("to_connect");
-    $("#allianceMeta").textContent="—";
-    $("#vsMeta").textContent="—";
-    $("#seasonMeta").textContent="—";
-    $("#pName").textContent="—";$("#pHq").textContent="—";$("#pPower").textContent="—";$("#pDrone").textContent="—";
-    const squadList=$("#squadList");if(squadList)squadList.innerHTML="";
-    $("#playerOnboarding")?.classList.add("hidden");
+    safeRenderStep("MASK_HOME",maskHomePrivateMeta);
+    safeRenderStep("MASK_PLAYER",maskPlayerPrivateSummary);
     document.querySelectorAll("#allianceDrawer .allianceManagerOnly").forEach(el=>el.classList.add("hidden"));
     const exclusive=$("#exclusiveWeaponList");if(exclusive)exclusive.innerHTML="";
     if($("#exclusiveWeaponCount"))$("#exclusiveWeaponCount").textContent="0";
-    $("#aTag").textContent="—";$("#aCount").textContent="0";$("#aRole").textContent="—";$("#inviteCode").textContent="—";
-    if($("#shareInviteBtn"))$("#shareInviteBtn").disabled=true;
+    safeRenderStep("MASK_ALLIANCE",maskAlliancePrivateSummary);
     $("#rosterFresh").textContent=t("sync_needed");
     const members=$("#memberList");if(members)members.innerHTML=`<div class="notice">${esc(t("beta_signin_required"))}</div>`;
     const activity=$("#activitySummary");if(activity)activity.innerHTML=`<div><b>🟢 0</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>🟠 0</b><small>${esc(t("activity_refresh"))}</small></div><div><b>⚪ —</b><small>${esc(t("activity_inactivity_not_evaluated"))}</small></div>`;
@@ -790,12 +799,11 @@ function render(){
     return;
   }
 
-  $("#playerMeta").textContent=p.name?(p.hq_level?`${t("hq")} ${p.hq_level}`:t("connected")):t("to_connect");
-  $("#allianceMeta").textContent=a.tag?`${a.tag} · ${normalizedRole(p.role)}`:"—";
-  const homeVsSituation=vsSituation(v),homeVsFreshness=vsSnapshotFreshness(v,{now:serverNow});$("#vsMeta").textContent=scoreKnown(v)&&homeVsFreshness.current&&homeVsSituation.our_share!==null?`${Math.round(homeVsSituation.our_share)}%${Number(v.personal_rank)>0?` · #${Number(v.personal_rank)}`:""}`:scoreKnown(v)&&!homeVsFreshness.current?t("vs_status_stale"):`${t("week")} ${currentVsWeek()}`;
-  $("#pName").textContent=p.name||"—";$("#pHq").textContent=p.hq_level?`${t("hq")} ${p.hq_level}`:t("to_fill");$("#pPower").textContent=Number(p.power_m)>0?fmtPower(p.power_m):t("to_fill");$("#pDrone").textContent=d.level?`${t("level")}${d.level}${d.power_m?` · ${fmtPower(d.power_m)}`:""}`:Number(d.power_m)>0?fmtPower(d.power_m):t("to_fill");
-  // Critical HF8.6.21 ordering: bind the account form immediately after the core player state.
-  // A later Alliance/VS/Season render error can no longer leave Compte blank while Joueur is populated.
+  safeRenderStep("HOME_PLAYER",()=>renderHomePlayerMeta(p));
+  safeRenderStep("HOME_ALLIANCE",()=>renderHomeAllianceMeta(p,a));
+  safeRenderStep("HOME_VS",()=>renderHomeVsMeta(v));
+  safeRenderStep("PLAYER_SUMMARY",()=>renderPlayerCoreSummary(p,d));
+  // HF8.6.22 keeps Account independent and isolates every remaining surface.
   safeRenderStep("ACCOUNT_FIELDS",renderAccountFields);
   safeRenderStep("PLAYER_ONBOARDING",renderPlayerOnboarding);
   safeRenderStep("SQUADS",renderSquads);
@@ -805,21 +813,11 @@ function render(){
   safeRenderStep("ALLIANCE_ACCESS",renderAllianceAccess);
   safeRenderStep("VS_ACCESS",renderVsAccess);
   safeRenderStep("SEASON_ACCESS",renderSeasonAccess);
-  $("#aTag").textContent=a.tag||"—";$("#aCount").textContent=String(a.members?.length||0);$("#aRole").textContent=p.role||"R1";
-  const declaredManager=["R4","R5"].includes(normalizedRole(p.role)),verifiedManager=a.management_verified===true&&["R4","R5"].includes(normalizedRole(a.role)),cloudAlliance=Boolean(a.id||a.invite_code),canShareAllianceInvite=declaredManager&&(!cloudAlliance||verifiedManager);
-  $("#inviteCode").textContent=canShareAllianceInvite?(state.alliance.invite_code||"—"):"—";const inviteNote=$("#inviteNote");if(inviteNote)inviteNote.textContent=t("invite_note_scoped",{server:p.server_id||"—",alliance:a.tag||"—"});
-  const shareInvite=$("#shareInviteBtn");if(shareInvite)shareInvite.disabled=!canShareAllianceInvite;
-  $("#rosterFresh").textContent=a.updated_at?updatedLabel(a.updated_at):t("sync_needed");safeRenderStep("ALLIANCE_MEMBERS",renderMembers);safeRenderStep("DESERT_STORM",renderDesertStormPlanner);
+  safeRenderStep("ALLIANCE_SUMMARY",()=>renderAllianceCoreSummary(p,a));
+  safeRenderStep("ALLIANCE_MEMBERS",renderMembers);safeRenderStep("DESERT_STORM",renderDesertStormPlanner);
   safeRenderStep("VS_LIVE",renderVsLive);safeRenderStep("VS_TIMELINE",renderVsTimeline);
 
-  const seasonLife=seasonLifecycle(s),seasonActive=seasonIsActive(s),pct=activeSeasonProgress(s),baseSeasonName=s.name||(s.number?`S${s.number}`:"—"),seasonHistorical=(seasonLife==="ended"||seasonLife==="interseason");
-  $("#seasonMeta").textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):baseSeasonName;
-  const seasonDesc=$("#seasonDesc");if(seasonDesc)seasonDesc.textContent=seasonLife==="interseason"?`${t("season_ended_short")} · ${t("season_interseason")}`:seasonLife==="ended"?t("season_ended_short"):t("season_desc");
-  $("#sName").textContent=seasonHistorical?`${baseSeasonName} · ${t("season_ended_short")}`:baseSeasonName;$("#sDay").textContent=seasonActive?(s.day||"—"):"—";$("#sProfession").textContent=s.profession||"—";
-  const professionLabel=$("#seasonProfessionLabel"),seasonSectionTitle=$("#seasonSectionTitle");if(professionLabel)professionLabel.textContent=seasonHistorical?t("season_last_profession_short"):t("profession");if(seasonSectionTitle)seasonSectionTitle.textContent=seasonHistorical?t("season_state"):t("season_progress");
-  const bar=$("#seasonProgressBar"),label=$("#seasonProgressLabel"),progressWrap=bar?.closest(".progress");if(progressWrap)progressWrap.classList.toggle("hidden",!seasonActive||pct===null);if(bar)bar.style.width=`${pct??0}%`;if(label)label.textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):pct===null?t("season_unknown"):`${pct}%`;
-  const lifeSelect=$("#seasonLifecycleSelect");if(lifeSelect)lifeSelect.value=seasonLife;
-  const lifeStatus=seasonLife==="interseason"?t("season_interseason_note",{name:baseSeasonName,profession:s.profession||"—"}):seasonLife==="ended"?t("season_ended_note",{name:baseSeasonName,profession:s.profession||"—"}):seasonLife==="unknown"?t("season_unknown_note"):s.updated_at?`${t("last_update",{ago:fmtAgo(s.updated_at)})} · ${s.resistance??"—"}`:t("season_wait");$("#seasonStatus").textContent=lifeStatus;
+  safeRenderStep("SEASON_SUMMARY",()=>renderSeasonCoreSummary(s));
   safeRenderStep("ADVICE",renderAdvice);safeRenderStep("PROVIDER",renderProvider);
 }
 function squadHasSavedData(sq){return Boolean(sq?.updated_at||Number(sq?.power)>0||(sq?.heroes||[]).some(h=>h?.name||h?.level||h?.stars||h?.power||h?.exclusive||h?.gear))}
@@ -1293,9 +1291,10 @@ function renderProvider(){
   box.textContent=reveal?(s.pending_cloud_save?t("offline_keep"):t("safe_sync_note")):t("beta_signin_required");
 }
 function openDrawer(name){
+  // Re-render immediately before a user opens any data drawer. Because render() now has complete
+  // per-surface boundaries, a failure in one module cannot stop this drawer from refreshing.
+  if(["account","player","alliance","vs","season"].includes(String(name||"")))safeRenderStep(`DRAWER_REFRESH_${String(name||"").toUpperCase()}`,render);
   closeDrawers();
-  // Re-bind account UI from the current authenticated state on every open. This is intentionally
-  // independent from the large cross-module render pipeline.
   if(name==="account"){safeRenderStep("ACCOUNT_OPEN_FIELDS",renderAccountFields);safeRenderStep("ACCOUNT_OPEN_AUTH",renderAuth);safeRenderStep("ACCOUNT_OPEN_BETA",renderBeta);safeRenderStep("ACCOUNT_OPEN_PRO",renderPro)}
   $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false");if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)}
 }
