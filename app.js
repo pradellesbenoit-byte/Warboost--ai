@@ -25,7 +25,12 @@ import {shouldPreserveVerifiedSessionAccess,betaStateForSessionBootstrap,preserv
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
-const RELEASE_LABEL="HF8.6.26"; // Cross-Module State Integrity · one access state for Coach/Sync/Alliance/DS/VS/Season + UX audit fixes
+const RELEASE_LABEL="HF8.6.27"; // Critical UI Repaint Reliability · Coach/Sync/Season cannot stay stale after verified profile hydration
+// Legacy HF8.6.26 verification marker: const RELEASE_LABEL="HF8.6.26"
+// Legacy HF8.6.26 render-contract verification markers (non-executable):
+// function renderAdvice(){const access=runtimeAccessState()
+// function renderProvider(){ const s=state.sync||{},sources=s.sources||{},pill=$("#providerPill"),box=$("#providerStatus"),access=runtimeAccessState()
+// box.textContent=reveal?(s.pending_cloud_save?t("offline_keep"):t("safe_sync_note")):betaAccessMessage()
 // Legacy HF8.6.25 verification marker: const RELEASE_LABEL="HF8.6.25"
 // Legacy HF8.6.24 verification marker: const RELEASE_LABEL="HF8.6.24"
 // Legacy HF8.6.24 access-contract verification markers retained verbatim:
@@ -231,6 +236,21 @@ function safeRenderStep(stage,fn){
     try{console.error(`[WarBoost render] ${stage}`,error)}catch{}
     return null;
   }
+}
+let criticalUiRepaintQueued=false;
+function queueCriticalUiRepaint(){
+  if(criticalUiRepaintQueued)return;
+  criticalUiRepaintQueued=true;
+  const run=()=>{
+    criticalUiRepaintQueued=false;
+    safeRenderStep("CRITICAL_ADVICE",renderAdvice);
+    safeRenderStep("CRITICAL_PROVIDER",renderProvider);
+    if(betaPrivateDataVisible()){
+      safeRenderStep("CRITICAL_SEASON_ACCESS",renderSeasonAccess);
+      if(document.querySelector("#seasonDrawer.open"))safeRenderStep("CRITICAL_SEASON_SUMMARY",()=>renderSeasonCoreSummary(state.season));
+    }
+  };
+  try{requestAnimationFrame(run)}catch{setTimeout(run,0)}
 }
 function pendingJoinCode(){try{return String(localStorage.getItem(PENDING_JOIN_CODE_KEY)||"").trim().toUpperCase()}catch{return ""}}
 function rememberPendingJoinCode(code){const clean=String(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,80);if(clean)safeLocalSet(PENDING_JOIN_CODE_KEY,clean);return clean}
@@ -722,7 +742,7 @@ async function restoreAuthenticatedProfile(loginSeed=null,{reason="session"}={})
   if(success){betaState={...betaState,restore_error:null};finishBootstrapDiagnostics("ready")}
   else if(betaState.allowed===false&&["invite-required","revoked","expired"].includes(String(betaState.access_status||""))){finishBootstrapDiagnostics("access-blocked")}
   else{const failure=lastBootstrapFailure();betaState={...betaState,restore_error:failure?.error||pulled?.error||"profile_restore_failed",access_status:betaState.allowed?betaState.access_status:"restore-failed"};finishBootstrapDiagnostics("restore-failed");scheduleCloudPullRetry(3000)}
-  cloudHydrationPending=false;render();renderAuth();renderBeta();
+  cloudHydrationPending=false;render();renderAuth();renderBeta();queueCriticalUiRepaint();
   return pulled||{ok:false,error:"profile_restore_failed",reason};
 }
 async function retryCloudProfileRestore(){if(!cloudSession?.access_token||!betaConsentAccepted())return;const btn=$("#betaRestoreRetryBtn");if(btn)btn.disabled=true;resetBootstrapDiagnostics("manual-retry");try{const seed=readAccountState(cloudSession.user?.id);await restoreAuthenticatedProfile(seed,{reason:"manual-retry"});const code=pendingJoinCode();if(code)state.alliance.invite_code=code;void refreshPro()}finally{if(btn)btn.disabled=false;renderBeta()}}
@@ -746,7 +766,7 @@ async function reconcileAuthenticatedRuntime(reason="runtime",{force=false}={}){
     if(needsRestore)result=await restoreAuthenticatedProfile(readAccountState(userId),{reason});
     else if(force||Date.now()-lastRuntimeReconcileAt>60000)await refreshBeta();
     if(cloudDirty&&betaAccessAllowed()&&betaConsentAccepted())void pushServerState();
-    lastRuntimeReconcileAt=Date.now();render();renderAuth();renderBeta();renderPro();
+    lastRuntimeReconcileAt=Date.now();render();renderAuth();renderBeta();renderPro();queueCriticalUiRepaint();
     return result;
   })();
   runtimeReconcileInFlight=task;
@@ -792,6 +812,9 @@ function renderSeasonAccess(){
   const confirmed=life==="active"||life==="ended"||life==="interseason";
   notice.className=`notice${confirmed?" hidden":" warn"}`;
   notice.textContent=confirmed?"":t("season_start_notice");
+  // HF8.6.27: do not leave an empty amber notice visible when the season state is already confirmed.
+  notice.hidden=confirmed;
+  notice.style.display=confirmed?"none":"";
 }
 function openQuickScan(type){if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("scan");renderScanTypeOptions();if($("#scanType"))$("#scanType").value=type}
 
@@ -802,7 +825,7 @@ function renderHomeAllianceMeta(p,a){const el=$("#allianceMeta");if(el)el.textCo
 function renderHomeVsMeta(v){const el=$("#vsMeta");if(!el)return;const sit=vsSituation(v||{}),fresh=vsSnapshotFreshness(v||{},{now:serverNow});el.textContent=scoreKnown(v||{})&&fresh.current&&sit.our_share!==null?`${Math.round(sit.our_share)}%${Number(v?.personal_rank)>0?` · #${Number(v.personal_rank)}`:""}`:scoreKnown(v||{})&&!fresh.current?t("vs_status_stale"):`${t("week")} ${currentVsWeek()}`}
 function renderPlayerCoreSummary(p,d){if($("#pName"))$("#pName").textContent=p?.name||"—";if($("#pHq"))$("#pHq").textContent=p?.hq_level?`${t("hq")} ${p.hq_level}`:t("to_fill");if($("#pPower"))$("#pPower").textContent=Number(p.power_m)>0?fmtPower(p.power_m):t("to_fill");if($("#pDrone"))$("#pDrone").textContent=d?.level?`${t("level")}${d.level}${d.power_m?` · ${fmtPower(d.power_m)}`:""}`:Number(d?.power_m)>0?fmtPower(d.power_m):t("to_fill")}
 function renderAllianceCoreSummary(p,a){if($("#aTag"))$("#aTag").textContent=a?.tag||"—";if($("#aCount"))$("#aCount").textContent=String(a?.members?.length||0);if($("#aRole"))$("#aRole").textContent=p?.role||"R1";const declaredManager=["R4","R5"].includes(normalizedRole(p.role)),verifiedManager=a.management_verified===true&&["R4","R5"].includes(normalizedRole(a.role)),cloudAlliance=Boolean(a.id||a.invite_code),canShareAllianceInvite=declaredManager&&(!cloudAlliance||verifiedManager);if($("#inviteCode"))$("#inviteCode").textContent=canShareAllianceInvite?(a?.invite_code||"—"):"—";const inviteNote=$("#inviteNote");if(inviteNote)inviteNote.textContent=t("invite_note_scoped",{server:p?.server_id||"—",alliance:a?.tag||"—"});const shareInvite=$("#shareInviteBtn");if(shareInvite)shareInvite.disabled=!canShareAllianceInvite;if($("#rosterFresh"))$("#rosterFresh").textContent=a?.updated_at?updatedLabel(a.updated_at):t("sync_needed")}
-function renderSeasonCoreSummary(s){const seasonLife=seasonLifecycle(s||{}),seasonActive=seasonIsActive(s||{}),pct=activeSeasonProgress(s||{}),baseSeasonName=s?.name||(s?.number?`S${s.number}`:"—"),seasonHistorical=(seasonLife==="ended"||seasonLife==="interseason");if($("#seasonMeta"))$("#seasonMeta").textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):baseSeasonName;const seasonDesc=$("#seasonDesc");if(seasonDesc)seasonDesc.textContent=seasonLife==="interseason"?`${t("season_ended_short")} · ${t("season_interseason")}`:seasonLife==="ended"?t("season_ended_short"):t("season_desc");if($("#sName"))$("#sName").textContent=seasonHistorical?`${baseSeasonName} · ${t("season_ended_short")}`:baseSeasonName;if($("#sDay"))$("#sDay").textContent=seasonActive?(s?.day||"—"):"—";if($("#sProfession"))$("#sProfession").textContent=s?.profession||"—";const professionLabel=$("#seasonProfessionLabel"),seasonSectionTitle=$("#seasonSectionTitle");if(professionLabel)professionLabel.textContent=seasonHistorical?t("season_last_profession_short"):t("profession");if(seasonSectionTitle)seasonSectionTitle.textContent=seasonHistorical?t("season_state"):t("season_progress");const bar=$("#seasonProgressBar"),label=$("#seasonProgressLabel"),progressWrap=bar?.closest(".progress");if(progressWrap)progressWrap.classList.toggle("hidden",!seasonActive||pct===null);if(bar)bar.style.width=`${pct??0}%`;if(label)label.textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):pct===null?t("season_unknown"):`${pct}%`;const lifeSelect=$("#seasonLifecycleSelect");if(lifeSelect)lifeSelect.value=seasonLife;const lifeStatus=seasonLife==="interseason"?t("season_interseason_note",{name:baseSeasonName,profession:s?.profession||"—"}):seasonLife==="ended"?t("season_ended_note",{name:baseSeasonName,profession:s?.profession||"—"}):seasonLife==="unknown"?t("season_unknown_note"):s?.updated_at?`${t("last_update",{ago:fmtAgo(s.updated_at)})} · ${s?.resistance??"—"}`:t("season_wait");if($("#seasonStatus"))$("#seasonStatus").textContent=lifeStatus}
+function renderSeasonCoreSummary(s){const seasonLife=seasonLifecycle(s||{}),seasonActive=seasonIsActive(s||{}),pct=activeSeasonProgress(s||{}),baseSeasonName=s?.name||(s?.number?`S${s.number}`:"—"),seasonHistorical=(seasonLife==="ended"||seasonLife==="interseason");renderSeasonAccess();if($("#seasonMeta"))$("#seasonMeta").textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):baseSeasonName;const seasonDesc=$("#seasonDesc");if(seasonDesc)seasonDesc.textContent=seasonLife==="interseason"?`${t("season_ended_short")} · ${t("season_interseason")}`:seasonLife==="ended"?t("season_ended_short"):t("season_desc");if($("#sName"))$("#sName").textContent=seasonHistorical?`${baseSeasonName} · ${t("season_ended_short")}`:baseSeasonName;if($("#sDay"))$("#sDay").textContent=seasonActive?(s?.day||"—"):"—";if($("#sProfession"))$("#sProfession").textContent=s?.profession||"—";const professionLabel=$("#seasonProfessionLabel"),seasonSectionTitle=$("#seasonSectionTitle");if(professionLabel)professionLabel.textContent=seasonHistorical?t("season_last_profession_short"):t("profession");if(seasonSectionTitle)seasonSectionTitle.textContent=seasonHistorical?t("season_state"):t("season_progress");const bar=$("#seasonProgressBar"),label=$("#seasonProgressLabel"),progressWrap=bar?.closest(".progress");if(progressWrap)progressWrap.classList.toggle("hidden",!seasonActive||pct===null);if(bar)bar.style.width=`${pct??0}%`;if(label)label.textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):pct===null?t("season_unknown"):`${pct}%`;const lifeSelect=$("#seasonLifecycleSelect");if(lifeSelect)lifeSelect.value=seasonLife;const lifeStatus=seasonLife==="interseason"?t("season_interseason_note",{name:baseSeasonName,profession:s?.profession||"—"}):seasonLife==="ended"?t("season_ended_note",{name:baseSeasonName,profession:s?.profession||"—"}):seasonLife==="unknown"?t("season_unknown_note"):s?.updated_at?`${t("last_update",{ago:fmtAgo(s.updated_at)})} · ${s?.resistance??"—"}`:t("season_wait");if($("#seasonStatus"))$("#seasonStatus").textContent=lifeStatus}
 function maskHomePrivateMeta(){if($("#playerMeta"))$("#playerMeta").textContent=t("to_connect");if($("#allianceMeta"))$("#allianceMeta").textContent="—";if($("#vsMeta"))$("#vsMeta").textContent="—";if($("#seasonMeta"))$("#seasonMeta").textContent="—"}
 function maskPlayerPrivateSummary(){if($("#pName"))$("#pName").textContent="—";if($("#pHq"))$("#pHq").textContent="—";if($("#pPower"))$("#pPower").textContent="—";if($("#pDrone"))$("#pDrone").textContent="—";const squadList=$("#squadList");if(squadList)squadList.innerHTML="";$("#playerOnboarding")?.classList.add("hidden")}
 function maskAlliancePrivateSummary(){if($("#aTag"))$("#aTag").textContent="—";if($("#aCount"))$("#aCount").textContent="0";if($("#aRole"))$("#aRole").textContent="—";if($("#inviteCode"))$("#inviteCode").textContent="—";if($("#shareInviteBtn"))$("#shareInviteBtn").disabled=true}
@@ -845,7 +868,7 @@ function render(){
     if($("#warPlanText"))$("#warPlanText").textContent=t("war_plan_empty");
     if($("#desertStormRosterPicker"))$("#desertStormRosterPicker").innerHTML=`<div class="notice">${esc(betaAccessMessage())}</div>`;
     if($("#desertStormPlan")){ $("#desertStormPlan").classList.add("hidden"); $("#desertStormPlan").innerHTML=""; }
-    safeRenderStep("ADVICE",renderAdvice);safeRenderStep("PROVIDER",renderProvider);
+    safeRenderStep("ADVICE",renderAdvice);safeRenderStep("PROVIDER",renderProvider);queueCriticalUiRepaint();
     return;
   }
 
@@ -868,7 +891,7 @@ function render(){
   safeRenderStep("VS_LIVE",renderVsLive);safeRenderStep("VS_TIMELINE",renderVsTimeline);
 
   safeRenderStep("SEASON_SUMMARY",()=>renderSeasonCoreSummary(s));
-  safeRenderStep("ADVICE",renderAdvice);safeRenderStep("PROVIDER",renderProvider);
+  safeRenderStep("ADVICE",renderAdvice);safeRenderStep("PROVIDER",renderProvider);queueCriticalUiRepaint();
 }
 function squadHasSavedData(sq){return Boolean(sq?.updated_at||Number(sq?.power)>0||(sq?.heroes||[]).some(h=>h?.name||h?.level||h?.stars||h?.power||h?.exclusive||h?.gear))}
 function formatGear(raw){return formatGearSummary(raw,{gearItems:t("gear_items"),level:t("level"),rarity:t("rarity"),rarityLabel:x=>{const k=`rarity_${x}`;return t(k)===k?x:t(k)}})}
@@ -1331,19 +1354,43 @@ function renderVsLive(){
   const sec=$("#vsVisibleRankingSection"),list=$("#vsVisibleRanking"),rows=Array.isArray(v.leaderboard)?v.leaderboard.slice(0,8):[];if(sec&&list){sec.classList.toggle("hidden",rows.length===0);list.innerHTML=rows.map(r=>`<div class="member"><div><b>#${esc(r.rank??"—")} · ${esc(r.player_name||"—")}</b><small>${r.alliance_tag?`[${esc(r.alliance_tag)}] · `:""}${esc(fmtVsNumber(r.score))}</small></div>${String(r.player_name||"").toLowerCase()===String(state.player?.name||"").toLowerCase()?`<span class="delta">${esc(t("you"))}</span>`:""}</div>`).join("")}
 }
 function renderVsTimeline(){const current=Number(currentVsDay()),prep=current===0,fmt=new Intl.DateTimeFormat(locale,{weekday:"short"}),monday=new Date(Date.UTC(2026,0,5));$("#vsTimeline").innerHTML=Array.from({length:6},(_,i)=>{const d=new Date(monday);d.setUTCDate(monday.getUTCDate()+i);if(prep&&i===0)return `<div class="day next"><span class="vsNextMarker">${esc(t("vs_next_day1"))}</span></div>`;return `<div class="day ${current===i+1?"active":""}">${fmt.format(d)}<br>${t("day_label")}${i+1}</div>`}).join("")}
-function renderAdvice(){const access=runtimeAccessState();if(!access.privateVisible){const waiting=access.phase==="syncing";$("#adviceTitle").textContent=waiting?t("syncing"):t("configure_profile");$("#adviceText").textContent=betaAccessMessage();$("#adviceAction").textContent=!access.logged?t("login"):access.phase==="consent-required"?t("configure"):t("update");return}const p=state.player;if(!p.name){$("#adviceTitle").textContent=t("configure_profile");$("#adviceText").textContent=t("configure_text");$("#adviceAction").textContent=t("configure");return}if(playerNeedsOnboarding()){$("#adviceTitle").textContent=t("hello",{name:p.name});$("#adviceText").textContent=t("sync_four");$("#adviceAction").textContent=t("scan_account");return}const primary=selectPrimarySquad(state);if(!primary){$("#adviceTitle").textContent=t("hello",{name:p.name});$("#adviceText").textContent=t("sync_four");$("#adviceAction").textContent=t("open_player");return}const primaryName=`${t("squad")} ${primary.i+1}`;let text=t("priority_text",{power:fmtPower(primary.s.power)});const primaryPower=Number(primary.s.power),strongestOther=state.squads.map((s,i)=>({s,i,p:Number(s?.power)})).filter(x=>x.i!==primary.i&&squadHasData(x.s)&&Number.isFinite(x.p)&&x.p>0).sort((a,b)=>b.p-a.p)[0];if(primary.i===0&&Number.isFinite(primaryPower)&&strongestOther&&strongestOther.p>primaryPower){text+=` ${t("stronger_squad_note",{name:`${t("squad")} ${strongestOther.i+1}`,power:fmtPower(strongestOther.p)})}`}$("#adviceTitle").textContent=t("priority",{name:primaryName});$("#adviceText").textContent=text;$("#adviceAction").textContent=t("view_squads")}
+function renderAdvice(){
+  const title=$("#adviceTitle"),text=$("#adviceText"),action=$("#adviceAction");if(!title||!text||!action)return;
+  const access=runtimeAccessState();
+  if(!access.privateVisible){
+    const waiting=access.phase==="syncing";title.textContent=waiting?t("syncing"):t("configure_profile");text.textContent=betaAccessMessage();action.textContent=!access.logged?t("login"):access.phase==="consent-required"?t("configure"):t("update");return;
+  }
+  const p=state?.player||{};
+  if(!String(p.name||"").trim()){title.textContent=t("configure_profile");text.textContent=t("configure_text");action.textContent=t("configure");return}
+  // HF8.6.27: once an owned player profile exists, paint a valid player-aware baseline FIRST.
+  // Optional priority calculations may refine it, but can no longer leave the stale pre-login "Configure ton profil" card behind.
+  title.textContent=t("hello",{name:p.name});text.textContent=t("sync_four");action.textContent=t("open_player");
+  let onboarding;try{onboarding=playerOnboardingStatus()}catch(error){pushBootstrapStage("RENDER_ADVICE_ONBOARDING",0,"error",error?.message||error?.name||"error","browser");return}
+  if(!onboarding.complete){action.textContent=t("scan_account");return}
+  let primary=null;try{primary=selectPrimarySquad(state)}catch(error){pushBootstrapStage("RENDER_ADVICE_PRIMARY",0,"error",error?.message||error?.name||"error","browser");return}
+  if(!primary)return;
+  const primaryName=`${t("squad")} ${primary.i+1}`;let advice=t("priority_text",{power:fmtPower(primary.s?.power)});
+  try{
+    const primaryPower=Number(primary.s?.power),strongestOther=(state.squads||[]).map((sq,i)=>({s:sq,i,p:Number(sq?.power)})).filter(x=>x.i!==primary.i&&squadHasData(x.s)&&Number.isFinite(x.p)&&x.p>0).sort((a,b)=>b.p-a.p)[0];
+    if(primary.i===0&&Number.isFinite(primaryPower)&&strongestOther&&strongestOther.p>primaryPower)advice+=` ${t("stronger_squad_note",{name:`${t("squad")} ${strongestOther.i+1}`,power:fmtPower(strongestOther.p)})}`;
+  }catch(error){pushBootstrapStage("RENDER_ADVICE_COMPARE",0,"error",error?.message||error?.name||"error","browser")}
+  title.textContent=t("priority",{name:primaryName});text.textContent=advice;action.textContent=t("view_squads");
+}
 function renderAccountFields(){const p=state.player,ctx=state.player_context||{},reveal=betaPrivateDataVisible();if(!$("#fName"))return;const ids=["fName","fServer","fHq","fAlliance","fRole","fObjective","fAccountAge","fServerProfile"];if(!reveal){$("#fName").value="";$("#fServer").value="";$("#fHq").value="";$("#fAlliance").value="";$("#fRole").value="";if($("#fObjective"))$("#fObjective").value="auto";if($("#fAccountAge"))$("#fAccountAge").value="";if($("#fServerProfile"))$("#fServerProfile").value="auto"}else{$("#fName").value=p.name||"";$("#fServer").value=p.server_id||"";$("#fHq").value=p.hq_level||"";$("#fAlliance").value=state.alliance.tag||"";$("#fRole").value=p.role||"R1";if($("#fObjective"))$("#fObjective").value=ctx.objective||"auto";if($("#fAccountAge"))$("#fAccountAge").value=ctx.account_age_days??"";if($("#fServerProfile"))$("#fServerProfile").value=ctx.server_profile||"auto"}ids.forEach(id=>{const el=$("#"+id);if(el)el.disabled=!reveal});if($("#saveProfileBtn"))$("#saveProfileBtn").disabled=!reveal;renderVoiceSettings()}
 function renderProvider(){
-  const s=state.sync||{},sources=s.sources||{},pill=$("#providerPill"),box=$("#providerStatus"),access=runtimeAccessState(),reveal=access.privateVisible;
-  if(!pill||!box)return;
-  pill.textContent=t("safe_external_disabled");pill.className="pill";
-  $("#publicSourceState").textContent=t("safe_external_disabled");
-  $("#scanSourceState").textContent=(sources.scan||s.last_scan)?t("available"):t("ready");
-  $("#allianceCloudState").textContent=(sources.alliance||cloudSession)?t("available"):t("not_connected");
-  if($("#openScanBtn"))$("#openScanBtn").disabled=!reveal;
-  if($("#syncAllBtn"))$("#syncAllBtn").disabled=!reveal;
+  const sync=state?.sync||{},sources=sync.sources||{},pill=$("#providerPill"),box=$("#providerStatus"),access=runtimeAccessState(),reveal=access.privateVisible;
+  if(pill){pill.textContent=t("safe_external_disabled");pill.className="pill"}
+  const publicState=$("#publicSourceState"),scanState=$("#scanSourceState"),allianceState=$("#allianceCloudState");
+  if(publicState)publicState.textContent=t("safe_external_disabled");
+  if(scanState)scanState.textContent=(sources.scan||sync.last_scan)?t("available"):t("ready");
+  if(allianceState)allianceState.textContent=(sources.alliance||cloudSession)?t("available"):t("not_connected");
+  const scanBtn=$("#openScanBtn"),syncBtn=$("#syncAllBtn");if(scanBtn)scanBtn.disabled=!reveal;if(syncBtn)syncBtn.disabled=!reveal;
+  if(!box)return;
   box.className=`notice${reveal?"":" warn"}`;
-  box.textContent=reveal?(s.pending_cloud_save?t("offline_keep"):t("safe_sync_note")):betaAccessMessage();
+  if(!reveal){box.textContent=betaAccessMessage();return}
+  // HF8.6.27: the provider panel derives from the same READY access contract as Account/Player.
+  // It must never remain on the old "Synchronisation…" message after the owned profile is visible.
+  box.textContent=sync.pending_cloud_save?t("offline_keep"):(sync.status==="ok"||sync.last_sync?t("safe_sync_done"):t("safe_sync_note"));
 }
 function openDrawer(name){
   // Re-render immediately before a user opens any data drawer. Because render() now has complete
@@ -1354,7 +1401,7 @@ function openDrawer(name){
   if(betaPrivateDataVisible()&&name==="player")safeRenderStep("PLAYER_OPEN_CORE",()=>renderPlayerCoreSummary(state.player,state.drone||{}));
   if(betaPrivateDataVisible()&&name==="alliance"){safeRenderStep("ALLIANCE_OPEN_CORE",()=>renderAllianceCoreSummary(state.player,state.alliance));safeRenderStep("ALLIANCE_OPEN_MEMBERS",renderMembers);safeRenderStep("ALLIANCE_OPEN_ACCESS",renderAllianceAccess);safeRenderStep("ALLIANCE_OPEN_DESERT_STORM",renderDesertStormPlanner)}
   if(betaPrivateDataVisible()&&name==="vs")safeRenderStep("VS_OPEN_CORE",renderVsLive);
-  if(betaPrivateDataVisible()&&name==="season")safeRenderStep("SEASON_OPEN_CORE",()=>renderSeasonCoreSummary(state.season));
+  if(betaPrivateDataVisible()&&name==="season"){safeRenderStep("SEASON_OPEN_ACCESS",renderSeasonAccess);safeRenderStep("SEASON_OPEN_CORE",()=>renderSeasonCoreSummary(state.season));}
   $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false");if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)}
 }
 function closeDrawers(){$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")})}

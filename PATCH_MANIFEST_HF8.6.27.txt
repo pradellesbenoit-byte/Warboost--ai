@@ -1,0 +1,24 @@
+WarBoost V2.5.28 HF8.6.27 — Critical UI Repaint Reliability
+Base: HF8.6.26 Cross-Module State Integrity
+Database migration: NONE
+Delete files: NONE
+
+Files replaced/added by this patch:
+- app.js
+- index.html
+- i18n.js
+- sw.js
+- manifest.webmanifest
+- api/health.js
+- package.json
+- scripts/verify-v2.5.28-hf8-6-25.mjs (descendant-release compatible verification)
+- scripts/verify-v2.5.28-hf8-6-26.mjs (descendant-release compatible verification)
+- scripts/verify-v2.5.28-hf8-6-27.mjs
+- WARBOOST_V2_5_28_HF8_6_27_CRITICAL_UI_REPAINT_RELIABILITY.md
+- PATCH_MANIFEST_HF8.6.27.txt
+- BUILD_VERIFICATION_HF8.6.27.txt
+
+Real-device regressions addressed:
+1. Account/Player ready but Coach IA still says Configure ton profil.
+2. Account says synchronized but Synchronisation WarBoost remains Synchronisation....
+3. Confirmed ended/interseason Saison still displays an empty amber notice.
