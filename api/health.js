@@ -20,10 +20,11 @@ export default async function handler(req,res){
   // Legacy verification marker: release:"HF8.6.20"
   // Legacy HF8.6.23 verification marker: release:"HF8.6.23"
   // Legacy HF8.6.24 verification marker: release:"HF8.6.24"
+  // Legacy HF8.6.25 verification marker: release:"HF8.6.25"
   res.setHeader("Cache-Control","no-store");
   const now=new Date(),serverClock=lastWarServerClock(now),dow=lastWarVsDay(now);
   const clockOnly=String(req.query?.clock||"")==="1"||(()=>{try{return new URL(req.url||"/","http://localhost").searchParams.get("clock")==="1"}catch{return false}})();
-  if(clockOnly)return res.status(200).json({ok:true,app:"WarBoost",version:"2.5.28",release:"HF8.6.25",clock_only:true,now:now.toISOString(),unix_ms:now.getTime(),timezone:"UTC",lastwar_server_timezone:"UTC-02:00",lastwar_server_time:serverClock.toISOString().replace("Z","-02:00"),iso_week:isoWeek(serverClock),vs_day:dow,vs_phase:dow===0?"prep":"scoring",weekday_utc:now.getUTCDay(),weekday_lastwar_server:dow});
+  if(clockOnly)return res.status(200).json({ok:true,app:"WarBoost",version:"2.5.28",release:"HF8.6.26",clock_only:true,now:now.toISOString(),unix_ms:now.getTime(),timezone:"UTC",lastwar_server_timezone:"UTC-02:00",lastwar_server_time:serverClock.toISOString().replace("Z","-02:00"),iso_week:isoWeek(serverClock),vs_day:dow,vs_phase:dow===0?"prep":"scoring",weekday_utc:now.getUTCDay(),weekday_lastwar_server:dow});
   const serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=await betaConfigAsync(),commerce=commercialConfig();
   const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
   const allianceScopeProbe=serviceDb?await probeAllianceScopeSchema():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
@@ -32,7 +33,7 @@ export default async function handler(req,res){
     ok:true,
     app:"WarBoost",
     version:"2.5.28",
-    release:"HF8.6.25",
+    release:"HF8.6.26",
     build:"hf8-commercial-readiness",
     ui_revision:"hf8.5-vs-freshness-guard",
     ui_revision_final:"hf8.6.12-cloud-restore-guard",
