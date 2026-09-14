@@ -150,7 +150,7 @@ for(const required of ['state.js','sync.js','scan.js','advice.js','alliance-role
   const healthHandler=(await import(`../api/health.js?hf8619clock=${Date.now()}`)).default;
   const res={statusCode:200,body:null,setHeader(){},status(c){this.statusCode=c;return this},json(v){this.body=v;return this}};
   await healthHandler({url:'/api/health?clock=1',query:{clock:'1'}},res);
-  assert.equal(res.statusCode,200);assert.equal(res.body.clock_only,true);assert.match(String(res.body.release),/^HF8\.6\.(19|20|21|22)$/);
+  assert.equal(res.statusCode,200);assert.equal(res.body.clock_only,true);assert.match(String(res.body.release),/^HF8\.6\.(19|20|21|22|23)$/);
   globalThis.fetch=originalFetch;
 }
 
