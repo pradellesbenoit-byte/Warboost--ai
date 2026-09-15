@@ -270,6 +270,14 @@ function queueCriticalUiRepaint(){
 function pendingJoinCode(){try{return String(localStorage.getItem(PENDING_JOIN_CODE_KEY)||"").trim().toUpperCase()}catch{return ""}}
 function rememberPendingJoinCode(code){const clean=String(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,80);if(clean)safeLocalSet(PENDING_JOIN_CODE_KEY,clean);return clean}
 function clearPendingJoinCode(){try{localStorage.removeItem(PENDING_JOIN_CODE_KEY)}catch{}}
+function recordProgressionSnapshot(source="state",at=new Date().toISOString()){
+  state.progression_snapshots=appendProgressionSnapshot(
+    Array.isArray(state.progression_snapshots)?state.progression_snapshots:[],
+    state,
+    {source:String(source||"state").slice(0,40),at}
+  );
+  return state.progression_snapshots;
+}
 if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.progression_snapshots=appendProgressionSnapshot([],state,{source:"baseline",at:state.updated_at||new Date().toISOString()});
 let desertStormSearchTerm="";
 let rosterScanFiles=[],rosterScanDraft=[];
