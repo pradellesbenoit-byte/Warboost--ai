@@ -270,13 +270,15 @@ function queueCriticalUiRepaint(){
 function pendingJoinCode(){try{return String(localStorage.getItem(PENDING_JOIN_CODE_KEY)||"").trim().toUpperCase()}catch{return ""}}
 function rememberPendingJoinCode(code){const clean=String(code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,80);if(clean)safeLocalSet(PENDING_JOIN_CODE_KEY,clean);return clean}
 function clearPendingJoinCode(){try{localStorage.removeItem(PENDING_JOIN_CODE_KEY)}catch{}}
-function recordProgressionSnapshot(source="state",at=new Date().toISOString()){
-  state.progression_snapshots=appendProgressionSnapshot(
-    Array.isArray(state.progression_snapshots)?state.progression_snapshots:[],
-    state,
-    {source:String(source||"state").slice(0,40),at}
-  );
-  return state.progression_snapshots;
+function recordProgressionSnapshot(source="update",at=new Date().toISOString()){
+  state.progression_snapshots=appendProgressionSnapshot(state.progression_snapshots,state,{source,at});
+}
+function progressionMetricText(metric){if(!metric||metric.current===null)return "—";const change=metric.change_m===null?"":`${metric.change_m>=0?"+":""}${new Intl.NumberFormat(locale,{maximumFractionDigits:2}).format(metric.change_m)} M${metric.pct!==null?` (${metric.pct>=0?"+":""}${metric.pct}%)`:""}`;return `${fmtPower(metric.current)}${change?` · ${change}`:""}`}
+function renderPlayerProgression(){
+  const box=$("#progressionSummary"),pill=$("#progressionFreshness");if(!box)return;const rows=state.progression_snapshots||[],latest=rows[rows.length-1],cmp=progressionComparison(rows,30),strongest=strongestSquadFromState(state);
+  const freshness=strongest.updated_at||state?.drone?.updated_at||state?.updated_at||null;if(pill)pill.textContent=freshness?updatedLabel(freshness):t("sync_needed");
+  if(!cmp){box.innerHTML=`<div class="notice" style="grid-column:1/-1">${esc(t("progression_need_two"))}</div>`;return}
+  const cls=x=>x?.change_m>0?"deltaUp":"deltaFlat";box.innerHTML=`<div class="progressionMetric"><small>${esc(t("progression_account"))} · ${esc(cmp.account.elapsed_days??"—")}j</small><b>${esc(fmtPower(cmp.account.current))}</b><span class="${cls(cmp.account)}">${cmp.account.change_m===null?"—":esc(`${cmp.account.change_m>=0?"+":""}${cmp.account.change_m} M · ${cmp.account.pct??"—"}%`)}</span></div><div class="progressionMetric"><small>${esc(t("progression_squad"))} · ${esc(cmp.main_squad.elapsed_days??"—")}j</small><b>${esc(fmtPower(cmp.main_squad.current))}</b><span class="${cls(cmp.main_squad)}">${cmp.main_squad.change_m===null?"—":esc(`${cmp.main_squad.change_m>=0?"+":""}${cmp.main_squad.change_m} M · ${cmp.main_squad.pct??"—"}%`)}</span></div>`;
 }
 if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.progression_snapshots=appendProgressionSnapshot([],state,{source:"baseline",at:state.updated_at||new Date().toISOString()});
 let desertStormSearchTerm="";
