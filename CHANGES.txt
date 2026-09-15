@@ -1,0 +1,27 @@
+WarBoost HF8.6.28 Reliability Patch R1
+
+api/scan.js
+- budget global 52 s pour rester sous le timeout client 60 s
+- custom Vision protégé par try/catch + fallback OpenAI
+- timeouts courts et bornés
+- enrichissement héros optionnel : ne peut plus faire échouer le scan de base
+- diagnostics provider_errors / elapsed_ms ajoutés côté réponse
+
+lib/alliance-identity.js
+- protection stricte 1 compte <-> 1 membre
+- refuse le vol d'un membre déjà lié
+- conserve les règles nickname + serveur + alliance
+
+lib/alliance-roster-merge.js
+- dédoublonne les lignes cloud par player_id
+- protège les associations établies pendant la fusion cloud/roster
+- conserve le nom/rang/scope canonique du roster
+
+publisher-ui.js
+- nettoie l'ancien état local contradictoire : un compte déjà prouvé lié n'est plus « à associer »
+- nettoyage strict uniquement si pseudo normalisé + serveur + alliance correspondent et qu'un seul membre lié correspond
+- corrige aussi backup et état par compte
+- recharge une seule fois si une réparation durable est réellement appliquée
+
+sw.js
+- nouvelle clé de cache pour forcer le rafraîchissement du correctif

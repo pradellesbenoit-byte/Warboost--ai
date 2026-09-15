@@ -5,7 +5,8 @@
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-24-owned-state-visibility-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-26-cross-module-state-integrity
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability
-const CACHE="warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization";
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization
+const CACHE="warboost-v2-5-28-hf8-6-28-scan-identity-reliability-r1";
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-25-player-launch-integrity
 // Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
@@ -16,7 +17,7 @@ const CACHE="warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization";
 // Legacy verification marker: warboost-v2-5-28-hf8-6-11-future-player-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-commercial-readiness-hf8-3-vs-decision-engine-hf8-4-alliance-lifecycle-reliability-hf8-5-vs-freshness-guard-hf8-5-final-alliance-desert-storm-hf8-6-2-reliable-roster-identity-hf8-6-3-alliance-rank-manager-hf8-6-4-rank-persistence-hf8-6-6-scan-persistence-reliability-hf8-6-7-alliance-association-reliability-hf8-6-8-association-keeps-roster-identity
 // Legacy beta-code verification marker: hf8-6-5-beta-access-code
-// Includes HF8.6.10 roster integrity + HF8.6.9 canonical state guard + all previous Safe Launch reliability safeguards · legacy hf8-6-8-association-keeps-roster-identity
+// Includes HF8.6.10 roster integrity + HF8.6.9 canonical state guard + all previous Safe Launch reliability safeguards.
 const SHELL=["/", "/index.html", "/styles.css", "/publisher-ui.css", "/app.js", "/publisher-ui.js", "/i18n.js", "/manifest.webmanifest", "/legal.html", "/privacy.html", "/support-admin.html", "/support-admin.js", "/reset-password.html", "/reset-password.js", "/warboost-icon-192.png", "/warboost-icon-512.png", "/warboost-apple-touch-icon.png", "/lib/browser-auth.js", "/lib/cloud-state-recovery.js", "/lib/cloud-profile-direct.js", "/lib/session-bootstrap.js", "/lib/heroes.js", "/lib/squad-identity.js", "/lib/gear.js", "/lib/activity-events.js", "/lib/alliance-identity.js", "/lib/alliance-scope.js", "/lib/alliance-roster-lifecycle.js", "/lib/desert-storm-plan.js", "/lib/progression-history.js", "/lib/alliance-participation-insights.js", "/lib/roster-import.js", "/lib/alliance-rank-management.js", "/lib/pending-scan-storage.js", "/lib/hero-history.js", "/assets/heroes/adam.svg", "/assets/heroes/ambolt.svg", "/assets/heroes/braz.svg", "/assets/heroes/cage.svg", "/assets/heroes/carlie.svg", "/assets/heroes/dva.svg", "/assets/heroes/elsa.svg", "/assets/heroes/farhad.svg", "/assets/heroes/fiona.svg", "/assets/heroes/gump.svg", "/assets/heroes/kane.svg", "/assets/heroes/kimberly.svg", "/assets/heroes/loki.svg", "/assets/heroes/lucius.svg", "/assets/heroes/marshall.svg", "/assets/heroes/mason.svg", "/assets/heroes/maxwell.svg", "/assets/heroes/mcgregor.svg", "/assets/heroes/monica.svg", "/assets/heroes/morrison.svg", "/assets/heroes/murphy.svg", "/assets/heroes/richard.svg", "/assets/heroes/sarah.svg", "/assets/heroes/scarlett.svg", "/assets/heroes/skyler.svg", "/assets/heroes/stetmann.svg", "/assets/heroes/swift.svg", "/assets/heroes/tesla.svg", "/assets/heroes/venom.svg", "/assets/heroes/violet.svg", "/assets/heroes/williams.svg"];
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
