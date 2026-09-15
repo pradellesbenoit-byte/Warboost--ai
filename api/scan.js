@@ -44,13 +44,58 @@ function usefulState(scanType,state){
   if(t==="season")return Boolean(state?.season&&Object.keys(state.season).some(k=>k!=="updated_at")||state?.technology&&Object.keys(state.technology).some(k=>k!=="updated_at"));
   return Boolean(Object.keys(state||{}).length);
 }
+function normalizedLooseText(v){
+  return String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+}
+function safeRosterHq(v){
+  const n=num(v);
+  // Player profile screens contain several unrelated "Niv." values.
+  // Never import those as QG/HQ; impossible values are left for manual review.
+  return n!=null&&n>=1&&n<=50?Math.round(n):null;
+}
+function rosterRowFromRaw(raw,now,allianceTag="",profileContext=null){
+  if(!raw||typeof raw!=="object")return null;
+  const name=cleanRosterOcrName(str(raw?.name||raw?.player_name||raw?.nickname,80)||"",allianceTag);
+  const role=rosterRole(raw?.role||raw?.rank);
+  const hq=safeRosterHq(raw?.hq_level??raw?.hq);
+  const power=num(raw?.power_m??raw?.power);
+  const confidence=num(raw?.confidence);
+  const key=rosterIdentityKey(name,allianceTag);
+  if(!name||!role||!key)return null;
+
+  // Individual profile guard: alliance display name must never become the player nickname.
+  const allianceName=profileContext?.alliance_name||raw?.alliance_name||"";
+  if(allianceName&&normalizedLooseText(name)===normalizedLooseText(allianceName))return null;
+
+  return {
+    name,
+    role,
+    hq_level:hq,
+    power_m:power!=null&&power>0?Math.round(power*100)/100:null,
+    confidence:confidence==null?null:Math.max(0,Math.min(1,confidence)),
+    updated_at:now,
+    source:"roster_scan"
+  };
+}
 function sanitizeRosterRows(extracted,now,allianceTag=""){
+  const screenType=String(extracted?.screen_type||extracted?.layout||"").trim().toLowerCase();
+  const profile=extracted?.player_profile&&typeof extracted.player_profile==="object"?extracted.player_profile:null;
+
+  // "Profil du joueur" is one roster observation. Prefer its dedicated header fields.
+  if(profile||screenType==="player_profile"){
+    const row=rosterRowFromRaw(profile||extracted?.player||{},now,allianceTag,{
+      alliance_name:profile?.alliance_name||extracted?.alliance_name||extracted?.alliance?.name||""
+    });
+    return row?[row]:[];
+  }
+
   const source=Array.isArray(extracted?.alliance_roster)?extracted.alliance_roster:Array.isArray(extracted?.roster_rows)?extracted.roster_rows:Array.isArray(extracted?.members)?extracted.members:[];
   const out=[],seen=new Set();
   for(const raw of source.slice(0,45)){
-    const name=cleanRosterOcrName(str(raw?.name||raw?.player_name||raw?.nickname,80)||"",allianceTag),role=rosterRole(raw?.role||raw?.rank),hq=num(raw?.hq_level??raw?.hq),power=num(raw?.power_m??raw?.power),confidence=num(raw?.confidence);
-    const key=rosterIdentityKey(name,allianceTag);if(!name||!role||!key||seen.has(key))continue;seen.add(key);
-    out.push({name,role,hq_level:hq!=null&&hq>0?Math.round(hq):null,power_m:power!=null&&power>0?Math.round(power*100)/100:null,confidence:confidence==null?null:Math.max(0,Math.min(1,confidence)),updated_at:now,source:"roster_scan"});
+    const row=rosterRowFromRaw(raw,now,allianceTag,null);
+    if(!row)continue;
+    const key=rosterIdentityKey(row.name,allianceTag);if(!key||seen.has(key))continue;seen.add(key);
+    out.push(row);
   }
   return out;
 }
@@ -70,7 +115,21 @@ function sanitize(extracted,now,scanType){
 }
 function promptFor(scanType,locale,allianceTag){
   const common=`You are WarBoost Vision reading a Last War: Survival screenshot. Read only facts actually visible in the image. Never invent hidden values. User locale: ${locale}. Return ONE valid JSON object only, without markdown or commentary.`;
-  if(scanType==="alliance_roster")return `${common} Extract the visible alliance roster into {"alliance_roster":[{"name":string,"role":"R1|R2|R3|R4|R5","hq_level":number,"power_m":number,"confidence":number}]}. Include the R5 if visibly shown separately above the list. Alliance tag is ${allianceTag||"unknown"}; a leading [${allianceTag||"TAG"}] decoration is not part of the nickname when it matches the alliance tag. Preserve the real nickname otherwise. Power ending in M is numeric millions. Do not infer missing members or departures.`;
+  if(scanType==="alliance_roster")return `${common} This WarBoost action accepts TWO Last War layouts: (A) the alliance member list, or (B) an individual screen titled "PROFIL DU JOUEUR" / "PLAYER PROFILE". First identify the layout.
+
+For an ALLIANCE MEMBER LIST, return exactly {"screen_type":"member_list","alliance_roster":[{"name":string,"role":"R1|R2|R3|R4|R5","hq_level":number,"power_m":number,"confidence":number}]}. Include only rows visibly present. Include the R5 if visibly shown separately above the R4/R3/R2/R1 lists.
+
+For an INDIVIDUAL PLAYER PROFILE, return exactly {"screen_type":"player_profile","player_profile":{"name":string,"role":"R1|R2|R3|R4|R5","hq_level":number,"power_m":number,"alliance_tag":string,"alliance_name":string,"server_id":string,"confidence":number}} and NO alliance_roster array. On this layout:
+- The PLAYER NICKNAME is in the TOP BLUE HEADER, immediately after the player's "Niv.XX" and optional alliance tag. Example: "Niv.35 [ALL4]Space commander" means nickname "Space commander" and HQ/QG 35.
+- The HQ/QG is ONLY the "Niv.XX" in that same top header immediately before the nickname.
+- NEVER use another level shown elsewhere on the profile as HQ/QG. A value such as "Niv.100" beside another icon/stat is NOT the QG.
+- The account POWER is the large value ending in M beside the power/combat icon. Example: 216.8M -> 216.8.
+- The member ROLE is the visible R1/R2/R3/R4/R5 badge associated with the alliance membership row.
+- The ALLIANCE DISPLAY NAME is separate, often on a row such as "[ALL4]ALL FOR 1". It is NEVER the player's nickname.
+- A visible "#884" means server_id "884".
+- If nickname or role cannot be clearly distinguished from the alliance name, omit the player instead of guessing.
+
+Alliance tag expected from WarBoost context is ${allianceTag||"unknown"}. A leading [${allianceTag||"TAG"}] decoration is not part of the nickname when it matches that alliance tag. Preserve genuine nickname characters, spaces and trailing digits. Power ending in M is numeric millions. Never infer hidden members, departures, ranks, HQ values or power.`;
   if(/^squad[1-4]$/i.test(scanType)){const id=Number(scanType.slice(-1));return `${common} This is Squad ${id}. Focus on the formation/detail panel in the screenshot. Return {"squads":[{"id":${id},"power":number,"heroes":[{"name":string,"name_evidence":"visible_text","name_confidence":number,"level":number,"stars":number,"power":number,"exclusive":string,"gear":string}]}]}. Read all 5 hero rows/cards. Hero name is allowed ONLY if the name itself is readable text; do not guess a portrait identity. Read the squad power and every clearly visible level, stars, hero power, exclusive level/text and gear. For gear use count=4;levels=L1,L2,L3,L4;rarity=... when visible. Lv.0 is real data.`}
   if(scanType==="profile")return `${common} Return visible player/account data only as {"player":{"name":string,"server_id":string,"hq_level":number,"power_m":number,"coordinates":string,"role":string},"alliance":{"tag":string,"name":string,"role":string}}.`;
   if(scanType==="drone")return `${common} Return visible drone data only as {"drone":{"level":number,"power_m":number}}.`;
