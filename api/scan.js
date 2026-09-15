@@ -5,13 +5,13 @@ import {normalizeSeasonLifecycle} from "../lib/season-lifecycle.js";
 import {cleanRosterOcrName,rosterIdentityKey} from "../lib/roster-identity-resolution.js";
 import {fetchWithTimeout} from "../lib/http-timeout.js";
 
-// HF8.6.28 reliability patch R1.
+// HF8.6.28 reliability patch R2 — fast deterministic Vision path.
 // Keep the complete server-side scan path below the browser's 60 s request deadline.
 // Primary extraction is mandatory; hero portrait enrichment is best-effort and must never
 // turn an otherwise useful squad scan into a generic failure.
 const SCAN_TOTAL_BUDGET_MS=52000;
-const CUSTOM_PRIMARY_TIMEOUT_MS=9000;
-const OPENAI_PRIMARY_TIMEOUT_MS=34000;
+const CUSTOM_PRIMARY_TIMEOUT_MS=5000;
+const OPENAI_PRIMARY_TIMEOUT_MS=38000;
 const OPTIONAL_IDENTITY_TIMEOUT_MS=6500;
 const MIN_PROVIDER_TIMEOUT_MS=1500;
 function elapsedMs(startedAt){return Math.max(0,Date.now()-startedAt)}
@@ -22,7 +22,7 @@ function providerError(errors,provider,error){errors.push({provider,error:String
 
 function env(n){return String(process.env[n]||"").trim()}
 function textFromResponse(j){if(typeof j?.output_text==="string")return j.output_text;for(const item of j?.output||[])for(const c of item?.content||[])if(typeof c?.text==="string")return c.text;return ""}
-function jsonFromText(text){const s=String(text||"").trim().replace(/^```(?:json)?\s*/i,"").replace(/```$/,"" ).trim();return JSON.parse(s)}
+function jsonFromText(text){const s=String(text||"").trim().replace(/^```(?:json)?\s*/i,"").replace(/```$/,"" ).trim();try{return JSON.parse(s)}catch{const start=s.indexOf("{"),end=s.lastIndexOf("}");if(start>=0&&end>start)return JSON.parse(s.slice(start,end+1));throw Object.assign(new Error("Vision returned invalid JSON"),{code:"VISION_INVALID_JSON"})}}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:null}
 function str(v,max=120){const s=String(v??"").trim();return s?s.slice(0,max):null}
 function hmsSeconds(v){const m=String(v||"").trim().match(/^(\d{1,2}):(\d{2}):(\d{2})$/);return m?Number(m[1])*3600+Number(m[2])*60+Number(m[3]):null}
@@ -56,7 +56,7 @@ function sanitize(extracted,now,scanType){const out={};const forcedSquad=String(
   return out}
 
 async function customVision(payload,{timeoutMs=CUSTOM_PRIMARY_TIMEOUT_MS}={}){const url=env("WARBOOST_VISION_ENDPOINT");if(!url||!timeoutMs)return null;const secret=env("WARBOOST_VISION_SECRET"),r=await fetchWithTimeout(url,{method:"POST",headers:{"content-type":"application/json",...(secret?{"x-warboost-vision-secret":secret}:{})},body:JSON.stringify(payload)},timeoutMs,{code:"VISION_TIMEOUT",message:"Vision endpoint timed out"}),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||`Vision HTTP ${r.status}`);return j.state||j.data||j}
-async function openaiRequest({image,prompt,model,timeoutMs=OPENAI_PRIMARY_TIMEOUT_MS}){const key=env("OPENAI_API_KEY");if(!key||!timeoutMs)return null;const r=await fetchWithTimeout("https://api.openai.com/v1/responses",{method:"POST",headers:{"content-type":"application/json",authorization:`Bearer ${key}`},body:JSON.stringify({model,input:[{role:"user",content:[{type:"input_text",text:prompt},{type:"input_image",image_url:image}]}]})},timeoutMs,{code:"VISION_TIMEOUT",message:"Vision request timed out"}),j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j?.error?.message||`Vision HTTP ${r.status}`),{status:r.status});return jsonFromText(textFromResponse(j))}
+async function openaiRequest({image,prompt,model,timeoutMs=OPENAI_PRIMARY_TIMEOUT_MS}){const key=env("OPENAI_API_KEY");if(!key||!timeoutMs)return null;const r=await fetchWithTimeout("https://api.openai.com/v1/responses",{method:"POST",headers:{"content-type":"application/json",authorization:`Bearer ${key}`},body:JSON.stringify({model,reasoning:{effort:"none"},max_output_tokens:6000,input:[{role:"user",content:[{type:"input_text",text:prompt},{type:"input_image",image_url:image,detail:"high"}]}]})},timeoutMs,{code:"VISION_TIMEOUT",message:"Vision request timed out"}),j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j?.error?.message||`Vision HTTP ${r.status}`),{status:r.status});return jsonFromText(textFromResponse(j))}
 function savedHeroHints(currentState){return [...(currentState?.exclusive_weapons||[]).map(w=>w?.hero_name)].map(catalogHeroName).filter(Boolean)}
 function missingSquadHeroNames(extracted){const q=Array.isArray(extracted?.squads)?extracted.squads[0]:null;if(!q||!Array.isArray(q.heroes))return 5;return Math.max(0,5-q.heroes.slice(0,5).filter(h=>verifiedSquadHeroName(h,false)).length)}
 function strictRecognitionCandidates(recognized){const squadType=normalizedType(recognized?.squad_type),squadTypeConfidence=Number(recognized?.squad_type_confidence);return (Array.isArray(recognized?.heroes)?recognized.heroes:[]).map(r=>{const position=Number(r?.position),name=catalogHeroName(r?.name),confidence=Number(r?.confidence),evidence=String(r?.evidence||"").trim().toLowerCase(),unitType=normalizedType(r?.unit_type),visualCues=Array.isArray(r?.visual_cues)?r.visual_cues.map(x=>str(x,80)).filter(Boolean):[];return {position,name,confidence,evidence,unit_type:unitType,visual_cues:visualCues}}).filter(r=>{if(!Number.isInteger(r.position)||r.position<1||r.position>5||!r.name||!Number.isFinite(r.confidence))return false;const expected=heroType(r.name);if(expected&&r.unit_type&&expected!==r.unit_type)return false;if(squadType&&Number.isFinite(squadTypeConfidence)&&squadTypeConfidence>=0.9&&expected&&expected!==squadType)return false;if(r.evidence==="visible_text")return r.confidence>=0.92;return r.evidence==="portrait"&&r.confidence>=0.97&&r.visual_cues.length>=2})}
