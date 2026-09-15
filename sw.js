@@ -6,7 +6,8 @@
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-26-cross-module-state-integrity
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization
-const CACHE="warboost-v2-5-28-hf8-6-28-scan-identity-reliability-r1";
+// Scan request restore: keep server-side scan completion authoritative; browser no longer aborts /api/scan at 60 s.
+const CACHE="warboost-v2-5-28-hf8-6-28-scan-request-restore-r5";
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-25-player-launch-integrity
 // Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
