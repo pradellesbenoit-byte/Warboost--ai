@@ -14,6 +14,61 @@ const MAX_IMAGE_DATA_URL=4_150_000;
 function env(name){return String(process.env[name]||"").trim()}
 function str(v,max=160){const s=String(v??"").trim();return s?s.slice(0,max):null}
 function num(v){const n=Number(v);return Number.isFinite(n)?n:null}
+function looseNum(v){
+  if(typeof v==="number")return Number.isFinite(v)?v:null;
+  const match=String(v??"").trim().replace(",",".").match(/[-+]?\d+(?:\.\d+)?/);
+  if(!match)return null;
+  const n=Number(match[0]);return Number.isFinite(n)?n:null;
+}
+function visibleLevel(v){
+  if(typeof v==="number")return Number.isFinite(v)?Math.round(v):null;
+  const text=String(v??"").trim();
+  if(!text)return null;
+  const labeled=text.match(/(?:lv|lvl|level|niv|niveau)\s*\.?\s*[:#-]?\s*(\d{1,3})/i);
+  if(labeled)return Number(labeled[1]);
+  if(/^\d{1,3}$/.test(text))return Number(text);
+  return null;
+}
+function objectValue(raw,keys){
+  for(const key of keys){
+    const value=raw?.[key];
+    if(value!==null&&value!==undefined&&value!=="")return value;
+  }
+  return null;
+}
+function textValue(raw,keys,max=160){
+  const value=objectValue(raw,keys);
+  if(value&&typeof value==="object")return str(value.name||value.label||value.title,max);
+  return str(value,max);
+}
+function exclusiveWeaponRecord(raw,now){
+  if(!raw||typeof raw!=="object")return null;
+  const nested=raw.weapon_data&&typeof raw.weapon_data==="object"?raw.weapon_data:
+    raw.exclusive_weapon_data&&typeof raw.exclusive_weapon_data==="object"?raw.exclusive_weapon_data:
+    raw.weapon&&typeof raw.weapon==="object"?raw.weapon:{};
+  const merged={...nested,...raw};
+  const x={updated_at:now};
+  const hero=canonicalHeroName(textValue(merged,["hero_name","hero","character_name","character","owner_name"]));
+  const weapon=textValue(merged,["weapon_name","exclusive_weapon_name","exclusive_name","item_name","title","name"])||
+    (typeof raw.weapon==="string"?str(raw.weapon,80):null);
+  if(hero)x.hero_name=hero;
+  if(weapon)x.weapon_name=weapon;
+  const level=visibleLevel(objectValue(merged,["level","weapon_level","exclusive_level","visible_level","lv","lvl","niveau","niveau_arme"]));
+  if(level!=null&&level>=0&&level<=999)x.level=level;
+  const numericFields={
+    power:["power","weapon_power","exclusive_power"],
+    hero_hp_bonus:["hero_hp_bonus","hp_bonus","health_bonus"],
+    hero_atk_bonus:["hero_atk_bonus","atk_bonus","attack_bonus"],
+    hero_def_bonus:["hero_def_bonus","def_bonus","defense_bonus"],
+    all_damage_resistance_pct:["all_damage_resistance_pct","damage_resistance_pct","resistance_pct"],
+    max_skill_level:["max_skill_level","skill_cap","skill_level"]
+  };
+  for(const [target,keys] of Object.entries(numericFields)){
+    const value=looseNum(objectValue(merged,keys));
+    if(value!=null)x[target]=value;
+  }
+  return Object.keys(x).length>1?x:null;
+}
 function jsonFromText(text){
   const raw=String(text||"").trim().replace(/^```(?:json)?\s*/i,"").replace(/```$/i,"").trim();
   try{return JSON.parse(raw)}catch{}
@@ -33,7 +88,7 @@ function heroNameFromVisibleText(h){
   if(evidence!=="visible_text"||!Number.isFinite(confidence)||confidence<0.88)return null;
   return catalogHeroName(h?.name)||canonicalHeroName(h?.name)||null;
 }
-function usefulState(scanType,state){
+export function usefulState(scanType,state){
   const t=String(scanType||"").toLowerCase();
   if(t==="profile")return Boolean(state?.player&&Object.keys(state.player).some(k=>k!=="updated_at"));
   if(t==="drone")return Boolean(state?.drone&&(state.drone.level!=null||state.drone.power_m!=null));
@@ -100,12 +155,18 @@ function sanitizeRosterRows(extracted,now,allianceTag=""){
   }
   return out;
 }
-function sanitize(extracted,now,scanType){
+export function sanitize(extracted,now,scanType){
   const out={},forced=String(scanType||"").match(/^squad([1-4])$/i),forcedId=forced?Number(forced[1]):null;
   if(extracted?.player){const p={updated_at:now};for(const k of ["name","server_id","coordinates","role"]){const v=str(extracted.player[k],80);if(v)p[k]=v}const hq=num(extracted.player.hq_level),power=canonicalPowerMillions(extracted.player.power_m);if(hq!=null)p.hq_level=hq;if(power!=null)p.power_m=power;if(Object.keys(p).length>1)out.player=p}
   if(extracted?.drone){const d={updated_at:now},level=num(extracted.drone.level),power=canonicalPowerMillions(extracted.drone.power_m);if(level!=null)d.level=level;if(power!=null)d.power_m=power;if(Object.keys(d).length>1)out.drone=d}
   if(Array.isArray(extracted?.squads)&&extracted.squads.length){const arr=Array(4).fill(null),source=forcedId?extracted.squads.slice(0,1):extracted.squads.slice(0,4);for(const raw of source){const id=forcedId||Math.max(1,Math.min(4,Number(raw?.id)||1)),q={id,name:`Squad ${id}`,updated_at:now};const power=canonicalPowerMillions(raw?.power_m??raw?.power);if(power!=null)q.power=power;if(Array.isArray(raw?.heroes)){q.heroes=Array.from({length:5},(_,i)=>{const h=raw.heroes[i]||{},x={};const name=heroNameFromVisibleText(h);if(name)x.name=name;for(const k of ["level","stars","power"]){const v=num(h?.[k]);if(v!=null)x[k]=v}const ex=str(h?.exclusive,100);if(ex)x.exclusive=ex;const gear=sanitizeGear(h?.gear);if(gear)x.gear=gear;return x})}else if(forcedId)q.heroes=Array.from({length:5},()=>({}));arr[id-1]=q}out.squads=arr}
-  const rawWeapons=Array.isArray(extracted?.exclusive_weapons)?extracted.exclusive_weapons:(extracted?.exclusive_weapon?[extracted.exclusive_weapon]:[]);if(rawWeapons.length){out.exclusive_weapons=rawWeapons.slice(0,12).map(w=>{const x={updated_at:now},hero=canonicalHeroName(w?.hero_name),weapon=str(w?.weapon_name,80);if(hero)x.hero_name=hero;if(weapon)x.weapon_name=weapon;for(const k of ["level","power","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"]){const v=num(w?.[k]);if(v!=null)x[k]=v}return x}).filter(x=>Object.keys(x).length>1)}
+  const rawWeapons=Array.isArray(extracted?.exclusive_weapons)?extracted.exclusive_weapons:
+    Array.isArray(extracted?.exclusiveWeapons)?extracted.exclusiveWeapons:
+    extracted?.exclusive_weapon?[extracted.exclusive_weapon]:
+    extracted?.exclusiveWeapon?[extracted.exclusiveWeapon]:
+    extracted?.weapon_data?[extracted.weapon_data]:
+    extracted?.weapon||extracted?.weapon_name||extracted?.hero_name?[extracted]:[];
+  if(rawWeapons.length)out.exclusive_weapons=rawWeapons.slice(0,12).map(w=>exclusiveWeaponRecord(w,now)).filter(Boolean);
   if(extracted?.shop){const s={updated_at:now};for(const k of ["store_type","currency"]){const v=str(extracted.shop[k],80);if(v)s[k]=v}for(const k of ["currency_balance","vip_level","vip_days_remaining"]){const v=num(extracted.shop[k]);if(v!=null)s[k]=v}if(Array.isArray(extracted.shop.offers))s.offers=extracted.shop.offers.slice(0,24).map(o=>{const x={};for(const k of ["item_name","currency","limit","category","rarity"]){const v=str(o?.[k],120);if(v)x[k]=v}for(const k of ["quantity","price","discount_pct","price_confidence","currency_confidence"]){const v=num(o?.[k]);if(v!=null)x[k]=v}if(o?.sold===true)x.sold=true;else if(o?.sold===false)x.sold=false;return x}).filter(x=>x.item_name);if(Object.keys(s).length>1)out.shop=s}
   const progression=Array.isArray(extracted?.hero_progression)?extracted.hero_progression:(extracted?.awakening_hero?[extracted.awakening_hero]:[]);if(progression.length){out.hero_progression=progression.slice(0,12).map(h=>{const x={updated_at:now},name=canonicalHeroName(h?.hero_name||h?.name);if(name)x.hero_name=name;for(const k of ["stars","exclusive"]){const v=num(h?.[k]);if(v!=null)x[k]=v}if(h?.awakening&&typeof h.awakening==="object"){const a={};for(const k of ["stars","skill_level","named_shards","universal_shards","power","reshape_stage","reshape_value"]){const v=num(h.awakening[k]);if(v!=null)a[k]=v}for(const k of ["unlocked","trial_complete","in_base"]){if(typeof h.awakening[k]==="boolean")a[k]=h.awakening[k]}if(Object.keys(a).length)x.awakening=a}return x}).filter(x=>x.hero_name)}
   if(extracted?.technology){const t={updated_at:now};for(const k of ["type_mastery_pct","hero_tech_pct","siege_to_seize_pct","defensive_fortification_pct","tactical_weapon_pct"]){const v=num(extracted.technology[k]);if(v!=null)t[k]=v}if(Object.keys(t).length>1)out.technology=t}
@@ -134,7 +195,11 @@ Alliance tag expected from WarBoost context is ${allianceTag||"unknown"}. A lead
   if(/^squad[1-4]$/i.test(scanType)){const id=Number(scanType.slice(-1));return `${common} This is Squad ${id}. Focus on the formation/detail panel in the screenshot. Return {"squads":[{"id":${id},"power":number,"heroes":[{"name":string,"name_evidence":"visible_text","name_confidence":number,"level":number,"stars":number,"power":number,"exclusive":string,"gear":string}]}]}. Squad power must be expressed in millions: return 34.29 for a visible 34.29M, never 34290000. Read all 5 hero rows/cards. Hero name is allowed ONLY if the name itself is readable text; do not guess a portrait identity. Read the squad power and every clearly visible level, stars, hero power, exclusive level/text and gear. For gear use count=4;levels=L1,L2,L3,L4;rarity=... when visible. Lv.0 is real data.`}
   if(scanType==="profile")return `${common} Return visible player/account data only as {"player":{"name":string,"server_id":string,"hq_level":number,"power_m":number,"coordinates":string,"role":string},"alliance":{"tag":string,"name":string,"role":string}}.`;
   if(scanType==="drone")return `${common} Return visible drone data only as {"drone":{"level":number,"power_m":number}}.`;
-  if(scanType==="exclusive")return `${common} Return visible exclusive weapon data as {"exclusive_weapons":[{"hero_name":string,"weapon_name":string,"level":number,"power":number,"hero_hp_bonus":number,"hero_atk_bonus":number,"hero_def_bonus":number,"all_damage_resistance_pct":number,"max_skill_level":number}]}. Weapon power is the full integer, not millions.`;
+  if(scanType==="exclusive")return `${common} This is an exclusive-weapon detail screen from Last War. The layout and language may vary (for example Arme exclusive / Exclusive Weapon / Arma exclusiva, and Lv., Lvl., Level, Niv. or Niveau). Read only text and numbers that are actually visible.
+
+Identify the hero when the hero name is visible or clearly attached to the weapon screen (for example DVA or D.V.A.). Identify the exact visible exclusive-weapon name/type when present (for example "Lame de Frappe DVA"). Most importantly, read the weapon level shown next to the level marker, such as "Lv.26", and return it as the number 26. Do not confuse the hero level, skill level, star count, or another number with the weapon level.
+
+Return one JSON object, allowing a partial but valid result: {"exclusive_weapons":[{"hero_name":string,"weapon_name":string,"level":number,"power":number,"hero_hp_bonus":number,"hero_atk_bonus":number,"hero_def_bonus":number,"all_damage_resistance_pct":number,"max_skill_level":number}]}. Omit any field that is absent, cropped, unreadable, or uncertain; never use null, zero, or a guess to fill a missing field. Secondary statistics are optional and must not prevent returning the hero, weapon name, or visible level. The array may contain one item for this screen. Weapon power, if visible, is the full integer, not millions.`;
   if(scanType==="awakening")return `${common} Return visible Awakening data only as {"hero_progression":[{"hero_name":string,"stars":number,"exclusive":number,"awakening":{"unlocked":boolean,"stars":number,"skill_level":number,"named_shards":number,"universal_shards":number,"trial_complete":boolean,"in_base":boolean,"power":number,"reshape_stage":number,"reshape_value":number}}]}.`;
   if(scanType==="shop")return `${common} Return visible shop data only as {"shop":{"store_type":string,"currency":string,"currency_balance":number,"vip_level":number,"vip_days_remaining":number,"offers":[{"item_name":string,"quantity":number,"price":number,"currency":string,"limit":string,"discount_pct":number,"category":string,"rarity":string,"sold":boolean,"price_confidence":number,"currency_confidence":number}]}}. Do not invent hidden offers or prices.`;
   if(scanType==="vs")return `${common} Return visible Alliance Duel data only as {"vs":{"theme":string,"time_remaining_text":string,"time_remaining_seconds":number,"our_server_id":string,"our_tag":string,"our_alliance":string,"opponent_server_id":string,"opponent_tag":string,"opponent":string,"our_score":number,"their_score":number,"our_percent":number,"their_percent":number,"personal_name":string,"personal_rank":number,"personal_score":number,"leaderboard":[{"rank":number,"alliance_tag":string,"player_name":string,"score":number}]}}.`;
@@ -167,6 +232,6 @@ export default async function handler(req,res){
     const now=new Date().toISOString();
     if(scanType==="alliance_roster"){const rows=sanitizeRosterRows(extracted,now,allianceTag);if(!rows.length)return res.status(422).json({error:"scan_no_useful_data",message:"La liste des membres n’a pas pu être lue clairement. Garde la capture et réessaie."});return res.status(200).json({ok:true,engine,scanned_at:now,roster_rows:rows,quality:{row_count:rows.length,requires_confirmation:true,single_pass:true}})}
     const state=sanitize(extracted,now,scanType);if(!usefulState(scanType,state))return res.status(422).json({error:"scan_no_useful_data",message:"La capture est bien reçue, mais les données utiles ne sont pas assez lisibles. Garde cette capture et réessaie."});
-    return res.status(200).json({ok:true,engine,scanned_at:now,state,quality:{single_pass:true,requires_confirmation:/^squad[1-4]$/i.test(scanType),identity_enrichment_skipped:true}});
+    return res.status(200).json({ok:true,engine,scanned_at:now,state,quality:{single_pass:true,requires_confirmation:/^squad[1-4]$/i.test(scanType)||scanType==="exclusive",partial_results_allowed:scanType==="exclusive",identity_enrichment_skipped:true}});
   }catch(error){console.error("WarBoost scan R2",{message:error?.message,code:error?.code,status:error?.status});return res.status(error?.status||500).json({error:"scan_failed",code:error?.code||"SCAN_FAILED",message:error?.message||"La capture n’a pas pu être analysée."})}
 }

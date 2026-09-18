@@ -290,12 +290,51 @@ const ROSTER_SCAN_FILE_LIMIT=DEFAULT_ROSTER_SCAN_FILE_LIMIT;
 reconcileCurrentPlayerAllianceIdentity();
 let voiceGreetedSections=new Set(),availableVoices=[];
 const openRosterRoles=new Set();
-let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[];
+let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pendingExclusiveScan=[];
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
-function resetPendingScanUi(){scanImageData=null;scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft()}
+function resetPendingScanUi(){scanImageData=null;scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveScan=[];const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft()}
 async function restorePendingScans(){const owner=pendingScanOwner();try{const pending=await loadPendingSingleScan(owner);if(pending?.image_data_url){scanImageData=pending.image_data_url;scanImageName=pending.name||"capture.jpg";renderScanTypeOptions();const type=$("#scanType");if(type&&[...type.options].some(o=>o.value===pending.scan_type))type.value=pending.scan_type;const preview=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(preview){preview.src=scanImageData;preview.classList.remove("hidden")}if(clear)clear.classList.remove("hidden");if(status){status.className="notice";status.textContent=t("scan_ready")}}const files=await loadPendingRosterFiles(owner);if(files.length){rosterScanFiles=appendRosterScanFiles([],files,{limit:ROSTER_SCAN_FILE_LIMIT}).files;rosterScanDraft=[];renderRosterScanFiles();renderRosterScanDraft()}}catch{}}
 async function persistPendingRosterQueue(){return await savePendingRosterFiles(pendingScanOwner(),rosterScanFiles).catch(()=>false)}
-function clearScanImage({forget=true}={}){const owner=pendingScanOwner();scanImageData=null;scanImageName="capture.jpg";const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(forget)void clearPendingSingleScan(owner)}
+function clearScanImage({forget=true}={}){const owner=pendingScanOwner();scanImageData=null;scanImageName="capture.jpg";pendingExclusiveScan=[];const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");if(forget)void clearPendingSingleScan(owner)}
+function exclusiveNumber(value){const text=String(value??"").trim().replace(",",".");if(!text)return null;const n=Number(text);return Number.isFinite(n)?n:null}
+function renderExclusiveConfirmation(rows=[]){
+  pendingExclusiveScan=Array.isArray(rows)?rows.map(x=>({...x})).filter(x=>x&&typeof x==="object"):[];
+  const panel=$("#exclusiveConfirmPanel"),box=$("#exclusiveConfirmRows");if(!panel||!box)return false;
+  box.innerHTML=pendingExclusiveScan.map((w,i)=>`<div class="exclusiveConfirmCard" data-exclusive-index="${i}">
+    <div class="exclusiveConfirmGrid">
+      <label>${esc(t("hero"))}<input data-exclusive-field="hero_name" value="${esc(w.hero_name||"")}" maxlength="80"/></label>
+      <label>${esc(t("exclusive_weapon"))}<input data-exclusive-field="weapon_name" value="${esc(w.weapon_name||"")}" maxlength="120"/></label>
+      <label>${esc(t("level"))}<input data-exclusive-field="level" type="number" min="0" max="999" step="1" value="${w.level??""}"/></label>
+      <label>${esc(t("power"))}<input data-exclusive-field="power" type="number" min="0" step="1" value="${w.power??""}"/></label>
+      <label>${esc(t("scan_exclusive_hp_bonus"))}<input data-exclusive-field="hero_hp_bonus" type="number" step="any" value="${w.hero_hp_bonus??""}"/></label>
+      <label>${esc(t("scan_exclusive_atk_bonus"))}<input data-exclusive-field="hero_atk_bonus" type="number" step="any" value="${w.hero_atk_bonus??""}"/></label>
+      <label>${esc(t("scan_exclusive_def_bonus"))}<input data-exclusive-field="hero_def_bonus" type="number" step="any" value="${w.hero_def_bonus??""}"/></label>
+      <label>${esc(t("scan_exclusive_resistance"))}<input data-exclusive-field="all_damage_resistance_pct" type="number" step="any" value="${w.all_damage_resistance_pct??""}"/></label>
+      <label>${esc(t("scan_exclusive_skill_cap"))}<input data-exclusive-field="max_skill_level" type="number" min="0" max="999" step="1" value="${w.max_skill_level??""}"/></label>
+    </div>
+  </div>`).join("");
+  panel.classList.remove("hidden");
+  return pendingExclusiveScan.length>0;
+}
+function collectExclusiveConfirmation(){
+  const rows=[];$("#exclusiveConfirmRows")?.querySelectorAll("[data-exclusive-index]").forEach(card=>{
+    const row={},read=field=>String(card.querySelector(`[data-exclusive-field="${field}"]`)?.value||"").trim();
+    const hero=canonicalHeroName(read("hero_name")),weapon=read("weapon_name");if(hero)row.hero_name=hero;if(weapon)row.weapon_name=weapon;
+    for(const field of ["level","power","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"]){const value=exclusiveNumber(read(field));if(value!==null)row[field]=value}
+    if(Object.keys(row).length)rows.push(row);
+  });
+  return rows;
+}
+function saveConfirmedExclusiveScan(){
+  const confirmed=collectExclusiveConfirmation(),status=$("#scanStatus");
+  if(!confirmed.some(w=>w.hero_name||w.weapon_name||w.level!==undefined||w.power!==undefined)){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_required")}return false}
+  const now=new Date().toISOString();
+  state=repairLegacySquadIdentity(mergeStateProtected(state,{exclusive_weapons:confirmed},{preferBase:false})).state;
+  state.sync.last_scan=state.sync.last_scan||now;state.sync.sources={...state.sync.sources,scan:true};recordProgressionSnapshot("scan_exclusive",state.sync.last_scan);saveState();
+  pendingExclusiveScan=[];$("#exclusiveConfirmPanel")?.classList.add("hidden");
+  if(status){status.className="notice";status.textContent=t("scan_exclusive_confirmed")}
+  return true;
+}
 function heroConfirmOptions(selected){return [`<option value="">${esc(t("hero_choose"))}</option>`].concat(HERO_CATALOG.map(n=>`<option value="${esc(n)}"${n===selected?" selected":""}>${esc(n)}</option>`)).join("")}
 function openHeroConfirmation(squadId,suggestions=[]){pendingHeroSquadId=Number(squadId)||null;pendingHeroSuggestions=Array.from({length:5},(_,i)=>String(suggestions?.[i]||"").trim());const panel=$("#heroConfirmPanel"),rows=$("#heroConfirmRows");if(!panel||!rows||!pendingHeroSquadId)return false;const sq=state.squads[pendingHeroSquadId-1];if(!sq)return false;rows.innerHTML=(sq.heroes||[]).slice(0,5).map((h,i)=>{const saved=isGenericHeroName(h?.name)?"":h.name;const suggested=pendingHeroSuggestions[i]&&!isGenericHeroName(pendingHeroSuggestions[i])?pendingHeroSuggestions[i]:"";const current=suggested||saved;return `<div class="heroConfirmRow"><span>${i+1}</span><select data-hero-slot="${i}">${heroConfirmOptions(current)}</select></div>`}).join("");$("#heroConfirmTitle").textContent=t("hero_confirm_title",{squad:pendingHeroSquadId});panel.classList.remove("hidden");return true;}
 function startHeroConfirmation(squadId,suggestions=[],scanSlots=[]){const id=Number(squadId);pendingHeroScanSlots=Array.from({length:5},(_,i)=>({...((scanSlots?.[i]&&typeof scanSlots[i]==="object")?scanSlots[i]:{})}));if(!Number.isInteger(id)||id<1||id>4)return;openDrawer("scan");renderScanTypeOptions();const type=$("#scanType");if(type)type.value=`squad${id}`;const st=$("#scanStatus");if(st){st.className="notice warn";st.textContent=t("hero_confirm_needed")}const opened=openHeroConfirmation(id,suggestions);if(!opened)return;const drawer=$("#scanDrawer"),panel=$("#heroConfirmPanel");if(drawer)drawer.scrollTop=0;requestAnimationFrame(()=>requestAnimationFrame(()=>{try{panel?.scrollIntoView({behavior:"smooth",block:"center"})}catch{if(drawer)drawer.scrollTop=Math.max(0,(panel?.offsetTop||0)-24)}}));}
@@ -1473,6 +1512,36 @@ async function imageToDataUrl(file){return new Promise((resolve,reject)=>{const 
 $("#scanFile").addEventListener("change",async e=>{const file=e.target.files?.[0];if(!file)return;try{scanImageData=await imageToDataUrl(file);scanImageName=String(file.name||"capture.jpg");$("#scanPreview").src=scanImageData;$("#scanPreview").classList.remove("hidden");$("#clearScanCaptureBtn")?.classList.remove("hidden");const kept=await savePendingSingleScan(pendingScanOwner(),{scan_type:$("#scanType")?.value||"profile",image_data_url:scanImageData,name:scanImageName});$("#scanStatus").className=kept?"notice":"notice warn";$("#scanStatus").textContent=t(kept?"scan_ready":"scan_pending_local_failed")}catch{$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_error")}});
 $("#scanType")?.addEventListener("change",()=>{if(scanImageData)void savePendingSingleScan(pendingScanOwner(),{scan_type:$("#scanType")?.value||"profile",image_data_url:scanImageData,name:scanImageName})});
 $("#clearScanCaptureBtn")?.addEventListener("click",()=>{clearScanImage();const st=$("#scanStatus");if(st){st.className="notice";st.textContent=t("scan_wait")}});
+async function analyzeExclusiveScan(){
+  const btn=$("#analyzeScanBtn"),status=$("#scanStatus"),scanType="exclusive";
+  if(!scanImageData){status.className="notice warn";status.textContent=t("scan_wait");return}
+  if(!requireBetaAccess()||!requireBetaConsent())return;
+  if(!cloudSession?.access_token){openDrawer("account");authMessage(t("connect_pro"));return}
+  btn.disabled=true;btn.textContent=t("scan_processing");status.className="notice";status.textContent=t("scan_processing");
+  try{
+    const {response:r,json:j}=await fetchWarBoostScan({scan_type:scanType,locale:lang,image_data_url:scanImageData,current_state:state});
+    if(!r.ok||!j.state||!scanResultHasUsefulData(scanType,j.state)){
+      await savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName});
+      status.className="notice warn";status.textContent=j?.message||t("scan_error");return;
+    }
+    const rows=j.state.exclusive_weapons||[];
+    pendingExclusiveScan=rows;
+    renderExclusiveConfirmation(rows);
+    status.className="notice warn";status.textContent=t("scan_exclusive_confirm_help");
+  }catch(error){status.className="notice warn";status.textContent=error?.message||t("scan_error")}
+  finally{btn.disabled=false;btn.textContent=t("analyze")}
+}
+$("#analyzeScanBtn").addEventListener("click",async event=>{
+  if($("#scanType")?.value!=="exclusive")return;
+  event.stopImmediatePropagation();
+  await analyzeExclusiveScan();
+});
+$("#saveExclusiveConfirmBtn")?.addEventListener("click",()=>saveConfirmedExclusiveScan());
+$("#cancelExclusiveConfirmBtn")?.addEventListener("click",()=>{
+  pendingExclusiveScan=[];$("#exclusiveConfirmPanel")?.classList.add("hidden");
+  const status=$("#scanStatus");if(status){status.className="notice";status.textContent=t("scan_ready")}
+});
+$("#scanType")?.addEventListener("change",()=>{pendingExclusiveScan=[];$("#exclusiveConfirmPanel")?.classList.add("hidden")});
 $("#analyzeScanBtn").addEventListener("click",async()=>{if(!scanImageData){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_wait");return}if(!requireBetaAccess()||!requireBetaConsent())return;if(!cloudSession?.access_token){openDrawer("account");authMessage(t("connect_pro"));return}const btn=$("#analyzeScanBtn");btn.disabled=true;btn.textContent=t("scan_processing");$("#scanStatus").className="notice";$("#scanStatus").textContent=t("scan_processing");try{const {response:r,json:j}=await fetchWarBoostScan({scan_type:$("#scanType").value,locale:lang,image_data_url:scanImageData,current_state:state});if(r.ok&&j.state){const scanType=$("#scanType").value;if(!scanResultHasUsefulData(scanType,j.state)){const st=$("#scanStatus");st.className="notice warn";st.textContent=t("scan_error");await savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName});return}const sm=String(scanType||"").match(/^squad([1-4])$/i);let suggestedNames=[],scanSlots=[];if(sm){const idx=Number(sm[1])-1,incomingSq=j.state.squads?.[idx];if(incomingSq?.heroes){scanSlots=Array.from({length:5},(_,i)=>({...((incomingSq.heroes?.[i]&&typeof incomingSq.heroes[i]==="object")?incomingSq.heroes[i]:{})}));suggestedNames=scanSlots.map(h=>String(h?.name||"").trim());delete incomingSq.heroes}}state=repairLegacySquadIdentity(mergeStateProtected(state,j.state,{preferBase:false})).state;if(sm){const staged=state.squads?.[Number(sm[1])-1];if(staged){staged.needs_rescan=true;staged.composition_changed_at=j.scanned_at||new Date().toISOString()}}state.sync.last_scan=j.scanned_at||new Date().toISOString();state.sync.sources={...state.sync.sources,scan:true};if(["profile","drone","exclusive","awakening"].includes(scanType)||sm)recordProgressionSnapshot(`scan_${scanType}`,j.scanned_at||new Date().toISOString());saveState();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden");if(sm){const count=suggestedNames.filter(Boolean).length;$("#scanStatus").className="notice warn";$("#scanStatus").textContent=count>0?t("hero_auto_recognized",{count}):t("hero_confirm_needed");startHeroConfirmation(Number(sm[1]),suggestedNames,scanSlots)}else{$("#scanStatus").className="notice";$("#scanStatus").textContent=t("scan_saved");closeHeroConfirmation(false);if(scanType==="vs"){render();openDrawer("vs");if(proFeatureAllowed()){const live=await requestAdvice("vs");$("#vsPlanText").textContent=structuredAdviceText("vs",live)}}}}else{$("#scanStatus").className="notice warn";$("#scanStatus").textContent=j.code==="SCAN_NOT_CONFIGURED"?t("scan_unconfigured"):(j.message||t("scan_error"))}}catch(e){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=e?.message||t("scan_error")}finally{btn.disabled=false;btn.textContent=t("analyze")}});
 
 async function requestAdvice(scope){if(scope==="vs"){state.vs.week=currentVsWeek();state.vs.day=currentVsDay()}try{const {response:r,json:j}=await fetchJsonBounded("/api/advice",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({scope,state,locale:lang})},25000);if(r.ok)return j}catch{}return null}

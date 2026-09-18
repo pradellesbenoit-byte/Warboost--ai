@@ -233,6 +233,12 @@
           <div id="heroConfirmRows" class="heroConfirmRows"></div>
           <div class="buttonRow"><button id="skipHeroNamesBtn" class="secondaryBtn" data-i18n="hero_skip">Garder sans noms</button><button id="saveHeroNamesBtn" class="primaryAction" data-i18n="hero_save">Enregistrer les noms</button></div>
         </div>
+        <div id="exclusiveConfirmPanel" class="heroConfirmPanel hidden">
+          <div class="sectionTitle"><h3 data-i18n="scan_exclusive_confirm_title">Arme exclusive détectée</h3><span class="pill" data-i18n="hero_confirm_badge">À confirmer</span></div>
+          <p class="privacyText" data-i18n="scan_exclusive_confirm_help">Vérifie les données visibles avant de les enregistrer. Les champs illisibles restent vides.</p>
+          <div id="exclusiveConfirmRows" class="exclusiveConfirmRows"></div>
+          <div class="buttonRow"><button id="cancelExclusiveConfirmBtn" class="secondaryBtn" type="button" data-i18n="scan_exclusive_cancel">Annuler</button><button id="saveExclusiveConfirmBtn" class="primaryAction" type="button" data-i18n="scan_exclusive_save">Confirmer et enregistrer</button></div>
+        </div>
 
         <div class="privacyText" data-i18n="privacy_scan">La capture brute est gardée temporairement sur cet appareil jusqu’à 48 h. Les données validées issues du scan restent enregistrées dans ton profil WarBoost ; seule l’image temporaire expire.</div>
       </div>
