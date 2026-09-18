@@ -4,6 +4,14 @@ modules = ["nodejs-24", "python-base-3.13"]
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 22267
+externalPort = 3001
+
 [workflows]
 runButton = "Project"
 
