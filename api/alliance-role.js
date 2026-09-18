@@ -49,7 +49,7 @@ export default async function handler(req,res){
       for(const x of resolved){next[x.idx]={...next[x.idx],role:x.to_role,updated_at:new Date().toISOString()}}
       const counts=rankCounts(next);
       if((counts.R4||0)>10)return res.status(409).json({error:"r4_limit",limit:10,count:counts.R4});
-      const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id||actor.alliance_id,roster:next});
+      const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id||actor.alliance_id,roster:next,expected_updated_at:ctx.alliance.updated_at});
       if(!saved)return res.status(500).json({error:"roster_rank_persist_failed"});
       return res.status(200).json({ok:true,mode:"roster_rank_batch",changes:resolved.map(({name,from_role,to_role})=>({name,from_role,to_role})),counts});
     }
@@ -67,7 +67,7 @@ export default async function handler(req,res){
       if(!["R1","R4"].includes(targetRole))return res.status(400).json({error:"management_role_invalid"});
     }
     if(String(targetPlayerId)===String(user.id)&&targetRole==="R5"&&!isOwner)return res.status(403).json({error:"owner_required_for_r5"});
-    const row=await setAllianceMemberRole({alliance_id:actor.alliance_id,player_id:targetPlayerId,role:targetRole});
+    const row=await setAllianceMemberRole({alliance_id:actor.alliance_id,player_id:targetPlayerId,role:targetRole,expected_updated_at:target.updated_at});
     if(!row)return res.status(404).json({error:"member_not_found"});
     return res.status(200).json({ok:true,membership:row});
   }catch(e){return res.status(e.status||500).json({error:e.code||"alliance_role_failed",message:e.message})}

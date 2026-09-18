@@ -1,5 +1,5 @@
 import {randomBytes} from "node:crypto";
-import {configured,createAlliance,findInvite,findAllianceByScope,getAllianceMembership,getAllianceById,getOwnedAlliance,getProfile,joinAlliance,updateAllianceScopeRoster} from "../lib/supabase.js";
+import {configured,createAllianceWithOwner,findInvite,findAllianceByScope,getAllianceMembership,getAllianceById,getOwnedAlliance,getProfile,joinAlliance,updateAllianceScopeRoster} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import {managerProofFromState,joinProofForAlliance,publicAllianceScope,isManagerRole,mergeCanonicalRoster} from "../lib/alliance-scope.js";
 
@@ -37,7 +37,7 @@ export default async function handler(req,res){
         const state=await profileState(user.id),bootstrap=managerProofFromState(state||{});
         if(!bootstrap.ok)throw fail(bootstrap.code==="alliance_roster_identity_ambiguous"?409:403,bootstrap.code);
         if(cleanTag(alliance.tag)!==bootstrap.scope.alliance_tag)throw fail(403,"alliance_tag_mismatch");
-        alliance=await updateAllianceScopeRoster({alliance_id:alliance.id,server_id:bootstrap.scope.server_id,tag:bootstrap.scope.alliance_tag,name:alliance.name||bootstrap.scope.alliance_tag,roster:bootstrap.roster})||alliance;
+        alliance=await updateAllianceScopeRoster({alliance_id:alliance.id,server_id:bootstrap.scope.server_id,tag:bootstrap.scope.alliance_tag,name:alliance.name||bootstrap.scope.alliance_tag,roster:bootstrap.roster,expected_updated_at:alliance.updated_at})||alliance;
       }
       const sameScope=await findAllianceByScope(String(alliance.server_id||""),String(alliance.tag||""));
       if(sameScope.length!==1||String(sameScope[0]?.id||"")!==String(alliance.id||""))throw fail(409,"alliance_scope_ambiguous_admin_required","This server/alliance scope is ambiguous and must be reviewed before invitations can be shared.");
@@ -48,7 +48,7 @@ export default async function handler(req,res){
       const fresh=managerProofFromState(verified.state);
       if(fresh.ok&&fresh.scope.server_id===String(alliance.server_id||"")&&fresh.scope.alliance_tag===cleanTag(alliance.tag)){
         const existingCount=Array.isArray(alliance.roster)?alliance.roster.length:0;
-        if(fresh.roster.length>=existingCount&&fresh.roster.length>0){const roster=mergeCanonicalRoster(alliance.roster,fresh.roster,{serverId:fresh.scope.server_id,allianceTag:fresh.scope.alliance_tag});alliance=await updateAllianceScopeRoster({alliance_id:alliance.id,roster})||alliance;}
+        if(fresh.roster.length>=existingCount&&fresh.roster.length>0){const roster=mergeCanonicalRoster(alliance.roster,fresh.roster,{serverId:fresh.scope.server_id,allianceTag:fresh.scope.alliance_tag});alliance=await updateAllianceScopeRoster({alliance_id:alliance.id,roster,expected_updated_at:alliance.updated_at})||alliance;}
       }
       return res.status(200).json({ok:true,existing:true,alliance:publicAllianceScope(alliance),invite_code:alliance.invite_code,role:verified.proof.roster_role,scope_verified:true});
     }
@@ -62,7 +62,7 @@ export default async function handler(req,res){
       // Recover only when the exact server+alliance scope still matches the owner's Last War identity.
       if(String(owned.server_id||"").trim()&&String(owned.server_id)!==proof.scope.server_id)throw fail(409,"alliance_owner_scope_conflict");
       if(cleanTag(owned.tag)!==proof.scope.alliance_tag)throw fail(409,"alliance_owner_scope_conflict");
-      const upgraded=await updateAllianceScopeRoster({alliance_id:owned.id,server_id:proof.scope.server_id,tag:proof.scope.alliance_tag,name:owned.name||proof.scope.alliance_tag,roster:proof.roster})||owned;
+      const upgraded=await updateAllianceScopeRoster({alliance_id:owned.id,server_id:proof.scope.server_id,tag:proof.scope.alliance_tag,name:owned.name||proof.scope.alliance_tag,roster:proof.roster,expected_updated_at:owned.updated_at})||owned;
       const membership=await joinAlliance({alliance_id:upgraded.id,player_id:user.id,role:proof.roster_role});
       return res.status(200).json({ok:true,existing:true,recovered:true,alliance:publicAllianceScope(upgraded),invite_code:upgraded.invite_code,role:membership?.role||proof.roster_role,scope_verified:true});
     }
@@ -75,10 +75,9 @@ export default async function handler(req,res){
     for(let attempt=0;attempt<6;attempt++){
       const code=inviteCode(server,tag);if(await findInvite(code))continue;
       try{
-        const row=await createAlliance({tag,name,server_id:server,invite_code:code,owner_player_id:user.id,roster:proof.roster});
+        const row=await createAllianceWithOwner({tag,name,server_id:server,invite_code:code,owner_player_id:user.id,roster:proof.roster,owner_role:proof.roster_role});
         if(!row?.id)continue;
-        const membership=await joinAlliance({alliance_id:row.id,player_id:user.id,role:proof.roster_role});
-        return res.status(200).json({ok:true,existing:false,alliance:publicAllianceScope(row),invite_code:row.invite_code||code,role:membership?.role||proof.roster_role,scope_verified:true});
+        return res.status(200).json({ok:true,existing:false,alliance:publicAllianceScope(row),invite_code:row.invite_code||code,role:proof.roster_role,scope_verified:true});
       }catch(e){
         const raw=`${e?.body?.code||""} ${e?.body?.message||""} ${e?.message||""}`.toLowerCase();
         if(e?.status===409||/23505|duplicate|unique/.test(raw))continue;

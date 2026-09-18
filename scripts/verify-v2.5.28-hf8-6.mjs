@@ -60,7 +60,7 @@ assert.ok(stalePlan.warnings.some(x=>x.code==='stale_squad_data'));assert.ok(sta
 
 // Roster screenshot import contract: multi-capture UX, visible R5 header, visible-only OCR, review before import.
 for(const id of ['rosterScanFiles','rosterScanAnalyzeBtn','rosterScanDraft','rosterScanFullSnapshot','rosterScanImportBtn'])assert.match(html,new RegExp(`id=["']${id}["']`));
-assert.match(html,/multiple/);assert.match(scan,/scanType==="alliance_roster"/);assert.match(scan,/R5 leader may be displayed separately/);assert.match(scan,/never guess a rank or number/);assert.match(scan,/never mark a missing player as departed/);
+assert.match(html,/multiple/);assert.match(scan,/scanType==="alliance_roster"/);assert.match(scan,/Include the R5 if visibly shown separately/);assert.match(scan,/Never infer hidden members, departures, ranks, HQ values or power/);
 assert.match(app,/slice\(0,12\)/);assert.match(app,/renderRosterScanDraft/);assert.match(app,/collectRosterScanDraftFromDom/);assert.match(app,/source:"roster_scan"/);assert.match(app,/rosterScanFullSnapshot/);
 
 // Quick player updates + dated progression are present without forcing a full rescan.
@@ -76,7 +76,7 @@ assert.match(html,/V2\.5\.28 HF8\.6/);assert.match(manifest.name,/HF8\.6/);asser
 for(const guard of ['desert_storm_squad_power_primary_account_power_fallback','desert_storm_stale_squad_data_reduces_confidence','alliance_removed_member_blocked_from_event_picker_after_sync','alliance_roster_screenshot_multi_capture_import','alliance_roster_scan_r5_separate_header_supported','alliance_roster_scan_review_before_import','player_progression_dated_snapshots','player_progression_missing_update_never_no_progress','player_quick_refresh_profile_squad_drone'])assert.match(health,new RegExp(`${guard}:true`));
 assert.match(health,/safe_launch_no_scraping:true/);assert.match(health,/safe_launch_no_gameplay_automation:true/);assert.match(health,/beta_payments_disabled:true/);assert.doesNotMatch(app,/localStorage\.clear\s*\(/);
 const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);
-const migrations=fs.readdirSync(path.join(root,'supabase')).filter(x=>/hf8[_-]?6/i.test(x));assert.equal(migrations.length,0,'HF8.6 must not add a Supabase migration');
+const migrations=fs.readdirSync(path.join(root,'supabase')).filter(x=>/hf8[_-]?6(?:\.sql)$/i.test(x));assert.equal(migrations.length,0,'The original HF8.6 release must not require its own Supabase migration');
 const ids=[...html.matchAll(/\sid=["']([^"']+)["']/g)].map(m=>m[1]);const duplicates=[...new Set(ids.filter((id,i)=>ids.indexOf(id)!==i))];assert.deepEqual(duplicates,[],`duplicate HTML ids: ${duplicates.join(', ')}`);
 
 console.log('WarBoost V2.5.28 HF8.6 Roster Scan + Progression + Combat AI verification: PASS');

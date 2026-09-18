@@ -506,10 +506,10 @@ log('Alliance invite sharing is restricted to R5/R4 for an existing cloud allian
 await withMockSupabase([
   {match:u=>u.endsWith('/auth/v1/user'),body:{id:'mgr1'}},
   {match:u=>u.includes('wb1_alliance_members?player_id=eq.mgr1'),body:[{alliance_id:'a1',player_id:'mgr1',role:'R4',updated_at:now}]},
-  {match:u=>u.includes('wb1_alliances?id=eq.a1'),body:[{id:'a1',server_id:'884',tag:'ALL4',name:'ALL FOR 1',invite_code:'ALL4-SECURE',owner_player_id:'owner',roster:[{name:'Commander',server_id:'884',alliance_tag:'ALL4',role:'R4'}]}]},
+  {match:u=>u.includes('wb1_alliances?id=eq.a1'),body:[{id:'a1',server_id:'884',tag:'ALL4',name:'ALL FOR 1',invite_code:'ALL4-SECURE',owner_player_id:'owner',updated_at:now,roster:[{name:'Commander',server_id:'884',alliance_tag:'ALL4',role:'R4'}]}]},
   {match:u=>u.includes('wb1_alliances?server_id=eq.884')&&u.includes('tag=eq.ALL4'),body:[{id:'a1',server_id:'884',tag:'ALL4',name:'ALL FOR 1',invite_code:'ALL4-SECURE',owner_player_id:'owner'}]},
   {match:u=>u.includes('wb1_profiles?player_id=eq.mgr1'),body:[{state:{player:{name:'Commander',server_id:'884',role:'R4'},alliance:{tag:'ALL4',members:[{name:'Commander',server_id:'884',alliance_tag:'ALL4',role:'R4'}]}}}]},
-  {match:(u,o)=>u.includes('wb1_alliances?id=eq.a1')&&o.method==='PATCH',body:[{id:'a1',server_id:'884',tag:'ALL4',name:'ALL FOR 1',invite_code:'ALL4-SECURE',owner_player_id:'owner',roster:[{name:'Commander',server_id:'884',alliance_tag:'ALL4',role:'R4'}]}]}
+  {match:(u,o)=>u.includes('wb1_alliances?id=eq.a1')&&o.method==='PATCH',body:[{id:'a1',server_id:'884',tag:'ALL4',name:'ALL FOR 1',invite_code:'ALL4-SECURE',owner_player_id:'owner',updated_at:new Date(Date.parse(now)+1000).toISOString(),roster:[{name:'Commander',server_id:'884',alliance_tag:'ALL4',role:'R4'}]}]}
 ],async()=>{const r=await callAsync(inviteHandler,{});assert.equal(r.status,200);assert.equal(r.body.invite_code,'ALL4-SECURE');assert.equal(r.body.role,'R4');assert.equal(r.body.alliance.server_id,'884');assert.equal(r.body.alliance.tag,'ALL4');assert.equal(r.body.scope_verified,true)});
 log('HF7 alliance invite sharing requires exact Last War R5/R4 roster proof in the same server+alliance scope');
 
@@ -521,9 +521,8 @@ await withMockSupabase([
   {match:u=>u.includes('wb1_alliances?owner_player_id=eq.newmgr'),body:[]},
   {match:u=>u.includes('wb1_alliances?server_id=eq.999')&&u.includes('tag=eq.NEWX'),body:[]},
   {match:u=>u.includes('wb1_alliances?invite_code=eq.S999-NEWX-'),body:[]},
-  {match:(u,o)=>u.endsWith('/rest/v1/wb1_alliances')&&o.method==='POST',body:[{id:'new999',server_id:'999',tag:'NEWX',name:'NEWX',invite_code:'S999-NEWX-ABCDEF',owner_player_id:'newmgr',roster:[{name:'NewBoss',server_id:'999',alliance_tag:'NEWX',role:'R5'},{name:'NewMember',server_id:'999',alliance_tag:'NEWX',role:'R2'}]}]},
-  {match:(u,o)=>u.includes('wb1_alliance_members?on_conflict=player_id')&&o.method==='POST',body:[{alliance_id:'new999',player_id:'newmgr',role:'R5'}]}
-],async calls=>{const r=await callAsync(inviteHandler,{});assert.equal(r.status,200);assert.equal(r.body.alliance.server_id,'999');assert.equal(r.body.alliance.tag,'NEWX');assert.equal(r.body.role,'R5');assert.match(r.body.invite_code,/^S999-NEWX-/);const create=calls.find(c=>c.options?.method==='POST'&&c.url.endsWith('/rest/v1/wb1_alliances'));assert.ok(create);const body=JSON.parse(create.options.body);assert.equal(body.server_id,'999');assert.equal(body.tag,'NEWX');assert.equal(body.roster.length,2);assert.equal(Object.hasOwn(body.roster[0],'email'),false)});
+  {match:(u,o)=>u.endsWith('/rest/v1/rpc/wb1_create_alliance_atomic')&&o.method==='POST',body:[{id:'new999',server_id:'999',tag:'NEWX',name:'NEWX',invite_code:'S999-NEWX-ABCDEF',owner_player_id:'newmgr',roster:[{name:'NewBoss',server_id:'999',alliance_tag:'NEWX',role:'R5'},{name:'NewMember',server_id:'999',alliance_tag:'NEWX',role:'R2'}]}]}
+],async calls=>{const r=await callAsync(inviteHandler,{});assert.equal(r.status,200);assert.equal(r.body.alliance.server_id,'999');assert.equal(r.body.alliance.tag,'NEWX');assert.equal(r.body.role,'R5');assert.match(r.body.invite_code,/^S999-NEWX-/);const create=calls.find(c=>c.options?.method==='POST'&&c.url.endsWith('/rest/v1/rpc/wb1_create_alliance_atomic'));assert.ok(create);const body=JSON.parse(create.options.body);assert.equal(body.p_server_id,'999');assert.equal(body.p_tag,'NEWX');assert.equal(body.p_roster.length,2);assert.equal(Object.hasOwn(body.p_roster[0],'email'),false)});
 log('HF7 lets a verified-in-roster R5/R4 bootstrap a separate WarBoost space for another server/alliance without mixing scopes');
 
 // HF7 Alliance join: a code alone never authorizes a player from the wrong server.
@@ -707,8 +706,8 @@ log('Non-owner switching requires exact target roster proof and keeps the Last W
   assert.match(app,/function betaPrivateDataVisible\(\)\{return Boolean\(cloudSession\?\.user\)&&betaAccessAllowed\(\)&&betaConsentAccepted\(\)\}/);
   assert.match(app,/if\(!reveal\)\{[\s\S]*?#playerMeta[\s\S]*?to_connect[\s\S]*?#allianceMeta[\s\S]*?—/);
   assert.match(app,/renderAccountFields\(\).*?reveal=betaPrivateDataVisible\(\)[\s\S]*?#fName[\s\S]*?value=""[\s\S]*?disabled=!reveal/s);
-  assert.match(app,/function renderAdvice\(\)\{if\(!betaPrivateDataVisible\(\)\)/);
-  assert.match(app,/function renderProvider\(\).*?reveal=betaPrivateDataVisible\(\)[\s\S]*?beta_signin_required/s);
+  assert.match(app,/function renderAdvice\(\)\{[\s\S]{0,300}if\(!access\.privateVisible\)/);
+  assert.match(app,/function renderProvider\(\)[\s\S]{0,500}?reveal=access\.privateVisible[\s\S]{0,1000}?box\.textContent=betaAccessMessage\(\)/);
   assert.match(app,/logoutBtn[\s\S]*?render\(\);renderAuth\(\);renderBeta\(\)/);
   assert.doesNotMatch(app,/removeItem\(STORE_KEY\)/,'Privacy masking must not delete the saved player state');
   assert.match(health,/signed_out_private_data_masked:true/);

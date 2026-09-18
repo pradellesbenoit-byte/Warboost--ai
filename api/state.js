@@ -1,4 +1,4 @@
-import {configured,userConfigured,getProfile,upsertProfile,getProfileForUser,upsertProfileForUser,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster} from "../lib/supabase.js";
+import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster} from "../lib/supabase.js";
 import {normalizeState} from "../lib/normalize.js";
 import {recoverHeroData,heroDataSignature} from "../lib/hero-history.js";
 import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../lib/beta-access.js";
@@ -96,7 +96,7 @@ export default async function handler(req,res){
 
     const {user}=await requireBetaUser(req,{consent:true,trace}),playerId=user.id,userMode=userConfigured()&&Boolean(access);
     const getOwn=()=>userMode?getProfileForUser(playerId,access):getProfile(playerId);
-    const saveOwn=state=>userMode?upsertProfileForUser(playerId,state,access):upsertProfile(playerId,state);
+    const saveOwn=(state,expectedUpdatedAt)=>userMode?saveProfileForUserIfUnchanged(playerId,state,access,expectedUpdatedAt):saveProfileIfUnchanged(playerId,state,expectedUpdatedAt);
     const snapshotOwn=(state,source)=>userMode?insertSnapshotForUser(playerId,state,access,source):insertSnapshot(playerId,state,source);
     const historyOwn=limit=>userMode?listSnapshotsForUser(playerId,access,limit):listSnapshots(playerId,limit);
 
@@ -113,12 +113,20 @@ export default async function handler(req,res){
       let finalState=normalizeState({...recovered.state,player_id:playerId}),updatedAt=row.updated_at||finalState.updated_at;
       const rosterRepair=await canonicalizeAllianceState(finalState,playerId);
       finalState=rosterRepair.state;
-      if(recovered.changed||rosterRepair.changed){const saved=await saveOwn(finalState);finalState=normalizeState(saved?.state||finalState);updatedAt=saved?.updated_at||updatedAt;}
+      if(recovered.changed||rosterRepair.changed){
+        try{const saved=await saveOwn(finalState,row.updated_at||null);finalState=normalizeState(saved?.state||finalState);updatedAt=saved?.updated_at||updatedAt}
+        catch(error){if(error?.code!=="profile_write_conflict")throw error;const latest=await getOwn();finalState=normalizeState({...latest?.state,player_id:playerId});updatedAt=latest?.updated_at||updatedAt}
+      }
       return res.status(200).json({ok:true,state:finalState,updated_at:updatedAt,hero_history_recovery:recoverySummary(recovered),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:userMode?"user-rls":"service",restore_trace:restoreTrace});
     }
 
     if(req.method==="POST"){
       const previous=await getOwn();
+      const baseUpdatedAt=req.body?.base_updated_at===null?null:String(req.body?.base_updated_at||"").trim()||null;
+      if(previous?.updated_at&&baseUpdatedAt!==String(previous.updated_at)){
+        return res.status(409).json({error:"profile_write_conflict",message:"Le profil a été modifié sur un autre appareil.",state:previous.state,updated_at:previous.updated_at});
+      }
+      if(!previous&&baseUpdatedAt!==null)return res.status(409).json({error:"profile_write_conflict",message:"Le profil cloud a changé. Recharge les données avant de réessayer.",state:null,updated_at:null});
       let incoming=normalizeState({...req.body?.state,player_id:playerId});
       let recovered=null;
       if(previous?.state){
@@ -130,7 +138,13 @@ export default async function handler(req,res){
       }
       const rosterRepair=await canonicalizeAllianceState(incoming,playerId);
       incoming=rosterRepair.state;
-      const row=await saveOwn(incoming);
+      let row;
+      try{row=await saveOwn(incoming,previous?.updated_at||null)}
+      catch(error){
+        if(error?.code!=="profile_write_conflict")throw error;
+        const latest=await getOwn();
+        return res.status(409).json({error:"profile_write_conflict",message:error.message,state:latest?.state||null,updated_at:latest?.updated_at||null});
+      }
       return res.status(200).json({ok:true,state:row?.state||incoming,updated_at:row?.updated_at||incoming.updated_at,hero_history_recovery:recoverySummary(recovered),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:userMode?"user-rls":"service"});
     }
 

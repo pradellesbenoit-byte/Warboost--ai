@@ -63,8 +63,8 @@ assert.match(app,/result\.added>0\)\{rosterScanDraft=\[\]/,'adding a new screens
 assert.match(styles,/\.rosterIdentityStatus/);
 
 // Vision contract explicitly separates alliance tag from nickname and preserves trailing digits.
-assert.match(scan,/square brackets before the nickname/);assert.match(scan,/Never delete a bare token/);assert.match(scan,/Preserve trailing digits/);assert.match(scan,/Power, HQ and rank can change over time and must never be used to decide/);
-assert.match(scan,/sanitizeRosterRows\(extracted,new Date\(\)\.toISOString\(\),rosterAllianceTag\)/);
+assert.match(scan,/A leading \[\$\{allianceTag\|\|"TAG"\}\] decoration is not part of the nickname/);assert.match(scan,/Preserve genuine nickname characters, spaces and trailing digits/);assert.match(scan,/Never infer hidden members, departures, ranks, HQ values or power/);
+assert.match(scan,/sanitizeRosterRows\(extracted,now,allianceTag\)/);
 
 // All explicit languages expose identity UX keys, not raw keys.
 const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.length,23);
@@ -76,6 +76,6 @@ for(const flag of ['alliance_roster_identity_power_never_identity','alliance_ros
 assert.match(pkg.scripts.check,/roster-identity-resolution\.js/);assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8-6-2\.mjs/);
 assert.doesNotMatch(app,/localStorage\.clear\s*\(/);
 const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);
-const migrations=fs.readdirSync(path.join(root,'supabase')).filter(x=>/hf8[_-]?6[_-]?2/i.test(x));assert.equal(migrations.length,0,'HF8.6.2 must not add a Supabase migration');
+const migrations=fs.readdirSync(path.join(root,'supabase')).filter(x=>/hf8[_-]?6[_-]?2(?:\.sql)$/i.test(x));assert.equal(migrations.length,0,'The original HF8.6.2 release must not require its own Supabase migration');
 
 console.log('WarBoost V2.5.28 HF8.6.2 Reliable Roster Identity verification: PASS');

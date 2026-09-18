@@ -17,6 +17,37 @@ function betaCodeHash(){const raw=String(process.env.WARBOOST_BETA_CODE_HASH||DE
 function betaCodeMatches(v){const got=createHash("sha256").update(normalizeBetaCode(v)).digest(),want=Buffer.from(betaCodeHash(),"hex");return got.length===want.length&&timingSafeEqual(got,want)}
 function isAdmin(user){return adminEmails().includes(String(user?.email||"").trim().toLowerCase())}
 function safeText(v,max=4000){return String(v??"").replace(/\u0000/g,"").trim().slice(0,max)}
+function safeDiagnostics(value){
+  if(!value||typeof value!=="object"||Array.isArray(value))return {};
+  const text=(v,max)=>safeText(v,max),number=(v,max)=>Number.isFinite(Number(v))?Math.max(0,Math.min(max,Number(v))):null;
+  const out={
+    app_version:text(value.app_version,30),
+    release:text(value.release,30),
+    locale:text(value.locale,20),
+    screen:text(value.screen,80),
+    platform:text(value.platform,80),
+    online:value.online===true
+  };
+  const source=value.bootstrap&&typeof value.bootstrap==="object"?value.bootstrap:value;
+  if(value.ui_consistency&&typeof value.ui_consistency==="object")out.ui_consistency={
+    coach_title:value.ui_consistency.coach_title===true,
+    provider_status:value.ui_consistency.provider_status===true,
+    player_activity_status:value.ui_consistency.player_activity_status===true
+  };
+  if(source.run_id)out.run_id=text(source.run_id,80);
+  if(source.status)out.status=text(source.status,32);
+  if(source.started_at)out.started_at=text(source.started_at,40);
+  if(source.finished_at)out.finished_at=text(source.finished_at,40);
+  if(Array.isArray(source.stages))out.stages=source.stages.slice(0,16).map(stage=>({
+    stage:text(stage?.stage,48),
+    ms:number(stage?.ms,120000),
+    status:text(stage?.status,24),
+    error:text(stage?.error,120),
+    source:text(stage?.source,32)
+  })).filter(stage=>stage.stage);
+  const encoded=JSON.stringify(out);
+  return Buffer.byteLength(encoded,"utf8")<=8192?out:{app_version:out.app_version,release:out.release,locale:out.locale,screen:out.screen,platform:out.platform,online:out.online,truncated:true};
+}
 function cleanCategory(v){const x=String(v||"").toLowerCase();return ["login","scan","data","ai","alliance","bug","suggestion","other"].includes(x)?x:"other"}
 function cleanStatus(v){const x=String(v||"").toLowerCase();return ["received","in_progress","waiting_player","resolved"].includes(x)?x:"received"}
 function cleanEmail(v){return safeText(v,254).toLowerCase()}
@@ -38,15 +69,24 @@ async function rest(path,options={}){
   return parse(await fetchWithTimeout(`${sbUrl()}/rest/v1/${path}`,{...options,headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":"application/json",...(options.headers||{})}},7000,{code:"SUPPORT_DATABASE_TIMEOUT",message:"Support database timed out"}),path);
 }
 async function uploadAttachment({ticketNo:tn,dataUrl,name}){
-  const m=String(dataUrl||"").match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/i);if(!m)return null;
+  if(!dataUrl)return null;
+  const m=String(dataUrl).match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/i);if(!m)throw Object.assign(new Error("Format de capture invalide."),{status:400,code:"ATTACHMENT_INVALID"});
+  if(m[2].length>2800000)throw Object.assign(new Error("Capture trop volumineuse (2 Mo maximum après compression)."),{status:413,code:"ATTACHMENT_TOO_LARGE"});
   const bytes=Buffer.from(m[2],"base64");if(!bytes.length||bytes.length>2*1024*1024)throw Object.assign(new Error("Capture trop volumineuse (2 Mo maximum après compression)."),{status:413,code:"ATTACHMENT_TOO_LARGE"});
-  const ext=m[1].toLowerCase()==="image/png"?"png":m[1].toLowerCase()==="image/webp"?"webp":"jpg";
+  const jpeg=bytes.length>=3&&bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff;
+  const png=bytes.length>=8&&bytes.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]));
+  const webp=bytes.length>=12&&bytes.subarray(0,4).toString("ascii")==="RIFF"&&bytes.subarray(8,12).toString("ascii")==="WEBP";
+  if(!jpeg&&!png&&!webp)throw Object.assign(new Error("Le contenu de la capture ne correspond pas à une image autorisée."),{status:400,code:"ATTACHMENT_INVALID"});
+  const ext=png?"png":webp?"webp":"jpg",contentType=png?"image/png":webp?"image/webp":"image/jpeg";
   const path=`${tn}/${Date.now()}-${randomBytes(4).toString("hex")}.${ext}`;
-  const r=await fetchWithTimeout(`${sbUrl()}/storage/v1/object/warboost-support/${path}`,{method:"POST",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":m[1],"x-upsert":"false"},body:bytes},15000,{code:"ATTACHMENT_UPLOAD_TIMEOUT",message:"Support attachment upload timed out"});
+  const r=await fetchWithTimeout(`${sbUrl()}/storage/v1/object/warboost-support/${path}`,{method:"POST",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":contentType,"x-upsert":"false"},body:bytes},15000,{code:"ATTACHMENT_UPLOAD_TIMEOUT",message:"Support attachment upload timed out"});
   if(!r.ok){const body=await r.text().catch(()=>"");throw Object.assign(new Error(`Support attachment upload failed: ${body.slice(0,160)}`),{status:502,code:"ATTACHMENT_UPLOAD_FAILED"})}
-  return {path,name:safeText(name||`capture.${ext}`,160)};
+  const original=safeText(name,160).replace(/[\u0000-\u001f\u007f/\\]+/g," ").trim().replace(/\.[^.]+$/,"");
+  return {path,name:`${original||"capture"}.${ext}`};
 }
-async function signedAttachment(path){if(!path)return null;const r=await fetchWithTimeout(`${sbUrl()}/storage/v1/object/sign/warboost-support/${path}`,{method:"POST",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":"application/json"},body:JSON.stringify({expiresIn:300})},7000,{code:"ATTACHMENT_SIGN_TIMEOUT",message:"Support attachment link timed out"});if(!r.ok)return null;const j=await r.json().catch(()=>({}));const p=j?.signedURL||j?.signedUrl;return p?`${sbUrl()}/storage/v1${p.startsWith("/")?p:`/${p}`}`:null}
+function validAttachmentPath(path){return /^WB-\d{8}-[A-F0-9]{6}\/\d{10,}-[a-f0-9]{8}\.(?:jpg|png|webp)$/.test(String(path||""))}
+async function deleteAttachment(path){if(!validAttachmentPath(path))return false;try{const r=await fetchWithTimeout(`${sbUrl()}/storage/v1/object/warboost-support/${path}`,{method:"DELETE",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`}},7000,{code:"ATTACHMENT_DELETE_TIMEOUT",message:"Support attachment cleanup timed out"});return r.ok}catch{return false}}
+async function signedAttachment(path){if(!validAttachmentPath(path))return null;const r=await fetchWithTimeout(`${sbUrl()}/storage/v1/object/sign/warboost-support/${path}`,{method:"POST",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":"application/json"},body:JSON.stringify({expiresIn:300})},7000,{code:"ATTACHMENT_SIGN_TIMEOUT",message:"Support attachment link timed out"});if(!r.ok)return null;const j=await r.json().catch(()=>({}));const p=j?.signedURL||j?.signedUrl;return p?`${sbUrl()}/storage/v1${p.startsWith("/")?p:`/${p}`}`:null}
 async function messagesFor(ticketIds){if(!ticketIds.length)return [];const ids=ticketIds.map(x=>`"${String(x).replace(/"/g,"")}"`).join(",");return await rest(`wb1_support_messages?ticket_id=in.(${encodeURIComponent(ids)})&select=id,ticket_id,author_kind,author_player_id,author_email,body,created_at&order=created_at.asc&limit=1000`).catch(()=>[])}
 function enrich(tickets,messages){const map=new Map();for(const m of messages||[]){if(!map.has(m.ticket_id))map.set(m.ticket_id,[]);map.get(m.ticket_id).push(m)}return (tickets||[]).map(t=>({...t,messages:map.get(t.id)||[]}))}
 async function ownTicket(id,playerId){const rows=await rest(`wb1_support_tickets?id=eq.${encodeURIComponent(id)}&player_id=eq.${encodeURIComponent(playerId)}&select=*&limit=1`);return rows?.[0]||null}
@@ -135,10 +175,13 @@ export default async function handler(req,res){
       const category=cleanCategory(req.body?.category),subject=safeText(req.body?.subject,140),description=safeText(req.body?.description,6000);
       if(subject.length<3||description.length<8)return res.status(400).json({error:"SUPPORT_FIELDS_REQUIRED"});
       const tn=ticketNo(),attachment=await uploadAttachment({ticketNo:tn,dataUrl:req.body?.attachment_data_url,name:req.body?.attachment_name});
-      const row={ticket_no:tn,player_id:user.id,email:safeText(user.email,220),nickname:safeText(req.body?.nickname,100),category,subject,description,status:"received",app_version:safeText(req.body?.app_version,30),locale:safeText(req.body?.locale,20),screen:safeText(req.body?.screen,80),diagnostics:(req.body?.diagnostics&&typeof req.body.diagnostics==="object")?req.body.diagnostics:{},attachment_path:attachment?.path||null,attachment_name:attachment?.name||null,updated_at:new Date().toISOString()};
-      const created=await rest("wb1_support_tickets",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify(row)}),ticket=created?.[0];
-      if(!ticket)return res.status(502).json({error:"SUPPORT_CREATE_FAILED"});
-      await rest("wb1_support_messages",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({ticket_id:ticket.id,author_kind:"player",author_player_id:user.id,author_email:safeText(user.email,220),body:description})});
+      const row={ticket_no:tn,player_id:user.id,email:safeText(user.email,220),nickname:safeText(req.body?.nickname,100),category,subject,description,status:"received",app_version:safeText(req.body?.app_version,30),locale:safeText(req.body?.locale,20),screen:safeText(req.body?.screen,80),diagnostics:safeDiagnostics(req.body?.diagnostics),attachment_path:attachment?.path||null,attachment_name:attachment?.name||null,updated_at:new Date().toISOString()};
+      let ticket;
+      try{
+        const created=await rest("wb1_support_tickets",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify(row)});ticket=created?.[0];
+        if(!ticket)throw Object.assign(new Error("SUPPORT_CREATE_FAILED"),{status:502,code:"SUPPORT_CREATE_FAILED"});
+        await rest("wb1_support_messages",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({ticket_id:ticket.id,author_kind:"player",author_player_id:user.id,author_email:safeText(user.email,220),body:description})});
+      }catch(error){if(attachment?.path)await deleteAttachment(attachment.path);throw error}
       return res.status(201).json({ok:true,ticket:{...ticket,messages:[]}});
     }
     if(action==="reply"){

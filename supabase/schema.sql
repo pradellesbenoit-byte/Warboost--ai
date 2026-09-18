@@ -28,10 +28,17 @@ create table if not exists public.wb1_alliances (
   id uuid primary key default gen_random_uuid(),
   tag text not null,
   name text,
+  server_id text,
   invite_code text not null unique,
   owner_player_id text not null,
+  roster jsonb not null default '[]'::jsonb,
+  roster_updated_at timestamptz,
   updated_at timestamptz not null default now()
 );
+
+alter table public.wb1_alliances add column if not exists server_id text;
+alter table public.wb1_alliances add column if not exists roster jsonb not null default '[]'::jsonb;
+alter table public.wb1_alliances add column if not exists roster_updated_at timestamptz;
 
 create table if not exists public.wb1_alliance_members (
   alliance_id uuid not null references public.wb1_alliances(id) on delete cascade,

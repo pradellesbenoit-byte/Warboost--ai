@@ -45,7 +45,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
   const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
   assert.match(scan,/import \{sanitizeGear\} from "\.\.\/lib\/gear\.js"/);
   assert.match(scan,/const gear=sanitizeGear\(h\?\.gear\)/);
-  assert.match(scan,/if\(gear\)hx\.gear=gear;x\.heroes\[idx\]=hx/);
+  assert.match(scan,/const gear=sanitizeGear\(h\?\.gear\);if\(gear\)x\.gear=gear;return x/);
   assert.doesNotMatch(scan,/\bgearx\b/,'scan sanitizer must never reference an undefined gearx identifier');
   assert.match(identity,/const safeGear=sanitizeGear\(rawScanned\.gear\)/);
   assert.match(app,/formatGearSummary\(raw/);
