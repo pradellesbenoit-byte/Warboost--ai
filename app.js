@@ -23,6 +23,7 @@ import {hasMeaningfulCoreState,hydrateCloudState,canUseKeepaliveBody,betaStateAf
 import {readOwnProfileDirect} from "./lib/cloud-profile-direct.js";
 import {shouldPreserveVerifiedSessionAccess,betaStateForSessionBootstrap,preserveAllowedAfterTransient,restoreAttemptSucceeded,canRevealOwnedPrivateState,deriveRuntimeAccessState} from "./lib/session-bootstrap.js";
 import {canonicalPowerMillions} from "./lib/power-units.js";
+import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.28";
@@ -493,6 +494,7 @@ async function applySessionCore(session){
           .then(()=>{if(pendingScanOwner()===nextPendingOwner)return restorePendingScans()})
           .catch(()=>{});
       }
+      clearSignedOutAuthUi();
       try{resetPendingScanUi()}catch{}
 
       // Legacy HF8.6.12 verification markers after HF8.6.19 centralised restore:
@@ -568,7 +570,6 @@ function renderAuth(){
 function renderBeta(){const pill=$("#betaAccessPill"),status=$("#betaAccessStatus"),row=$("#betaConsentRow"),checkbox=$("#betaConsent"),codeBox=$("#betaCodeBox"),retry=$("#betaRestoreRetryBtn"),checking=Boolean(cloudSession?.user&&betaState.access_status==="checking"),restoreFailed=Boolean(cloudSession?.user&&betaConsentAccepted()&&!cloudProfileVerified&&betaState.restore_error);if(pill){const invited=Boolean(cloudSession?.user&&betaAccessAllowed());pill.textContent=!cloudSession?.user?t("beta_signin_short"):checking?t("syncing"):restoreFailed?t("update"):betaState.enforced&&!betaState.allowed?t("beta_code_short"):betaState.enforced?t("beta_invited_short"):t("beta_setup_short");pill.className=`pill ${invited&&!restoreFailed?"active":"warn"}`}if(status){status.className=`notice${cloudSession?.user&&betaAccessAllowed()&&!restoreFailed?"":" warn"}`;status.textContent=betaAccessMessage()}if(retry){retry.classList.toggle("hidden",!restoreFailed);retry.disabled=cloudHydrationPending}const canUseCode=Boolean(cloudSession?.user&&betaState.enforced&&!betaState.allowed&&betaState.access_status==="invite-required");if(codeBox)codeBox.classList.toggle("hidden",!canUseCode);if(row)row.classList.toggle("hidden",!cloudSession?.user||!betaAccessAllowed());if(checkbox)checkbox.checked=betaConsentAccepted();$$('.moduleCard').forEach(x=>{const locked=Boolean(checking||!cloudSession?.user||(betaState.enforced&&!betaState.allowed)||(restoreFailed&&!betaPrivateDataVisible()));x.classList.toggle("betaLocked",locked);x.setAttribute("aria-disabled",locked?"true":"false")});const fab=$("#betaFeedbackBtn");if(fab)fab.classList.toggle("hidden",Boolean(!cloudSession?.user||(betaState.enforced&&!betaState.allowed)))}
 function authMessage(text,ok=false){const el=$("#authMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
 
-const PENDING_AUTH_EMAIL_KEY="warboost_v1_pending_email";
 function pendingAuthEmail(){return String(localStorage.getItem(PENDING_AUTH_EMAIL_KEY)||"").trim().toLowerCase()}
 function rememberPendingAuthEmail(email){const value=String(email||"").trim().toLowerCase();if(value)localStorage.setItem(PENDING_AUTH_EMAIL_KEY,value);return value}
 function clearPendingAuthEmail(){localStorage.removeItem(PENDING_AUTH_EMAIL_KEY)}
@@ -1700,7 +1701,7 @@ $("#resendOtpBtn")?.addEventListener("click",async()=>{
 });
 $("#betaCodeActivateBtn")?.addEventListener("click",activateBetaCode);
 $("#betaAccessCode")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();activateBetaCode()}});
-$("#logoutBtn")?.addEventListener("click",async()=>{const signedOutUserId=String(cloudSession?.user?.id||"");if(signedOutUserId&&String(state?.player_id||"")===signedOutUserId)rememberAccountState(signedOutUserId,state);if(cloud)await cloud.auth.signOut();cloudSession=null;cloudRevision=null;proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};betaState={...betaState,allowed:false,access_status:"sign-in-required"};render();renderAuth();renderBeta()});
+$("#logoutBtn")?.addEventListener("click",async()=>{const signedOutUserId=String(cloudSession?.user?.id||"");if(signedOutUserId&&String(state?.player_id||"")===signedOutUserId)rememberAccountState(signedOutUserId,state);if(cloud)await cloud.auth.signOut();clearSignedOutAuthUi();cloudSession=null;cloudRevision=null;proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};betaState={...betaState,allowed:false,access_status:"sign-in-required"};render();renderAuth();renderBeta()});
 
 document.addEventListener("click",e=>{const btn=e.target.closest?.("[data-inline-hero-save]");if(!btn)return;e.preventDefault();e.stopPropagation();const container=btn.closest?.("[data-inline-confirm]");saveInlineHeroNames(btn.dataset.inlineHeroSave,container,btn)});
 document.addEventListener("click",e=>{const btn=e.target.closest?.(".heroConfirmAction[data-hero-confirm]");if(!btn)return;e.preventDefault();e.stopPropagation();startHeroConfirmation(btn.dataset.heroConfirm)});
