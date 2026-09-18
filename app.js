@@ -14,6 +14,7 @@ import {backfillRosterIdentityContext,linkCurrentPlayerIdentityIntoRoster,roster
 import {playerParticipationInsight,allianceParticipationOverview,allianceParticipationByEvent} from "./lib/alliance-participation-insights.js";
 import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine,vsSnapshotFreshness} from "./lib/vs-live.js";
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan.js";
+import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
 import {appendProgressionSnapshot,mergeProgressionSnapshots,progressionComparison,strongestSquadFromState} from "./lib/progression-history.js";
 import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMIT} from "./lib/roster-scan-queue.js";
 import {cleanRosterOcrName,rosterIdentityKey,resolveRosterScanRows,confirmRosterScanPossibleMatch,rosterScanHasUnresolvedIdentity} from "./lib/roster-identity-resolution.js";
@@ -1300,34 +1301,11 @@ function ensureDesertStormState(){
 }
 function desertStormFeatureAccess(){if(proState.beta!==false)return requireBetaAccess()&&requireBetaConsent();return requirePro()}
 function dsLabel(key){return t(`ds_${key}`)}
-function dsMissionLabel(code){
-  const labels={
-    refinery_science:`${dsLabel("refinery")} + ${dsLabel("science")}`,
-    refinery_info:`${dsLabel("refinery")} + ${dsLabel("info")}`,
-    hospital_pair:`${dsLabel("hospital")}`,
-    mobile_capture:`${dsLabel("mobile")} · ${dsLabel("free_capture")}`,
-    compact_opening:`${dsLabel("refinery")} + ${dsLabel("science")} / ${dsLabel("info")}`,
-    refinery_info_hospital:`${dsLabel("refinery")} + ${dsLabel("info")} + ${dsLabel("hospital")}`,
-    hospitals_mobile:`${dsLabel("hospital")} + ${dsLabel("mobile")}`,
-    silo_anchor:`${dsLabel("silo")} · ${dsLabel("anchor")}`,
-    silo_support:`${dsLabel("silo")} · ${dsLabel("support")}`,
-    arsenal:dsLabel("arsenal"),mercenary_factory:dsLabel("mercenary"),
-    silo_mobile:`${dsLabel("silo")} / ${dsLabel("mobile")}`,
-    buff_or_silo_support:`${dsLabel("central_buff")} / ${dsLabel("silo")}`,
-    buffs_then_silo:`${dsLabel("central_buffs")} → ${dsLabel("silo")}`,
-    hold_silo:`${dsLabel("hold")} ${dsLabel("silo")}`,
-    hold_refinery:`${dsLabel("hold")} ${dsLabel("refinery")}`,
-    support_silo:`${dsLabel("support")} ${dsLabel("silo")}`,
-    support_weak_side:`${dsLabel("support")} · ${dsLabel("weak_side")}`,
-    oil_wells_if_stable:`${dsLabel("wells")} · ${dsLabel("if_stable")}`,
-    hold_best_objectives:`${dsLabel("hold")} · ${dsLabel("best_objectives")}`,
-    mobile_support:`${dsLabel("mobile")} · ${dsLabel("support")}`
-  };return labels[code]||String(code||"—").replaceAll("_"," ");
-}
+function dsMissionLabel(code,options={}){return desertStormMissionLabel(code,{...options,translate:dsLabel})}
 function desertStormWarningText(w){if(!w)return "";const k=`ds_warning_${w.code}`;return t(k,{count:w.count??0})}
 function desertStormCopyText(plan){
   if(!plan)return "";const head=[t("ds_copy_title"),`${t("ds_team")} ${plan.team}${plan.battle_time?` · ${plan.battle_time}`:""}`];
-  const groups=(plan.groups||[]).map(g=>{const names=(g.members||[]).map(x=>x.name).filter(Boolean).join(" / ");return `G${g.id} ${names}\n${t("ds_opening")}: ${dsMissionLabel(g.mission?.opening)} → ${t("ds_center")}: ${dsMissionLabel(g.mission?.center)} → ${t("ds_late")}: ${dsMissionLabel(g.mission?.late)}`});
+   const groups=(plan.groups||[]).map((g,groupIndex)=>{const names=(g.members||[]).map(x=>x.name).filter(Boolean).join(" / "),missionContext={groupIndex};return `G${g.id} ${names}\n${t("ds_opening")}: ${dsMissionLabel(g.mission?.opening,missionContext)} → ${t("ds_center")}: ${dsMissionLabel(g.mission?.center,missionContext)} → ${t("ds_late")}: ${dsMissionLabel(g.mission?.late,missionContext)}`});
   const subs=(plan.substitutes||[]).map(x=>x.name).filter(Boolean);const rules=[t("ds_order_objectives"),t("ds_order_center"),t("ds_order_help")];
   return [...head,...groups,subs.length?`${t("ds_substitutes")}: ${subs.join(" / ")}`:null,...rules].filter(Boolean).join("\n");
 }
@@ -1344,7 +1322,7 @@ function renderDesertStormPicker(){
 function renderDesertStormPlan(){
   const box=$("#desertStormPlan"),copyBtn=$("#desertStormCopyBtn");if(!box)return;const ds=ensureDesertStormState(),plan=ds.plan;if(!plan){box.classList.add("hidden");box.innerHTML="";if(copyBtn)copyBtn.classList.add("hidden");return}
   const warnings=(plan.warnings||[]).map(w=>desertStormWarningText(w)).filter(Boolean),subs=(plan.substitutes||[]).map(x=>x.name).filter(Boolean);
-  const groupHtml=(plan.groups||[]).map(g=>`<div class="dsPlanGroup"><div class="dsGroupHead"><b>G${g.id} · ${esc(g.captain||t("ds_captain"))}</b><span>${esc(String(g.members?.length||0))}</span></div><small class="dsGroupNames">${esc((g.members||[]).map(x=>x.name).filter(Boolean).join(" · ")||"—")}</small><div class="dsMission"><span><b>${esc(t("ds_opening"))}</b>${esc(dsMissionLabel(g.mission?.opening))}</span><span><b>${esc(t("ds_center"))}</b>${esc(dsMissionLabel(g.mission?.center))}</span><span><b>${esc(t("ds_late"))}</b>${esc(dsMissionLabel(g.mission?.late))}</span></div></div>`).join("");
+   const groupHtml=(plan.groups||[]).map((g,groupIndex)=>{const missionContext={groupIndex};return `<div class="dsPlanGroup"><div class="dsGroupHead"><b>G${g.id} · ${esc(g.captain||t("ds_captain"))}</b><span>${esc(String(g.members?.length||0))}</span></div><small class="dsGroupNames">${esc((g.members||[]).map(x=>x.name).filter(Boolean).join(" · ")||"—")}</small><div class="dsMission"><span><b>${esc(t("ds_opening"))}</b>${esc(dsMissionLabel(g.mission?.opening,missionContext))}</span><span><b>${esc(t("ds_center"))}</b>${esc(dsMissionLabel(g.mission?.center,missionContext))}</span><span><b>${esc(t("ds_late"))}</b>${esc(dsMissionLabel(g.mission?.late,missionContext))}</span></div></div>`}).join("");
   box.classList.remove("hidden");box.innerHTML=`<div class="dsPlanTop"><div><b>${esc(t("ds_plan_ready"))}</b><small>${esc(t("ds_starters"))} ${plan.starters?.length||0}/20 · ${esc(t("ds_substitutes"))} ${subs.length}/10 · ${esc(t("ds_confidence"))} ${plan.confidence}%</small></div><span class="pill">${esc(t("ds_team"))} ${esc(plan.team)}</span></div>${warnings.length?`<div class="notice warn dsWarnings">${warnings.map(x=>`<div>⚠️ ${esc(x)}</div>`).join("")}</div>`:""}<div class="dsPlanGroups">${groupHtml}</div>${subs.length?`<div class="dsSubs"><b>${esc(t("ds_substitutes"))}</b><small>${esc(subs.join(" · "))}</small></div>`:""}<div class="dsShortOrders"><b>📣 ${esc(t("ds_short_orders"))}</b><pre>${esc(desertStormCopyText(plan))}</pre></div><p class="activityNote">${esc(t("ds_ruleset_note",{date:DESERT_STORM_RULESET.observed_at}))}</p>`;
   if(copyBtn){copyBtn.classList.remove("hidden");copyBtn.onclick=async()=>{try{await navigator.clipboard.writeText(desertStormCopyText(plan));const old=copyBtn.textContent;copyBtn.textContent=t("copy");setTimeout(()=>copyBtn.textContent=old,1200)}catch{}}}
 }
