@@ -281,12 +281,14 @@ a.metaSourceRow{color:inherit;text-decoration:none}a.metaSourceRow:focus-visible
 .rankManagerSection{border-color:rgba(92,194,255,.34)}
 .rankManagerSection.managerLocked{opacity:.78}
 .rankManagerR5Guard{margin:10px 0 12px}
+.rankManagerR5Warning{margin:10px 0 12px;border-color:rgba(255,184,76,.55);background:rgba(102,67,18,.22)}
 .rankManagerList{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto;padding-right:2px;margin-top:10px}
 .rankManagerRow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:16px;background:rgba(8,17,33,.55)}
 .rankManagerRow.changed{border-color:rgba(76,220,168,.45);background:rgba(18,56,49,.28)}
 .rankManagerRow>div:first-child{min-width:0;display:flex;flex-direction:column;gap:3px}
 .rankManagerRow b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rankManagerRow small{color:var(--muted);font-size:12px}
+.rankManagerRow.protectedR5{border-color:rgba(255,184,76,.38)}
 .rankMove{display:flex;align-items:center;gap:7px;flex:0 0 auto}
 .rankMove span{font-weight:800;color:var(--muted)}
 .rankMove select{min-width:68px;border:1px solid var(--line);border-radius:12px;background:#0c1729;color:var(--text);padding:8px 9px;font-weight:800}

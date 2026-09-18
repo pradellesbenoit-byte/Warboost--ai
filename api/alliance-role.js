@@ -34,7 +34,8 @@ export default async function handler(req,res){
       if(!roster.length)return res.status(409).json({error:"alliance_roster_not_ready"});
       const index=new Map();
       roster.forEach((m,i)=>{const k=rosterKey(m);if(!k)return;if(!index.has(k))index.set(k,[]);index.get(k).push(i)});
-      const resolved=[];
+      const resolved=[],seenIndexes=new Set();
+      let remainingR5=rankCounts(roster).R5;
       for(const raw of requested){
         const name=clean(raw?.name,80),to=role(raw?.to_role),key=rosterKey({name,server_id:raw?.server_id||server,alliance_tag:raw?.alliance_tag||tag});
         if(!name||!key)return res.status(400).json({error:"member_identity_required"});
@@ -42,7 +43,12 @@ export default async function handler(req,res){
         const matches=index.get(key)||[];
         if(matches.length!==1)return res.status(409).json({error:matches.length?"member_identity_ambiguous":"member_not_found",name});
         const idx=matches[0],from=role(roster[idx]?.role);
-        if(from==="R5")return res.status(400).json({error:"r5_protected",name});
+        if(seenIndexes.has(idx))return res.status(400).json({error:"duplicate_member",name});
+        seenIndexes.add(idx);
+        if(from==="R5"){
+          if(remainingR5<=1)return res.status(400).json({error:"r5_protected",name});
+          remainingR5--;
+        }
         resolved.push({idx,name,from_role:from,to_role:to,key});
       }
       const next=roster.map(x=>({...x}));
