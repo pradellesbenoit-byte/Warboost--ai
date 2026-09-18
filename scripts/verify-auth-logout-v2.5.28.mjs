@@ -9,7 +9,8 @@ const coreEnd=app.indexOf("function cloudAuthFailureMessage()",coreStart);
 assert.ok(coreStart>=0&&coreEnd>coreStart,"applySessionCore must exist");
 const core=app.slice(coreStart,coreEnd);
 const signedInStart=core.indexOf("if(cloudSession?.user?.id)");
-const signedOutStart=core.indexOf("}else{",signedInStart);
+const signedOutMarker="    }else{\n      cloudProfileVerified=false;";
+const signedOutStart=core.indexOf(signedOutMarker,signedInStart);
 assert.ok(signedInStart>=0&&signedOutStart>signedInStart,"session branches must remain explicit");
 assert.doesNotMatch(core.slice(signedInStart,signedOutStart),/clearSignedOutAuthUi\(\)/,"valid sessions must not clear auth UI");
 assert.match(core.slice(signedOutStart),/clearSignedOutAuthUi\(\)/,"session-absent branch must clear auth UI");
@@ -56,6 +57,9 @@ client.auth.onAuthStateChange((event,session)=>{
     clearSignedOutAuthUi({storage:authStorage,documentRef});
   }
 });
+authStorage.setItem(PENDING_AUTH_EMAIL_KEY,"signed-out@example.com");
+for(const [id,field] of fields)field.value=id==="authEmail"?"signed-out@example.com":"secret";
+classes.delete("hidden");
 const signed=await client.auth.signInWithPassword({email:"tester@example.com",password:"secret"});
 assert.equal(signed.error,null);
 assert.ok(authStorage.getItem("sb-abc123-auth-token"));
@@ -63,6 +67,8 @@ await client.auth.signOut();
 assert.equal(authStorage.getItem("sb-abc123-auth-token"),null,"Supabase local session must be removed");
 assert.equal(signedOutEventCleanup,true,"SIGNED_OUT must run the signed-out cleanup path");
 assert.equal(authStorage.getItem(PENDING_AUTH_EMAIL_KEY),null);
+assert.deepEqual([...fields.values()].map(field=>field.value),["","",""]);
+assert.ok(classes.has("hidden"));
 assert.equal(authStorage.getItem("warboost_v1_client_id"),"device-123");
 assert.deepEqual(JSON.parse(authStorage.getItem("warboost_v2_state")),{player_id:"u1",scans:["scan-1"]});
 
@@ -81,11 +87,15 @@ const expiredClient=createWarBoostSupabaseAuthClient({
 const expired=await expiredClient.auth.getSession();
 assert.equal(expired.data.session,null,"expired sessions must become signed out");
 assert.equal(expiredStorage.get("sb-abc123-auth-token"),undefined,"expired Supabase session must be removed locally");
+for(const [id,field] of fields)field.value=id==="authEmail"?"expired@example.com":"secret";
+classes.delete("hidden");
 clearSignedOutAuthUi({
   storage:{removeItem:key=>expiredStorage.delete(key)},
   documentRef
 });
 assert.equal(expiredStorage.get(PENDING_AUTH_EMAIL_KEY),undefined);
+assert.deepEqual([...fields.values()].map(field=>field.value),["","",""]);
+assert.ok(classes.has("hidden"));
 assert.equal(expiredStorage.get("warboost_v1_client_id"),"device-123");
 
 console.log("WarBoost auth logout cleanup: PASS");
