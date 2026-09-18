@@ -494,7 +494,6 @@ async function applySessionCore(session){
           .then(()=>{if(pendingScanOwner()===nextPendingOwner)return restorePendingScans()})
           .catch(()=>{});
       }
-      clearSignedOutAuthUi();
       try{resetPendingScanUi()}catch{}
 
       // Legacy HF8.6.12 verification markers after HF8.6.19 centralised restore:
@@ -528,6 +527,7 @@ async function applySessionCore(session){
       clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
       proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};
       betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};
+      clearSignedOutAuthUi();
       try{resetPendingScanUi()}catch{}
       void restorePendingScans();
     }
