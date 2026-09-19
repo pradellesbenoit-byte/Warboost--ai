@@ -7,9 +7,11 @@ import {unlockDesertStormSearchInput} from "../lib/desert-storm-search.js";
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const read=file=>fs.readFileSync(path.join(root,file),"utf8");
 const app=read("app.js"),html=read("index.html");
+const desertSearchElement=html.match(/<[^>]*id="desertStormSearch"[^>]*>/)?.[0]||"";
 
 assert.match(html,/<input id="rankManagerSearch" type="search"/);
-assert.match(html,/<input id="desertStormSearch" name="member-filter" type="search" autocomplete="new-password" readonly/);
+assert.match(html,/id="desertStormSearch"[^>]*role="searchbox"[^>]*contenteditable="plaintext-only"/);
+assert.doesNotMatch(desertSearchElement,/(?:\stype="|\sautocomplete=)/i);
 assert.match(html,/label for="desertStormSearch"/);
 assert.doesNotMatch(html,/id="rankManagerSearch"[^>]*(?:disabled|readonly)/i);
 const plannerHtml=html.slice(html.indexOf('id="desertStormPlanner"'),html.indexOf('id="desertStormRosterPicker"'));
@@ -30,7 +32,7 @@ assert.match(app,/function restoreSearchSelection\(input,selection\)/);
 assert.match(app,/function scheduleAllianceRankSearchRender\(\)/);
 assert.match(app,/function scheduleDesertStormSearchRender\(\)/);
 assert.match(app,/\$\("#rankManagerSearch"\)\?\.addEventListener\("input",e=>\{rankManagerSearchTerm=String\(e\.target\.value\|\|"\"\);scheduleAllianceRankSearchRender\(\)\}\)/);
-assert.match(app,/desertStormSearchInput\?\.addEventListener\("input",e=>\{desertStormSearchTerm=String\(e\.target\.value\|\|"\"\);scheduleDesertStormSearchRender\(\)\}\)/);
+assert.match(app,/desertStormSearchInput\?\.addEventListener\("input",e=>\{desertStormSearchTerm=searchInputValue\(e\.target\);scheduleDesertStormSearchRender\(\)\}\)/);
 
 const rankRender=app.slice(app.indexOf("function renderAllianceRankManager()"),app.indexOf("async function updateRankPermissionTransition"));
 const desertRender=app.slice(app.indexOf("function renderDesertStormPicker()"),app.indexOf("function renderDesertStormPlan()"));

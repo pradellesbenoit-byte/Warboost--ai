@@ -5,6 +5,8 @@ import {fileURLToPath} from "node:url";
 import {cloudRankManagerAccess,confirmedCanonicalSelfRole} from "../lib/alliance-rank-management.js";
 import {desertStormMemberKeys,normalizeDesertStormSelections,toggleDesertStormSelection} from "../lib/desert-storm-selection.js";
 import {buildDesertStormPlan} from "../lib/desert-storm-plan.js";
+import {mergeDesertStormState} from "../lib/cloud-state-recovery.js";
+import {preserveVerifiedR5} from "../lib/alliance-roster-lifecycle.js";
 import {normalizeState} from "../lib/normalize.js";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
@@ -18,6 +20,32 @@ assert.equal(cloudRankManagerAccess({userId:"u",membershipRole:"R3",ownerPlayerI
 assert.equal(cloudRankManagerAccess({userId:"u",membershipRole:"R1",ownerPlayerId:"u"}).allowed,true);
 assert.equal(confirmedCanonicalSelfRole([member("Me","R4",{player_id:"u"})],"u").ok,true);
 assert.equal(confirmedCanonicalSelfRole([member("A","R4",{player_id:"u"}),member("B","R5",{player_id:"u"})],"u").ok,false);
+
+assert.deepEqual(
+  mergeDesertStormState(
+    {registered_keys:["canonical:alice|884|ALL4"],updated_at:"2026-09-19T12:00:00.000Z"},
+    {registered_keys:[],updated_at:"2026-09-19T11:59:00.000Z"}
+  ).registered_keys,
+  ["canonical:alice|884|ALL4"]
+);
+assert.deepEqual(
+  mergeDesertStormState(
+    {registered_keys:["canonical:alice|884|ALL4"],updated_at:"2026-09-19T12:00:00.000Z"},
+    {registered_keys:[],updated_at:"2026-09-19T12:01:00.000Z"}
+  ).registered_keys,
+  []
+);
+assert.deepEqual(
+  mergeDesertStormState(
+    {registered_keys:["canonical:alice|884|ALL4"]},
+    {registered_keys:["canonical:bob|884|ALL4"]}
+  ).registered_keys,
+  ["canonical:alice|884|ALL4","canonical:bob|884|ALL4"]
+);
+const verifiedR5=member("Leader","R5",{membership_status:"active"});
+const incompleteRoster=preserveVerifiedR5([verifiedR5],[member("Alice","R4",{membership_status:"active"})]);
+assert.equal(incompleteRoster.preserved,true);
+assert.equal(incompleteRoster.rows.find(row=>row.name==="Leader")?.role,"R5");
 
 assert.match(api,/req\.body\?\.action==="sync_own_role"/);
 assert.match(api,/if\(!access\.owner&&!\["R4","R5"\]\.includes\(self\.role\)\)/);

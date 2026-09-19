@@ -4,7 +4,7 @@ import {requireBetaUser} from "../lib/beta-access.js";
 import {mergeCloudRosterPreservingManual,mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {managerProofFromState,joinProofForAlliance,isManagerRole,mergeCanonicalRoster,replaceCanonicalRosterFromCompleteSnapshot} from "../lib/alliance-scope.js";
-import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers} from "../lib/alliance-roster-lifecycle.js";
+import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers,preserveVerifiedR5} from "../lib/alliance-roster-lifecycle.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remains exported and audited
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
@@ -43,12 +43,13 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
           const identityMerge=mergeCloudRosterWithIdentity(ownLink.members,ctx.cloud_roster||[],context);
           const rosterWithActivity=mergeCurrentPlayerActivityIntoRoster(identityMerge.roster,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag,activityEvents:merged.activity_events,updatedAt:now});
           const rosterMerged=mergeRosterLifecycleMetadata(merged.alliance?.members,rosterWithActivity);
+          const preservedR5=preserveVerifiedR5(merged.alliance?.members,rosterMerged);
           // A stale server-side canonical roster must never resurrect a player that R5/R4 explicitly removed
           // or placed in review. Only a later explicit roster import/reintegration may clear that lifecycle state.
-          const roster=currentActiveRosterMembers(rosterMerged,merged.alliance?.roster_review,merged.alliance?.former_members);
+          const roster=currentActiveRosterMembers(preservedR5.rows,merged.alliance?.roster_review,merged.alliance?.former_members);
           const refreshedProof=joinProofForAlliance(merged,{...ctx.alliance,roster:canonical});
           managementVerified=Boolean(refreshedProof.ok&&isManagerRole(refreshedProof.roster_role)&&isManagerRole(ctx.membership?.role));
-           merged.alliance={...merged.alliance,id:ctx.alliance.id,owner_player_id:ctx.alliance.owner_player_id||merged.alliance.owner_player_id||null,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name||merged.alliance.name,invite_code:ctx.alliance.invite_code||merged.alliance.invite_code,role:ctx.membership.role||"R1",cloud_role_verified:Boolean(ctx.membership?.role),management_verified:Boolean(String(ctx.alliance.owner_player_id||"")===String(playerId)||managementVerified),identity_link_status:ownLink.status,members:roster,unlinked_accounts:identityMerge.unlinked_accounts,updated_at:now};merged.sync.sources.alliance=true}
+           merged.alliance={...merged.alliance,id:ctx.alliance.id,owner_player_id:ctx.alliance.owner_player_id||merged.alliance.owner_player_id||null,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name||merged.alliance.name,invite_code:ctx.alliance.invite_code||merged.alliance.invite_code,role:ctx.membership.role||"R1",cloud_role_verified:Boolean(ctx.membership?.role),management_verified:Boolean(String(ctx.alliance.owner_player_id||"")===String(playerId)||managementVerified),identity_link_status:ownLink.status,members:roster,r5_sync_required:Boolean(preservedR5.preserved),unlinked_accounts:identityMerge.unlinked_accounts,updated_at:now};merged.sync.sources.alliance=true}
         const written=await saveProfileIfUnchanged(playerId,merged,saved?.updated_at||null);saved=written||saved;await insertSnapshot(playerId,merged,provider);
       }else if(userMode){
         const ownLink=linkCurrentPlayerIdentityIntoRoster(merged.alliance?.members,{playerId,name:merged.player?.name,serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag,activityEvents:merged.activity_events,updatedAt:now});

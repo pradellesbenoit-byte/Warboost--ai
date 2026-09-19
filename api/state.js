@@ -5,7 +5,7 @@ import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../li
 import {requireUser} from "../lib/auth.js";
 import {mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
-import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers} from "../lib/alliance-roster-lifecycle.js";
+import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers,preserveVerifiedR5} from "../lib/alliance-roster-lifecycle.js";
 import {isManagerRole} from "../lib/alliance-scope.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 
@@ -54,7 +54,8 @@ async function canonicalizeAllianceState(input,playerId){
     updatedAt:stableStamp
   });
   const rosterWithLifecycle=mergeRosterLifecycleMetadata(state.alliance?.members,rosterWithActivity);
-  const activeRoster=currentActiveRosterMembers(rosterWithLifecycle,state.alliance?.roster_review,state.alliance?.former_members);
+  const preservedR5=preserveVerifiedR5(state.alliance?.members,rosterWithLifecycle);
+  const activeRoster=currentActiveRosterMembers(preservedR5.rows,state.alliance?.roster_review,state.alliance?.former_members);
 
   const nextAlliance={
     ...state.alliance,
@@ -69,6 +70,7 @@ async function canonicalizeAllianceState(input,playerId){
     management_verified:Boolean(String(ctx.alliance.owner_player_id||"")===String(playerId)||isManagerRole(ctx.membership?.role)),
     identity_link_status:ownLink.status,
     members:activeRoster,
+    r5_sync_required:Boolean(preservedR5.preserved),
     unlinked_accounts:identityMerge.unlinked_accounts
   };
   const before=JSON.stringify({id:state.alliance?.id,server_id:state.alliance?.server_id,tag:state.alliance?.tag,role:state.alliance?.role,members:state.alliance?.members||[],unlinked_accounts:state.alliance?.unlinked_accounts||[]});

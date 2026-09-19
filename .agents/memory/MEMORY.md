@@ -5,3 +5,4 @@
 - [Canonical roster presence evidence](canonical-roster-presence.md) — current canonical presence outranks stale lifecycle blockers; only strictly newer confirmed departures can exclude a member.
 - [Canonical rank identity](canonical-rank-identity.md) — hydrate canonical keys before merges; fallback requires one exact identity plus the expected source rank.
 - [Desert Storm selection identity](desert-storm-selection-identity.md) — canonical keys migrate legacy lifecycle aliases without losing selections during filtered rerenders.
+- [Verification environment](verification-environment.md) — beta verification assumes Supabase variables are absent; injected secrets make the configured-state assertions differ.

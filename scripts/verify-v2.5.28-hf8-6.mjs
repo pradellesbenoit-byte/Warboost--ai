@@ -40,7 +40,8 @@ assert.equal(life.members.length,0);assert.equal(life.former.length,1);
 const staleCloud={...member,updated_at:'2026-09-12T08:50:00.000Z'};
 assert.equal(currentActiveRosterMembers([staleCloud],[],life.former).length,0,'stale cloud roster resurrected removed member');
 life=reinstateFormerRosterMember(life,key,{now:'2027-03-12T08:00:00.000Z'});assert.equal(life.members.length,1);assert.equal(currentActiveRosterMembers(life.members,life.review,life.former).length,1);
-assert.match(sync,/currentActiveRosterMembers\(rosterMerged,merged\.alliance\?\.roster_review,merged\.alliance\?\.former_members\)/);
+assert.match(sync,/preserveVerifiedR5\(merged\.alliance\?\.members,rosterMerged\)/);
+assert.match(sync,/currentActiveRosterMembers\(preservedR5\.rows,merged\.alliance\?\.roster_review,merged\.alliance\?\.former_members\)/);
 
 // A current canonical snapshot wins over stale lifecycle blockers without deleting lifecycle history.
 const roster94=markCanonicalRosterPresence(Array.from({length:94},(_,i)=>({
