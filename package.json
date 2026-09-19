@@ -9,6 +9,7 @@
     "serve": "node server.mjs",
     "test:rank-safety": "node scripts/verify-r5-role-safety.mjs",
     "test:mobile-alliance-search": "node scripts/verify-mobile-alliance-search.mjs",
+    "test:mobile-auth-isolation": "node scripts/verify-mobile-auth-isolation.mjs",
     "test:desert-storm-selection": "node scripts/verify-desert-storm-selection.mjs",
     "test:roster-diagnostic": "node scripts/verify-roster-diagnostic.mjs",
     "test:identity-linking": "node scripts/verify-identity-linking.mjs",

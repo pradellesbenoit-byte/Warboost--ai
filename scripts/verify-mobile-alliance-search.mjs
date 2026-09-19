@@ -7,9 +7,11 @@ import {unlockDesertStormSearchInput} from "../lib/desert-storm-search.js";
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const read=file=>fs.readFileSync(path.join(root,file),"utf8");
 const app=read("app.js"),html=read("index.html");
+const rankSearchElement=html.match(/<[^>]*id="rankManagerSearch"[^>]*>/)?.[0]||"";
 const desertSearchElement=html.match(/<[^>]*id="desertStormSearch"[^>]*>/)?.[0]||"";
 
-assert.match(html,/<input id="rankManagerSearch" type="search"/);
+assert.match(rankSearchElement,/id="rankManagerSearch"[^>]*role="searchbox"[^>]*aria-labelledby="rankManagerSearchLabel"[^>]*aria-autocomplete="list"[^>]*inputmode="search"[^>]*contenteditable="plaintext-only"[^>]*spellcheck="false"/);
+assert.doesNotMatch(rankSearchElement,/(?:\stype=|\sautocomplete=)/i);
 assert.match(html,/id="desertStormSearch"[^>]*role="searchbox"[^>]*contenteditable="plaintext-only"/);
 assert.doesNotMatch(desertSearchElement,/(?:\stype="|\sautocomplete=)/i);
 assert.match(html,/label for="desertStormSearch"/);
@@ -31,7 +33,8 @@ assert.match(app,/function preserveSearchInput\(input,value\)/);
 assert.match(app,/function restoreSearchSelection\(input,selection\)/);
 assert.match(app,/function scheduleAllianceRankSearchRender\(\)/);
 assert.match(app,/function scheduleDesertStormSearchRender\(\)/);
-assert.match(app,/\$\("#rankManagerSearch"\)\?\.addEventListener\("input",e=>\{rankManagerSearchTerm=String\(e\.target\.value\|\|"\"\);scheduleAllianceRankSearchRender\(\)\}\)/);
+assert.match(app,/function searchInputIsContentEditable\(input\)/);
+assert.match(app,/\$\("#rankManagerSearch"\)\?\.addEventListener\("input",e=>\{rankManagerSearchTerm=searchInputValue\(e\.target\);scheduleAllianceRankSearchRender\(\)\}\)/);
 assert.match(app,/desertStormSearchInput\?\.addEventListener\("input",e=>\{desertStormSearchTerm=searchInputValue\(e\.target\);scheduleDesertStormSearchRender\(\)\}\)/);
 
 const rankRender=app.slice(app.indexOf("function renderAllianceRankManager()"),app.indexOf("async function updateRankPermissionTransition"));

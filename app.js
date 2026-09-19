@@ -289,11 +289,12 @@ if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.pro
 let desertStormSearchTerm="",desertStormSearchRenderGeneration=0;
 let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
 let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0;
-function searchInputValue(input){return input?.isContentEditable?String(input.textContent||""):String(input?.value||"")}
+function searchInputIsContentEditable(input){return Boolean(input?.isContentEditable||input?.getAttribute?.("contenteditable")==="plaintext-only")}
+function searchInputValue(input){return searchInputIsContentEditable(input)?String(input.textContent||""):String(input?.value||"")}
 function preserveSearchInput(input,value){
   if(!input||input===document.activeElement)return;
   const next=String(value??"");
-  if(input.isContentEditable){if(input.textContent!==next)input.textContent=next;return}
+  if(searchInputIsContentEditable(input)){if(input.textContent!==next)input.textContent=next;return}
   if(input.value!==next)input.value=next;
 }
 function searchSelection(input){
@@ -634,9 +635,31 @@ function cloudAuthFailureMessage(){
   if(cloudInit.status==="auth-unreachable")return t("auth_cloud_unreachable");
   return t("auth_cloud_unreachable");
 }
+function localizeMountedAuthControls(){
+  const root=$("#authLoggedOut");if(!root)return;
+  root.querySelectorAll("[data-i18n]").forEach(el=>{el.textContent=t(el.dataset.i18n)});
+  root.querySelectorAll("[data-i18n-placeholder]").forEach(el=>{el.setAttribute("placeholder",t(el.dataset.i18nPlaceholder))});
+}
+function mountAuthControls(){
+  const root=$("#authLoggedOut"),template=$("#authLoggedOutTemplate");
+  if(!root||!template||root.querySelector("#authEmail"))return false;
+  root.replaceChildren(template.content.cloneNode(true));
+  localizeMountedAuthControls();
+  bindAuthControls();
+  return true;
+}
+function unmountAuthControls(){
+  const root=$("#authLoggedOut");
+  if(!root)return;
+  root.replaceChildren();
+  root.classList.add("hidden");
+}
 function renderAuth(){
   const logged=Boolean(cloudSession?.user);
-  $("#authLoggedOut")?.classList.toggle("hidden",logged);
+  const accountOpen=Boolean($("#accountDrawer")?.classList.contains("open"));
+  if(logged||!accountOpen)unmountAuthControls();
+  else{mountAuthControls();localizeMountedAuthControls()}
+  $("#authLoggedOut")?.classList.toggle("hidden",logged||!accountOpen);
   $("#authLoggedIn")?.classList.toggle("hidden",!logged);
   if($("#authPill"))$("#authPill").textContent=logged?t("connected"):(cloudInit.status==="ready"?t("ready"):t("local"));
   if(logged&&$("#authIdentity"))$("#authIdentity").textContent=`WarBoost · ${cloudSession.user.email||""}`;
@@ -1639,14 +1662,15 @@ function openDrawer(name){
   // per-surface boundaries, a failure in one module cannot stop this drawer from refreshing.
   if(["account","player","alliance","vs","season"].includes(String(name||"")))safeRenderStep(`DRAWER_REFRESH_${String(name||"").toUpperCase()}`,render);
   closeDrawers();
+  $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false")}
   if(name==="account"){safeRenderStep("ACCOUNT_OPEN_FIELDS",renderAccountFields);safeRenderStep("ACCOUNT_OPEN_AUTH",renderAuth);safeRenderStep("ACCOUNT_OPEN_BETA",renderBeta);safeRenderStep("ACCOUNT_OPEN_PRO",renderPro)}
   if(betaPrivateDataVisible()&&name==="player")safeRenderStep("PLAYER_OPEN_CORE",()=>renderPlayerCoreSummary(state.player,state.drone||{}));
   if(betaPrivateDataVisible()&&name==="alliance"){safeRenderStep("ALLIANCE_OPEN_CORE",()=>renderAllianceCoreSummary(state.player,state.alliance));safeRenderStep("ALLIANCE_OPEN_MEMBERS",renderMembers);safeRenderStep("ALLIANCE_OPEN_ACCESS",renderAllianceAccess);safeRenderStep("ALLIANCE_OPEN_DESERT_STORM",renderDesertStormPlanner)}
   if(betaPrivateDataVisible()&&name==="vs")safeRenderStep("VS_OPEN_CORE",renderVsLive);
   if(betaPrivateDataVisible()&&name==="season"){safeRenderStep("SEASON_OPEN_ACCESS",renderSeasonAccess);safeRenderStep("SEASON_OPEN_CORE",()=>renderSeasonCoreSummary(state.season));}
-  $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false");if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)}
+  if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)
 }
-function closeDrawers(){$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")})}
+function closeDrawers(){unmountAuthControls();$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")})}
 
 $$('[data-open]').forEach(b=>b.addEventListener("click",()=>{if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer(b.dataset.open)}));$("#homeProBtn")?.addEventListener("click",()=>{openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"start"}),140)});$$('[data-close]').forEach(b=>b.addEventListener("click",closeDrawers));$("#backdrop").addEventListener("click",closeDrawers);$("#accountBtn").addEventListener("click",()=>openDrawer("account"));$("#adviceAction").addEventListener("click",()=>{if(state.player.name&&(!requireBetaAccess()||!requireBetaConsent()))return;if(playerNeedsOnboarding()&&betaPrivateDataVisible()){const next=playerOnboardingStatus().next_type||"profile";return openQuickScan(next)}openDrawer(state.player.name?"player":"account")});$("#languageSelect").addEventListener("change",e=>{languageChoice=e.target.value;safeLocalSet(LANG_KEY,languageChoice);applyLanguage()});
 $("#saveProfileBtn").addEventListener("click",async()=>{
@@ -1706,7 +1730,7 @@ async function requestAdvice(scope){if(scope==="vs"){state.vs.week=currentVsWeek
 async function runPlayerAdvice(scrollShop=false){if(!requirePro())return;const ready=playerOnboardingStatus(),note=$("#playerSyncInfo");if(!ready.mainReady){if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("onboarding_need_squad")}renderPlayerOnboarding();$("#playerOnboarding")?.scrollIntoView({behavior:"smooth",block:"center"});return}const buttons=[$("#playerAdviceBtn"),$("#shopAdviceBtn")].filter(Boolean),panel=$("#proPriorityPanel"),labels=buttons.map(b=>b.textContent);buttons.forEach(b=>{b.disabled=true;b.textContent=t("pro_analyzing")});if(note){note.classList.remove("hidden");note.textContent=t("pro_analyzing")}if(panel)panel.classList.add("hidden");const j=await requestAdvice("player");if(j?.analysis){renderProPriority(j.analysis);if(scrollShop)setTimeout(()=>$("#proShopList")?.scrollIntoView({behavior:"smooth",block:"start"}),120)}else if(note)note.textContent=j?.advice||t("player_sync_note");buttons.forEach((b,i)=>{b.disabled=false;b.textContent=labels[i]})}
 $("#playerAdviceBtn").addEventListener("click",()=>runPlayerAdvice(false));$("#shopAdviceBtn")?.addEventListener("click",()=>runPlayerAdvice(true));
 $("#warPlanBtn").addEventListener("click",async()=>{if(!requirePro())return;if(!hasDeclaredAllianceCommandRole()){$("#warPlanText").textContent=managerOnlyMessage();return}const j=await requestAdvice("alliance");$("#warPlanText").textContent=structuredAdviceText("alliance",j);renderAllianceStructured(j)});
-$("#rankManagerSearch")?.addEventListener("input",e=>{rankManagerSearchTerm=String(e.target.value||"");scheduleAllianceRankSearchRender()});
+$("#rankManagerSearch")?.addEventListener("input",e=>{rankManagerSearchTerm=searchInputValue(e.target);scheduleAllianceRankSearchRender()});
 $("#rankManagerClearBtn")?.addEventListener("click",()=>{rankChangeDraft.clear();renderAllianceRankManager();rankManagerStatus("",{},false)});
 $("#rankManagerSyncSelfBtn")?.addEventListener("click",resyncOwnRankManagerRole);
 $("#rankManagerApplyBtn")?.addEventListener("click",applyRankManagerChanges);
@@ -1861,6 +1885,7 @@ $("#voiceTestBtn")?.addEventListener("click",()=>speakGreeting("test",true));
 if("speechSynthesis" in window){window.speechSynthesis.addEventListener?.("voiceschanged",refreshVoices);setTimeout(refreshVoices,100)}
 $("#proActionBtn")?.addEventListener("click",openProAction);
 
+function bindAuthControls(){
 $("#loginBtn")?.addEventListener("click",async()=>{
   if(!cloud)return authMessage(cloudAuthFailureMessage());
   const email=$("#authEmail").value.trim().toLowerCase(),password=$("#authPassword").value;
@@ -1932,6 +1957,7 @@ $("#resendOtpBtn")?.addEventListener("click",async()=>{
   }catch{authMessage(t("auth_cloud_unreachable"))}
   finally{setAuthBusy(false)}
 });
+}
 $("#betaCodeActivateBtn")?.addEventListener("click",activateBetaCode);
 $("#betaAccessCode")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();activateBetaCode()}});
 $("#logoutBtn")?.addEventListener("click",async()=>{const signedOutUserId=String(cloudSession?.user?.id||"");if(signedOutUserId&&String(state?.player_id||"")===signedOutUserId)rememberAccountState(signedOutUserId,state);if(cloud)await cloud.auth.signOut();clearSignedOutAuthUi();cloudSession=null;cloudRevision=null;proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};betaState={...betaState,allowed:false,access_status:"sign-in-required"};render();renderAuth();renderBeta()});
