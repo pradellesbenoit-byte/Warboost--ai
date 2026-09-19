@@ -46,6 +46,12 @@ const plan=buildDesertStormPlan(active,["canonical:alice|884|ALL4",aliceLegacy],
 assert.equal(plan.registered_count,1);
 assert.equal(plan.starters[0].name,"Alice");
 assert.deepEqual(normalizeDesertStormSelections(["canonical:alice|884|ALL4"],[bob], [member("Alice","R3",{canonical_member_key:"canonical:alice|884|ALL4"})]),[]);
+let cumulative=[];
+for(const selected of [alice,bob,alice]){
+  const key=desertStormMemberKeys(selected)[0];
+  cumulative=normalizeDesertStormSelections([...cumulative,key],active,[member("Former","R1",{canonical_member_key:"canonical:former|884|ALL4"})]);
+}
+assert.deepEqual(cumulative,["canonical:alice|884|ALL4","canonical:bob|884|ALL4"]);
 console.log("PASS: cumulative selections survive rerender/search and plan generation deduplicates canonical and legacy keys");
 
 console.log("Desert Storm mobile selection safety verification: PASS");

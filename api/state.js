@@ -5,7 +5,7 @@ import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../li
 import {requireUser} from "../lib/auth.js";
 import {mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
-import {mergeRosterLifecycleMetadata,currentActiveRosterMembers} from "../lib/alliance-roster-lifecycle.js";
+import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers} from "../lib/alliance-roster-lifecycle.js";
 import {isManagerRole} from "../lib/alliance-scope.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 
@@ -29,7 +29,8 @@ async function canonicalizeAllianceState(input,playerId){
   const authoritativeTag=normalizeAllianceTag(ctx.alliance.tag||state.alliance?.tag);
   const authoritativeServer=normalizeServerId(ctx.alliance.server_id||state.player?.server_id);
   const context={serverId:authoritativeServer,allianceTag:authoritativeTag};
-  const canonicalWithKeys=canonical.map(raw=>{
+  const canonicalWithPresence=markCanonicalRosterPresence(canonical,ctx.alliance.roster_updated_at);
+  const canonicalWithKeys=canonicalWithPresence.map(raw=>{
     const row={...raw,server_id:normalizeServerId(raw?.server_id)||authoritativeServer,alliance_tag:normalizeAllianceTag(raw?.alliance_tag)||authoritativeTag};
     return {...row,canonical_member_key:canonicalRosterMemberKey(row,context)};
   });

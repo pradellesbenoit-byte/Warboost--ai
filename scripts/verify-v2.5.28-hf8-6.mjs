@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {appendProgressionSnapshot,progressionComparison,strongestSquadFromState} from '../lib/progression-history.js';
-import {removeActiveRosterMember,reinstateFormerRosterMember,currentActiveRosterMembers,rosterLifecycleKey} from '../lib/alliance-roster-lifecycle.js';
+import {markCanonicalRosterPresence,removeActiveRosterMember,reinstateFormerRosterMember,currentActiveRosterMembers,rosterLifecycleKey} from '../lib/alliance-roster-lifecycle.js';
+import {desertStormMemberKeys,normalizeDesertStormSelections} from '../lib/desert-storm-selection.js';
 import {buildDesertStormPlan} from '../lib/desert-storm-plan.js';
 import {LANGUAGES,translator} from '../i18n.js';
 
@@ -40,6 +41,27 @@ const staleCloud={...member,updated_at:'2026-09-12T08:50:00.000Z'};
 assert.equal(currentActiveRosterMembers([staleCloud],[],life.former).length,0,'stale cloud roster resurrected removed member');
 life=reinstateFormerRosterMember(life,key,{now:'2027-03-12T08:00:00.000Z'});assert.equal(life.members.length,1);assert.equal(currentActiveRosterMembers(life.members,life.review,life.former).length,1);
 assert.match(sync,/currentActiveRosterMembers\(rosterMerged,merged\.alliance\?\.roster_review,merged\.alliance\?\.former_members\)/);
+
+// A current canonical snapshot wins over stale lifecycle blockers without deleting lifecycle history.
+const roster94=markCanonicalRosterPresence(Array.from({length:94},(_,i)=>({
+  name:i<2?`R5-${i+1}`:`Member-${i+1}`,role:i<2?'R5':i<9?'R4':i<79?'R3':i<90?'R2':'R1',
+  server_id:'884',alliance_tag:'ALL4',canonical_member_key:`canonical:${i}`,joined_at:'2026-01-01T00:00:00.000Z'
+})),'2026-09-19T10:00:00.000Z');
+const staleLifecycle=roster94.slice(0,3).map((member)=>({
+  ...member,canonical_presence_at:null,membership_status:'left_confirmed',
+  left_at:'2026-09-18T10:00:00.000Z',missing_from_snapshot_at:null
+}));
+const active94=currentActiveRosterMembers(roster94,[],staleLifecycle);
+assert.equal(active94.length,94,'stale lifecycle entries must not remove current canonical members');
+assert.equal(active94.filter(member=>member.role==='R5').length,2,'both canonical R5 members must remain visible');
+assert.equal(staleLifecycle.length,3,'historical lifecycle rows must remain untouched');
+assert.equal(currentActiveRosterMembers(roster94,[],[{...staleLifecycle[0],left_at:'2026-09-20T10:00:00.000Z'}]).length,93,'a strictly newer confirmed departure still blocks membership');
+let registered=[];
+for(const member of roster94.slice(0,3)){
+  const legacy=desertStormMemberKeys(member).find(candidate=>candidate!==member.canonical_member_key);
+  registered=normalizeDesertStormSelections([...registered,legacy],active94,staleLifecycle);
+}
+assert.deepEqual(registered,roster94.slice(0,3).map(member=>member.canonical_member_key),'three cumulative selections must survive lifecycle rerenders');
 
 // Combat planning: real squad power outranks higher account power when both are known.
 const mk=(name,account,squad,updated=day12)=>({name,server_id:'884',alliance_tag:'ALL4',role:'R3',hq_level:35,power_m:account,squad_power_m:squad,squad_power_updated_at:updated,updated_at:updated,lifecycle_key:`${name.toLowerCase()}|884|ALL4`});

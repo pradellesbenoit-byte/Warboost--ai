@@ -4,7 +4,7 @@ import {requireBetaUser} from "../lib/beta-access.js";
 import {mergeCloudRosterPreservingManual,mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {managerProofFromState,joinProofForAlliance,isManagerRole,mergeCanonicalRoster,replaceCanonicalRosterFromCompleteSnapshot} from "../lib/alliance-scope.js";
-import {mergeRosterLifecycleMetadata,currentActiveRosterMembers} from "../lib/alliance-roster-lifecycle.js";
+import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers} from "../lib/alliance-roster-lifecycle.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remains exported and audited
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
@@ -38,7 +38,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
           }
 
           const authoritativeTag=normalizeAllianceTag(ctx.alliance.tag||merged.alliance?.tag),authoritativeServer=normalizeServerId(ctx.alliance.server_id||merged.player?.server_id),context={serverId:authoritativeServer,allianceTag:authoritativeTag};
-          const canonical=Array.isArray(ctx.roster)?ctx.roster.map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:authoritativeServer,allianceTag:authoritativeTag})})):[];
+          const canonical=markCanonicalRosterPresence(Array.isArray(ctx.roster)?ctx.roster:[],ctx.alliance?.roster_updated_at).map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:authoritativeServer,allianceTag:authoritativeTag})}));
           const ownLink=linkCurrentPlayerIdentityIntoRoster(canonical,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag,activityEvents:merged.activity_events,updatedAt:now});
           const identityMerge=mergeCloudRosterWithIdentity(ownLink.members,ctx.cloud_roster||[],context);
           const rosterWithActivity=mergeCurrentPlayerActivityIntoRoster(identityMerge.roster,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag,activityEvents:merged.activity_events,updatedAt:now});

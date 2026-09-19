@@ -2,5 +2,6 @@
 - [Mobile search rendering](mobile-search-rendering.md) — mobile search fields must filter sibling results asynchronously and preserve focus/selection across access-sensitive repaints.
 - [Cloud-gated roster controls](cloud-gated-roster-controls.md) — visible alliance controls must use the verified cloud predicate, with self-only canonical-role repair before enabling mutations.
 - [Roster source diagnostics](roster-source-diagnostics.md) — a roster count of 100 is ambiguous; distinguish canonical cloud data from legacy capped imports using read-only evidence.
+- [Canonical roster presence evidence](canonical-roster-presence.md) — current canonical presence outranks stale lifecycle blockers; only strictly newer confirmed departures can exclude a member.
 - [Canonical rank identity](canonical-rank-identity.md) — hydrate canonical keys before merges; fallback requires one exact identity plus the expected source rank.
 - [Desert Storm selection identity](desert-storm-selection-identity.md) — canonical keys migrate legacy lifecycle aliases without losing selections during filtered rerenders.
