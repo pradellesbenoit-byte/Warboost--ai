@@ -1,11 +1,10 @@
 import {configured,getProfile,getAllianceMembership,getAllianceById,getAllianceRoster,setAllianceMemberRole,updateAllianceScopeRoster} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import {normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
-import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLink} from "../lib/alliance-rank-management.js";
+import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLink,canonicalRosterMemberKey,resolveCanonicalRosterMember} from "../lib/alliance-rank-management.js";
 
 function role(v){const r=String(v||"R1").toUpperCase();return /^R[1-5]$/.test(r)?r:"R1"}
 function clean(v,max=120){return String(v??"").trim().slice(0,max)}
-function rosterKey(member={}){const name=normalizeLastWarNickname(member?.name),server=normalizeServerId(member?.server_id),tag=normalizeAllianceTag(member?.alliance_tag);return name&&server&&tag?`${name}|${server}|${tag}`:""}
 function rankCounts(rows=[]){const out={R1:0,R2:0,R3:0,R4:0,R5:0};for(const x of Array.isArray(rows)?rows:[]){const r=role(x?.role);out[r]=(out[r]||0)+1}return out}
 function profileIdentity(profile){
   const s=profile?.state||{},p=s.player||{},a=s.alliance||{};
@@ -88,26 +87,24 @@ export default async function handler(req,res){
       const ctx=await getAllianceRoster(user.id);
       if(!ctx?.alliance)return res.status(404).json({error:"alliance_not_found"});
       const server=normalizeServerId(ctx.alliance.server_id||alliance.server_id),tag=normalizeAllianceTag(ctx.alliance.tag||alliance.tag);
-      const roster=(Array.isArray(ctx.alliance?.roster)?ctx.alliance.roster:Array.isArray(ctx.roster)?ctx.roster:[]).map(x=>({...x,server_id:normalizeServerId(x?.server_id)||server,alliance_tag:normalizeAllianceTag(x?.alliance_tag)||tag}));
+      const roster=(Array.isArray(ctx.alliance?.roster)?ctx.alliance.roster:Array.isArray(ctx.roster)?ctx.roster:[]).map(x=>{const row={...x,server_id:normalizeServerId(x?.server_id)||server,alliance_tag:normalizeAllianceTag(x?.alliance_tag)||tag};return {...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:server,allianceTag:tag})}});
       if(!roster.length)return res.status(409).json({error:"alliance_roster_not_ready"});
-      const index=new Map();
-      roster.forEach((m,i)=>{const k=rosterKey(m);if(!k)return;if(!index.has(k))index.set(k,[]);index.get(k).push(i)});
       const resolved=[],seenIndexes=new Set();
       let remainingR5=rankCounts(roster).R5;
       for(const raw of requested){
-        const name=clean(raw?.name,80),to=role(raw?.to_role),key=rosterKey({name,server_id:raw?.server_id||server,alliance_tag:raw?.alliance_tag||tag});
-        if(!name||!key)return res.status(400).json({error:"member_identity_required"});
+        const name=clean(raw?.name,80),to=role(raw?.to_role);
+        if(!to)return res.status(400).json({error:"member_identity_required"});
         if(to==="R5")return res.status(400).json({error:"r5_separate"});
-        const matches=index.get(key)||[];
-        if(matches.length!==1)return res.status(409).json({error:matches.length?"member_identity_ambiguous":"member_not_found",name});
-        const idx=matches[0],from=role(roster[idx]?.role);
+        const resolution=resolveCanonicalRosterMember(roster,raw,{serverId:server,allianceTag:tag});
+        if(!resolution.ok)return res.status(409).json({error:resolution.code,name});
+        const idx=resolution.index,from=role(roster[idx]?.role),resolvedName=clean(roster[idx]?.name,80);
         if(seenIndexes.has(idx))return res.status(400).json({error:"duplicate_member",name});
         seenIndexes.add(idx);
         if(from==="R5"){
           if(remainingR5<=1)return res.status(400).json({error:"r5_protected",name});
           remainingR5--;
         }
-        resolved.push({idx,name,from_role:from,to_role:to,key});
+        resolved.push({idx,name:resolvedName||name,from_role:from,to_role:to,key:canonicalRosterMemberKey(roster[idx],{serverId:server,allianceTag:tag}),resolution:resolution.mode});
       }
       const next=roster.map(x=>({...x}));
       for(const x of resolved){next[x.idx]={...next[x.idx],role:x.to_role,updated_at:new Date().toISOString()}}

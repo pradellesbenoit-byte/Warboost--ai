@@ -1354,7 +1354,7 @@ function renderAllianceRankManager(){
 }
 async function updateRankPermissionTransition(change,targetManagementRole){const {response:r,json:j}=await fetchJsonBounded("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({player_id:change.player_id,role:targetManagementRole})},15000);if(!r.ok)throw Object.assign(new Error(j.error||"role_update_failed"),{code:j.error||"role_update_failed"});return j}
 async function persistCanonicalRosterRankBatch(preview){
-  const payload=(preview?.changes||[]).map(change=>{const member=rankManagerMemberByKey(change.key);return {name:member?.name||change.name,server_id:member?.server_id||state.alliance?.server_id||state.player?.server_id||"",alliance_tag:member?.alliance_tag||state.alliance?.tag||"",to_role:change.to_role}});
+  const payload=(preview?.changes||[]).map(change=>{const member=rankManagerMemberByKey(change.key);return {member_key:member?.canonical_member_key||null,name:member?.name||change.name,server_id:member?.server_id||state.alliance?.server_id||state.player?.server_id||"",alliance_tag:member?.alliance_tag||state.alliance?.tag||"",to_role:change.to_role}});
   const {response:r,json:j}=await fetchJsonBounded("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({roster_rank_changes:payload})},18000);
   if(!r.ok)throw Object.assign(new Error(j.error||"roster_rank_persist_failed"),{code:j.error||"roster_rank_persist_failed"});return j
 }
