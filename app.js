@@ -1271,7 +1271,7 @@ async function refreshRosterDiagnostic(){
   rosterDiagnostic={...rosterDiagnostic,status:"loading"};
   rosterDiagnosticPromise=(async()=>{
     try{
-      const {response:r,json:j}=await fetchJsonBounded("/api/alliance-roster-diagnostic",{method:"GET",headers:authHeaders()},12000);
+      const {response:r,json:j}=await fetchJsonBounded("/api/alliance-role?action=roster_diagnostic",{method:"GET",headers:authHeaders()},12000);
       if(!r.ok)throw new Error(j?.error||"roster_diagnostic_failed");
       rosterDiagnostic={status:"ready",source:j.source||"unknown",canonical_count:Number.isFinite(Number(j.canonical_count))?Number(j.canonical_count):null,cloud_member_count:Number.isFinite(Number(j.cloud_member_count))?Number(j.cloud_member_count):null,at:Date.now()};
       return true;

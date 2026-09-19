@@ -77,8 +77,9 @@ const member=(name,role,extra={})=>({name,role,server_id:"884",alliance_tag:"ALL
   }
 }
 
-const roleApi=read("api/alliance-role.js"),diagnosticApi=read("api/alliance-roster-diagnostic.js"),app=read("app.js");
+const roleApi=read("api/alliance-role.js"),app=read("app.js");
 assert.match(roleApi,/action==="sync_own_role"/);
+assert.match(roleApi,/req\.method==="GET"&&String\(req\.query\?\.action\|\|""\)==="roster_diagnostic"/);
 assert.match(roleApi,/player_id:user\.id/);
 assert.match(roleApi,/expected_updated_at:actor\.updated_at/);
 assert.match(roleApi,/member_identity_ambiguous/);
@@ -89,7 +90,5 @@ assert.match(app,/data-rank-current="\$\{from\}"/);
 assert.match(app,/function rankManagerSyncState\(\)/);
 assert.match(app,/rankManagerSyncSelfBtn/);
 assert.match(app,/legacy_local_roster_capped_at_100/);
-assert.match(app,/\/api\/alliance-roster-diagnostic/);
-assert.match(diagnosticApi,/method!=="GET"/);
-assert.doesNotMatch(diagnosticApi,/method:"(POST|PATCH|DELETE)"/);
+assert.match(app,/\/api\/alliance-role\?action=roster_diagnostic/);
 console.log("R5 -> R3 cloud authorization safety verification: PASS");

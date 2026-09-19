@@ -5,7 +5,7 @@ import {fileURLToPath,pathToFileURL} from "node:url";
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.PORT)||5000;
-const API_NAMES=new Set(["advice","alliance-role","alliance-roster-diagnostic","cloud-config","health","ingest","invite","join","pro","scan","state","support","sync"]);
+const API_NAMES=new Set(["advice","alliance-role","cloud-config","health","ingest","invite","join","pro","scan","state","support","sync"]);
 const MIME={".css":"text/css; charset=utf-8",".html":"text/html; charset=utf-8",".js":"text/javascript; charset=utf-8",".json":"application/json; charset=utf-8",".webmanifest":"application/manifest+json; charset=utf-8",".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".svg":"image/svg+xml",".txt":"text/plain; charset=utf-8"};
 const CSP="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self' https://*.replit.com https://*.replit.dev; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co https://*.supabase.in";
 
