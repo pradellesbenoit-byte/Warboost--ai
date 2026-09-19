@@ -32,7 +32,7 @@ export default async function handler(req,res){
        if(!roster.length)return res.status(409).json({error:"alliance_roster_not_ready"});
        const self=confirmedCanonicalSelfRole(roster,user.id);
        if(!self.ok)return res.status(409).json({error:self.code});
-       if(!["R4","R5"].includes(self.role))return res.status(403).json({error:"self_role_not_manager"});
+       if(!access.owner&&!["R4","R5"].includes(self.role))return res.status(403).json({error:"self_role_not_manager"});
        if(actorRole===self.role)return res.status(200).json({ok:true,mode:"already_synced",membership:actor});
        const membership=await setAllianceMemberRole({alliance_id:actor.alliance_id,player_id:user.id,role:self.role,expected_updated_at:actor.updated_at});
        return res.status(200).json({ok:true,mode:"own_role_resynchronized",membership});
