@@ -293,6 +293,9 @@ a.metaSourceRow{color:inherit;text-decoration:none}a.metaSourceRow:focus-visible
 .rankMove span{font-weight:800;color:var(--muted)}
 .rankMove select{min-width:68px;border:1px solid var(--line);border-radius:12px;background:#0c1729;color:var(--text);padding:8px 9px;font-weight:800}
 .rankManagerPreview{margin-top:12px}
+.identityLinkPanel{margin-top:12px}
+.identityLinkCandidate{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;padding:9px 10px;border:1px solid var(--line);border-radius:12px;background:rgba(8,17,33,.42)}
+.identityLinkCandidate span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rankPreviewCounts{display:grid;grid-template-columns:1fr;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:rgba(12,23,41,.6);font-size:13px}
 .rankPreviewChanges{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .rankPreviewChanges span{padding:7px 10px;border-radius:12px;background:rgba(45,92,133,.18);font-size:13px}
