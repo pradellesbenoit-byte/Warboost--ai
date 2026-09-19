@@ -8,7 +8,8 @@ const read=file=>fs.readFileSync(path.join(root,file),"utf8");
 const app=read("app.js"),html=read("index.html");
 
 assert.match(html,/<input id="rankManagerSearch" type="search"/);
-assert.match(html,/<input id="desertStormSearch" type="search"/);
+assert.match(html,/<input id="desertStormSearch" name="member-filter" type="search" autocomplete="off"/);
+assert.match(html,/label for="desertStormSearch"/);
 assert.doesNotMatch(html,/id="rankManagerSearch"[^>]*(?:disabled|readonly)/i);
 assert.doesNotMatch(html,/id="desertStormSearch"[^>]*(?:disabled|readonly)/i);
 

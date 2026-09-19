@@ -1441,6 +1441,15 @@ function ensureDesertStormState(){
   a.desert_storm={team:String(current.team||"A").toUpperCase()==="B"?"B":"A",battle_time:String(current.battle_time||""),registered_keys:Array.isArray(current.registered_keys)?[...new Set(current.registered_keys.map(String).filter(Boolean))]:[],plan:current.plan&&typeof current.plan==="object"?current.plan:null,updated_at:current.updated_at||null};
   return a.desert_storm;
 }
+function toggleDesertStormSelection(ds,key,checked){
+  const normalized=String(key||"").trim(),keys=Array.isArray(ds?.registered_keys)?ds.registered_keys:[];
+  if(!normalized)return keys;
+  const index=keys.indexOf(normalized);
+  if(checked){if(index<0)keys.push(normalized)}
+  else if(index>=0)keys.splice(index,1);
+  ds.registered_keys=keys;
+  return keys;
+}
 function desertStormFeatureAccess(){if(!canonicalRosterReady)return false;if(proState.beta!==false)return requireBetaAccess()&&requireBetaConsent();return requirePro()}
 function dsLabel(key){return t(`ds_${key}`)}
 function dsMissionLabel(code,options={}){return desertStormMissionLabel(code,{...options,translate:dsLabel})}
@@ -1484,7 +1493,7 @@ function renderDesertStormPicker(){
   box.querySelectorAll("[data-ds-player-key]").forEach(ch=>ch.addEventListener("change",()=>{
      if(!desertStormSelectionAccess().allowed){ch.checked=!ch.checked;return}
     const current=ensureDesertStormState(),set=new Set(current.registered_keys),key=ch.dataset.dsPlayerKey;
-    ch.checked?set.add(key):set.delete(key);current.registered_keys=[...set];current.plan=null;current.updated_at=new Date().toISOString();
+     toggleDesertStormSelection(current,key,ch.checked);current.plan=null;current.updated_at=new Date().toISOString();
     ch.closest(".dsPlayerPick")?.classList.toggle("selected",ch.checked);
     if(counter)counter.textContent=t("ds_registered_count",{count:current.registered_keys.length});
     saveState({renderUi:false});
