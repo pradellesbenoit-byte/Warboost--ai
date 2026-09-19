@@ -20,6 +20,17 @@ const member=(name,role,extra={})=>({name,role,server_id:"884",alliance_tag:"ALL
 }
 
 {
+  const only=[member("Only R5","R5",{player_id:"p-only"})];
+  const protectedPreview=previewAllianceRankChanges(only,[{key:rankManagementKey(only[0]),to_role:"R1"}]);
+  assert.equal(protectedPreview.ok,false);
+  assert.equal(protectedPreview.errors[0].code,"r5_protected");
+  const invalidPromotion=previewAllianceRankChanges([member("Officer","R4",{player_id:"p4"})],[{key:rankManagementKey({name:"Officer",server_id:"884",alliance_tag:"ALL4"}),to_role:"R5"}]);
+  assert.equal(invalidPromotion.ok,false);
+  assert.equal(invalidPromotion.errors[0].code,"r5_separate");
+  console.log("PASS: last R5 remains protected and R5 promotion stays outside the batch flow");
+}
+
+{
   assert.equal(cloudRankManagerAccess({userId:"u",membershipRole:"R5",ownerPlayerId:"other"}).allowed,true);
   assert.equal(cloudRankManagerAccess({userId:"u",membershipRole:"R4",ownerPlayerId:"other"}).allowed,true);
   assert.equal(cloudRankManagerAccess({userId:"u",membershipRole:"R3",ownerPlayerId:"other"}).allowed,false);
@@ -66,11 +77,19 @@ const member=(name,role,extra={})=>({name,role,server_id:"884",alliance_tag:"ALL
   }
 }
 
-const roleApi=read("api/alliance-role.js"),app=read("app.js");
+const roleApi=read("api/alliance-role.js"),diagnosticApi=read("api/alliance-roster-diagnostic.js"),app=read("app.js");
 assert.match(roleApi,/action==="sync_own_role"/);
 assert.match(roleApi,/player_id:user\.id/);
 assert.match(roleApi,/expected_updated_at:actor\.updated_at/);
 assert.match(roleApi,/member_identity_ambiguous/);
 assert.match(app,/rank_manager_error_conflict/);
 assert.match(app,/cloud_role_verified===true/);
+assert.match(app,/rank_manager_current_r5/);
+assert.match(app,/data-rank-current="\$\{from\}"/);
+assert.match(app,/function rankManagerSyncState\(\)/);
+assert.match(app,/rankManagerSyncSelfBtn/);
+assert.match(app,/legacy_local_roster_capped_at_100/);
+assert.match(app,/\/api\/alliance-roster-diagnostic/);
+assert.match(diagnosticApi,/method!=="GET"/);
+assert.doesNotMatch(diagnosticApi,/method:"(POST|PATCH|DELETE)"/);
 console.log("R5 -> R3 cloud authorization safety verification: PASS");

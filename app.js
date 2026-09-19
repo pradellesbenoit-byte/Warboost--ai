@@ -215,7 +215,7 @@ function migrateLegacyLocalState(seed){
   }
   setIfEmpty(out.drone,'level',profile.droneLevel?Number(profile.droneLevel)||profile.droneLevel:null);setIfEmpty(out.drone,'power_m',profile.drone?Number(String(profile.drone).replace(',','.'))||profile.drone:null);
   setIfEmpty(out.vs,'day',simple.vsDay?Number(simple.vsDay)||simple.vsDay:null);setIfEmpty(out.season,'name',simple.season);setIfEmpty(out.season,'profession',simple.profession);
-  if(Array.isArray(roster)&&roster.length&&!(out.alliance.members||[]).length){out.alliance.members=roster.slice(0,100).map(m=>({name:String(m?.name||'').trim(),role:legacyRole(m?.rank)||'R1',power_m:Number(m?.power)||0,updated_at:null})).filter(m=>m.name);changed=Boolean(out.alliance.members.length)||changed}
+  if(Array.isArray(roster)&&roster.length&&!(out.alliance.members||[]).length){out.alliance.members=roster.slice(0,100).map(m=>({name:String(m?.name||'').trim(),role:legacyRole(m?.rank)||'R1',power_m:Number(m?.power)||0,updated_at:null})).filter(m=>m.name);out.migration={...(out.migration||{}),legacy_local_roster_capped_at_100:roster.length>=100};changed=Boolean(out.alliance.members.length)||changed}
   if(changed){out.updated_at=out.updated_at||new Date().toISOString();out.migration={...(out.migration||{}),legacy_local_imported_at:new Date().toISOString(),legacy_keys:LEGACY_DATA_KEYS.filter(k=>localStorage.getItem(k)!==null)}}
   out.version=APP_VERSION;return {state:out,changed};
 }
@@ -285,7 +285,7 @@ function renderPlayerProgression(){
 }
 if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.progression_snapshots=appendProgressionSnapshot([],state,{source:"baseline",at:state.updated_at||new Date().toISOString()});
 let desertStormSearchTerm="",desertStormSearchRenderGeneration=0;
-let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false;
+let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,at:0};
 let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0;
 function preserveSearchInput(input,value){
   if(!input||input===document.activeElement)return;
@@ -1245,27 +1245,69 @@ function rankManagerErrorKey(code){
   return {member_identity_ambiguous:"rank_manager_error_identity_ambiguous",member_identity_unconfirmed:"rank_manager_error_identity_unconfirmed",alliance_roster_not_ready:"rank_manager_error_roster_not_ready",alliance_write_conflict:"rank_manager_error_conflict",alliance_role_write_conflict:"rank_manager_error_conflict",member_not_found:"rank_manager_error_not_found",r4_r5_required:"rank_manager_error_r4_required",self_role_not_manager:"rank_manager_error_self_not_manager",r4_limit:"rank_manager_r4_limit",r5_protected:"rank_manager_last_r5_guard"}[String(code||"")]||"rank_manager_server_error"
 }
 function rankManagerShowError(error){const code=String(error?.code||"rank_manager_permission_failed"),key=rankManagerErrorKey(code);rankManagerStatus(key==="rank_manager_server_error"?key:key,{limit:error?.limit||10,code},true)}
+function rankManagerSyncState(){
+  const access=allianceCommandAccess(),proof=confirmedCanonicalSelfRole(state.alliance?.members||[],state.player_id||cloudSession?.user?.id),userId=String(state.player_id||cloudSession?.user?.id||""),owner=Boolean(userId&&String(state.alliance?.owner_player_id||"")===userId),needsSync=access.cloudAvailable!==true||state.alliance?.management_verified!==true,canResync=Boolean(needsSync&&cloudSession?.access_token&&proof.ok&&(["R4","R5"].includes(proof.role)||owner));
+  let reason="rank_manager_sync_identity_required";
+  if(!needsSync)reason="rank_manager_sync_verified";
+  else if(rankManagerRoleResyncPromise)reason="rank_manager_syncing";
+  else if(!cloudSession?.access_token)reason="rank_manager_sync_login_required";
+  else if(proof.code==="member_identity_ambiguous")reason="rank_manager_sync_identity_ambiguous";
+  return {access,proof,owner,needsSync,canResync,reason,syncing:Boolean(rankManagerRoleResyncPromise)};
+}
+function legacyRosterCapDetected(){
+  return Boolean(state.migration?.legacy_local_roster_capped_at_100===true&&Array.isArray(state.alliance?.members)&&state.alliance.members.length===100);
+}
+function rosterDiagnosticText(){
+  if(rosterDiagnostic.status==="loading")return t("rank_manager_roster_diagnostic_loading");
+  if(rosterDiagnostic.status==="error")return t("rank_manager_roster_diagnostic_unavailable");
+  if(rosterDiagnostic.status==="ready"&&rosterDiagnostic.source==="canonical")return t("rank_manager_roster_diagnostic_canonical",{count:rosterDiagnostic.canonical_count});
+  if(rosterDiagnostic.status==="ready"&&rosterDiagnostic.source==="cloud_members")return t("rank_manager_roster_diagnostic_cloud_members",{count:rosterDiagnostic.cloud_member_count});
+  if(legacyRosterCapDetected())return t("rank_manager_roster_diagnostic_legacy",{count:state.alliance.members.length});
+  return t("rank_manager_roster_diagnostic_unknown",{count:Array.isArray(state.alliance?.members)?state.alliance.members.length:0});
+}
+async function refreshRosterDiagnostic(){
+  if(rosterDiagnosticPromise||!cloudSession?.access_token)return false;
+  if((rosterDiagnostic.status==="ready"||rosterDiagnostic.status==="error")&&Date.now()-Number(rosterDiagnostic.at||0)<60000)return true;
+  rosterDiagnostic={...rosterDiagnostic,status:"loading"};
+  rosterDiagnosticPromise=(async()=>{
+    try{
+      const {response:r,json:j}=await fetchJsonBounded("/api/alliance-roster-diagnostic",{method:"GET",headers:authHeaders()},12000);
+      if(!r.ok)throw new Error(j?.error||"roster_diagnostic_failed");
+      rosterDiagnostic={status:"ready",source:j.source||"unknown",canonical_count:Number.isFinite(Number(j.canonical_count))?Number(j.canonical_count):null,cloud_member_count:Number.isFinite(Number(j.cloud_member_count))?Number(j.cloud_member_count):null,at:Date.now()};
+      return true;
+    }catch{rosterDiagnostic={...rosterDiagnostic,status:"error",at:Date.now()};return false}
+    finally{rosterDiagnosticPromise=null;renderAllianceRankManager()}
+  })();
+  return rosterDiagnosticPromise;
+}
 async function resyncOwnRankManagerRole(){
+  const eligibility=rankManagerSyncState();if(!eligibility.canResync){rankManagerStatus(eligibility.reason,{},true);return false}
+  if(rankManagerRoleResyncPromise)return rankManagerRoleResyncPromise;
   const button=$("#rankManagerSyncSelfBtn");if(button)button.disabled=true;rankManagerStatus("rank_manager_saving",{},false);
-  try{
-    const {response:r,json:j}=await fetchJsonBounded("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action:"sync_own_role"})},15000);
-    if(!r.ok)throw Object.assign(new Error(j.error||"role_resync_failed"),{code:j.error||"role_resync_failed",limit:j.limit});
-    const role=normalizedRole(j.membership?.role||state.alliance?.role);
-    state.alliance={...state.alliance,role,cloud_role_verified:true,management_verified:true};
-    saveState();render();rankManagerStatus("rank_manager_resync_saved",{},false);
-  }catch(error){rankManagerShowError(error)}
-  finally{if(button)button.disabled=false;renderAllianceRankManager()}
+  rankManagerRoleResyncPromise=(async()=>{
+    try{
+      const {response:r,json:j}=await fetchJsonBounded("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action:"sync_own_role"})},15000);
+      if(!r.ok)throw Object.assign(new Error(j.error||"role_resync_failed"),{code:j.error||"role_resync_failed",limit:j.limit});
+      const role=normalizedRole(j.membership?.role||state.alliance?.role),userId=String(state.player_id||cloudSession?.user?.id||""),owner=String(state.alliance?.owner_player_id||"")===userId;
+      state.alliance={...state.alliance,role,cloud_role_verified:true,management_verified:owner||["R4","R5"].includes(role)};
+      saveState();render();rankManagerStatus("rank_manager_resync_saved",{role,mode:j.mode||"own_role_resynchronized"},false);
+      return true;
+    }catch(error){rankManagerShowError(error);return false}
+    finally{rankManagerRoleResyncPromise=null;if(button)button.disabled=false;renderAllianceRankManager()}
+  })();
+  return rankManagerRoleResyncPromise;
 }
 function renderAllianceRankManager(){
   const section=$("#rankManagerSection"),list=$("#rankManagerList"),previewBox=$("#rankManagerPreview"),applyBtn=$("#rankManagerApplyBtn"),clearBtn=$("#rankManagerClearBtn"),syncBtn=$("#rankManagerSyncSelfBtn"),search=$("#rankManagerSearch");if(!section||!list)return;
-  const manager=hasDeclaredAllianceCommandRole(),members=state.alliance?.members||[],r5Members=members.filter(m=>normalizeAllianceRole(m.role)==="R5"),r5Count=r5Members.length,pendingR5Keys=r5Members.filter(m=>!rankChangeDraft.has(rankManagementKey(m))).map(m=>rankManagementKey(m)).filter(Boolean),protectedKey=pendingR5Keys.length===1?pendingR5Keys[0]:"",q=rosterNameKey(rankManagerSearchTerm);
-  const selfProof=confirmedCanonicalSelfRole(members,state.player_id||cloudSession?.user?.id),canResync=allianceCommandAccess().cloudAvailable&&!manager&&selfProof.ok&&["R4","R5"].includes(selfProof.role);
+  const manager=hasDeclaredAllianceCommandRole(),members=state.alliance?.members||[],r5Members=members.filter(m=>normalizeAllianceRole(m.role)==="R5"),r5Count=r5Members.length,pendingR5Keys=r5Members.filter(m=>!rankChangeDraft.has(rankManagementKey(m))).map(m=>rankManagementKey(m)).filter(Boolean),protectedKey=pendingR5Keys.length===1?pendingR5Keys[0]:"",q=rosterNameKey(rankManagerSearchTerm),syncState=rankManagerSyncState(),accessNotice=$("#rankManagerAccessNotice"),diagnosticBox=$("#rankManagerRosterDiagnostic");
   const warning=$("#rankManagerR5Warning");if(warning){warning.classList.toggle("hidden",r5Count<2);warning.textContent=r5Count>=2?t("rank_manager_multiple_r5",{count:r5Count}):""}
+  if(accessNotice){accessNotice.classList.toggle("hidden",!syncState.needsSync);accessNotice.textContent=syncState.needsSync?t(syncState.reason):""}
+  if(syncBtn){syncBtn.classList.toggle("hidden",!syncState.needsSync);syncBtn.disabled=!syncState.canResync||syncState.syncing}
+  if(diagnosticBox){diagnosticBox.textContent=rosterDiagnosticText();void refreshRosterDiagnostic()}
   const selection=searchSelection(search);
   section.classList.toggle("managerLocked",!manager);preserveSearchInput(search,rankManagerSearchTerm);
-  if(syncBtn)syncBtn.classList.toggle("hidden",!canResync);
   const rows=members.filter(m=>!q||rosterNameKey(m.name).includes(q)).sort((a,b)=>({R5:5,R4:4,R3:3,R2:2,R1:1}[normalizeAllianceRole(b.role)]||0)-({R5:5,R4:4,R3:3,R2:2,R1:1}[normalizeAllianceRole(a.role)]||0)||(Number(b.power_m)||0)-(Number(a.power_m)||0)||String(a.name||"").localeCompare(String(b.name||"")));
-  list.innerHTML=rows.length?rows.map(m=>{const key=rankManagementKey(m),from=normalizeAllianceRole(m.role),to=rankChangeDraft.get(key)||from,changed=to!==from,isSelf=Boolean(m.player_id)&&String(m.player_id)===String(state.player_id||""),isProtectedR5=from==="R5"&&key===protectedKey,disabled=!manager||isProtectedR5||(isSelf&&from!=="R5");return `<div class="rankManagerRow${changed?" changed":""}${isSelf?" self":""}${isProtectedR5?" protectedR5":""}"><div><b>${esc(m.name||t("player"))}</b><small>${from} · ${t("hq")} ${esc(m.hq_level??"—")} · ${esc(fmtPower(m.power_m))}${m.warboost_linked===true?` · 🟢 WarBoost`:""}${isProtectedR5?` · ${esc(t("rank_manager_last_r5_guard"))}`:""}${isSelf?` · ${esc(t("rank_manager_self_guard"))}`:""}</small></div><div class="rankMove"><span>${from}</span><span aria-hidden="true">→</span><select data-rank-change-key="${esc(key)}" data-rank-current="${from}"${disabled?" disabled":""}>${["R1","R2","R3","R4"].map(r=>`<option value="${r}"${to===r?" selected":""}>${r}</option>`).join("")}</select></div></div>`}).join(""):`<div class="notice">${esc(t("rank_manager_no_match"))}</div>`;restoreSearchSelection(search,selection);
+  list.innerHTML=rows.length?rows.map(m=>{const key=rankManagementKey(m),from=normalizeAllianceRole(m.role),draft=rankChangeDraft.get(key),to=draft||from,changed=Boolean(draft)&&to!==from,isSelf=Boolean(m.player_id)&&String(m.player_id)===String(state.player_id||""),isProtectedR5=from==="R5"&&key===protectedKey,disabled=!manager||isProtectedR5||(isSelf&&from!=="R5"),options=from==="R5"?`<option value="" disabled${draft?"":" selected"}>${esc(t("rank_manager_current_r5"))}</option>${["R1","R2","R3","R4"].map(r=>`<option value="${r}"${draft===r?" selected":""}>${r}</option>`).join("")}`:["R1","R2","R3","R4"].map(r=>`<option value="${r}"${to===r?" selected":""}>${r}</option>`).join("");return `<div class="rankManagerRow${changed?" changed":""}${isSelf?" self":""}${isProtectedR5?" protectedR5":""}"><div><b>${esc(m.name||t("player"))}</b><small>${from} · ${t("hq")} ${esc(m.hq_level??"—")} · ${esc(fmtPower(m.power_m))}${m.warboost_linked===true?` · 🟢 WarBoost`:""}${isProtectedR5?` · ${esc(t("rank_manager_last_r5_guard"))}`:""}${isSelf?` · ${esc(t("rank_manager_self_guard"))}`:""}</small></div><div class="rankMove"><span>${from}</span><span aria-hidden="true">→</span><select data-rank-change-key="${esc(key)}" data-rank-current="${from}"${disabled?" disabled":""}>${options}</select></div></div>`}).join(""):`<div class="notice">${esc(t("rank_manager_no_match"))}</div>`;restoreSearchSelection(search,selection);
   list.querySelectorAll("select[data-rank-change-key]").forEach(sel=>sel.addEventListener("change",()=>{const key=sel.dataset.rankChangeKey,from=sel.dataset.rankCurrent,to=sel.value;if(to===from)rankChangeDraft.delete(key);else rankChangeDraft.set(key,to);renderAllianceRankManager()}));
   const changes=[...rankChangeDraft.entries()].map(([key,to_role])=>({key,to_role})),preview=previewAllianceRankChanges(state.alliance?.members||[],changes,{maxR4:10});
   if(previewBox){const changed=preview.changes||[],err=preview.errors?.[0];previewBox.innerHTML=changed.length?`<div class="rankPreviewCounts"><span>${esc(t("rank_manager_before"))}: ${esc(rankManagerCountsLine(preview.before))}</span><span>${esc(t("rank_manager_after"))}: ${esc(rankManagerCountsLine(preview.after))}</div><div class="rankPreviewChanges">${changed.map(x=>`<span><b>${esc(x.name)}</b> ${x.from_role} → ${x.to_role}</span>`).join("")}</div>${err?`<div class="notice warn">${esc(err.code==="r4_limit"?t("rank_manager_r4_limit",{limit:err.limit}):err.code==="r5_protected"?t("rank_manager_last_r5_guard"):t("rank_manager_invalid"))}</div>`:""}`:`<div class="privacyText">${esc(t("rank_manager_empty"))}</div>`}

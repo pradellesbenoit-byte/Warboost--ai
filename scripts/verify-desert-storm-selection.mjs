@@ -25,6 +25,8 @@ assert.match(app,/current\.registered_keys=\[\.\.\.set\]/);
 assert.match(app,/data-ds-player-key=.*disabled/);
 assert.match(app,/ds_selection_requires_verified_access/);
 assert.match(app,/ds_selection_syncing/);
+assert.match(app,/desertStormRoleResyncAttempted=true/);
+assert.match(app,/if\(rosterDiagnosticPromise\|\|!cloudSession\?\.access_token\)return false/);
 const picker=app.slice(app.indexOf("function renderDesertStormPicker()"),app.indexOf("function renderDesertStormPlan()"));
 assert.match(picker,/if\(!hasDeclaredAllianceCommandRole\(\)\)\{ch\.checked=!ch\.checked;return\}/);
 assert.match(picker,/ch\.checked\?set\.add\(key\):set\.delete\(key\)/);
