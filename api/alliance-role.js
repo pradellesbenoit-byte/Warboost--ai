@@ -1,6 +1,7 @@
 import {configured,getAllianceMembership,getAllianceById,getAllianceRoster,setAllianceMemberRole,updateAllianceScopeRoster} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import {normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
+import {cloudRankManagerAccess,confirmedCanonicalSelfRole} from "../lib/alliance-rank-management.js";
 
 function role(v){const r=String(v||"R1").toUpperCase();return /^R[1-5]$/.test(r)?r:"R1"}
 function clean(v,max=120){return String(v??"").trim().slice(0,max)}
@@ -18,8 +19,26 @@ export default async function handler(req,res){
     if(!actor)return res.status(403).json({error:"alliance_membership_required"});
     const alliance=await getAllianceById(actor.alliance_id);
     if(!alliance)return res.status(404).json({error:"alliance_not_found"});
-    const actorRole=role(actor.role),isOwner=String(alliance.owner_player_id||"")===String(user.id);
-    if(!(isOwner||actorRole==="R5"||actorRole==="R4"))return res.status(403).json({error:"r4_r5_required"});
+     const access=cloudRankManagerAccess({userId:user.id,membershipRole:actor.role,ownerPlayerId:alliance.owner_player_id});
+     const actorRole=access.cloud_role,isOwner=access.owner;
+
+     // Explicitly repair only the authenticated user's own membership role from a
+     // uniquely linked canonical roster row. This never accepts a target id and
+     // never touches another member.
+     if(req.body?.action==="sync_own_role"){
+       const ctx=await getAllianceRoster(user.id);
+       const server=normalizeServerId(ctx?.alliance?.server_id||alliance.server_id),tag=normalizeAllianceTag(ctx?.alliance?.tag||alliance.tag);
+       const roster=(Array.isArray(ctx?.alliance?.roster)?ctx.alliance.roster:Array.isArray(ctx?.roster)?ctx.roster:[]).map(x=>({...x,server_id:normalizeServerId(x?.server_id)||server,alliance_tag:normalizeAllianceTag(x?.alliance_tag)||tag}));
+       if(!roster.length)return res.status(409).json({error:"alliance_roster_not_ready"});
+       const self=confirmedCanonicalSelfRole(roster,user.id);
+       if(!self.ok)return res.status(409).json({error:self.code});
+       if(!["R4","R5"].includes(self.role))return res.status(403).json({error:"self_role_not_manager"});
+       if(actorRole===self.role)return res.status(200).json({ok:true,mode:"already_synced",membership:actor});
+       const membership=await setAllianceMemberRole({alliance_id:actor.alliance_id,player_id:user.id,role:self.role,expected_updated_at:actor.updated_at});
+       return res.status(200).json({ok:true,mode:"own_role_resynchronized",membership});
+     }
+
+     if(!access.allowed)return res.status(403).json({error:"r4_r5_required"});
 
     // HF8.6.4: persist a whole batch of Last War roster-rank changes against the
     // canonical alliance roster before the client refreshes from cloud. This avoids

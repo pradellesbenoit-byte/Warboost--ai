@@ -6,6 +6,7 @@ import {requireUser} from "../lib/auth.js";
 import {mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {mergeRosterLifecycleMetadata,currentActiveRosterMembers} from "../lib/alliance-roster-lifecycle.js";
+import {isManagerRole} from "../lib/alliance-scope.js";
 
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 function recoverySummary(r){return {changed:Boolean(r?.changed),recovered_fields:Number(r?.recovered_fields||0),recovered_heroes:Array.isArray(r?.recovered_heroes)?r.recovered_heroes:[],conflicts:Array.isArray(r?.conflicts)?r.conflicts:[],sources:Array.isArray(r?.sources)?r.sources:[]}}
@@ -52,11 +53,14 @@ async function canonicalizeAllianceState(input,playerId){
   const nextAlliance={
     ...state.alliance,
     id:ctx.alliance.id,
+    owner_player_id:ctx.alliance.owner_player_id||state.alliance?.owner_player_id||null,
     server_id:authoritativeServer,
     tag:authoritativeTag,
     name:ctx.alliance.name||state.alliance?.name,
     invite_code:ctx.alliance.invite_code||state.alliance?.invite_code,
     role:ctx.membership?.role||state.alliance?.role||"R1",
+    cloud_role_verified:Boolean(ctx.membership?.role),
+    management_verified:Boolean(String(ctx.alliance.owner_player_id||"")===String(playerId)||isManagerRole(ctx.membership?.role)),
     identity_link_status:ownLink.status,
     members:activeRoster,
     unlinked_accounts:identityMerge.unlinked_accounts
