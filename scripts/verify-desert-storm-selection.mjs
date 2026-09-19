@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {cloudRankManagerAccess,confirmedCanonicalSelfRole} from "../lib/alliance-rank-management.js";
-import {desertStormMemberKeys,normalizeDesertStormSelections} from "../lib/desert-storm-selection.js";
+import {desertStormMemberKeys,normalizeDesertStormSelections,toggleDesertStormSelection} from "../lib/desert-storm-selection.js";
 import {buildDesertStormPlan} from "../lib/desert-storm-plan.js";
 import {normalizeState} from "../lib/normalize.js";
 
@@ -31,9 +31,10 @@ assert.match(app,/desertStormRoleResyncAttempted=true/);
 assert.match(app,/if\(rosterDiagnosticPromise\|\|!cloudSession\?\.access_token\)return false/);
 const picker=app.slice(app.indexOf("function renderDesertStormPicker()"),app.indexOf("function renderDesertStormPlan()"));
 assert.match(picker,/if\(!desertStormSelectionAccess\(\)\.allowed\)\{ch\.checked=!ch\.checked;return\}/);
-assert.match(picker,/toggleDesertStormSelection\(current,key,ch\.checked\)/);
-assert.match(app,/if\(checked\)\{if\(index<0\)keys\.push\(normalized\)\}/);
+assert.match(app,/toggleDesertStormSelection\(current\.registered_keys,key,ch\.checked\)/);
 assert.doesNotMatch(picker,/saveState\(\);\s*render\(\)/);
+assert.doesNotMatch(picker,/selected\.has\(b\._key\)/);
+assert.match(picker,/const rows=members\.filter/);
 
 const alice=member("Alice","R4",{canonical_member_key:"canonical:alice|884|ALL4",power_m:120});
 const bob=member("Bob","R3",{canonical_member_key:"canonical:bob|884|ALL4",power_m:110});
@@ -55,6 +56,18 @@ for(const selected of [alice,bob,alice]){
 assert.deepEqual(cumulative,["canonical:alice|884|ALL4","canonical:bob|884|ALL4"]);
 
 const bulkRoster=Array.from({length:94},(_,i)=>member(`Bulk ${i+1}`,i<2?"R5":i<9?"R4":"R3",{canonical_member_key:`canonical:bulk-${i+1}`}));
+for(const target of [3,10,30,bulkRoster.length]){
+  const keys=bulkRoster.map(row=>row.canonical_member_key),tapped=keys.slice(0,target);
+  let tappedSelection=[];
+  for(const key of tapped)tappedSelection=toggleDesertStormSelection(tappedSelection,key,true);
+  assert.deepEqual(tappedSelection,tapped,`stable mobile taps must preserve all ${target} selected players`);
+  const removed=tapped[Math.floor(target/2)];
+  tappedSelection=toggleDesertStormSelection(tappedSelection,removed,false);
+  assert.equal(tappedSelection.length,target-1,`one mobile untap must remove only one player at ${target}`);
+  assert.ok(!tappedSelection.includes(removed));
+  tappedSelection=toggleDesertStormSelection(tappedSelection,removed,true);
+  assert.deepEqual([...tappedSelection].sort(),[...tapped].sort(),`reselecting one player must restore the complete ${target} selection`);
+}
 let bulkSelected=[];
 for(const target of [3,10,30,bulkRoster.length]){
   for(const row of bulkRoster.slice(bulkSelected.length,target))bulkSelected.push(row.canonical_member_key);

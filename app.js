@@ -14,7 +14,8 @@ import {backfillRosterIdentityContext,linkCurrentPlayerIdentityIntoRoster,roster
 import {playerParticipationInsight,allianceParticipationOverview,allianceParticipationByEvent} from "./lib/alliance-participation-insights.js";
 import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine,vsSnapshotFreshness} from "./lib/vs-live.js";
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan.js";
-import {desertStormMemberKeys,normalizeDesertStormSelections} from "./lib/desert-storm-selection.js";
+import {desertStormMemberKeys,normalizeDesertStormSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
+import {unlockDesertStormSearchInput} from "./lib/desert-storm-search.js";
 import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
 import {appendProgressionSnapshot,mergeProgressionSnapshots,progressionComparison,strongestSquadFromState} from "./lib/progression-history.js";
 import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMIT} from "./lib/roster-scan-queue.js";
@@ -1441,15 +1442,6 @@ function ensureDesertStormState(){
   a.desert_storm={team:String(current.team||"A").toUpperCase()==="B"?"B":"A",battle_time:String(current.battle_time||""),registered_keys:Array.isArray(current.registered_keys)?[...new Set(current.registered_keys.map(String).filter(Boolean))]:[],plan:current.plan&&typeof current.plan==="object"?current.plan:null,updated_at:current.updated_at||null};
   return a.desert_storm;
 }
-function toggleDesertStormSelection(ds,key,checked){
-  const normalized=String(key||"").trim(),keys=Array.isArray(ds?.registered_keys)?ds.registered_keys:[];
-  if(!normalized)return keys;
-  const index=keys.indexOf(normalized);
-  if(checked){if(index<0)keys.push(normalized)}
-  else if(index>=0)keys.splice(index,1);
-  ds.registered_keys=keys;
-  return keys;
-}
 function desertStormFeatureAccess(){if(!canonicalRosterReady)return false;if(proState.beta!==false)return requireBetaAccess()&&requireBetaConsent();return requirePro()}
 function dsLabel(key){return t(`ds_${key}`)}
 function dsMissionLabel(code,options={}){return desertStormMissionLabel(code,{...options,translate:dsLabel})}
@@ -1486,14 +1478,16 @@ function renderDesertStormPicker(){
   const box=$("#desertStormRosterPicker"),counter=$("#desertStormCount");if(!box)return;const ds=ensureDesertStormState(),activeMembers=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members),inactiveMembers=[...(state.alliance.roster_review||[]),...(state.alliance.former_members||[])];
   ds.registered_keys=normalizeDesertStormSelections(ds.registered_keys,activeMembers,inactiveMembers);
   const members=activeMembers.map(m=>({...m,_key:desertStormMemberKeys(m)[0]})).filter(m=>m._key),selectionAccess=desertStormSelectionAccess(),selected=new Set(ds.registered_keys),q=rosterNameKey(desertStormSearchTerm);
-  const rows=members.filter(m=>!q||rosterNameKey(m.name).includes(q)).sort((a,b)=>(selected.has(b._key)?1:0)-(selected.has(a._key)?1:0)||(Number(b.squad_power_m)||0)-(Number(a.squad_power_m)||0)||(Number(b.power_m)||0)-(Number(a.power_m)||0)||String(a.name||"").localeCompare(String(b.name||"")));
+  // Keep the roster order stable while users tap on mobile. Moving selected rows
+  // after every click changes hit targets and can toggle a different checkbox.
+  const rows=members.filter(m=>!q||rosterNameKey(m.name).includes(q));
   if(counter)counter.textContent=t("ds_registered_count",{count:selected.size});
   const notice=selectionAccess.syncing?t("ds_selection_syncing"):selectionAccess.allowed?"":t("ds_selection_requires_verified_access"),disabled=selectionAccess.allowed?"":" disabled aria-disabled=\"true\"";
   box.innerHTML=`${notice?`<div class="notice warn dsSelectionGuard">${esc(notice)}</div>`:""}${rows.length?rows.map(m=>`<label class="dsPlayerPick${selected.has(m._key)?" selected":""}${selectionAccess.allowed?"":" locked"}"><input type="checkbox" data-ds-player-key="${esc(m._key)}"${selected.has(m._key)?" checked":""}${disabled}/><span><b>${esc(m.name||t("player"))}</b><small>${esc(normalizeAllianceRole(m.role))} · ${t("hq")} ${esc(m.hq_level??"—")} · ${m.squad_power_m?`${esc(t("combat_squad_short"))} ${esc(fmtPower(m.squad_power_m))} · `:""}${esc(t("combat_account_short"))} ${esc(fmtPower(m.power_m))}</small></span></label>`).join(""):`<div class="notice">${esc(t("ds_no_match"))}</div>`}`;
   box.querySelectorAll("[data-ds-player-key]").forEach(ch=>ch.addEventListener("change",()=>{
      if(!desertStormSelectionAccess().allowed){ch.checked=!ch.checked;return}
-    const current=ensureDesertStormState(),set=new Set(current.registered_keys),key=ch.dataset.dsPlayerKey;
-     toggleDesertStormSelection(current,key,ch.checked);current.plan=null;current.updated_at=new Date().toISOString();
+     const current=ensureDesertStormState(),key=ch.dataset.dsPlayerKey;
+      toggleDesertStormSelection(current.registered_keys,key,ch.checked);current.plan=null;current.updated_at=new Date().toISOString();
     ch.closest(".dsPlayerPick")?.classList.toggle("selected",ch.checked);
     if(counter)counter.textContent=t("ds_registered_count",{count:current.registered_keys.length});
     saveState({renderUi:false});
@@ -1713,7 +1707,12 @@ $("#rankManagerSearch")?.addEventListener("input",e=>{rankManagerSearchTerm=Stri
 $("#rankManagerClearBtn")?.addEventListener("click",()=>{rankChangeDraft.clear();renderAllianceRankManager();rankManagerStatus("",{},false)});
 $("#rankManagerSyncSelfBtn")?.addEventListener("click",resyncOwnRankManagerRole);
 $("#rankManagerApplyBtn")?.addEventListener("click",applyRankManagerChanges);
-$("#desertStormSearch")?.addEventListener("input",e=>{desertStormSearchTerm=String(e.target.value||"");scheduleDesertStormSearchRender()});
+function unlockDesertStormSearch(event){unlockDesertStormSearchInput(event.currentTarget)}
+const desertStormSearchInput=$("#desertStormSearch");
+desertStormSearchInput?.addEventListener("pointerdown",unlockDesertStormSearch);
+desertStormSearchInput?.addEventListener("keydown",unlockDesertStormSearch);
+desertStormSearchInput?.addEventListener("focus",unlockDesertStormSearch);
+desertStormSearchInput?.addEventListener("input",e=>{desertStormSearchTerm=String(e.target.value||"");scheduleDesertStormSearchRender()});
 $("#desertStormTeam")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.team=String(e.target.value||"A").toUpperCase()==="B"?"B":"A";ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
 $("#desertStormTime")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.battle_time=String(e.target.value||"");ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
 $("#desertStormClearBtn")?.addEventListener("click",()=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.registered_keys=[];ds.plan=null;ds.updated_at=new Date().toISOString();saveState();const st=$("#desertStormStatus");if(st){st.className="notice";st.textContent=t("ds_cleared");st.classList.remove("hidden")}});
