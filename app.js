@@ -19,7 +19,7 @@ import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
 import {appendProgressionSnapshot,mergeProgressionSnapshots,progressionComparison,strongestSquadFromState} from "./lib/progression-history.js";
 import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMIT} from "./lib/roster-scan-queue.js";
 import {cleanRosterOcrName,rosterIdentityKey,resolveRosterScanRows,confirmRosterScanPossibleMatch,rosterScanHasUnresolvedIdentity} from "./lib/roster-identity-resolution.js";
-import {previewAllianceRankChanges,applyAllianceRankChanges,permissionTransitions,rankManagementKey,confirmedCanonicalSelfRole} from "./lib/alliance-rank-management.js";
+import {canonicalRosterMemberKey,previewAllianceRankChanges,applyAllianceRankChanges,permissionTransitions,rankManagementKey,confirmedCanonicalSelfRole} from "./lib/alliance-rank-management.js";
 import {savePendingSingleScan,loadPendingSingleScan,clearPendingSingleScan,savePendingRosterFiles,loadPendingRosterFiles,clearPendingRosterFiles,movePendingScans} from "./lib/pending-scan-storage.js";
 import {hasMeaningfulCoreState,hydrateCloudState,canUseKeepaliveBody,betaStateAfterVerifiedStateRead} from "./lib/cloud-state-recovery.js";
 import {readOwnProfileDirect} from "./lib/cloud-profile-direct.js";
@@ -223,7 +223,7 @@ function migrateLegacyLocalState(seed){
 function recoverLocalHeroHistory(input){const legacyProfile=readLegacyJson("wb10_profile")||null,legacyImportedPlayers=readLegacyJson("wb19_imported_players")||[];return recoverHeroData(input,{legacyProfile,legacyImportedPlayers,currentPlayerName:input?.player?.name||""});}
 function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.28-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state);let next=finalRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.28-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
 
-let state=loadState(),serverNow=new Date(),pushTimer=null,cloudRetryTimer=null,cloudPullRetryTimer=null,cloudDirty=false,cloudRevision=null,suppressPush=false,cloudHydrationPending=false,cloudProfileVerified=false,cloud=null,cloudSession=null,cloudRecoveryRedirect="",cloudDataConfig={url:"",key:""},sessionApplyInFlight=null,lastAppliedSessionKey="",runtimeReconcileInFlight=null,lastRuntimeReconcileAt=0,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false,payments_enabled:false,commercial_preview:false,subscription:null},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null,scanImageName="capture.jpg",supportTicketsState=[],supportBusy=false;
+let state=loadState(),serverNow=new Date(),pushTimer=null,cloudRetryTimer=null,cloudPullRetryTimer=null,cloudDirty=false,cloudRevision=null,suppressPush=false,cloudHydrationPending=false,cloudProfileVerified=false,canonicalRosterReady=false,cloud=null,cloudSession=null,cloudRecoveryRedirect="",cloudDataConfig={url:"",key:""},sessionApplyInFlight=null,lastAppliedSessionKey="",runtimeReconcileInFlight=null,lastRuntimeReconcileAt=0,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false,payments_enabled:false,commercial_preview:false,subscription:null},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null,scanImageName="capture.jpg",supportTicketsState=[],supportBusy=false;
 let bootstrapDiagnostics={run_id:"",started_at:null,finished_at:null,status:"idle",stages:[]};
 function bootstrapNow(){return typeof performance!=="undefined"&&performance.now?performance.now():Date.now()}
 function resetBootstrapDiagnostics(reason="session"){bootstrapDiagnostics={run_id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,started_at:new Date().toISOString(),finished_at:null,status:reason,stages:[]};return bootstrapDiagnostics}
@@ -436,6 +436,14 @@ function lastWarServerClock(d){return new Date(d.getTime()-2*60*60*1000)}
 function currentVsWeek(){return isoWeek(lastWarServerClock(serverNow||new Date()))}
 function currentVsDay(){return vsDayFromServer(serverNow||new Date())}
 function normalizedRole(v){const r=String(v||"R1").toUpperCase();return /^R[1-5]$/.test(r)?r:"R1"}
+function applyCanonicalRosterKeys(alliance={}){
+  const serverId=alliance?.server_id||state.player?.server_id||"",allianceTag=alliance?.tag||"";
+  const members=Array.isArray(alliance?.members)?alliance.members.map(member=>{
+    const row={...member,server_id:member?.server_id||serverId,alliance_tag:member?.alliance_tag||allianceTag};
+    return {...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId,allianceTag})};
+  }):[];
+  return {...alliance,members};
+}
 function allianceCommandAccess(){
   const alliance=state?.alliance||{},userId=String(state?.player_id||cloudSession?.user?.id||""),owner=Boolean(alliance.owner_player_id&&userId&&String(alliance.owner_player_id)===userId);
   const cloudRole=normalizedRole(alliance.role);
@@ -460,7 +468,7 @@ function saveState(options={}){const renderUi=options?.renderUi!==false,signedIn
 function scheduleServerSave(delay=350){cloudDirty=true;clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushServerState(),Math.max(0,Number(delay)||0))}
 function scheduleCloudRetry(delay=8000){if(cloudRetryTimer||!cloudDirty||!navigator.onLine)return;cloudRetryTimer=setTimeout(()=>{cloudRetryTimer=null;if(cloudDirty)pushServerState()},Math.max(1500,Number(delay)||8000))}
 function markCloudPending(error="cloud_save_failed"){cloudDirty=true;state.sync={...state.sync,status:navigator.onLine?"waiting":"offline",last_error:error,pending_cloud_save:true};safeLocalSet(STORE_KEY,JSON.stringify(state));renderProvider();scheduleCloudRetry()}
-function scheduleCloudPullRetry(delay=2500){const needsRecovery=Boolean(!cloudProfileVerified||betaState?.restore_error||betaState?.access_status==="checking");if(cloudPullRetryTimer||!navigator.onLine||!cloudSession?.access_token||!betaConsentAccepted()||!needsRecovery)return;const wait=Math.max(1500,Math.min(15000,Number(delay)||2500));cloudPullRetryTimer=setTimeout(async()=>{cloudPullRetryTimer=null;try{await restoreAuthenticatedProfile(readAccountState(cloudSession?.user?.id),{reason:"retry"})}catch{if(Boolean(!cloudProfileVerified||betaState?.restore_error||betaState?.access_status==="checking"))scheduleCloudPullRetry(Math.min(15000,wait*2))}},wait)}
+function scheduleCloudPullRetry(delay=2500){const needsRecovery=Boolean(!cloudProfileVerified||!canonicalRosterReady||betaState?.restore_error||betaState?.access_status==="checking");if(cloudPullRetryTimer||!navigator.onLine||!cloudSession?.access_token||!betaConsentAccepted()||!needsRecovery)return;const wait=Math.max(1500,Math.min(15000,Number(delay)||2500));cloudPullRetryTimer=setTimeout(async()=>{cloudPullRetryTimer=null;try{await restoreAuthenticatedProfile(readAccountState(cloudSession?.user?.id),{reason:"retry"})}catch{if(Boolean(!cloudProfileVerified||!canonicalRosterReady||betaState?.restore_error||betaState?.access_status==="checking"))scheduleCloudPullRetry(Math.min(15000,wait*2))}},wait)}
 function markLargeKeepaliveDeferred(){cloudDirty=true;state.sync={...state.sync,status:"waiting",pending_cloud_save:true};safeLocalSet(STORE_KEY,JSON.stringify(state));renderProvider()}
 async function fetchSessionCritical(input,init={},timeoutMs=10000){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),Math.max(1500,Number(timeoutMs)||10000));
@@ -471,7 +479,7 @@ async function fetchSessionCritical(input,init={},timeoutMs=10000){
 async function fetchJsonBounded(input,init={},timeoutMs=12000){const response=await fetchSessionCritical(input,init,timeoutMs),json=await response.json().catch(()=>({}));return {response,json}}
 
 async function initCloudAuth(){
-  cloud=null;cloudSession=null;cloudRecoveryRedirect="";cloudDataConfig={url:"",key:""};cloudProfileVerified=false;cloudInit={status:"loading-config",configured:false,transport:"direct-supabase-auth-api",error:null};renderAuth();
+  cloud=null;cloudSession=null;cloudRecoveryRedirect="";cloudDataConfig={url:"",key:""};cloudProfileVerified=false;canonicalRosterReady=false;cloudInit={status:"loading-config",configured:false,transport:"direct-supabase-auth-api",error:null};renderAuth();
   let cfg;
   try{
     const {response:r,json}=await fetchJsonBounded("/api/cloud-config",{cache:"no-store"},8000);cfg=json;
@@ -518,7 +526,7 @@ async function applySessionCore(session){
   const preSessionState=safeClone(state);
   cloudSession=session||null;
   const nextUserId=String(cloudSession?.user?.id||"");
-  if(previousUserId!==nextUserId){cloudProfileVerified=false;cloudRevision=null}
+  if(previousUserId!==nextUserId){cloudProfileVerified=false;canonicalRosterReady=false;cloudRevision=null}
   const nextPendingOwner=pendingScanOwner(cloudSession);
 
   // HF8.6.15 keeps HF8.6.14 immediate session rendering and additionally bounds every foreground auth/cloud write.
@@ -588,8 +596,8 @@ async function applySessionCore(session){
       const pendingCode=pendingJoinCode();if(pendingCode)state.alliance.invite_code=pendingCode;
       // PRO entitlement and temporary screenshots are not login-critical.
       void refreshPro();void restorePendingScans();
-    }else{
-      cloudProfileVerified=false;
+      }else{
+       cloudProfileVerified=false;canonicalRosterReady=false;
       cloudHydrationPending=false;
       clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
       proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};
@@ -742,7 +750,7 @@ async function pullDirectOwnProfile(loginSeed=null){
   const userId=String(cloudSession.user.id),localFallback=hasMeaningfulCore(loginSeed)?safeClone(loginSeed):(hasMeaningfulCore(state)?safeClone(state):null);
   const out=await readOwnProfileDirect({url:cloudDataConfig.url,key:cloudDataConfig.key,accessToken:cloudSession.access_token,userId,timeoutMs:10000});
   if(!out?.ok)return out||{ok:false,error:"direct_profile_failed"};
-  cloudProfileVerified=true;cloudRevision=out.updated_at||null;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
+  cloudProfileVerified=true;canonicalRosterReady=false;cloudRevision=out.updated_at||null;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
   if(!out.state){renderBeta();return {ok:true,cloud_empty:true,direct:true};}
   const remote=hydrateCloudState(out.state,initialState(),userId);
   const localTs=Date.parse(state?.updated_at||loginSeed?.updated_at||"")||0,cloudTs=Date.parse(out.updated_at||out.state?.updated_at||"")||0,preferLocal=Boolean(hasMeaningfulCore(localFallback)&&localTs&&cloudTs&&localTs>cloudTs);
@@ -778,7 +786,8 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     betaState=betaStateAfterVerifiedStateRead(betaState,{ok:true,status:r.status,consentVersion:BETA_CONSENT_VERSION});
     cloudProfileVerified=true;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
     cloudRevision=j?.updated_at||null;
-    if(!j?.state){cloudHydrationPending=false;renderBeta();return {ok:true,cloud_empty:true}}
+    canonicalRosterReady=j?.alliance_roster_repair?.status==="canonical_roster_applied";
+    if(!j?.state){canonicalRosterReady=false;cloudHydrationPending=false;renderBeta();return {ok:true,cloud_empty:true}}
 
     // HF8.6.12: when the browser has no trustworthy local state, hydrate directly from the
     // authenticated server payload first. This recovery path intentionally avoids all legacy
@@ -804,6 +813,7 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
       state=repairLegacySquadIdentity(localRecovered.state).state;
     }catch{state=hydrateCloudState(merged,initialState(),userId)}
     if(!hasMeaningfulCore(state)&&hasMeaningfulCore(remote))state=remote;
+    if(canonicalRosterReady&&state?.alliance)state.alliance=applyCanonicalRosterKeys(state.alliance);
     state.player_id=userId;
     state.updated_at=preferLocal&&!j?.alliance_roster_repair?.changed?(state.updated_at||new Date().toISOString()):(j.state?.updated_at||j.updated_at||state.updated_at);
     safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull");rememberAccountState(userId,state);
@@ -811,7 +821,7 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     // If an unsent local state is newer (for example because an oversized keepalive write was
     // deferred), push it normally in the foreground after the authoritative pull/merge.
     if(preferLocal&&hasMeaningfulCore(state)){cloudDirty=true;scheduleCloudRetry(750)}
-    return {ok:true,cloud_empty:false,canonical_alliance:Boolean(j?.alliance_roster_repair?.status==="canonical_roster_applied")}
+    return {ok:true,cloud_empty:false,canonical_alliance:canonicalRosterReady}
   }catch(e){
     suppressPush=false;
     cloudHydrationPending=false;
@@ -834,9 +844,15 @@ async function restoreAuthenticatedProfile(loginSeed=null,{reason="session"}={})
   // keep using trusted same-account local data even if /api/state is slower on mobile.
   const betaCheckPromise=runBootstrapStage("BETA_CHECK_PARALLEL",()=>refreshBeta()).catch(()=>null);
   let pulled=await runBootstrapStage("STATE_API",()=>pullServerState(loginSeed,{fastRestore:true}));
+  if(pulled?.ok&&!pulled?.cloud_empty&&!pulled.canonical_alliance){
+    pulled=await runBootstrapStage("STATE_API_CANONICAL",()=>pullServerState(loginSeed,{fastRestore:false}));
+  }
   await betaCheckPromise;
   if(!pulled?.ok&&!pulled?.cloud_empty){
     if(betaState.allowed===true&&!cloudProfileVerified)pulled=await runBootstrapStage("DIRECT_PROFILE",()=>pullDirectOwnProfile(loginSeed));
+  }
+  if(pulled?.ok&&!pulled?.cloud_empty&&!pulled.canonical_alliance){
+    pulled=await runBootstrapStage("STATE_API_CANONICAL",()=>pullServerState(loginSeed,{fastRestore:false}));
   }
   // Never treat an old cloudProfileVerified=true from a previous token as proof that
   // this restore attempt succeeded. That stale flag caused the permanent "Synchronisation…" state.
@@ -1329,7 +1345,7 @@ async function resyncOwnRankManagerRole(){
 }
 function renderAllianceRankManager(){
   const section=$("#rankManagerSection"),list=$("#rankManagerList"),previewBox=$("#rankManagerPreview"),applyBtn=$("#rankManagerApplyBtn"),clearBtn=$("#rankManagerClearBtn"),syncBtn=$("#rankManagerSyncSelfBtn"),search=$("#rankManagerSearch");if(!section||!list)return;
-  const manager=hasDeclaredAllianceCommandRole(),members=state.alliance?.members||[],r5Members=members.filter(m=>normalizeAllianceRole(m.role)==="R5"),r5Count=r5Members.length,pendingR5Keys=r5Members.filter(m=>!rankChangeDraft.has(rankManagementKey(m))).map(m=>rankManagementKey(m)).filter(Boolean),protectedKey=pendingR5Keys.length===1?pendingR5Keys[0]:"",q=rosterNameKey(rankManagerSearchTerm),syncState=rankManagerSyncState(),accessNotice=$("#rankManagerAccessNotice"),diagnosticBox=$("#rankManagerRosterDiagnostic"),linkBox=$("#rankManagerIdentityLink");
+  const manager=canonicalRosterReady&&hasDeclaredAllianceCommandRole(),members=state.alliance?.members||[],r5Members=members.filter(m=>normalizeAllianceRole(m.role)==="R5"),r5Count=r5Members.length,pendingR5Keys=r5Members.filter(m=>!rankChangeDraft.has(rankManagementKey(m))).map(m=>rankManagementKey(m)).filter(Boolean),protectedKey=pendingR5Keys.length===1?pendingR5Keys[0]:"",q=rosterNameKey(rankManagerSearchTerm),syncState=rankManagerSyncState(),accessNotice=$("#rankManagerAccessNotice"),diagnosticBox=$("#rankManagerRosterDiagnostic"),linkBox=$("#rankManagerIdentityLink");
   const warning=$("#rankManagerR5Warning");if(warning){warning.classList.toggle("hidden",r5Count<2);warning.textContent=r5Count>=2?t("rank_manager_multiple_r5",{count:r5Count}):""}
   if(accessNotice){accessNotice.classList.toggle("hidden",!syncState.needsSync);accessNotice.textContent=syncState.needsSync?t(syncState.reason):""}
   if(syncBtn){syncBtn.classList.toggle("hidden",!syncState.needsSync);syncBtn.disabled=!syncState.canResync||syncState.syncing}
@@ -1355,11 +1371,12 @@ function renderAllianceRankManager(){
 }
 async function updateRankPermissionTransition(change,targetManagementRole){const {response:r,json:j}=await fetchJsonBounded("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({player_id:change.player_id,role:targetManagementRole})},15000);if(!r.ok)throw Object.assign(new Error(j.error||"role_update_failed"),{code:j.error||"role_update_failed"});return j}
 async function persistCanonicalRosterRankBatch(preview){
-  const payload=(preview?.changes||[]).map(change=>{const member=rankManagerMemberByKey(change.key);return {member_key:member?.canonical_member_key||null,name:member?.name||change.name,server_id:member?.server_id||state.alliance?.server_id||state.player?.server_id||"",alliance_tag:member?.alliance_tag||state.alliance?.tag||"",from_role:change.from_role,to_role:change.to_role}});
+  const payload=(preview?.changes||[]).map(change=>{const member=rankManagerMemberByKey(change.key),memberKey=member?.canonical_member_key||canonicalRosterMemberKey(member,{serverId:state.alliance?.server_id||state.player?.server_id||"",allianceTag:state.alliance?.tag||""});return {member_key:memberKey||null,name:member?.name||change.name,server_id:member?.server_id||state.alliance?.server_id||state.player?.server_id||"",alliance_tag:member?.alliance_tag||state.alliance?.tag||"",from_role:change.from_role,to_role:change.to_role}});
   const {response:r,json:j}=await fetchJsonBounded("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({roster_rank_changes:payload})},18000);
   if(!r.ok)throw Object.assign(new Error(j.error||"roster_rank_persist_failed"),{code:j.error||"roster_rank_persist_failed"});return j
 }
 async function applyRankManagerChanges(){
+  if(!canonicalRosterReady)return rankManagerStatus("rank_manager_error_roster_not_ready",{},true);
   if(!hasDeclaredAllianceCommandRole())return rankManagerStatus("rank_manager_manager_only",{},true);
   const changes=[...rankChangeDraft.entries()].map(([key,to_role])=>({key,to_role})),preview=previewAllianceRankChanges(state.alliance?.members||[],changes,{maxR4:10});
   if(!preview.changes.length)return rankManagerStatus("rank_manager_empty",{},true);if(!preview.ok){const e=preview.errors?.[0];return rankManagerStatus(e?.code==="r4_limit"?"rank_manager_r4_limit":e?.code==="r5_protected"?"rank_manager_last_r5_guard":"rank_manager_invalid",{limit:e?.limit||10},true)}
@@ -1424,7 +1441,7 @@ function ensureDesertStormState(){
   a.desert_storm={team:String(current.team||"A").toUpperCase()==="B"?"B":"A",battle_time:String(current.battle_time||""),registered_keys:Array.isArray(current.registered_keys)?[...new Set(current.registered_keys.map(String).filter(Boolean))]:[],plan:current.plan&&typeof current.plan==="object"?current.plan:null,updated_at:current.updated_at||null};
   return a.desert_storm;
 }
-function desertStormFeatureAccess(){if(proState.beta!==false)return requireBetaAccess()&&requireBetaConsent();return requirePro()}
+function desertStormFeatureAccess(){if(!canonicalRosterReady)return false;if(proState.beta!==false)return requireBetaAccess()&&requireBetaConsent();return requirePro()}
 function dsLabel(key){return t(`ds_${key}`)}
 function dsMissionLabel(code,options={}){return desertStormMissionLabel(code,{...options,translate:dsLabel})}
 function desertStormWarningText(w){if(!w)return "";const k=`ds_warning_${w.code}`;return t(k,{count:w.count??0})}
@@ -1436,8 +1453,8 @@ function desertStormCopyText(plan){
 }
 function desertStormSelfRoleProof(){return confirmedCanonicalSelfRole(state.alliance?.members||[],state.player_id||cloudSession?.user?.id)}
 function desertStormSelectionAccess(){
-  const access=allianceCommandAccess(),proof=desertStormSelfRoleProof(),userId=String(state.player_id||cloudSession?.user?.id||""),owner=Boolean(userId&&String(state.alliance?.owner_player_id||"")===userId),canResync=Boolean(cloudSession?.access_token&&proof.ok&&(["R4","R5"].includes(proof.role)||owner));
-  return {allowed:access.allowed,canResync,syncing:Boolean(desertStormRoleResyncPromise)};
+  const access=allianceCommandAccess(),proof=desertStormSelfRoleProof(),userId=String(state.player_id||cloudSession?.user?.id||""),owner=Boolean(userId&&String(state.alliance?.owner_player_id||"")===userId),canResync=Boolean(canonicalRosterReady&&cloudSession?.access_token&&proof.ok&&(["R4","R5"].includes(proof.role)||owner));
+  return {allowed:canonicalRosterReady&&access.allowed,canResync,syncing:Boolean(desertStormRoleResyncPromise)};
 }
 async function tryDesertStormRoleResync(){
   const access=desertStormSelectionAccess();if(access.allowed||access.syncing||desertStormRoleResyncAttempted||!access.canResync)return false;
@@ -1465,7 +1482,7 @@ function renderDesertStormPicker(){
   const notice=selectionAccess.syncing?t("ds_selection_syncing"):selectionAccess.allowed?"":t("ds_selection_requires_verified_access"),disabled=selectionAccess.allowed?"":" disabled aria-disabled=\"true\"";
   box.innerHTML=`${notice?`<div class="notice warn dsSelectionGuard">${esc(notice)}</div>`:""}${rows.length?rows.map(m=>`<label class="dsPlayerPick${selected.has(m._key)?" selected":""}${selectionAccess.allowed?"":" locked"}"><input type="checkbox" data-ds-player-key="${esc(m._key)}"${selected.has(m._key)?" checked":""}${disabled}/><span><b>${esc(m.name||t("player"))}</b><small>${esc(normalizeAllianceRole(m.role))} · ${t("hq")} ${esc(m.hq_level??"—")} · ${m.squad_power_m?`${esc(t("combat_squad_short"))} ${esc(fmtPower(m.squad_power_m))} · `:""}${esc(t("combat_account_short"))} ${esc(fmtPower(m.power_m))}</small></span></label>`).join(""):`<div class="notice">${esc(t("ds_no_match"))}</div>`}`;
   box.querySelectorAll("[data-ds-player-key]").forEach(ch=>ch.addEventListener("change",()=>{
-    if(!hasDeclaredAllianceCommandRole()){ch.checked=!ch.checked;return}
+     if(!desertStormSelectionAccess().allowed){ch.checked=!ch.checked;return}
     const current=ensureDesertStormState(),set=new Set(current.registered_keys),key=ch.dataset.dsPlayerKey;
     ch.checked?set.add(key):set.delete(key);current.registered_keys=[...set];current.plan=null;current.updated_at=new Date().toISOString();
     ch.closest(".dsPlayerPick")?.classList.toggle("selected",ch.checked);

@@ -10,7 +10,7 @@ roster.splice(40,0,manulegaulois,member("other-r5"));
 const canonicalKey=canonicalRosterMemberKey(manulegaulois,context);
 const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
 const stateApi=fs.readFileSync(new URL("../api/state.js",import.meta.url),"utf8");
-assert.match(app,/member_key:member\?\.canonical_member_key\|\|null/);
+assert.match(app,/member_key:memberKey\|\|null/);
 assert.match(stateApi,/canonical_member_key:canonicalRosterMemberKey/);
 assert.equal(canonicalKey,"canonical:manulegaulois|884|ALL4");
 

@@ -100,7 +100,11 @@ export default async function handler(req,res){
       const accessError=betaAccessError(beta);if(accessError)return res.status(accessError.status).json({error:accessError.code,message:accessError.message,restore_trace:orderedRestoreTrace(restoreTrace)});
       if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
       const current=normalizeState({...row.state,player_id:playerId});
-      return res.status(200).json({ok:true,state:current,updated_at:row?.updated_at||current.updated_at,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"deferred_fast_restore"},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
+      let rosterRepair;
+      try{rosterRepair=await canonicalizeAllianceState(current,playerId)}
+      catch{rosterRepair={state:current,changed:false,status:"canonicalization_deferred"}}
+      const finalState=rosterRepair.state;
+      return res.status(200).json({ok:true,state:finalState,updated_at:row?.updated_at||finalState.updated_at,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
     }
 
     const {user}=await requireBetaUser(req,{consent:true,trace}),playerId=user.id,userMode=userConfigured()&&Boolean(access);

@@ -14,3 +14,9 @@ The canonical key must be attached to cloud roster rows before identity linking 
 **Why:** Merging an unkeyed canonical row with a keyed local row can leave the client draft and server resolver using different identities, while a fallback without the source rank can target a stale duplicate.
 
 **How to apply:** Normalize the canonical row's server and alliance context, derive its key once, preserve it through all roster merges, and require the source rank only on the fallback path.
+
+Authenticated fast restore is not authoritative for roster controls. Rank management and Desert Storm must wait for a response marked `canonical_roster_applied`; otherwise perform the normal state restore before enabling either module.
+
+**Why:** The login-critical restore can read a profile before the canonical alliance roster is available, leaving stable keys absent while the UI appears authenticated.
+
+**How to apply:** Treat `restore=1` as provisional until roster canonicalization succeeds, and fail closed for rank/selection mutations while a normal canonical restore is pending.
