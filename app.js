@@ -284,9 +284,30 @@ function renderPlayerProgression(){
   const cls=x=>x?.change_m>0?"deltaUp":"deltaFlat";box.innerHTML=`<div class="progressionMetric"><small>${esc(t("progression_account"))} · ${esc(cmp.account.elapsed_days??"—")}j</small><b>${esc(fmtPower(cmp.account.current))}</b><span class="${cls(cmp.account)}">${cmp.account.change_m===null?"—":esc(`${cmp.account.change_m>=0?"+":""}${cmp.account.change_m} M · ${cmp.account.pct??"—"}%`)}</span></div><div class="progressionMetric"><small>${esc(t("progression_squad"))} · ${esc(cmp.main_squad.elapsed_days??"—")}j</small><b>${esc(fmtPower(cmp.main_squad.current))}</b><span class="${cls(cmp.main_squad)}">${cmp.main_squad.change_m===null?"—":esc(`${cmp.main_squad.change_m>=0?"+":""}${cmp.main_squad.change_m} M · ${cmp.main_squad.pct??"—"}%`)}</span></div>`;
 }
 if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.progression_snapshots=appendProgressionSnapshot([],state,{source:"baseline",at:state.updated_at||new Date().toISOString()});
-let desertStormSearchTerm="";
+let desertStormSearchTerm="",desertStormSearchRenderGeneration=0;
 let rosterScanFiles=[],rosterScanDraft=[];
-let rankManagerSearchTerm="",rankChangeDraft=new Map();
+let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0;
+function preserveSearchInput(input,value){
+  if(!input||input===document.activeElement)return;
+  const next=String(value??"");
+  if(input.value!==next)input.value=next;
+}
+function searchSelection(input){
+  if(!input||input!==document.activeElement)return null;
+  return {start:input.selectionStart,end:input.selectionEnd,direction:input.selectionDirection};
+}
+function restoreSearchSelection(input,selection){
+  if(!input||!selection||input!==document.activeElement||typeof input.setSelectionRange!=="function")return;
+  try{input.setSelectionRange(selection.start,selection.end,selection.direction||"none")}catch{}
+}
+function scheduleAllianceRankSearchRender(){
+  const generation=++rankManagerSearchRenderGeneration,run=()=>{if(generation===rankManagerSearchRenderGeneration)renderAllianceRankManager()};
+  if(typeof requestAnimationFrame==="function")requestAnimationFrame(run);else setTimeout(run,0);
+}
+function scheduleDesertStormSearchRender(){
+  const generation=++desertStormSearchRenderGeneration,run=()=>{if(generation===desertStormSearchRenderGeneration)renderDesertStormPicker()};
+  if(typeof requestAnimationFrame==="function")requestAnimationFrame(run);else setTimeout(run,0);
+}
 const ROSTER_SCAN_FILE_LIMIT=DEFAULT_ROSTER_SCAN_FILE_LIMIT;
 reconcileCurrentPlayerAllianceIdentity();
 let voiceGreetedSections=new Set(),availableVoices=[];
@@ -1240,10 +1261,11 @@ function renderAllianceRankManager(){
   const manager=hasDeclaredAllianceCommandRole(),members=state.alliance?.members||[],r5Members=members.filter(m=>normalizeAllianceRole(m.role)==="R5"),r5Count=r5Members.length,pendingR5Keys=r5Members.filter(m=>!rankChangeDraft.has(rankManagementKey(m))).map(m=>rankManagementKey(m)).filter(Boolean),protectedKey=pendingR5Keys.length===1?pendingR5Keys[0]:"",q=rosterNameKey(rankManagerSearchTerm);
   const selfProof=confirmedCanonicalSelfRole(members,state.player_id||cloudSession?.user?.id),canResync=allianceCommandAccess().cloudAvailable&&!manager&&selfProof.ok&&["R4","R5"].includes(selfProof.role);
   const warning=$("#rankManagerR5Warning");if(warning){warning.classList.toggle("hidden",r5Count<2);warning.textContent=r5Count>=2?t("rank_manager_multiple_r5",{count:r5Count}):""}
-  section.classList.toggle("managerLocked",!manager);if(search&&search.value!==rankManagerSearchTerm)search.value=rankManagerSearchTerm;
+  const selection=searchSelection(search);
+  section.classList.toggle("managerLocked",!manager);preserveSearchInput(search,rankManagerSearchTerm);
   if(syncBtn)syncBtn.classList.toggle("hidden",!canResync);
   const rows=members.filter(m=>!q||rosterNameKey(m.name).includes(q)).sort((a,b)=>({R5:5,R4:4,R3:3,R2:2,R1:1}[normalizeAllianceRole(b.role)]||0)-({R5:5,R4:4,R3:3,R2:2,R1:1}[normalizeAllianceRole(a.role)]||0)||(Number(b.power_m)||0)-(Number(a.power_m)||0)||String(a.name||"").localeCompare(String(b.name||"")));
-  list.innerHTML=rows.length?rows.map(m=>{const key=rankManagementKey(m),from=normalizeAllianceRole(m.role),to=rankChangeDraft.get(key)||from,changed=to!==from,isSelf=Boolean(m.player_id)&&String(m.player_id)===String(state.player_id||""),isProtectedR5=from==="R5"&&key===protectedKey,disabled=!manager||isProtectedR5||(isSelf&&from!=="R5");return `<div class="rankManagerRow${changed?" changed":""}${isSelf?" self":""}${isProtectedR5?" protectedR5":""}"><div><b>${esc(m.name||t("player"))}</b><small>${from} · ${t("hq")} ${esc(m.hq_level??"—")} · ${esc(fmtPower(m.power_m))}${m.warboost_linked===true?` · 🟢 WarBoost`:""}${isProtectedR5?` · ${esc(t("rank_manager_last_r5_guard"))}`:""}${isSelf?` · ${esc(t("rank_manager_self_guard"))}`:""}</small></div><div class="rankMove"><span>${from}</span><span aria-hidden="true">→</span><select data-rank-change-key="${esc(key)}" data-rank-current="${from}"${disabled?" disabled":""}>${["R1","R2","R3","R4"].map(r=>`<option value="${r}"${to===r?" selected":""}>${r}</option>`).join("")}</select></div></div>`}).join(""):`<div class="notice">${esc(t("rank_manager_no_match"))}</div>`;
+  list.innerHTML=rows.length?rows.map(m=>{const key=rankManagementKey(m),from=normalizeAllianceRole(m.role),to=rankChangeDraft.get(key)||from,changed=to!==from,isSelf=Boolean(m.player_id)&&String(m.player_id)===String(state.player_id||""),isProtectedR5=from==="R5"&&key===protectedKey,disabled=!manager||isProtectedR5||(isSelf&&from!=="R5");return `<div class="rankManagerRow${changed?" changed":""}${isSelf?" self":""}${isProtectedR5?" protectedR5":""}"><div><b>${esc(m.name||t("player"))}</b><small>${from} · ${t("hq")} ${esc(m.hq_level??"—")} · ${esc(fmtPower(m.power_m))}${m.warboost_linked===true?` · 🟢 WarBoost`:""}${isProtectedR5?` · ${esc(t("rank_manager_last_r5_guard"))}`:""}${isSelf?` · ${esc(t("rank_manager_self_guard"))}`:""}</small></div><div class="rankMove"><span>${from}</span><span aria-hidden="true">→</span><select data-rank-change-key="${esc(key)}" data-rank-current="${from}"${disabled?" disabled":""}>${["R1","R2","R3","R4"].map(r=>`<option value="${r}"${to===r?" selected":""}>${r}</option>`).join("")}</select></div></div>`}).join(""):`<div class="notice">${esc(t("rank_manager_no_match"))}</div>`;restoreSearchSelection(search,selection);
   list.querySelectorAll("select[data-rank-change-key]").forEach(sel=>sel.addEventListener("change",()=>{const key=sel.dataset.rankChangeKey,from=sel.dataset.rankCurrent,to=sel.value;if(to===from)rankChangeDraft.delete(key);else rankChangeDraft.set(key,to);renderAllianceRankManager()}));
   const changes=[...rankChangeDraft.entries()].map(([key,to_role])=>({key,to_role})),preview=previewAllianceRankChanges(state.alliance?.members||[],changes,{maxR4:10});
   if(previewBox){const changed=preview.changes||[],err=preview.errors?.[0];previewBox.innerHTML=changed.length?`<div class="rankPreviewCounts"><span>${esc(t("rank_manager_before"))}: ${esc(rankManagerCountsLine(preview.before))}</span><span>${esc(t("rank_manager_after"))}: ${esc(rankManagerCountsLine(preview.after))}</div><div class="rankPreviewChanges">${changed.map(x=>`<span><b>${esc(x.name)}</b> ${x.from_role} → ${x.to_role}</span>`).join("")}</div>${err?`<div class="notice warn">${esc(err.code==="r4_limit"?t("rank_manager_r4_limit",{limit:err.limit}):err.code==="r5_protected"?t("rank_manager_last_r5_guard"):t("rank_manager_invalid"))}</div>`:""}`:`<div class="privacyText">${esc(t("rank_manager_empty"))}</div>`}
@@ -1351,10 +1373,11 @@ function renderDesertStormPlan(){
 function renderDesertStormPlanner(){
   const section=$("#desertStormPlanner");if(!section)return;const ds=ensureDesertStormState(),manager=hasDeclaredAllianceCommandRole(),access=runtimeAccessState(),box=$("#desertStormRosterPicker"),counter=$("#desertStormCount");section.classList.toggle("managerLocked",!manager);
   const search=$("#desertStormSearch"),team=$("#desertStormTeam"),time=$("#desertStormTime"),clear=$("#desertStormClearBtn"),generate=$("#desertStormGenerateBtn");
+  const selection=searchSelection(search);
   const disabled=!access.privateVisible||!manager;for(const el of [search,team,time,clear,generate])if(el)el.disabled=disabled;
   if(!access.privateVisible){if(counter)counter.textContent="0";if(box)box.innerHTML=`<div class="notice warn">${esc(betaAccessMessage())}</div>`;renderDesertStormPlan();return}
-  if(search&&search.value!==desertStormSearchTerm)search.value=desertStormSearchTerm;if(team)team.value=ds.team;if(time)time.value=ds.battle_time||"";
-  renderDesertStormPicker();renderDesertStormPlan();
+  preserveSearchInput(search,desertStormSearchTerm);if(team)team.value=ds.team;if(time)time.value=ds.battle_time||"";
+  renderDesertStormPicker();renderDesertStormPlan();restoreSearchSelection(search,selection);
 }
 
 function memberNames(items,limit=6){const rows=(Array.isArray(items)?items:[]).filter(Boolean),shown=rows.slice(0,limit),more=Math.max(0,rows.length-shown.length);return shown.length?`${shown.join(" / ")}${more?` · +${more}`:""}`:"—"}
@@ -1549,11 +1572,11 @@ async function requestAdvice(scope){if(scope==="vs"){state.vs.week=currentVsWeek
 async function runPlayerAdvice(scrollShop=false){if(!requirePro())return;const ready=playerOnboardingStatus(),note=$("#playerSyncInfo");if(!ready.mainReady){if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("onboarding_need_squad")}renderPlayerOnboarding();$("#playerOnboarding")?.scrollIntoView({behavior:"smooth",block:"center"});return}const buttons=[$("#playerAdviceBtn"),$("#shopAdviceBtn")].filter(Boolean),panel=$("#proPriorityPanel"),labels=buttons.map(b=>b.textContent);buttons.forEach(b=>{b.disabled=true;b.textContent=t("pro_analyzing")});if(note){note.classList.remove("hidden");note.textContent=t("pro_analyzing")}if(panel)panel.classList.add("hidden");const j=await requestAdvice("player");if(j?.analysis){renderProPriority(j.analysis);if(scrollShop)setTimeout(()=>$("#proShopList")?.scrollIntoView({behavior:"smooth",block:"start"}),120)}else if(note)note.textContent=j?.advice||t("player_sync_note");buttons.forEach((b,i)=>{b.disabled=false;b.textContent=labels[i]})}
 $("#playerAdviceBtn").addEventListener("click",()=>runPlayerAdvice(false));$("#shopAdviceBtn")?.addEventListener("click",()=>runPlayerAdvice(true));
 $("#warPlanBtn").addEventListener("click",async()=>{if(!requirePro())return;if(!hasDeclaredAllianceCommandRole()){$("#warPlanText").textContent=managerOnlyMessage();return}const j=await requestAdvice("alliance");$("#warPlanText").textContent=structuredAdviceText("alliance",j);renderAllianceStructured(j)});
-$("#rankManagerSearch")?.addEventListener("input",e=>{rankManagerSearchTerm=String(e.target.value||"");renderAllianceRankManager()});
+$("#rankManagerSearch")?.addEventListener("input",e=>{rankManagerSearchTerm=String(e.target.value||"");scheduleAllianceRankSearchRender()});
 $("#rankManagerClearBtn")?.addEventListener("click",()=>{rankChangeDraft.clear();renderAllianceRankManager();rankManagerStatus("",{},false)});
 $("#rankManagerSyncSelfBtn")?.addEventListener("click",resyncOwnRankManagerRole);
 $("#rankManagerApplyBtn")?.addEventListener("click",applyRankManagerChanges);
-$("#desertStormSearch")?.addEventListener("input",e=>{desertStormSearchTerm=String(e.target.value||"");renderDesertStormPicker()});
+$("#desertStormSearch")?.addEventListener("input",e=>{desertStormSearchTerm=String(e.target.value||"");scheduleDesertStormSearchRender()});
 $("#desertStormTeam")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.team=String(e.target.value||"A").toUpperCase()==="B"?"B":"A";ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
 $("#desertStormTime")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.battle_time=String(e.target.value||"");ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
 $("#desertStormClearBtn")?.addEventListener("click",()=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.registered_keys=[];ds.plan=null;ds.updated_at=new Date().toISOString();saveState();const st=$("#desertStormStatus");if(st){st.className="notice";st.textContent=t("ds_cleared");st.classList.remove("hidden")}});

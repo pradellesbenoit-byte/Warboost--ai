@@ -1,1 +1,2 @@
 - [Cloud-verified rank access](cloud-rank-authorization.md) — rank controls require verified cloud membership; self-role repair is uniquely linked, CAS-protected, and self-only.
+- [Mobile search rendering](mobile-search-rendering.md) — mobile search fields must filter sibling results asynchronously and preserve focus/selection across access-sensitive repaints.
