@@ -8,3 +8,9 @@ Rank-management drafts must carry a canonical member key derived from the canoni
 **Why:** The UI can display a merged or stale local member record while the rank API resolves against the canonical cloud roster. Rebuilding a key independently on each side caused a visible member to produce `member_not_found`.
 
 **How to apply:** Resolve by the canonical key first. If it is absent or obsolete, fall back only to one exact match on normalized nickname, server, and alliance; reject zero or multiple matches. Preserve last-R5 and R4-limit checks after resolution.
+
+The canonical key must be attached to cloud roster rows before identity linking and roster merging. The rank UI should send the key plus the current source rank; fallback without that expected rank is not safe.
+
+**Why:** Merging an unkeyed canonical row with a keyed local row can leave the client draft and server resolver using different identities, while a fallback without the source rank can target a stale duplicate.
+
+**How to apply:** Normalize the canonical row's server and alliance context, derive its key once, preserve it through all roster merges, and require the source rank only on the fallback path.

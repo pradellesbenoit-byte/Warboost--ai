@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {cloudRankManagerAccess,confirmedCanonicalSelfRole} from "../lib/alliance-rank-management.js";
+import {desertStormMemberKeys,normalizeDesertStormSelections} from "../lib/desert-storm-selection.js";
+import {buildDesertStormPlan} from "../lib/desert-storm-plan.js";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const read=file=>fs.readFileSync(path.join(root,file),"utf8");
@@ -31,5 +33,19 @@ const picker=app.slice(app.indexOf("function renderDesertStormPicker()"),app.ind
 assert.match(picker,/if\(!hasDeclaredAllianceCommandRole\(\)\)\{ch\.checked=!ch\.checked;return\}/);
 assert.match(picker,/ch\.checked\?set\.add\(key\):set\.delete\(key\)/);
 assert.doesNotMatch(picker,/saveState\(\);\s*render\(\)/);
+
+const alice=member("Alice","R4",{canonical_member_key:"canonical:alice|884|ALL4",power_m:120});
+const bob=member("Bob","R3",{canonical_member_key:"canonical:bob|884|ALL4",power_m:110});
+const active=[alice,bob];
+const aliceLegacy=desertStormMemberKeys(alice).find(key=>key!=="canonical:alice|884|ALL4");
+assert.ok(aliceLegacy);
+assert.deepEqual(normalizeDesertStormSelections([aliceLegacy],active),["canonical:alice|884|ALL4"]);
+assert.deepEqual(normalizeDesertStormSelections(["canonical:alice|884|ALL4","canonical:bob|884|ALL4"],active),["canonical:alice|884|ALL4","canonical:bob|884|ALL4"]);
+assert.deepEqual(normalizeDesertStormSelections(["canonical:alice|884|ALL4","canonical:bob|884|ALL4"],active.filter(m=>m.name==="Alice")),["canonical:alice|884|ALL4","canonical:bob|884|ALL4"]);
+const plan=buildDesertStormPlan(active,["canonical:alice|884|ALL4",aliceLegacy],{nowMs:Date.parse("2026-09-19T12:00:00Z")});
+assert.equal(plan.registered_count,1);
+assert.equal(plan.starters[0].name,"Alice");
+assert.deepEqual(normalizeDesertStormSelections(["canonical:alice|884|ALL4"],[bob], [member("Alice","R3",{canonical_member_key:"canonical:alice|884|ALL4"})]),[]);
+console.log("PASS: cumulative selections survive rerender/search and plan generation deduplicates canonical and legacy keys");
 
 console.log("Desert Storm mobile selection safety verification: PASS");

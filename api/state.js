@@ -7,6 +7,7 @@ import {mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from 
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {mergeRosterLifecycleMetadata,currentActiveRosterMembers} from "../lib/alliance-roster-lifecycle.js";
 import {isManagerRole} from "../lib/alliance-scope.js";
+import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 function recoverySummary(r){return {changed:Boolean(r?.changed),recovered_fields:Number(r?.recovered_fields||0),recovered_heroes:Array.isArray(r?.recovered_heroes)?r.recovered_heroes:[],conflicts:Array.isArray(r?.conflicts)?r.conflicts:[],sources:Array.isArray(r?.sources)?r.sources:[]}}
@@ -28,9 +29,13 @@ async function canonicalizeAllianceState(input,playerId){
   const authoritativeTag=normalizeAllianceTag(ctx.alliance.tag||state.alliance?.tag);
   const authoritativeServer=normalizeServerId(ctx.alliance.server_id||state.player?.server_id);
   const context={serverId:authoritativeServer,allianceTag:authoritativeTag};
+  const canonicalWithKeys=canonical.map(raw=>{
+    const row={...raw,server_id:normalizeServerId(raw?.server_id)||authoritativeServer,alliance_tag:normalizeAllianceTag(raw?.alliance_tag)||authoritativeTag};
+    return {...row,canonical_member_key:canonicalRosterMemberKey(row,context)};
+  });
   const stableStamp=state.updated_at||state.alliance?.updated_at||new Date().toISOString();
 
-  const ownLink=linkCurrentPlayerIdentityIntoRoster(canonical,{
+  const ownLink=linkCurrentPlayerIdentityIntoRoster(canonicalWithKeys,{
     playerId,
     name:state.player?.name,
     serverId:authoritativeServer,
