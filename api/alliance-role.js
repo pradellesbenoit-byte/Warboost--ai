@@ -2,6 +2,7 @@ import {configured,getProfile,getAllianceMembership,getAllianceById,getAllianceR
 import {requireBetaUser} from "../lib/beta-access.js";
 import {normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLink,canonicalRosterMemberKey,resolveCanonicalRosterMember,dedupeCanonicalRosterRows} from "../lib/alliance-rank-management.js";
+import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/alliance-authorization.js";
 
 function role(v){const r=String(v||"R1").toUpperCase();return /^R[1-5]$/.test(r)?r:"R1"}
 function clean(v,max=120){return String(v??"").trim().slice(0,max)}
@@ -25,16 +26,16 @@ export default async function handler(req,res){
       if(!ctx?.alliance)return res.status(404).json({error:"alliance_not_found"});
       const canonical=Array.isArray(ctx.alliance.roster)?ctx.alliance.roster:[];
       const cloudMembers=Array.isArray(ctx.cloud_roster)?ctx.cloud_roster:[];
-      const profile=await getProfile(user.id),identity=profileIdentity(profile),preview=previewSelfIdentityLink(canonical,{userId:user.id,name:identity.name,serverId:identity.server_id,allianceTag:identity.alliance_tag});
-      return res.status(200).json({ok:true,source:canonical.length?"canonical":"cloud_members",canonical_count:canonical.length,cloud_member_count:cloudMembers.length,canonical_updated_at:ctx.alliance.roster_updated_at||null,link_status:preview.code||"ready",account_identity:identity,link_candidates:(preview.matches||[]).map(row=>publicIdentityRow(row,user.id))});
+      const profile=await getProfile(user.id),identity=profileIdentity(profile),preview=previewSelfIdentityLink(canonical,{userId:user.id,name:identity.name,serverId:identity.server_id,allianceTag:identity.alliance_tag}),authorization=canonicalAllianceAuthorization({playerId:user.id,membership,alliance:ctx.alliance,roster:ctx.roster,identity});
+      return res.status(200).json({ok:true,source:canonical.length?"canonical":"cloud_members",canonical_count:canonical.length,cloud_member_count:cloudMembers.length,canonical_updated_at:ctx.alliance.roster_updated_at||null,link_status:preview.code||"ready",account_identity:identity,authorization,link_candidates:(preview.matches||[]).map(row=>publicIdentityRow(row,user.id))});
     }
     if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
     const actor=await getAllianceMembership(user.id);
     if(!actor)return res.status(403).json({error:"alliance_membership_required"});
     const alliance=await getAllianceById(actor.alliance_id);
     if(!alliance)return res.status(404).json({error:"alliance_not_found"});
-     const access=cloudRankManagerAccess({userId:user.id,membershipRole:actor.role,ownerPlayerId:alliance.owner_player_id});
-     const actorRole=access.cloud_role,isOwner=access.owner;
+     const actorProfile=await getProfile(user.id),actorIdentity=profileIdentity(actorProfile),actorContext=await getAllianceRoster(user.id),actorRoster=Array.isArray(actorContext?.roster)?actorContext.roster:(Array.isArray(alliance.roster)?alliance.roster:[]),authorization=canonicalAllianceAuthorization({playerId:user.id,membership:actor,alliance:actorContext?.alliance||alliance,roster:actorRoster,identity:actorIdentity});
+     const access={allowed:authorization.allowed,owner:authorization.owner,cloud_role:authorization.effective_role},actorRole=authorization.effective_role,isOwner=authorization.owner;
 
       if(req.body?.action==="link_self_identity"){
         const profile=await getProfile(user.id),identity=profileIdentity(profile),requested={name:String(req.body?.name||"").trim(),server_id:normalizeServerId(req.body?.server_id),alliance_tag:normalizeAllianceTag(req.body?.alliance_tag)};
@@ -70,13 +71,13 @@ export default async function handler(req,res){
        if(!roster.length)return res.status(409).json({error:"alliance_roster_not_ready"});
        const self=confirmedCanonicalSelfRole(roster,user.id);
        if(!self.ok)return res.status(409).json({error:self.code});
-       if(!access.owner&&!["R4","R5"].includes(self.role))return res.status(403).json({error:"self_role_not_manager"});
+        if(!access.owner&&!["R4","R5"].includes(self.role))return res.status(403).json({error:"self_role_not_manager"});
        if(actorRole===self.role)return res.status(200).json({ok:true,mode:"already_synced",membership:actor});
        const membership=await setAllianceMemberRole({alliance_id:actor.alliance_id,player_id:user.id,role:self.role,expected_updated_at:actor.updated_at});
        return res.status(200).json({ok:true,mode:"own_role_resynchronized",membership});
      }
 
-     if(!access.allowed)return res.status(403).json({error:"r4_r5_required"});
+      if(!access.allowed)return res.status(403).json({error:"r4_r5_required",message:authorizationMessage(authorization),authorization});
 
     // HF8.6.4: persist a whole batch of Last War roster-rank changes against the
     // canonical alliance roster before the client refreshes from cloud. This avoids

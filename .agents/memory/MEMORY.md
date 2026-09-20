@@ -7,3 +7,4 @@
 - [Desert Storm selection identity](desert-storm-selection-identity.md) — canonical keys migrate legacy lifecycle aliases without losing selections during filtered rerenders.
 - [Verification environment](verification-environment.md) — beta verification assumes Supabase variables are absent; injected secrets make the configured-state assertions differ.
 - [Canonical roster field boundary](canonical-roster-field-boundary.md) — canonical roster persistence must whitelist gameplay fields and never forward arbitrary imported profile fields.
+- [Unified alliance authorization](alliance-authorization.md) — roster writes trust authenticated owner/membership or a uniquely linked canonical manager row, never browser-declared roles.

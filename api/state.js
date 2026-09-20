@@ -8,6 +8,7 @@ import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceT
 import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers,preserveVerifiedR5} from "../lib/alliance-roster-lifecycle.js";
 import {isManagerRole} from "../lib/alliance-scope.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
+import {canonicalAllianceAuthorization} from "../lib/alliance-authorization.js";
 
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 function recoverySummary(r){return {changed:Boolean(r?.changed),recovered_fields:Number(r?.recovered_fields||0),recovered_heroes:Array.isArray(r?.recovered_heroes)?r.recovered_heroes:[],conflicts:Array.isArray(r?.conflicts)?r.conflicts:[],sources:Array.isArray(r?.sources)?r.sources:[]}}
@@ -30,12 +31,13 @@ async function canonicalizeAllianceState(input,playerId){
   const authoritativeTag=normalizeAllianceTag(ctx.alliance.tag||state.alliance?.tag);
   const authoritativeServer=normalizeServerId(ctx.alliance.server_id||state.player?.server_id);
   const context={serverId:authoritativeServer,allianceTag:authoritativeTag};
+  const authorization=canonicalAllianceAuthorization({playerId,membership:ctx.membership,alliance:ctx.alliance,roster:ctx.roster,identity:{name:state.player?.name,server_id:state.player?.server_id,alliance_tag:state.alliance?.tag}});
   // A confirmed manual rank change can race an older generic profile save. The
   // role endpoint writes the confirmation marker to the canonical roster; if a
   // late /api/state request carries that same newer marker, repair the canonical
   // row before hydrating the profile. Unmarked browser roles never get this
   // privilege.
-  const manager=String(ctx.alliance.owner_player_id||"")===String(playerId)||isManagerRole(ctx.membership?.role);
+  const manager=authorization.allowed;
   if(manager&&ctx.alliance.updated_at&&Array.isArray(state.alliance?.members)){
     const localByKey=new Map(state.alliance.members.map(row=>[canonicalRosterMemberKey(row,context),row]).filter(([key])=>Boolean(key)));
     let canonicalChanged=false;
@@ -94,7 +96,7 @@ async function canonicalizeAllianceState(input,playerId){
     invite_code:ctx.alliance.invite_code||state.alliance?.invite_code,
     role:ctx.membership?.role||state.alliance?.role||"R1",
     cloud_role_verified:Boolean(ctx.membership?.role),
-    management_verified:Boolean(String(ctx.alliance.owner_player_id||"")===String(playerId)||isManagerRole(ctx.membership?.role)),
+    management_verified:authorization.allowed,
     identity_link_status:ownLink.status,
     members:activeRoster,
     r5_sync_required:Boolean(preservedR5.preserved),
