@@ -339,6 +339,9 @@ function exclusiveNumber(value){const text=String(value??"").trim().replace(",",
 function renderExclusiveConfirmation(rows=[]){
   pendingExclusiveScan=Array.isArray(rows)?rows.map(x=>({...x})).filter(x=>x&&typeof x==="object"):[];
   const panel=$("#exclusiveConfirmPanel"),box=$("#exclusiveConfirmRows");if(!panel||!box)return false;
+  const usableFields=["hero_name","weapon_name","level","power","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
+  pendingExclusiveScan=pendingExclusiveScan.filter(w=>usableFields.some(field=>w[field]!==undefined&&w[field]!==null&&String(w[field]).trim()!==""));
+  if(!pendingExclusiveScan.length){panel.classList.add("hidden");box.innerHTML="";return false}
   box.innerHTML=pendingExclusiveScan.map((w,i)=>`<div class="exclusiveConfirmCard" data-exclusive-index="${i}">
     <div class="exclusiveConfirmGrid">
       <label>${esc(t("hero"))}<input data-exclusive-field="hero_name" value="${esc(w.hero_name||"")}" maxlength="80"/></label>
@@ -353,7 +356,12 @@ function renderExclusiveConfirmation(rows=[]){
     </div>
   </div>`).join("");
   panel.classList.remove("hidden");
+  requestAnimationFrame(()=>{try{panel.scrollIntoView({behavior:"smooth",block:"nearest"})}catch{}});
   return pendingExclusiveScan.length>0;
+}
+function exclusiveResultFieldCount(rows=[]){
+  const fields=["hero_name","weapon_name","level","power","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
+  return new Set(fields.filter(field=>(Array.isArray(rows)?rows:[]).some(w=>w?.[field]!==undefined&&w?.[field]!==null&&String(w[field]).trim()!==""))).size;
 }
 function collectExclusiveConfirmation(){
   const rows=[];$("#exclusiveConfirmRows")?.querySelectorAll("[data-exclusive-index]").forEach(card=>{
@@ -1734,14 +1742,22 @@ async function analyzeExclusiveScan(){
   btn.disabled=true;btn.textContent=t("scan_processing");status.className="notice";status.textContent=t("scan_processing");
   try{
     const {response:r,json:j}=await fetchWarBoostScan({scan_type:scanType,locale:lang,image_data_url:scanImageData,current_state:state});
-    if(!r.ok||!j.state||!scanResultHasUsefulData(scanType,j.state)){
-      await savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName});
-      status.className="notice warn";status.textContent=j?.message||t("scan_error");return;
+    if(!r.ok){
+      const message=j?.message||j?.error||t("scan_error");
+      status.className="notice warn";status.textContent=t("scan_exclusive_analysis_failed",{message});return;
     }
-    const rows=j.state.exclusive_weapons||[];
-    pendingExclusiveScan=rows;
-    renderExclusiveConfirmation(rows);
-    status.className="notice warn";status.textContent=t("scan_exclusive_confirm_help");
+    const rows=Array.isArray(j?.state?.exclusive_weapons)?j.state.exclusive_weapons:[];
+    if(!j?.state||!scanResultHasUsefulData(scanType,j.state)||!rows.length||exclusiveResultFieldCount(rows)<1){
+      await savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName});
+      status.className="notice warn";status.textContent=t("scan_exclusive_no_data");return;
+    }
+    const rendered=renderExclusiveConfirmation(rows);
+    if(!rendered){
+      await savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName});
+      status.className="notice warn";status.textContent=t("scan_exclusive_no_data");return;
+    }
+    const first=rows[0],hero=first?.hero_name||first?.weapon_name||t("exclusive_weapon"),fields=exclusiveResultFieldCount(rows);
+    status.className="notice";status.textContent=t("scan_exclusive_result_ready",{hero,fields});
   }catch(error){status.className="notice warn";status.textContent=error?.message||t("scan_error")}
   finally{btn.disabled=false;btn.textContent=t("analyze")}
 }

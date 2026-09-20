@@ -46,6 +46,38 @@ const now="2026-09-18T12:00:00.000Z";
   console.log("PASS: alternate weapon layout and level label stay partial and non-invented");
 }
 
+// Real-player regression: Swift's exclusive weapon screen includes a visible
+// hero, level, full weapon power and secondary stats.
+{
+  const state=sanitize({
+    exclusive_weapon:{
+      hero_name:"Swift",
+      weapon_name:"Swift Exclusive Weapon",
+      level:"Niv. 3",
+      power:"526612",
+      hero_hp_bonus:"8%",
+      hero_atk_bonus:"12%",
+      hero_def_bonus:"6%",
+      all_damage_resistance_pct:"4.5%",
+      max_skill_level:"3"
+    }
+  },now,"exclusive");
+  assert.deepEqual(state.exclusive_weapons,[{
+    updated_at:now,
+    hero_name:"Swift",
+    weapon_name:"Swift Exclusive Weapon",
+    level:3,
+    power:526612,
+    hero_hp_bonus:8,
+    hero_atk_bonus:12,
+    hero_def_bonus:6,
+    all_damage_resistance_pct:4.5,
+    max_skill_level:3
+  }]);
+  assert.equal(usefulState("exclusive",state),true);
+  console.log("PASS: Swift exclusive weapon power 526612 and visible stats survive sanitization");
+}
+
 // Existing squad and Drone scan paths remain useful and valid.
 {
   const drone=sanitize({drone:{level:150}},now,"drone");
@@ -64,6 +96,11 @@ assert.match(scan,/partial_results_allowed:scanType==="exclusive"/);
 assert.match(scan,/requires_confirmation:\/\^squad\[1-4\]\$\/i\.test\(scanType\)\|\|scanType==="exclusive"/);
 assert.match(app,/event\.stopImmediatePropagation\(\)/);
 assert.match(app,/renderExclusiveConfirmation\(rows\)/);
+assert.match(app,/exclusiveResultFieldCount\(rows\)/);
+assert.match(app,/scrollIntoView\(\{behavior:"smooth",block:"nearest"\}\)/);
+assert.match(app,/scan_exclusive_result_ready/);
+assert.match(app,/scan_exclusive_no_data/);
+assert.match(app,/scan_exclusive_analysis_failed/);
 assert.match(app,/mergeStateProtected\(state,\{exclusive_weapons:confirmed\}/);
 assert.doesNotMatch(analysis,/saveState\(\)/);
 assert.match(analysis,/savePendingSingleScan/);
