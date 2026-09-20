@@ -26,6 +26,7 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
 .priorityRank{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#f3c84c,#69dfff);color:#07111a;font-weight:950}
 .priorityMain{min-width:0}.priorityMain>b{font-size:12px}.priorityMain p{margin:4px 0;color:#c8d3e6;font-size:11px;line-height:1.4}.priorityMain strong{display:block;font-size:11px;color:#fff;margin:5px 0}.priorityMain small{display:block;color:#8fa1bd;font-size:10px;line-height:1.35;margin-top:3px}
 .squadCompare{display:grid;gap:6px}.compareRow{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:8px 9px;border-radius:12px;background:#0c1523;border:1px solid #1f2d45}.compareNo{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:#162642;color:var(--cyan);font-weight:900;font-size:11px}.compareRow b{font-size:11px}.compareRow small{display:block;color:#7f8da5;font-size:9px;margin-top:2px}.compareRow strong{font-size:11px;white-space:nowrap}
+.squadSectionToolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 8px;padding:0 3px}.squadSectionToolbar h3{margin:0;font-size:14px}.squadCollapseAll{font-size:10px;padding:4px 0}
 
 
 .exclusiveSection{border-color:#4f4623;background:linear-gradient(145deg,#121008,#0b111e 58%,#0b141c)}

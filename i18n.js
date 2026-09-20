@@ -17,6 +17,8 @@ const EN={
   public_done:"Hybrid synchronization updated.",scan_button:"📷 WarBoost Scan",public_button:"🌐 Public update"
 };
 Object.assign(EN,{
+  squads:"Squads",
+  squads_collapse_all:"Collapse all",
   scan_exclusive_result_ready:"Result ready: {hero} · {fields} visible fields. Review it below, then confirm to save.",
   scan_exclusive_no_data:"The analysis completed but found no usable hero, weapon, level, power, or visible stat. Nothing was saved.",
   scan_exclusive_analysis_failed:"The exclusive-weapon analysis failed: {message}",
@@ -69,6 +71,8 @@ Object.assign(EN,{
   exclusive_power:"Power",exclusive_skill_cap:"Max skill level",exclusive_hp:"Hero HP",exclusive_atk:"Hero ATK",exclusive_def:"Hero DEF",exclusive_resistance:"All-damage resistance",exclusive_short:"EX"
 });
 Object.assign(FR,{
+  squads:"Escouades",
+  squads_collapse_all:"Tout réduire",
   tagline:"V2.4.7 · AI ROI · API-ready · accès officiel en attente",
   player_desc:"Jusqu’à 4 escouades, Drone, armes exclusives, progression et priorités.",
   scan_exclusive:"Arme exclusive",exclusive_weapons:"Armes exclusives",exclusive_weapon:"Arme exclusive",
