@@ -114,7 +114,7 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
   assert.match(app,/cloudAlliance=Boolean\(a\.id\|\|a\.invite_code\),canShareAllianceInvite=access\.allowed&&\(!cloudAlliance\|\|access\.cloudAvailable\)/);
   assert.match(app,/row\.management_role=nextRole/);
   assert.doesNotMatch(app,/row\.role=nextRole/);
-  assert.match(advice,/declaredRole=String\(s\?\.player\?\.role\|\|"R1"\)\.toUpperCase\(\)/);
+  assert.match(advice,/declaredRole=normalizeAllianceRole\(s\?\.player\?\.role\)/);
   assert.match(advice,/access_basis:"player_declared_last_war_rank"/);
   assert.doesNotMatch(advice,/getAllianceMembership\(/);
   assert.match(roleApi,/getAllianceMembership\(user\.id\)/);

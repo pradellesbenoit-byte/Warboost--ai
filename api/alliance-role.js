@@ -1,10 +1,10 @@
 import {configured,getProfile,getAllianceMembership,getAllianceById,getAllianceRoster,setAllianceMemberRole,updateAllianceScopeRoster} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import {normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
-import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLink,canonicalRosterMemberKey,resolveCanonicalRosterMember,dedupeCanonicalRosterRows} from "../lib/alliance-rank-management.js";
+import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLink,canonicalRosterMemberKey,resolveCanonicalRosterMember,dedupeCanonicalRosterRows,normalizeAllianceRank} from "../lib/alliance-rank-management.js";
 import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/alliance-authorization.js";
 
-function role(v){const r=String(v||"R1").toUpperCase();return /^R[1-5]$/.test(r)?r:"R1"}
+function role(v){return normalizeAllianceRank(v)}
 function clean(v,max=120){return String(v??"").trim().slice(0,max)}
 function rankCounts(rows=[]){const out={R1:0,R2:0,R3:0,R4:0,R5:0};for(const x of Array.isArray(rows)?rows:[]){const r=role(x?.role);out[r]=(out[r]||0)+1}return out}
 function profileIdentity(profile){

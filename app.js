@@ -477,7 +477,7 @@ function isoWeek(d){const x=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()
 function lastWarServerClock(d){return new Date(d.getTime()-2*60*60*1000)}
 function currentVsWeek(){return isoWeek(lastWarServerClock(serverNow||new Date()))}
 function currentVsDay(){return vsDayFromServer(serverNow||new Date())}
-function normalizedRole(v){const r=String(v||"R1").toUpperCase();return /^R[1-5]$/.test(r)?r:"R1"}
+function normalizedRole(v){return normalizeAllianceRole(v)}
 function applyCanonicalRosterKeys(alliance={}){
   const serverId=alliance?.server_id||state.player?.server_id||"",allianceTag=alliance?.tag||"";
   const members=Array.isArray(alliance?.members)?alliance.members.map(member=>{
@@ -486,14 +486,57 @@ function applyCanonicalRosterKeys(alliance={}){
   }):[];
   return {...alliance,members};
 }
+function allianceRoleEvidence(){
+  const alliance=state?.alliance||{},userId=String(state?.player_id||cloudSession?.user?.id||"").trim();
+  const linked=confirmedCanonicalSelfRole(alliance.members||[],userId);
+  const linkedRole=linked.ok?normalizedRole(linked.role):null;
+  const membershipKnown=alliance.cloud_role_verified===true;
+  const membershipRole=membershipKnown?normalizedRole(alliance.role):null;
+  const canonicalRoles=[linkedRole,membershipRole].filter(Boolean);
+  const canonicalManager=canonicalRoles.find(role=>["R4","R5"].includes(role));
+  if(canonicalManager)return {role:canonicalManager,source:linkedRole===canonicalManager?"linked_identity":"canonical_membership",verified:true,proof:linked};
+  if(canonicalRoles.length)return {role:canonicalRoles[0],source:linkedRole?"linked_identity":"canonical_membership",verified:true,proof:linked};
+  return {role:normalizedRole(state?.player?.role),source:"profile_declared",verified:false,proof:linked};
+}
 function allianceCommandAccess(){
-  const alliance=state?.alliance||{},userId=String(state?.player_id||cloudSession?.user?.id||""),owner=Boolean(alliance.owner_player_id&&userId&&String(alliance.owner_player_id)===userId);
-  const cloudRole=normalizedRole(alliance.role);
-  return {cloudAvailable:alliance.cloud_role_verified===true,role:cloudRole,owner,allowed:alliance.cloud_role_verified===true&&(alliance.management_verified===true||owner)};
+  const alliance=state?.alliance||{},userId=String(state?.player_id||cloudSession?.user?.id||""),owner=Boolean(alliance.owner_player_id&&userId&&String(alliance.owner_player_id)===userId),evidence=allianceRoleEvidence(),manager=["R4","R5"].includes(evidence.role);
+  const verifiedManager=owner||(evidence.verified&&manager);
+  // The declared profile is only a UI fallback while cloud/canonical proof is unavailable.
+  // Every cloud mutation remains protected by the server-side canonical authorization.
+  return {cloudAvailable:alliance.cloud_role_verified===true,role:evidence.role,roleSource:evidence.source,roleVerified:evidence.verified||owner,owner,allowed:verifiedManager||(!evidence.verified&&manager),verifiedAllowed:verifiedManager,needsRoleRefresh:!verifiedManager&&(!evidence.verified||manager),reason:evidence.verified?"canonical_role_not_manager":"profile_role_unverified"};
 }
 function hasDeclaredAllianceCommandRole(){return allianceCommandAccess().allowed}
 function isAllianceManager(){return allianceCommandAccess().allowed}
-function managerOnlyMessage(){return t("manager_only")}
+function managerOnlyMessage(){
+  const access=allianceCommandAccess();
+  if(access.roleSource==="profile_declared"&&["R4","R5"].includes(access.role))return t("manager_role_unverified",{role:access.role});
+  if(access.roleSource!=="profile_declared"&& !["R4","R5"].includes(access.role))return t("manager_role_canonical_not_manager",{role:access.role});
+  return t("manager_only");
+}
+function showAllianceRoleGuard(status){
+  if(!status)return;
+  const access=allianceCommandAccess(),message=managerOnlyMessage(),canRefresh=Boolean(cloudSession?.access_token);
+  status.className="notice warn";
+  status.innerHTML=`${esc(message)}${canRefresh?` <button type="button" class="smallBtn allianceRoleRefreshBtn">${esc(t("manager_role_refresh"))}</button>`:""}`;
+  status.classList.remove("hidden");
+  status.querySelector(".allianceRoleRefreshBtn")?.addEventListener("click",()=>refreshAllianceRoleAccess(status));
+}
+async function refreshAllianceRoleAccess(status){
+  const button=status?.querySelector(".allianceRoleRefreshBtn");
+  if(button){button.disabled=true;button.textContent=t("rank_manager_syncing")}
+  try{
+    await reconcileAuthenticatedRuntime("alliance-role-refresh",{force:true});
+    rosterDiagnostic={...rosterDiagnostic,status:"idle",at:0};
+    await refreshRosterDiagnostic();
+    const proof=confirmedCanonicalSelfRole(state.alliance?.members||[],state.player_id||cloudSession?.user?.id);
+    if(proof.ok&&["R4","R5"].includes(proof.role))await resyncOwnRankManagerRole();
+    render();
+    if(status&&allianceCommandAccess().allowed)status.className="notice";
+    if(status&&allianceCommandAccess().allowed)status.textContent=t("rank_manager_sync_verified");
+    else if(status)showAllianceRoleGuard(status);
+  }catch{if(status)showAllianceRoleGuard(status)}
+  finally{if(button&&button.isConnected)button.disabled=false}
+}
 
 function voiceEnabled(){return localStorage.getItem(VOICE_ENABLED_KEY)!=="0"}
 function preferredVoiceId(){return localStorage.getItem(VOICE_ID_KEY)||""}
@@ -1002,9 +1045,18 @@ function renderPlayerOnboarding(){
   steps?.querySelectorAll("[data-onboarding-scan]").forEach(x=>x.addEventListener("click",()=>openQuickScan(x.dataset.onboardingScan)));
 }
 function renderAllianceAccess(){
-  const notice=$("#allianceAccessNotice"),role=normalizedRole(state?.player?.role),manager=["R4","R5"].includes(role),hasProfile=Boolean(state?.player?.name);
+  const notice=$("#allianceAccessNotice"),access=allianceCommandAccess(),role=access.role,manager=access.allowed,hasProfile=Boolean(state?.player?.name);
   document.querySelectorAll("#allianceDrawer .allianceManagerOnly").forEach(el=>el.classList.toggle("hidden",!manager));
-  if(notice){notice.classList.toggle("hidden",manager);notice.className=`notice allianceAccessNotice${manager?" hidden":" warn"}`;notice.textContent=!hasProfile?t("alliance_scan_profile_first"):t("alliance_manager_reserved_detail",{role})}
+  if(notice){
+    const needsVerificationNotice=Boolean(manager&&access.roleSource==="profile_declared");
+    notice.classList.toggle("hidden",manager&&!needsVerificationNotice);
+    notice.className=`notice allianceAccessNotice${manager&&!needsVerificationNotice?" hidden":" warn"}`;
+    notice.textContent=!hasProfile?t("alliance_scan_profile_first"):managerOnlyMessage();
+    if((!manager||needsVerificationNotice)&&access.roleSource==="profile_declared"&&cloudSession?.access_token){
+      notice.innerHTML=`${esc(notice.textContent)} <button type="button" class="smallBtn allianceRoleRefreshBtn">${esc(t("manager_role_refresh"))}</button>`;
+      notice.querySelector(".allianceRoleRefreshBtn")?.addEventListener("click",()=>refreshAllianceRoleAccess(notice));
+    }
+  }
 }
 function renderVsAccess(){
   const notice=$("#vsAccessNotice"),known=scoreKnown(state?.vs||{}),fresh=vsSnapshotFreshness(state?.vs||{},{now:serverNow});if(!notice)return;
@@ -1376,7 +1428,11 @@ function rankManagerStatus(messageKey="",vars={},warn=false){const box=$("#rankM
 function rankManagerErrorKey(code){
   return {member_identity_ambiguous:"rank_manager_error_identity_ambiguous",member_identity_unconfirmed:"rank_manager_error_identity_unconfirmed",self_identity_no_match:"rank_manager_link_no_match",self_identity_incomplete:"rank_manager_link_incomplete",self_identity_mismatch:"rank_manager_link_mismatch",self_identity_context_conflict:"rank_manager_link_context_conflict",roster_member_already_linked:"rank_manager_link_already_owned",account_already_linked:"rank_manager_link_account_owned",alliance_roster_not_ready:"rank_manager_error_roster_not_ready",alliance_write_conflict:"rank_manager_error_conflict",alliance_role_write_conflict:"rank_manager_error_conflict",member_not_found:"rank_manager_error_not_found",r4_r5_required:"rank_manager_error_r4_required",self_role_not_manager:"rank_manager_error_self_not_manager",r4_limit:"rank_manager_r4_limit",r5_protected:"rank_manager_last_r5_guard"}[String(code||"")]||"rank_manager_server_error"
 }
-function rankManagerShowError(error){const code=String(error?.code||"rank_manager_permission_failed"),key=rankManagerErrorKey(code);rankManagerStatus(key==="rank_manager_server_error"?key:key,{limit:error?.limit||10,code},true)}
+function rankManagerShowError(error){
+  const code=String(error?.code||"rank_manager_permission_failed");
+  if(code==="r4_r5_required"||code==="self_role_not_manager"){showAllianceRoleGuard($("#rankManagerStatus"));return}
+  const key=rankManagerErrorKey(code);rankManagerStatus(key==="rank_manager_server_error"?key:key,{limit:error?.limit||10,code},true)
+}
 function rankManagerSyncState(){
   const access=allianceCommandAccess(),proof=confirmedCanonicalSelfRole(state.alliance?.members||[],state.player_id||cloudSession?.user?.id),userId=String(state.player_id||cloudSession?.user?.id||""),owner=Boolean(userId&&String(state.alliance?.owner_player_id||"")===userId),needsSync=access.cloudAvailable!==true||state.alliance?.management_verified!==true,canResync=Boolean(needsSync&&cloudSession?.access_token&&proof.ok&&(["R4","R5"].includes(proof.role)||owner));
   let reason="rank_manager_sync_identity_required";
@@ -1492,7 +1548,7 @@ async function persistCanonicalRosterRankBatch(preview){
 }
 async function applyRankManagerChanges(){
   if(!canonicalRosterReady)return rankManagerStatus("rank_manager_error_roster_not_ready",{},true);
-  if(!hasDeclaredAllianceCommandRole())return rankManagerStatus("rank_manager_manager_only",{},true);
+  if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard($("#rankManagerStatus"));return}
   const changes=[...rankChangeDraft.entries()].map(([key,to_role])=>({key,to_role})),preview=previewAllianceRankChanges(state.alliance?.members||[],changes,{maxR4:10});
   if(!preview.changes.length)return rankManagerStatus("rank_manager_empty",{},true);if(!preview.ok){const e=preview.errors?.[0];return rankManagerStatus(e?.code==="r4_limit"?"rank_manager_r4_limit":e?.code==="r5_protected"?"rank_manager_last_r5_guard":"rank_manager_invalid",{limit:e?.limit||10},true)}
   if(!window.confirm(t("rank_manager_confirm",{count:preview.changes.length})))return;
@@ -1894,7 +1950,9 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
   let synced=null;
   try{synced=await persistRosterCandidate(candidate)}catch(error){
     candidate.alliance.roster_sync_status="pending";candidate.alliance.roster_sync_error=String(error?.message||error?.code||t("roster_sync_failed")).slice(0,300);state=candidate;saveState();render();
-    if(status){status.className="notice warn";status.textContent=`${t("roster_sync_pending")} ${candidate.alliance.roster_sync_error}`;status.classList.remove("hidden")}return {...result,synced:false,error};
+    if(status&&(error?.code==="roster_canonical_persist_required"||error?.code==="r4_r5_required"))showAllianceRoleGuard(status);
+    else if(status){status.className="notice warn";status.textContent=`${t("roster_sync_pending")} ${candidate.alliance.roster_sync_error}`;status.classList.remove("hidden")}
+    return {...result,synced:false,error};
   }
   cloudRevision=synced?.updated_at||cloudRevision;
   state=synced?.state?hydrateCloudState(synced.state,initialState(),cloudSession?.user?.id||state.player_id):candidate;
@@ -1921,18 +1979,34 @@ $("#rosterScanFiles")?.addEventListener("change",async e=>{
   const kept=await persistPendingRosterQueue();
   if(!kept&&rosterScanFiles.length){const st=$("#rosterScanStatus");if(st){st.className="notice warn";st.textContent=t("scan_pending_local_failed");st.classList.remove("hidden")}}
 });
-$("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus"),btn=$("#rosterScanAnalyzeBtn");if(!hasDeclaredAllianceCommandRole()){if(status){status.className="notice warn";status.textContent=managerOnlyMessage();status.classList.remove("hidden")}return}if(!rosterScanFiles.length){if(status){status.className="notice warn";status.textContent=t("roster_scan_choose_first");status.classList.remove("hidden")}return}if(!requireBetaAccess()||!requireBetaConsent())return;if(!cloudSession?.access_token){openDrawer("account");return}btn.disabled=true;const old=btn.textContent;btn.textContent=t("scan_processing");if(status){status.className="notice";status.textContent=t("roster_scan_processing",{count:rosterScanFiles.length});status.classList.remove("hidden")}try{let rows=[];for(let i=0;i<rosterScanFiles.length;i++){const image=await imageToDataUrl(rosterScanFiles[i]),{response:r,json:j}=await fetchWarBoostScan({scan_type:"alliance_roster",locale:lang,image_data_url:image,current_state:state});if(!r.ok)throw new Error(j.message||j.error||"scan_failed");rows=mergeRosterScanRows(rows,j.roster_rows||[]);if(status)status.textContent=t("roster_scan_progress",{done:i+1,total:rosterScanFiles.length,rows:rows.length})}rosterScanDraft=resolveCurrentRosterScanDraft(mergeRosterScanRows([],rows));renderRosterScanDraft();if(status){status.className="notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})}}catch(e){if(status){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}finally{btn.disabled=false;btn.textContent=old}});
-$("#rosterScanImportBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus");collectRosterScanDraftFromDom();if(rosterScanHasUnresolvedIdentity(rosterScanDraft)){if(status){status.className="notice warn";status.textContent=t("roster_identity_unresolved_block");status.classList.remove("hidden")}renderRosterScanDraft();return}const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=await applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result?.synced){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";void clearPendingRosterFiles(pendingScanOwner());renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
+$("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus"),btn=$("#rosterScanAnalyzeBtn");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}if(!rosterScanFiles.length){if(status){status.className="notice warn";status.textContent=t("roster_scan_choose_first");status.classList.remove("hidden")}return}if(!requireBetaAccess()||!requireBetaConsent())return;if(!cloudSession?.access_token){openDrawer("account");return}btn.disabled=true;const old=btn.textContent;btn.textContent=t("scan_processing");if(status){status.className="notice";status.textContent=t("roster_scan_processing",{count:rosterScanFiles.length});status.classList.remove("hidden")}try{let rows=[];for(let i=0;i<rosterScanFiles.length;i++){const image=await imageToDataUrl(rosterScanFiles[i]),{response:r,json:j}=await fetchWarBoostScan({scan_type:"alliance_roster",locale:lang,image_data_url:image,current_state:state});if(!r.ok)throw new Error(j.message||j.error||"scan_failed");rows=mergeRosterScanRows(rows,j.roster_rows||[]);if(status)status.textContent=t("roster_scan_progress",{done:i+1,total:rosterScanFiles.length,rows:rows.length})}rosterScanDraft=resolveCurrentRosterScanDraft(mergeRosterScanRows([],rows));renderRosterScanDraft();if(status){status.className="notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})}}catch(e){if(status){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}finally{btn.disabled=false;btn.textContent=old}});
+$("#rosterScanImportBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}collectRosterScanDraftFromDom();if(rosterScanHasUnresolvedIdentity(rosterScanDraft)){if(status){status.className="notice warn";status.textContent=t("roster_identity_unresolved_block");status.classList.remove("hidden")}renderRosterScanDraft();return}const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=await applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result?.synced){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";void clearPendingRosterFiles(pendingScanOwner());renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
 
 $("#rosterImportBtn")?.addEventListener("click",async()=>{
-  const status=$("#rosterImportStatus");if(!hasDeclaredAllianceCommandRole()){if(status){status.className="notice warn";status.textContent=managerOnlyMessage()}return}
+  const status=$("#rosterImportStatus");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}
   const now=new Date().toISOString(),complete=$("#rosterFullSnapshot")?.checked===true;
   const imported=parseRosterImport($("#rosterImportText")?.value||"",{now}).map(row=>({...row,server_id:state.player?.server_id||row.server_id||"",alliance_tag:state.alliance?.tag||row.alliance_tag||""}));
   if(!imported.length){if(status){status.className="notice warn";status.textContent=t("import_error")}return}
   const result=await applyRosterRows(imported,{complete,status,source:"manual_import"});if(!result?.synced)return;
   if($("#rosterImportText"))$("#rosterImportText").value="";if($("#rosterFullSnapshot"))$("#rosterFullSnapshot").checked=false;
 });
-$("#eventImportBtn")?.addEventListener("click",()=>{const status=$("#eventImportStatus");if(!hasDeclaredAllianceCommandRole()){if(status){status.className="notice warn";status.textContent=managerOnlyMessage()}return}const parsed=parseParticipationImport($("#eventImportText")?.value||""),members=state.alliance.members||[];let applied=0,unmatched=0,ambiguous=0;for(const row of parsed.rows){const key=rosterNameKey(row.name||""),matches=members.filter(m=>rosterNameKey(m?.name||"")===key);if(matches.length!==1){if(matches.length>1)ambiguous++;else unmatched++;continue}const member=matches[0];member.activity_events=mergeActivityEvents(member.activity_events,[row]);member.updated_at=new Date().toISOString();applied++}if(!applied){if(status){status.className="notice warn";status.textContent=t("participation_import_none",{errors:parsed.errors.length,unmatched:unmatched+ambiguous})}return}state.alliance.updated_at=new Date().toISOString();state.sync.sources={...state.sync.sources,alliance:true};saveState();if(status){status.className="notice";status.textContent=t("participation_import_done",{count:applied,unmatched:unmatched+ambiguous,errors:parsed.errors.length})};if($("#eventImportText"))$("#eventImportText").value=""});
+$("#eventImportBtn")?.addEventListener("click",async()=>{
+  const status=$("#eventImportStatus");
+  if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}
+  const parsed=parseParticipationImport($("#eventImportText")?.value||""),members=state.alliance.members||[];
+  let applied=0,unmatched=0,ambiguous=0;
+  for(const row of parsed.rows){
+    const key=rosterNameKey(row.name||""),matches=members.filter(m=>rosterNameKey(m?.name||"")===key);
+    if(matches.length!==1){if(matches.length>1)ambiguous++;else unmatched++;continue}
+    const member=matches[0];member.activity_events=mergeActivityEvents(member.activity_events,[row]);member.updated_at=new Date().toISOString();applied++;
+  }
+  if(!applied){if(status){status.className="notice warn";status.textContent=t("participation_import_none",{errors:parsed.errors.length,unmatched:unmatched+ambiguous})}return}
+  state.alliance.updated_at=new Date().toISOString();state.sync.sources={...state.sync.sources,alliance:true};saveState();
+  const synced=await pushServerState();
+  if(!synced?.ok){showAllianceRoleGuard(status);return}
+  if(status){status.className="notice";status.textContent=t("participation_import_done",{count:applied,unmatched:unmatched+ambiguous,errors:parsed.errors.length})}
+  if($("#eventImportText"))$("#eventImportText").value="";
+});
 
 $("#shareInviteBtn").addEventListener("click",async()=>{const btn=$("#shareInviteBtn");if(!requireBetaAccess()||!requireBetaConsent())return;if(!["R4","R5"].includes(normalizedRole(state.player?.role))){inviteMessage(t("alliance_invite_manager_only"));return}if(!cloudSession?.access_token){inviteMessage(t("alliance_invite_connect"));openDrawer("account");return}const original=btn?.textContent;if(btn){btn.disabled=true;btn.textContent="…"}try{const saved=await pushServerState();if(!saved?.ok)throw Object.assign(new Error("cloud_save_required"),{code:"cloud_save_required"});const {response:rr,json:jj}=await fetchJsonBounded("/api/invite",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({name:state.alliance.name||state.alliance.tag||"WarBoost"})},18000);if(!rr.ok||!jj.invite_code)throw Object.assign(new Error(jj.message||jj.error||"invite_failed"),{code:jj.error||"invite_failed"});const code=jj.invite_code;state.alliance.id=jj.alliance?.id||state.alliance.id;state.alliance.server_id=jj.alliance?.server_id||state.player?.server_id||state.alliance.server_id;state.alliance.tag=jj.alliance?.tag||state.alliance.tag;state.alliance.name=jj.alliance?.name||state.alliance.name;state.alliance.invite_code=code;state.alliance.role=jj.role||state.alliance.role;state.alliance.management_verified=jj.scope_verified===true&&["R4","R5"].includes(normalizedRole(jj.role));state.vs.our_alliance=state.alliance.tag;state.sync.sources={...state.sync.sources,alliance:true};saveState();inviteMessage(t("alliance_invite_ready_scoped",{server:state.alliance.server_id||state.player?.server_id||"—",alliance:state.alliance.tag||"—"}),true);const url=`${location.origin}${location.pathname}?join=${encodeURIComponent(code)}`,text=`WarBoost · ${t("server")} ${state.alliance.server_id||state.player?.server_id||"—"} · ${state.alliance.tag||"—"} · ${code}`;try{if(navigator.share)await navigator.share({title:`WarBoost · ${t("alliance")}`,text,url});else{await navigator.clipboard.writeText(`${text}\n${url}`);if(btn){btn.textContent=t("copy");setTimeout(()=>{btn.textContent=t("share")},1400)}}}catch{}}catch(e){const key={manager_role_required:"alliance_invite_manager_only",manager_roster_match_required:"alliance_manager_roster_match_required",manager_roster_role_required:"alliance_invite_manager_only",alliance_roster_identity_ambiguous:"alliance_roster_identity_ambiguous",lastwar_nickname_required:"lastwar_nickname_required",lastwar_server_required:"lastwar_server_required",lastwar_alliance_required:"lastwar_alliance_required",alliance_space_exists_invitation_required:"alliance_space_exists_invitation_required",alliance_owner_scope_conflict:"alliance_owner_scope_conflict",alliance_scope_ambiguous_admin_required:"alliance_scope_ambiguous_admin_required",cloud_save_required:"offline_keep"}[e.code]||"alliance_invite_failed";inviteMessage(t(key))}finally{if(btn){btn.disabled=false;if(btn.textContent==="…")btn.textContent=original||t("share")}}});
 async function joinPendingAlliance(){const code=String(pendingJoinCode()||state.alliance.invite_code||"").trim();if(!code||!state.player.name||!cloudSession?.access_token||!betaAccessAllowed()||!betaConsentAccepted())return false;try{const {response:r,json:j}=await fetchJsonBounded("/api/join",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({invite_code:code})},18000);if(!r.ok){const key={alliance_owner_switch_blocked:"alliance_owner_switch_blocked",invite_not_found:"alliance_invite_not_found",lastwar_identity_required:"lastwar_identity_required",lastwar_nickname_required:"lastwar_nickname_required",lastwar_server_required:"lastwar_server_required",lastwar_alliance_required:"lastwar_alliance_required",alliance_scope_not_ready:"alliance_scope_not_ready",alliance_server_mismatch:"alliance_server_mismatch",alliance_tag_mismatch:"alliance_tag_mismatch",alliance_roster_not_ready:"alliance_roster_not_ready",player_not_in_alliance_roster:"player_not_in_alliance_roster",alliance_roster_identity_ambiguous:"alliance_roster_identity_ambiguous",alliance_scope_ambiguous_admin_required:"alliance_scope_ambiguous_admin_required"}[j?.error]||"alliance_join_failed";inviteMessage(t(key));return false}if(j.alliance){state.alliance.id=j.alliance.id||state.alliance.id;state.alliance.server_id=j.alliance.server_id||state.player?.server_id||state.alliance.server_id;state.alliance.tag=j.alliance.tag||state.alliance.tag;state.alliance.name=j.alliance.name||state.alliance.name;state.alliance.role=j.membership?.role||"R1";state.alliance.management_verified=j.scope_verified===true&&["R4","R5"].includes(normalizedRole(state.alliance.role));state.vs.our_alliance=state.alliance.tag;state.sync.sources={...state.sync.sources,alliance:true};clearPendingJoinCode();saveState();inviteMessage(t(j.already_member?"alliance_already_joined":"alliance_joined_scoped",{server:state.alliance.server_id||"—",alliance:state.alliance.tag||"—"}),true);return true}}catch{inviteMessage(t("alliance_join_failed"))}return false}
