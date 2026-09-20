@@ -106,14 +106,14 @@ export default async function handler(req,res){
         }
         resolved.push({idx,name:resolvedName||name,from_role:from,to_role:to,key:canonicalRosterMemberKey(roster[idx],{serverId:server,allianceTag:tag}),resolution:resolution.mode});
       }
-      const next=roster.map(x=>({...x}));
-      for(const x of resolved){next[x.idx]={...next[x.idx],role:x.to_role,updated_at:new Date().toISOString()}}
+       const confirmedAt=new Date().toISOString(),next=roster.map(x=>({...x}));
+       for(const x of resolved){next[x.idx]={...next[x.idx],role:x.to_role,rank_confirmed_at:confirmedAt,rank_confirmed_source:"r5_r4_manual_rank_management",updated_at:confirmedAt}}
       const counts=rankCounts(next);
        const limit=10;
        if((counts.R4||0)>limit)return res.status(409).json({error:"r4_limit",limit,count:counts.R4,message:`Limite R4 dépassée : ${counts.R4}/${limit} après application du batch. Effectue une rétrogradation et une promotion dans la même requête.`});
       const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id||actor.alliance_id,roster:next,expected_updated_at:ctx.alliance.updated_at});
       if(!saved)return res.status(500).json({error:"roster_rank_persist_failed"});
-      return res.status(200).json({ok:true,mode:"roster_rank_batch",changes:resolved.map(({name,from_role,to_role})=>({name,from_role,to_role})),counts});
+       return res.status(200).json({ok:true,mode:"roster_rank_batch",changes:resolved.map(({name,from_role,to_role})=>({name,from_role,to_role})),counts,roster_updated_at:saved.roster_updated_at||saved.updated_at||confirmedAt});
     }
 
     // Existing management-permission transition for linked WarBoost accounts.

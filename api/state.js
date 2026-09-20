@@ -1,4 +1,4 @@
-import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster} from "../lib/supabase.js";
+import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster,updateAllianceScopeRoster} from "../lib/supabase.js";
 import {normalizeState} from "../lib/normalize.js";
 import {recoverHeroData,heroDataSignature} from "../lib/hero-history.js";
 import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../lib/beta-access.js";
@@ -15,6 +15,7 @@ function fastRestoreRequested(req){return String(req.query?.restore||"")==="1"||
 function betaConsentHeader(req){return String(req.headers?.["x-warboost-beta-consent"]||"").trim()}
 function betaAccessError(beta){if(!beta?.configured)return {status:503,code:"BETA_INVITES_NOT_CONFIGURED",message:"Le registre d’invitations WarBoost doit être configuré avant l’ouverture de la bêta."};if(beta?.allowed)return null;const status=String(beta?.access_status||"");return {status:403,code:status==="revoked"?"BETA_INVITE_REVOKED":status==="expired"?"BETA_INVITE_EXPIRED":"BETA_INVITE_REQUIRED",message:status==="revoked"?"Accès bêta WarBoost révoqué":status==="expired"?"Invitation bêta WarBoost expirée":"Invitation bêta WarBoost requise"}}
 function orderedRestoreTrace(trace){const order={AUTH_USER:0,BETA_INVITE:1,BETA_ACCEPT:2,PROFILE_READ:3};return [...trace].sort((a,b)=>(order[a?.stage]??50)-(order[b?.stage]??50))}
+function confirmedRankAt(row){const n=Date.parse(row?.rank_confirmed_at||"");return Number.isFinite(n)?n:0}
 
 // HF8.6.10: a generic player-state save must never overwrite the authoritative
 // Last War roster identity/rank/known metrics with stale browser data.
@@ -23,12 +24,38 @@ async function canonicalizeAllianceState(input,playerId){
   if(!configured())return {state,changed:false,status:"service_unavailable"};
   const ctx=await getAllianceRoster(playerId).catch(()=>null);
   if(!ctx?.alliance)return {state,changed:false,status:"no_alliance"};
-  const canonical=Array.isArray(ctx.roster)?ctx.roster:[];
+  let canonical=Array.isArray(ctx.roster)?ctx.roster:[];
   if(!canonical.length)return {state,changed:false,status:"no_canonical_roster"};
 
   const authoritativeTag=normalizeAllianceTag(ctx.alliance.tag||state.alliance?.tag);
   const authoritativeServer=normalizeServerId(ctx.alliance.server_id||state.player?.server_id);
   const context={serverId:authoritativeServer,allianceTag:authoritativeTag};
+  // A confirmed manual rank change can race an older generic profile save. The
+  // role endpoint writes the confirmation marker to the canonical roster; if a
+  // late /api/state request carries that same newer marker, repair the canonical
+  // row before hydrating the profile. Unmarked browser roles never get this
+  // privilege.
+  const manager=String(ctx.alliance.owner_player_id||"")===String(playerId)||isManagerRole(ctx.membership?.role);
+  if(manager&&ctx.alliance.updated_at&&Array.isArray(state.alliance?.members)){
+    const localByKey=new Map(state.alliance.members.map(row=>[canonicalRosterMemberKey(row,context),row]).filter(([key])=>Boolean(key)));
+    let canonicalChanged=false;
+    canonical=canonical.map(raw=>{
+      const key=canonicalRosterMemberKey(raw,context),local=localByKey.get(key);
+      if(!local||local.rank_confirmed_source!=="r5_r4_manual_rank_management"||confirmedRankAt(local)<=confirmedRankAt(raw))return raw;
+      canonicalChanged=true;
+      return {...raw,role:local.role,rank_confirmed_at:local.rank_confirmed_at,rank_confirmed_source:local.rank_confirmed_source,updated_at:local.updated_at||local.rank_confirmed_at};
+    });
+    if(canonicalChanged){
+      try{
+        const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name,roster:canonical,expected_updated_at:ctx.alliance.updated_at});
+        if(saved?.roster)canonical=saved.roster;
+        if(saved?.updated_at)ctx.alliance={...ctx.alliance,...saved};
+      }catch{
+        // Keep the newer confirmed row in the returned profile; a later CAS-safe
+        // request will retry the canonical repair without deleting any data.
+      }
+    }
+  }
   const canonicalWithPresence=markCanonicalRosterPresence(canonical,ctx.alliance.roster_updated_at);
   const canonicalWithKeys=canonicalWithPresence.map(raw=>{
     const row={...raw,server_id:normalizeServerId(raw?.server_id)||authoritativeServer,alliance_tag:normalizeAllianceTag(raw?.alliance_tag)||authoritativeTag};
@@ -71,7 +98,8 @@ async function canonicalizeAllianceState(input,playerId){
     identity_link_status:ownLink.status,
     members:activeRoster,
     r5_sync_required:Boolean(preservedR5.preserved),
-    unlinked_accounts:identityMerge.unlinked_accounts
+    unlinked_accounts:identityMerge.unlinked_accounts,
+    roster_updated_at:ctx.alliance.roster_updated_at||state.alliance?.roster_updated_at||null
   };
   const before=JSON.stringify({id:state.alliance?.id,server_id:state.alliance?.server_id,tag:state.alliance?.tag,role:state.alliance?.role,members:state.alliance?.members||[],unlinked_accounts:state.alliance?.unlinked_accounts||[]});
   const after=JSON.stringify({id:nextAlliance.id,server_id:nextAlliance.server_id,tag:nextAlliance.tag,role:nextAlliance.role,members:nextAlliance.members||[],unlinked_accounts:nextAlliance.unlinked_accounts||[]});

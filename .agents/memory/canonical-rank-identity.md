@@ -20,3 +20,9 @@ Authenticated fast restore is not authoritative for roster controls. Rank manage
 **Why:** The login-critical restore can read a profile before the canonical alliance roster is available, leaving stable keys absent while the UI appears authenticated.
 
 **How to apply:** Treat `restore=1` as provisional until roster canonicalization succeeds, and fail closed for rank/selection mutations while a normal canonical restore is pending.
+
+Confirmed rank changes are versioned by `rank_confirmed_at` and `rank_confirmed_source`. A later merge may not replace a confirmed rank with an unmarked row, even when the unmarked row has a newer generic `updated_at`.
+
+**Why:** Generic profile saves, restore retries, and roster syncs can complete out of order. Generic timestamps describe the profile write, not the business event that confirmed the rank, so using them alone reintroduced R3 after R3→R4.
+
+**How to apply:** Preserve the confirmation fields through normalization, client hydration, canonical roster merges, and profile saves. A manager-authorized state save may CAS-repair the canonical roster when it carries a strictly newer manual confirmation; stale or unmarked rows remain non-authoritative.
