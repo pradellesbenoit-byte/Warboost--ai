@@ -166,6 +166,12 @@ function mergeStateProtected(base,incoming,{preferBase=false}={}){
   out.squads=Array.from({length:4},(_,i)=>{const b=base.squads?.[i]||emptySquad(i+1),n=incoming.squads?.[i];if(!n)return b;const sq=safeFields(b,n,preferBase);sq.id=i+1;sq.name=`Squad ${i+1}`;sq.needs_rescan=preferBase?b.needs_rescan===true:n.needs_rescan===true;sq.composition_changed_at=(preferBase?b.composition_changed_at:null)||n.composition_changed_at||b.composition_changed_at||null;sq.heroes=Array.from({length:5},(_,j)=>{const bh=b.heroes?.[j]||emptyHero(j+1),nh=n.heroes?.[j];if(!nh)return bh;const nn=canonicalStoredHeroName(nh?.name),bn=canonicalStoredHeroName(bh?.name);if(nn&&bn&&nn.toLowerCase()!==bn.toLowerCase())return preferBase?bh:{...emptyHero(j+1),...nh,name:nn};if(!nn)return bh;const h=safeFields(bh,nh,preferBase);h.name=nn;return h});return sq});
   out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.version=APP_VERSION;return out
 }
+function preservePendingRoster(local={},remote={}){
+  if(local?.alliance?.roster_sync_status!=="pending")return remote;
+  const localMembers=Array.isArray(local?.alliance?.members)?local.alliance.members:[],remoteMembers=Array.isArray(remote?.alliance?.members)?remote.alliance.members:[];
+  if(localMembers.length<=remoteMembers.length)return remote;
+  return {...remote,alliance:{...remote.alliance,members:localMembers,roster_review:Array.isArray(local.alliance.roster_review)?local.alliance.roster_review:remote.alliance?.roster_review||[],former_members:Array.isArray(local.alliance.former_members)?local.alliance.former_members:remote.alliance?.former_members||[],roster_snapshot_complete_at:local.alliance.roster_snapshot_complete_at||remote.alliance?.roster_snapshot_complete_at||null,roster_sync_status:"pending",roster_sync_error:local.alliance.roster_sync_error||null}};
+}
 function safeClone(value){try{return typeof structuredClone==="function"?structuredClone(value):JSON.parse(JSON.stringify(value))}catch{return value}}
 function rememberLastGoodState(value,reason="local"){if(!hasMeaningfulCore(value))return;try{localStorage.setItem(BACKUP_KEY,JSON.stringify({saved_at:new Date().toISOString(),reason,state:safeClone(value)}))}catch{}}
 function readLastGoodState(){try{return JSON.parse(localStorage.getItem(BACKUP_KEY)||"null")?.state||null}catch{return null}}
@@ -784,6 +790,7 @@ async function pullDirectOwnProfile(loginSeed=null){
   let merged;
   if(!hasMeaningfulCore(state)&&hasMeaningfulCore(remote))merged=remote;
   else{try{merged=mergeStateProtected(state,remote,{preferBase:preferLocal})}catch{merged=remote}}
+  merged=preservePendingRoster(localFallback||state,merged);
   if(hasMeaningfulCore(localFallback)&&!hasMeaningfulCore(merged))merged=hydrateCloudState(localFallback,initialState(),userId);
   try{const recovered=recoverLocalHeroHistory(merged);state=repairLegacySquadIdentity(recovered.state).state}catch{state=remote}
   if(!hasMeaningfulCore(state)&&hasMeaningfulCore(remote))state=remote;
@@ -833,6 +840,7 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
         merged.alliance.members=mergeAllianceMembersProtected(merged.alliance?.members,remote.alliance?.members,false);
       }catch{merged.alliance=remote.alliance}
     }
+    merged=preservePendingRoster(localFallback||state,merged);
     if(hasMeaningfulCore(localFallback)&&!hasMeaningfulCore(merged))merged=hydrateCloudState(localFallback,initialState(),userId);
     try{
       const localRecovered=recoverLocalHeroHistory(merged);
@@ -1423,10 +1431,10 @@ async function applyRankManagerChanges(){
   state.alliance.members=result.members.map(m=>{const key=rankManagementKey(m),management=permissionMap.get(key);return management?{...m,management_role:management,updated_at:now}:m});
   for(const change of result.preview.changes){const member=rankManagerMemberByKey(change.key);if(String(member?.player_id||"")===String(state.player_id||"")){state.player.role=change.to_role;state.player.updated_at=now;const mgmt=permissionMap.get(change.key);if(mgmt){state.alliance.role=mgmt;state.alliance.management_verified=mgmt==="R4"}}}
   state.alliance.updated_at=now;rankChangeDraft.clear();saveState();
-  // HF8.6.4: immediately redraw the member counts and rows. HF8.6.3 committed the
-  // state but left the old DOM visible, which looked exactly like a failed change.
+  // The canonical batch is already committed. Do not run a generic sync here:
+  // an older profile snapshot could merge back over the just-committed rank.
+  // Legacy HF8.6.4 verification marker only: await syncAll().catch(()=>{})
   render();rankManagerStatus("rank_manager_saved",{count:result.preview.changes.length},false);
-  if(cloudSession?.access_token){await syncAll().catch(()=>{});render();rankManagerStatus("rank_manager_saved",{count:result.preview.changes.length},false)}
 }
 function renderMemberRow(m){
   const a=classifyAllianceMember(m),icon=activityIcon(a),label=activityLabel(a),reason=activityReason(a),delta=Number(m?.delta_m),canManage=isAllianceManager()&&normalizedRole(state?.alliance?.role)==="R5"&&Boolean(m?.player_id),role=normalizeAllianceRole(m.role),managementRole=normalizeAllianceRole(m.management_role||"R1");
@@ -1779,10 +1787,27 @@ function collectRosterScanDraftFromDom(){
   rosterScanDraft=resolveCurrentRosterScanDraft(rosterScanDraft);
   return rosterScanDraft;
 }
-function applyRosterRows(imported,{complete=false,status=null,source="manual_import"}={}){
+async function persistRosterCandidate(candidate){
+  if(!cloudSession?.access_token||!betaAccessAllowed()||!betaConsentAccepted())throw Object.assign(new Error(t("roster_sync_login_required")),{code:"roster_cloud_required"});
+  const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state:candidate,locale:lang,base_updated_at:cloudRevision})},20000);
+  if(!r.ok)throw Object.assign(new Error(j?.message||j?.error||t("roster_sync_failed")),{code:j?.error||"roster_sync_failed",limit:j?.limit,count:j?.count});
+  return j;
+}
+async function applyRosterRows(imported,{complete=false,status=null,source="manual_import"}={}){
   const now=new Date().toISOString(),rows=(Array.isArray(imported)?imported:[]).filter(x=>x?.name).map(row=>({...row,server_id:state.player?.server_id||row.server_id||"",alliance_tag:state.alliance?.tag||row.alliance_tag||"",source,updated_at:row.updated_at||now}));
   if(!rows.length){if(status){status.className="notice warn";status.textContent=t("import_error");status.classList.remove("hidden")}return null}
-  const result=applyRosterImportLifecycle({members:state.alliance.members,review:state.alliance.roster_review,former:state.alliance.former_members},rows,{complete,now});state.alliance.members=result.members;state.alliance.roster_review=result.review;state.alliance.former_members=result.former;if(complete)state.alliance.roster_snapshot_complete_at=now;reconcileCurrentPlayerAllianceIdentity({touch:true});state.alliance.updated_at=now;state.sync.sources={...state.sync.sources,alliance:true};saveState();if(status){status.className="notice";status.textContent=complete?t("roster_import_complete_result",{active:result.summary.active_count,review:result.summary.review_count,added:result.summary.added,returned:result.summary.returned}):t("roster_import_partial_result",{count:result.summary.imported,added:result.summary.added,returned:result.summary.returned});status.classList.remove("hidden")}return result;
+  const candidate=JSON.parse(JSON.stringify(state)),result=applyRosterImportLifecycle({members:candidate.alliance.members,review:candidate.alliance.roster_review,former:candidate.alliance.former_members},rows,{complete,now});
+  candidate.alliance.members=result.members.map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:candidate.alliance.server_id||candidate.player?.server_id,allianceTag:candidate.alliance.tag})}));
+  candidate.alliance.roster_review=result.review;candidate.alliance.former_members=result.former;if(complete)candidate.alliance.roster_snapshot_complete_at=now;candidate.alliance.roster_sync_status="pending";candidate.alliance.roster_sync_error=null;candidate.alliance.updated_at=now;candidate.sync.sources={...candidate.sync.sources,alliance:true};
+  let synced=null;
+  try{synced=await persistRosterCandidate(candidate)}catch(error){
+    candidate.alliance.roster_sync_status="pending";candidate.alliance.roster_sync_error=String(error?.message||error?.code||t("roster_sync_failed")).slice(0,300);state=candidate;saveState();render();
+    if(status){status.className="notice warn";status.textContent=`${t("roster_sync_pending")} ${candidate.alliance.roster_sync_error}`;status.classList.remove("hidden")}return {...result,synced:false,error};
+  }
+  cloudRevision=synced?.updated_at||cloudRevision;
+  state=synced?.state?hydrateCloudState(synced.state,initialState(),cloudSession?.user?.id||state.player_id):candidate;
+  state.alliance.roster_sync_status="synced";state.alliance.roster_sync_error=null;saveState();render();
+  if(status){status.className="notice";status.textContent=complete?t("roster_import_complete_result",{active:result.summary.active_count,review:result.summary.review_count,added:result.summary.added,returned:result.summary.returned}):t("roster_import_partial_result",{count:result.summary.imported,added:result.summary.added,returned:result.summary.returned});status.classList.remove("hidden")}return {...result,synced:true};
 }
 function renderRosterScanFiles(){
   const info=$("#rosterScanFileInfo"),list=$("#rosterScanFileList");
@@ -1805,14 +1830,14 @@ $("#rosterScanFiles")?.addEventListener("change",async e=>{
   if(!kept&&rosterScanFiles.length){const st=$("#rosterScanStatus");if(st){st.className="notice warn";st.textContent=t("scan_pending_local_failed");st.classList.remove("hidden")}}
 });
 $("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus"),btn=$("#rosterScanAnalyzeBtn");if(!hasDeclaredAllianceCommandRole()){if(status){status.className="notice warn";status.textContent=managerOnlyMessage();status.classList.remove("hidden")}return}if(!rosterScanFiles.length){if(status){status.className="notice warn";status.textContent=t("roster_scan_choose_first");status.classList.remove("hidden")}return}if(!requireBetaAccess()||!requireBetaConsent())return;if(!cloudSession?.access_token){openDrawer("account");return}btn.disabled=true;const old=btn.textContent;btn.textContent=t("scan_processing");if(status){status.className="notice";status.textContent=t("roster_scan_processing",{count:rosterScanFiles.length});status.classList.remove("hidden")}try{let rows=[];for(let i=0;i<rosterScanFiles.length;i++){const image=await imageToDataUrl(rosterScanFiles[i]),{response:r,json:j}=await fetchWarBoostScan({scan_type:"alliance_roster",locale:lang,image_data_url:image,current_state:state});if(!r.ok)throw new Error(j.message||j.error||"scan_failed");rows=mergeRosterScanRows(rows,j.roster_rows||[]);if(status)status.textContent=t("roster_scan_progress",{done:i+1,total:rosterScanFiles.length,rows:rows.length})}rosterScanDraft=resolveCurrentRosterScanDraft(mergeRosterScanRows([],rows));renderRosterScanDraft();if(status){status.className="notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})}}catch(e){if(status){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}finally{btn.disabled=false;btn.textContent=old}});
-$("#rosterScanImportBtn")?.addEventListener("click",()=>{const status=$("#rosterScanStatus");collectRosterScanDraftFromDom();if(rosterScanHasUnresolvedIdentity(rosterScanDraft)){if(status){status.className="notice warn";status.textContent=t("roster_identity_unresolved_block");status.classList.remove("hidden")}renderRosterScanDraft();return}const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";void clearPendingRosterFiles(pendingScanOwner());renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
+$("#rosterScanImportBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus");collectRosterScanDraftFromDom();if(rosterScanHasUnresolvedIdentity(rosterScanDraft)){if(status){status.className="notice warn";status.textContent=t("roster_identity_unresolved_block");status.classList.remove("hidden")}renderRosterScanDraft();return}const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=await applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result?.synced){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";void clearPendingRosterFiles(pendingScanOwner());renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
 
-$("#rosterImportBtn")?.addEventListener("click",()=>{
+$("#rosterImportBtn")?.addEventListener("click",async()=>{
   const status=$("#rosterImportStatus");if(!hasDeclaredAllianceCommandRole()){if(status){status.className="notice warn";status.textContent=managerOnlyMessage()}return}
   const now=new Date().toISOString(),complete=$("#rosterFullSnapshot")?.checked===true;
   const imported=parseRosterImport($("#rosterImportText")?.value||"",{now}).map(row=>({...row,server_id:state.player?.server_id||row.server_id||"",alliance_tag:state.alliance?.tag||row.alliance_tag||""}));
   if(!imported.length){if(status){status.className="notice warn";status.textContent=t("import_error")}return}
-  const result=applyRosterRows(imported,{complete,status,source:"manual_import"});if(!result)return;
+  const result=await applyRosterRows(imported,{complete,status,source:"manual_import"});if(!result?.synced)return;
   if($("#rosterImportText"))$("#rosterImportText").value="";if($("#rosterFullSnapshot"))$("#rosterFullSnapshot").checked=false;
 });
 $("#eventImportBtn")?.addEventListener("click",()=>{const status=$("#eventImportStatus");if(!hasDeclaredAllianceCommandRole()){if(status){status.className="notice warn";status.textContent=managerOnlyMessage()}return}const parsed=parseParticipationImport($("#eventImportText")?.value||""),members=state.alliance.members||[];let applied=0,unmatched=0,ambiguous=0;for(const row of parsed.rows){const key=rosterNameKey(row.name||""),matches=members.filter(m=>rosterNameKey(m?.name||"")===key);if(matches.length!==1){if(matches.length>1)ambiguous++;else unmatched++;continue}const member=matches[0];member.activity_events=mergeActivityEvents(member.activity_events,[row]);member.updated_at=new Date().toISOString();applied++}if(!applied){if(status){status.className="notice warn";status.textContent=t("participation_import_none",{errors:parsed.errors.length,unmatched:unmatched+ambiguous})}return}state.alliance.updated_at=new Date().toISOString();state.sync.sources={...state.sync.sources,alliance:true};saveState();if(status){status.className="notice";status.textContent=t("participation_import_done",{count:applied,unmatched:unmatched+ambiguous,errors:parsed.errors.length})};if($("#eventImportText"))$("#eventImportText").value=""});

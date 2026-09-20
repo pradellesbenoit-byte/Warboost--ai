@@ -6,3 +6,4 @@
 - [Canonical rank identity](canonical-rank-identity.md) — hydrate canonical keys before merges; fallback requires one exact identity plus the expected source rank.
 - [Desert Storm selection identity](desert-storm-selection-identity.md) — canonical keys migrate legacy lifecycle aliases without losing selections during filtered rerenders.
 - [Verification environment](verification-environment.md) — beta verification assumes Supabase variables are absent; injected secrets make the configured-state assertions differ.
+- [Canonical roster field boundary](canonical-roster-field-boundary.md) — canonical roster persistence must whitelist gameplay fields and never forward arbitrary imported profile fields.

@@ -1,7 +1,7 @@
 import {configured,getProfile,getAllianceMembership,getAllianceById,getAllianceRoster,setAllianceMemberRole,updateAllianceScopeRoster} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import {normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
-import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLink,canonicalRosterMemberKey,resolveCanonicalRosterMember} from "../lib/alliance-rank-management.js";
+import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLink,canonicalRosterMemberKey,resolveCanonicalRosterMember,dedupeCanonicalRosterRows} from "../lib/alliance-rank-management.js";
 
 function role(v){const r=String(v||"R1").toUpperCase();return /^R[1-5]$/.test(r)?r:"R1"}
 function clean(v,max=120){return String(v??"").trim().slice(0,max)}
@@ -87,7 +87,7 @@ export default async function handler(req,res){
       const ctx=await getAllianceRoster(user.id);
       if(!ctx?.alliance)return res.status(404).json({error:"alliance_not_found"});
       const server=normalizeServerId(ctx.alliance.server_id||alliance.server_id),tag=normalizeAllianceTag(ctx.alliance.tag||alliance.tag);
-      const roster=(Array.isArray(ctx.alliance?.roster)?ctx.alliance.roster:Array.isArray(ctx.roster)?ctx.roster:[]).map(x=>{const row={...x,server_id:normalizeServerId(x?.server_id)||server,alliance_tag:normalizeAllianceTag(x?.alliance_tag)||tag};return {...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:server,allianceTag:tag})}});
+       const roster=dedupeCanonicalRosterRows((Array.isArray(ctx.alliance?.roster)?ctx.alliance.roster:Array.isArray(ctx.roster)?ctx.roster:[]).map(x=>{const row={...x,server_id:normalizeServerId(x?.server_id)||server,alliance_tag:normalizeAllianceTag(x?.alliance_tag)||tag};return {...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:server,allianceTag:tag})}}),{serverId:server,allianceTag:tag});
       if(!roster.length)return res.status(409).json({error:"alliance_roster_not_ready"});
       const resolved=[],seenIndexes=new Set();
       let remainingR5=rankCounts(roster).R5;
@@ -109,7 +109,8 @@ export default async function handler(req,res){
       const next=roster.map(x=>({...x}));
       for(const x of resolved){next[x.idx]={...next[x.idx],role:x.to_role,updated_at:new Date().toISOString()}}
       const counts=rankCounts(next);
-      if((counts.R4||0)>10)return res.status(409).json({error:"r4_limit",limit:10,count:counts.R4});
+       const limit=10;
+       if((counts.R4||0)>limit)return res.status(409).json({error:"r4_limit",limit,count:counts.R4,message:`Limite R4 dépassée : ${counts.R4}/${limit} après application du batch. Effectue une rétrogradation et une promotion dans la même requête.`});
       const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id||actor.alliance_id,roster:next,expected_updated_at:ctx.alliance.updated_at});
       if(!saved)return res.status(500).json({error:"roster_rank_persist_failed"});
       return res.status(200).json({ok:true,mode:"roster_rank_batch",changes:resolved.map(({name,from_role,to_role})=>({name,from_role,to_role})),counts});
