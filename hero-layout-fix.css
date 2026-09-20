@@ -1,0 +1,26 @@
+/* Keep hero cards compact on narrow screens: position, details, then power. */
+.heroRow{
+  grid-template-columns:34px minmax(0,1fr) max-content;
+  gap:9px;
+  padding:8px 2px;
+}
+.heroInfo{min-width:0}
+.heroInfo small{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  margin-top:2px;
+}
+.heroWeaponStats{
+  line-height:1.2;
+  margin-top:2px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.heroPwr{
+  min-width:58px;
+  text-align:right;
+  white-space:nowrap;
+}

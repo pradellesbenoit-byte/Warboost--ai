@@ -1054,14 +1054,14 @@ function render(){
 function squadHasSavedData(sq){return Boolean(sq?.updated_at||Number(sq?.power)>0||(sq?.heroes||[]).some(h=>h?.name||h?.level||h?.stars||h?.power||h?.exclusive||h?.gear))}
 function formatGear(raw){return formatGearSummary(raw,{gearItems:t("gear_items"),level:t("level"),rarity:t("rarity"),rarityLabel:x=>{const k=`rarity_${x}`;return t(k)===k?x:t(k)}})}
 function weaponStatsLine(w){if(!w)return "";const bits=[w.hero_hp_bonus!=null?`${t("exclusive_hp")} +${new Intl.NumberFormat(locale).format(Number(w.hero_hp_bonus))}`:null,w.hero_atk_bonus!=null?`${t("exclusive_atk")} +${new Intl.NumberFormat(locale).format(Number(w.hero_atk_bonus))}`:null,w.hero_def_bonus!=null?`${t("exclusive_def")} +${new Intl.NumberFormat(locale).format(Number(w.hero_def_bonus))}`:null,w.all_damage_resistance_pct!=null?`${t("exclusive_resistance")} ${new Intl.NumberFormat(locale,{maximumFractionDigits:2}).format(Number(w.all_damage_resistance_pct))}%`:null,w.max_skill_level!=null?`${t("exclusive_skill_cap")} ${new Intl.NumberFormat(locale,{maximumFractionDigits:0}).format(Number(w.max_skill_level))}`:null].filter(Boolean);return bits.join(" · ")}
-function heroDetailLine(h,heroName){const bits=[h.level?`${t("level")}${h.level}`:`${t("level")}—`,h.stars?`${h.stars}★`:"★—"];const w=weaponForHero(heroName);if(w){const weaponTitle=w.weapon_name||t("exclusive_weapon");bits.push(`${weaponTitle}${w.level?` ${t("level")}${w.level}`:""}`);if(w.power)bits.push(`${t("exclusive_power")} ${fmtWeaponPower(w.power)}`)}else if(h.exclusive){bits.push(`${t("exclusive_short")} ${h.exclusive}`)}if(h.gear)bits.push(formatGear(h.gear));return {main:bits.join(" · "),stats:weaponStatsLine(w)}}
+function heroDetailLine(h,heroName){const bits=[h.level?`${t("level")}${h.level}`:`${t("level")}—`,h.stars?`${h.stars}★`:"★—"];const w=weaponForHero(heroName);if(w){const weaponTitle=w.weapon_name||t("exclusive_weapon");bits.push(`${weaponTitle}${w.level?` ${t("level")}${w.level}`:""}`)}else if(h.exclusive){bits.push(`${t("exclusive_short")} ${h.exclusive}`)}if(h.gear)bits.push(formatGear(h.gear));return {main:bits.join(" · "),stats:weaponStatsLine(w)}}
 function heroProfileRecord(name){
   const key=normalizedName(name);
   return key?(state.hero_profiles||[]).find(x=>normalizedName(x?.hero_name||x?.name)===key)||null:null;
 }
 function heroPowerForDisplay(squad,hero){
-  const slotPower=confirmedHeroPower(hero?.power),profile=heroProfileRecord(hero?.name),profilePower=confirmedHeroPower(profile?.power);
-  if(profilePower===null)return slotPower;
+  const slotPower=confirmedHeroPower(hero?.power),profile=heroProfileRecord(hero?.name),profilePower=confirmedHeroPower(profile?.power),weaponPower=confirmedHeroPower(weaponForHero(hero?.name)?.power);
+  if(profilePower===null)return slotPower??weaponPower;
   if(slotPower===null)return profilePower;
   const profileAt=Date.parse(profile?.field_updated_at?.power||profile?.updated_at||"")||0;
   const slotAt=Date.parse(squad?.updated_at||"")||0;
