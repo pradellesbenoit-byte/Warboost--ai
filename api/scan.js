@@ -5,6 +5,7 @@ import {normalizeSeasonLifecycle} from "../lib/season-lifecycle.js";
 import {cleanRosterOcrName,rosterIdentityKey} from "../lib/roster-identity-resolution.js";
 import {fetchWithTimeout} from "../lib/http-timeout.js";
 import {canonicalPowerMillions} from "../lib/power-units.js";
+import {parseHeroPower} from "../lib/hero-power.js";
 
 // HF8.6.28 R2 — stable single-pass WarBoost Vision.
 // One screenshot = one bounded provider request. Optional portrait passes are deliberately
@@ -159,7 +160,7 @@ export function sanitize(extracted,now,scanType){
   const out={},forced=String(scanType||"").match(/^squad([1-4])$/i),forcedId=forced?Number(forced[1]):null;
   if(extracted?.player){const p={updated_at:now};for(const k of ["name","server_id","coordinates","role"]){const v=str(extracted.player[k],80);if(v)p[k]=v}const hq=num(extracted.player.hq_level),power=canonicalPowerMillions(extracted.player.power_m);if(hq!=null)p.hq_level=hq;if(power!=null)p.power_m=power;if(Object.keys(p).length>1)out.player=p}
   if(extracted?.drone){const d={updated_at:now},level=num(extracted.drone.level),power=canonicalPowerMillions(extracted.drone.power_m);if(level!=null)d.level=level;if(power!=null)d.power_m=power;if(Object.keys(d).length>1)out.drone=d}
-  if(Array.isArray(extracted?.squads)&&extracted.squads.length){const arr=Array(4).fill(null),source=forcedId?extracted.squads.slice(0,1):extracted.squads.slice(0,4);for(const raw of source){const id=forcedId||Math.max(1,Math.min(4,Number(raw?.id)||1)),q={id,name:`Squad ${id}`,updated_at:now};const power=canonicalPowerMillions(raw?.power_m??raw?.power);if(power!=null)q.power=power;if(Array.isArray(raw?.heroes)){q.heroes=Array.from({length:5},(_,i)=>{const h=raw.heroes[i]||{},x={};const name=heroNameFromVisibleText(h);if(name)x.name=name;for(const k of ["level","stars","power"]){const v=num(h?.[k]);if(v!=null)x[k]=v}const ex=str(h?.exclusive,100);if(ex)x.exclusive=ex;const gear=sanitizeGear(h?.gear);if(gear)x.gear=gear;return x})}else if(forcedId)q.heroes=Array.from({length:5},()=>({}));arr[id-1]=q}out.squads=arr}
+   if(Array.isArray(extracted?.squads)&&extracted.squads.length){const arr=Array(4).fill(null),source=forcedId?extracted.squads.slice(0,1):extracted.squads.slice(0,4);for(const raw of source){const id=forcedId||Math.max(1,Math.min(4,Number(raw?.id)||1)),q={id,name:`Squad ${id}`,updated_at:now};const power=canonicalPowerMillions(raw?.power_m??raw?.power);if(power!=null)q.power=power;if(Array.isArray(raw?.heroes)){q.heroes=Array.from({length:5},(_,i)=>{const h=raw.heroes[i]||{},x={};const name=heroNameFromVisibleText(h);if(name)x.name=name;const level=num(h?.level),stars=num(h?.stars),heroPower=parseHeroPower(h?.power);if(level!=null)x.level=level;if(stars!=null)x.stars=stars;if(heroPower!=null)x.power=heroPower;const ex=str(h?.exclusive,100);if(ex)x.exclusive=ex;const gear=sanitizeGear(h?.gear);if(gear)x.gear=gear;return x})}else if(forcedId)q.heroes=Array.from({length:5},()=>({}));arr[id-1]=q}out.squads=arr}
   const rawWeapons=Array.isArray(extracted?.exclusive_weapons)?extracted.exclusive_weapons:
     Array.isArray(extracted?.exclusiveWeapons)?extracted.exclusiveWeapons:
     extracted?.exclusive_weapon?[extracted.exclusive_weapon]:
