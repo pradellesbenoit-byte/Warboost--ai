@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {parseHeroPower,confirmedHeroPower,confirmedHeroPowerMillions} from "../lib/hero-power.js";
 import {normalizeState} from "../lib/normalize.js";
-import {reconcileConfirmedSquad,synchronizeHeroProfiles} from "../lib/squad-identity.js";
+import {reconcileConfirmedSquad,synchronizeHeroProfiles,mergeConfirmedExclusiveWeaponPowers} from "../lib/squad-identity.js";
 
 assert.equal(parseHeroPower("5,65 M"),5_650_000);
 assert.equal(parseHeroPower("5.11M"),5_110_000);
@@ -65,5 +65,28 @@ const noTotal=normalizeState({squads:[{},{
 assert.equal(confirmedHeroPowerMillions(noTotal.squads[1].power),39.73);
 assert.equal(noTotal.squads[1].power_sync_status,"pending");
 assert.equal(confirmedHeroPowerMillions(noTotal.squads[1].heroes[0].power),5.65);
+
+const exclusiveBase=normalizeState({
+  squads:[{},{
+    power:"39.73 M",
+    power_sync_status:"confirmed",
+    heroes:[{name:"DVA",power:"5.65 M"},{name:"Lucius",power:"5.53 M"},{name:"Skyler",power:"5.11 M"},{name:"Morrison",power:"5.1 M"},{name:"Carlie",power:null}]
+  },{},{}],
+  exclusive_weapons:[{hero_name:"Carlie",level:2,power:4000000}]
+});
+const exclusiveApplied=mergeConfirmedExclusiveWeaponPowers(exclusiveBase,{
+  weapons:[{hero_name:"Carlie",level:3,power:5665085}],
+  updatedAt:"2026-09-20T11:00:00Z"
+}).state;
+assert.equal(confirmedHeroPowerMillions(exclusiveApplied.squads[1].heroes[4].power),5.665085);
+assert.equal(confirmedHeroPowerMillions(exclusiveApplied.squads[1].power),39.73);
+assert.equal(exclusiveApplied.hero_profiles.filter(x=>x.hero_name==="Carlie").length,1);
+assert.equal(exclusiveApplied.hero_profiles.find(x=>x.hero_name==="Carlie").power,5665085);
+const partialExclusive=mergeConfirmedExclusiveWeaponPowers(exclusiveApplied,{
+  weapons:[{hero_name:"Carlie",level:4,power:0},{hero_name:"Carlie",level:5}],
+  updatedAt:"2026-09-20T12:00:00Z"
+}).state;
+assert.equal(partialExclusive.squads[1].heroes[4].power,5665085);
+assert.equal(partialExclusive.hero_profiles.filter(x=>x.hero_name==="Carlie").length,1);
 
 console.log("PASS: hero powers normalize across units, confirmed values survive partial scans, zeros stay unknown, and squad totals can be marked pending without losing history");

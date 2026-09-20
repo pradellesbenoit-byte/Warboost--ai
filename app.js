@@ -2,7 +2,7 @@ import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {HERO_CATALOG,canonicalHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
 import {canonicalShopStore} from "./lib/shop-catalog.js";
-import {reconcileConfirmedSquad,repairLegacySquadIdentity,swapSquads,selectPrimarySquad,squadHasData} from "./lib/squad-identity.js";
+import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,swapSquads,selectPrimarySquad,squadHasData} from "./lib/squad-identity.js";
 import {recoverHeroData} from "./lib/hero-history.js";
 import {parseRosterImport,rosterNameKey} from "./lib/roster-import.js";
 import {applyRosterImportLifecycle,confirmRosterDeparture,restoreRosterReviewMember,removeActiveRosterMember,reinstateFormerRosterMember,rosterLifecycleKey,currentActiveRosterMembers} from "./lib/alliance-roster-lifecycle.js";
@@ -376,7 +376,9 @@ function saveConfirmedExclusiveScan(){
   const confirmed=collectExclusiveConfirmation(),status=$("#scanStatus");
   if(!confirmed.some(w=>w.hero_name||w.weapon_name||w.level!==undefined||w.power!==undefined)){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_required")}return false}
   const now=new Date().toISOString();
-  state=repairLegacySquadIdentity(mergeStateProtected(state,{exclusive_weapons:confirmed},{preferBase:false})).state;
+  const staged=mergeStateProtected(state,{exclusive_weapons:confirmed},{preferBase:false});
+  state=mergeConfirmedExclusiveWeaponPowers(staged,{weapons:confirmed,updatedAt:now}).state;
+  state=repairLegacySquadIdentity(state,{now}).state;
   state.sync.last_scan=state.sync.last_scan||now;state.sync.sources={...state.sync.sources,scan:true};recordProgressionSnapshot("scan_exclusive",state.sync.last_scan);saveState();
   pendingExclusiveScan=[];$("#exclusiveConfirmPanel")?.classList.add("hidden");
   if(status){status.className="notice";status.textContent=t("scan_exclusive_confirmed")}
