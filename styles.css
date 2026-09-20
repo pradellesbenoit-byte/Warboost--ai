@@ -1,3 +1,4 @@
+.squad.open .squadBody:not(.hidden):not([hidden]){display:block}.squad:not(.open) .squadBody,.squadBody.hidden,.squadBody[hidden]{display:none!important}
 .dsSearchBox{min-height:18px;outline:none}.dsSearchBox:empty:before{content:attr(data-placeholder);color:#71819a}.dsSearchBox[contenteditable="false"]{opacity:.7;cursor:not-allowed}.rankManagerSearchBox{width:100%;min-height:44px;padding:12px;border:1px solid #283855;border-radius:13px;background:#0c1421;color:#fff}.rankManagerSearchBox:focus{border-color:#51e2ff;box-shadow:0 0 0 2px rgba(81,226,255,.16)}
 :root{
   color-scheme:dark;
