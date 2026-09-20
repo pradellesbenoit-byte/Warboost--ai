@@ -330,28 +330,22 @@ reconcileCurrentPlayerAllianceIdentity();
 let voiceGreetedSections=new Set(),availableVoices=[];
 const openRosterRoles=new Set();
 let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pendingExclusiveScan=[];
-const SQUAD_COLLAPSE_KEY="warboost.squad-collapse.v1";
-function readCollapsedSquads(){
+const SQUAD_ACCORDION_KEY="warboost.squad-accordion.v2";
+function readSquadAccordionState(){
+  const result=new Map([1,2,3,4].map(id=>[id,false]));
   try{
-    const value=JSON.parse(localStorage.getItem(SQUAD_COLLAPSE_KEY)||"null");
-    if(Array.isArray(value))return new Set(value.map(Number).filter(id=>id>=1&&id<=4));
+    const value=JSON.parse(localStorage.getItem(SQUAD_ACCORDION_KEY)||"null");
+    if(value&&typeof value==="object"){
+      for(const id of [1,2,3,4])if(Object.prototype.hasOwnProperty.call(value,String(id)))result.set(id,value[id]===true);
+    }
   }catch{}
-  return new Set([1,2,3,4]);
+  return result;
 }
-const collapsedSquads=readCollapsedSquads();
-function persistCollapsedSquads(){try{localStorage.setItem(SQUAD_COLLAPSE_KEY,JSON.stringify([...collapsedSquads].sort((a,b)=>a-b)))}catch{}}
-function applySquadExpandedState(id,expanded,root=document){
-  const el=root.querySelector?.(`#squadList .squad[data-squad-id="${id}"]`)||document.querySelector(`#squadList .squad[data-squad-id="${id}"]`);
-  if(expanded)collapsedSquads.delete(id);else collapsedSquads.add(id);
-  if(el){
-    el.classList.toggle("open",expanded);
-    const head=el.querySelector(".squadHead"),body=el.querySelector(".squadBody");
-    head?.setAttribute("aria-expanded",String(expanded));
-    body?.classList.toggle("hidden",!expanded);
-    if(body){body.hidden=!expanded;body.style.setProperty("display",expanded?"block":"none","important")}
-    body?.setAttribute("aria-hidden",String(!expanded));
-  }
-  persistCollapsedSquads();
+const squadAccordionState=readSquadAccordionState();
+function persistSquadAccordionState(){
+  try{
+    localStorage.setItem(SQUAD_ACCORDION_KEY,JSON.stringify(Object.fromEntries([...squadAccordionState].map(([id,open])=>[id,open]))));
+  }catch{}
 }
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
 function resetPendingScanUi(){scanImageData=null;scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveScan=[];const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft()}
@@ -1136,19 +1130,29 @@ function performSquadSwap(fromId,toId){
 function renderSquads(){
   const box=$("#squadList");if(!box)return;box.innerHTML="";
   state.squads.forEach((sq,i)=>{
-    const id=i+1,el=document.createElement("div");el.className="squad";el.dataset.squadId=String(id);
+    const id=i+1,shell=document.createElement("div");shell.className="squadShell";
     const name=`${t("squad")} ${id}`,optional4=i===3&&!squadHasSavedData(sq),freshness=optional4?t("optional_squad4"):(sq.needs_rescan?t("sync_needed"):(sq.updated_at?updatedLabel(sq.updated_at):t("sync_needed")));
     const needsHeroConfirm=!optional4&&(sq.heroes||[]).some(h=>isGenericHeroName(h?.name))&&squadHasSavedData(sq);
     const swapTargets=squadHasSavedData(sq)?state.squads.map((target,ti)=>({id:ti+1,target})).filter(x=>x.id!==id&&squadHasSavedData(x.target)):[];
     const swapButton=swapTargets.length?`<button class="squadSwapBtn" type="button" data-squad-swap-toggle="${id}" aria-label="${esc(t("squad_swap_aria",{squad:id}))}" title="${esc(t("squad_swap"))}">⇄</button>`:"";
     const swapMenu=swapTargets.length?`<div class="squadSwapMenu hidden" data-squad-swap-menu="${id}"><span>${esc(t("squad_swap_with"))}</span>${swapTargets.map(x=>`<button type="button" class="squadSwapTarget" data-squad-swap-target="${x.id}">${esc(t("squad"))} ${x.id}</button>`).join("")}</div>`:"";
-      const isExpanded=!collapsedSquads.has(id);
-      el.classList.toggle("open",isExpanded);
-      el.innerHTML=`<div class="squadHeaderRow"><button class="squadHead" type="button" aria-expanded="${isExpanded?"true":"false"}" aria-controls="squadBody${id}"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true">⌄</span></button>${swapButton}</div>${swapMenu}<div id="squadBody${id}" class="squadBody${isExpanded?"":" hidden"}" aria-hidden="${isExpanded?"false":"true"}" style="display:${isExpanded?"block":"none"}"${isExpanded?"":" hidden"}>${(sq.heroes||[]).map((h,j)=>{const hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtConfirmedHeroPower(heroPowerForDisplay(sq,h)))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div>`;
-     el.querySelector(".squadHead")?.addEventListener("click",()=>applySquadExpandedState(id,collapsedSquads.has(id),box));
-    el.querySelector(".squadSwapBtn")?.addEventListener("click",e=>{e.stopPropagation();const menu=el.querySelector(".squadSwapMenu"),willOpen=menu?.classList.contains("hidden");document.querySelectorAll("#squadList .squadSwapMenu").forEach(x=>x.classList.add("hidden"));if(willOpen)menu?.classList.remove("hidden")});
-    el.querySelectorAll(".squadSwapTarget").forEach(btn=>btn.addEventListener("click",e=>{e.stopPropagation();performSquadSwap(id,Number(btn.dataset.squadSwapTarget))}));
-    box.appendChild(el);
+    const isExpanded=squadAccordionState.get(id)===true;
+    shell.innerHTML=`<details class="squad"${isExpanded?" open":""} data-squad-id="${id}"><summary class="squadHead" aria-controls="squadBody${id}"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true">⌄</span></summary><div id="squadBody${id}" class="squadBody">${(sq.heroes||[]).map((h,j)=>{const hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtConfirmedHeroPower(heroPowerForDisplay(sq,h)))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div></details>${swapButton}${swapMenu}`;
+    const details=shell.querySelector("details.squad");
+    details?.addEventListener("toggle",()=>{squadAccordionState.set(id,details.open);persistSquadAccordionState()});
+    const swapBtn=shell.querySelector(".squadSwapBtn");
+    swapBtn?.addEventListener("pointerdown",e=>e.stopPropagation());
+    swapBtn?.addEventListener("click",e=>{
+      e.preventDefault();e.stopPropagation();
+      const menu=shell.querySelector(".squadSwapMenu"),willOpen=menu?.classList.contains("hidden");
+      document.querySelectorAll("#squadList .squadSwapMenu").forEach(x=>x.classList.add("hidden"));
+      if(willOpen)menu?.classList.remove("hidden");
+    });
+    shell.querySelectorAll(".squadSwapTarget").forEach(btn=>{
+      btn.addEventListener("pointerdown",e=>e.stopPropagation());
+      btn.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();shell.querySelector(".squadSwapMenu")?.classList.add("hidden");performSquadSwap(id,Number(btn.dataset.squadSwapTarget))});
+    });
+    box.appendChild(shell);
   });
 }
 
@@ -1817,7 +1821,7 @@ $("#cancelExclusiveConfirmBtn")?.addEventListener("click",()=>{
   const status=$("#scanStatus");if(status){status.className="notice";status.textContent=t("scan_ready")}
 });
 $("#scanType")?.addEventListener("change",()=>{pendingExclusiveScan=[];$("#exclusiveConfirmPanel")?.classList.add("hidden");updateSquadCaptureHelp($("#scanType")?.value||"profile")});
-$("#collapseAllSquadsBtn")?.addEventListener("click",()=>{[1,2,3,4].forEach(id=>collapsedSquads.add(id));persistCollapsedSquads();document.querySelectorAll("#squadList .squad").forEach(el=>{el.classList.remove("open");const body=el.querySelector(".squadBody");el.querySelector(".squadHead")?.setAttribute("aria-expanded","false");body?.classList.add("hidden");if(body){body.hidden=true;body.style.setProperty("display","none","important")}body?.setAttribute("aria-hidden","true")})});
+$("#collapseAllSquadsBtn")?.addEventListener("click",e=>{e.preventDefault();[1,2,3,4].forEach(id=>squadAccordionState.set(id,false));persistSquadAccordionState();document.querySelectorAll("#squadList details.squad").forEach(el=>{el.open=false})});
 $("#squadCaptureHelpBtn")?.addEventListener("click",()=>openSquadCaptureHelp(false));
 $("#squadCaptureAckBtn")?.addEventListener("click",closeSquadCaptureHelp);
 $("#analyzeScanBtn").addEventListener("click",async()=>{if(!scanImageData){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_wait");return}if(!requireBetaAccess()||!requireBetaConsent())return;if(!cloudSession?.access_token){openDrawer("account");authMessage(t("connect_pro"));return}const btn=$("#analyzeScanBtn");btn.disabled=true;btn.textContent=t("scan_processing");$("#scanStatus").className="notice";$("#scanStatus").textContent=t("scan_processing");try{const {response:r,json:j}=await fetchWarBoostScan({scan_type:$("#scanType").value,locale:lang,image_data_url:scanImageData,current_state:state});if(r.ok&&j.state){const scanType=$("#scanType").value;if(!scanResultHasUsefulData(scanType,j.state)){const st=$("#scanStatus");st.className="notice warn";st.textContent=t("scan_error");await savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName});return}const sm=String(scanType||"").match(/^squad([1-4])$/i);let suggestedNames=[],scanSlots=[],scanPowerConfirmed=false;if(sm){const idx=Number(sm[1])-1,incomingSq=j.state.squads?.[idx];scanPowerConfirmed=heroPowerIsConfirmed(incomingSq?.power);if(incomingSq?.heroes){scanSlots=Array.from({length:5},(_,i)=>({...((incomingSq.heroes?.[i]&&typeof incomingSq.heroes[i]==="object")?incomingSq.heroes[i]:{})}));suggestedNames=scanSlots.map(h=>String(h?.name||"").trim());delete incomingSq.heroes}}state=repairLegacySquadIdentity(mergeStateProtected(state,j.state,{preferBase:false})).state;if(sm){const staged=state.squads?.[Number(sm[1])-1];if(staged){if(!scanPowerConfirmed&&heroPowerIsConfirmed(staged.power)){staged.last_confirmed_power=staged.last_confirmed_power??staged.power;staged.power=null;staged.power_sync_status="pending"}else if(scanPowerConfirmed){staged.last_confirmed_power=staged.power;staged.power_sync_status="confirmed"}staged.needs_rescan=true;staged.composition_changed_at=j.scanned_at||new Date().toISOString()}}state.sync.last_scan=j.scanned_at||new Date().toISOString();state.sync.sources={...state.sync.sources,scan:true,};if(["profile","drone","exclusive","awakening"].includes(scanType)||sm)recordProgressionSnapshot(`scan_${scanType}`,j.scanned_at||new Date().toISOString());saveState();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden");if(sm){const count=suggestedNames.filter(Boolean).length;$("#scanStatus").className="notice warn";$("#scanStatus").textContent=count>0?t("hero_auto_recognized",{count}):t("hero_confirm_needed");startHeroConfirmation(Number(sm[1]),suggestedNames,scanSlots)}else{$("#scanStatus").className="notice";$("#scanStatus").textContent=t("scan_saved");closeHeroConfirmation(false);if(scanType==="vs"){render();openDrawer("vs");if(proFeatureAllowed()){const live=await requestAdvice("vs");$("#vsPlanText").textContent=structuredAdviceText("vs",live)}}}}else{const scanStatus=$("#scanStatus");scanStatus.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){scanStatus.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else scanStatus.textContent=j.code==="SCAN_NOT_CONFIGURED"?t("scan_unconfigured"):(j.message||t("scan_error"))}}catch(e){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=e?.message||t("scan_error")}finally{btn.disabled=false;btn.textContent=t("analyze")}});
