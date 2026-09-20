@@ -82,6 +82,14 @@ function textFromResponse(j){
   for(const item of j?.output||[])for(const c of item?.content||[])if(typeof c?.text==="string"&&c.text.trim())return c.text;
   return "";
 }
+function squadCaptureScreenType(extracted){
+  if(!extracted||typeof extracted!=="object")return null;
+  const raw=[extracted.screen_type,extracted.screen,extracted.layout,extracted.screen_title,extracted.title].filter(Boolean).join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  if(!raw)return null;
+  if(/formation[\s_-]*(detail|details)|detail[\s_-]*formation|details[\s_-]*de[\s_-]*la[\s_-]*formation/.test(raw))return "details";
+  if(/formation[\s_-]*(overview|general|preset|current)|team[\s_-]*(overview|screen)|base[\s_-]*formation|prereglage|pre[\s_-]*reglage|formation[\s_-]*actuelle/.test(raw))return "overview";
+  return null;
+}
 function hmsSeconds(v){const m=String(v||"").trim().match(/^(\d{1,2}):(\d{2}):(\d{2})$/);return m?Number(m[1])*3600+Number(m[2])*60+Number(m[3]):null}
 function rosterRole(v){const r=String(v||"").trim().toUpperCase();return /^R[1-5]$/.test(r)?r:null}
 function heroNameFromVisibleText(h){
@@ -193,7 +201,7 @@ For an INDIVIDUAL PLAYER PROFILE, return exactly {"screen_type":"player_profile"
 - If nickname or role cannot be clearly distinguished from the alliance name, omit the player instead of guessing.
 
 Alliance tag expected from WarBoost context is ${allianceTag||"unknown"}. A leading [${allianceTag||"TAG"}] decoration is not part of the nickname when it matches that alliance tag. Preserve genuine nickname characters, spaces and trailing digits. Power ending in M is numeric millions. Never infer hidden members, departures, ranks, HQ values or power.`;
-  if(/^squad[1-4]$/i.test(scanType)){const id=Number(scanType.slice(-1));return `${common} This is Squad ${id}. Focus on the formation/detail panel in the screenshot. Return {"squads":[{"id":${id},"power":number,"heroes":[{"name":string,"name_evidence":"visible_text","name_confidence":number,"level":number,"stars":number,"power":number,"exclusive":string,"gear":string}]}]}. Squad power must be expressed in millions: return 34.29 for a visible 34.29M, never 34290000. Read all 5 hero rows/cards. Hero name is allowed ONLY if the name itself is readable text; do not guess a portrait identity. Read the squad power and every clearly visible level, stars, hero power, exclusive level/text and gear. For gear use count=4;levels=L1,L2,L3,L4;rarity=... when visible. Lv.0 is real data.`}
+  if(/^squad[1-4]$/i.test(scanType)){const id=Number(scanType.slice(-1));return `${common} This is Squad ${id}. First classify the screenshot as screen_type "formation_details", "formation_overview", or "unknown". Use "formation_details" ONLY when the title/details view clearly shows the 5 hero rows/cards and their equipment; use "formation_overview" for the general team/base screen, Formation Preset screen, or Current Formation screen before View Details. If it is "formation_overview", return {"screen_type":"formation_overview"} and do not invent squad or hero values. If it is "formation_details", return {"screen_type":"formation_details","squads":[{"id":${id},"power":number,"heroes":[{"name":string,"name_evidence":"visible_text","name_confidence":number,"level":number,"stars":number,"power":number,"exclusive":string,"gear":string}]}]}. Squad power must be expressed in millions: return 34.29 for a visible 34.29M, never 34290000. Read all 5 hero rows/cards. Hero name is allowed ONLY if the name itself is readable text; do not guess a portrait identity. Read the squad power and every clearly visible level, stars, hero power, exclusive level/text and gear. For gear use count=4;levels=L1,L2,L3,L4;rarity=... when visible. Lv.0 is real data.`}
   if(scanType==="profile")return `${common} Return visible player/account data only as {"player":{"name":string,"server_id":string,"hq_level":number,"power_m":number,"coordinates":string,"role":string},"alliance":{"tag":string,"name":string,"role":string}}.`;
   if(scanType==="drone")return `${common} Return visible drone data only as {"drone":{"level":number,"power_m":number}}.`;
   if(scanType==="exclusive")return `${common} This is an exclusive-weapon detail screen from Last War. The layout and language may vary (for example Arme exclusive / Exclusive Weapon / Arma exclusiva, and Lv., Lvl., Level, Niv. or Niveau). Read only text and numbers that are actually visible.
@@ -232,7 +240,8 @@ export default async function handler(req,res){
     if(!extracted){const message=firstError?.code==="VISION_TIMEOUT"?"L’analyse a dépassé le délai. Réessaie avec la même capture.":firstError?.message||"WarBoost Vision n’est pas configuré sur ce déploiement.";return res.status(503).json({error:"scan_provider_unavailable",code:firstError?.code||"SCAN_NOT_CONFIGURED",message})}
     const now=new Date().toISOString();
     if(scanType==="alliance_roster"){const rows=sanitizeRosterRows(extracted,now,allianceTag);if(!rows.length)return res.status(422).json({error:"scan_no_useful_data",message:"La liste des membres n’a pas pu être lue clairement. Garde la capture et réessaie."});return res.status(200).json({ok:true,engine,scanned_at:now,roster_rows:rows,quality:{row_count:rows.length,requires_confirmation:true,single_pass:true}})}
-    const state=sanitize(extracted,now,scanType);if(!usefulState(scanType,state))return res.status(422).json({error:"scan_no_useful_data",message:"La capture est bien reçue, mais les données utiles ne sont pas assez lisibles. Garde cette capture et réessaie."});
+     if(/^squad[1-4]$/i.test(scanType)&&squadCaptureScreenType(extracted)==="overview")return res.status(422).json({error:"wrong_squad_capture",code:"WRONG_SQUAD_CAPTURE",message:"Cette capture n'est pas la bonne. Dans Last War : Préréglage de Formation → Voir les Détails → prends ensuite la capture “Détails de la formation”."});
+     const state=sanitize(extracted,now,scanType);if(!usefulState(scanType,state))return res.status(422).json({error:"scan_no_useful_data",message:"La capture est bien reçue, mais les données utiles ne sont pas assez lisibles. Garde cette capture et réessaie."});
     return res.status(200).json({ok:true,engine,scanned_at:now,state,quality:{single_pass:true,requires_confirmation:/^squad[1-4]$/i.test(scanType)||scanType==="exclusive",partial_results_allowed:scanType==="exclusive",identity_enrichment_skipped:true}});
   }catch(error){console.error("WarBoost scan R2",{message:error?.message,code:error?.code,status:error?.status});return res.status(error?.status||500).json({error:"scan_failed",code:error?.code||"SCAN_FAILED",message:error?.message||"La capture n’a pas pu être analysée."})}
 }

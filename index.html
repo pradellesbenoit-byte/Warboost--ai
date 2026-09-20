@@ -221,8 +221,22 @@
   <section id="scanDrawer" class="drawer" aria-hidden="true">
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>📷 <span data-i18n="scan_title">WarBoost Scan</span></h2><button class="closeBtn" data-close>×</button></div>
     <div class="section"><p class="heroText" data-i18n="scan_intro">Choisis une capture du jeu. WarBoost Vision lit uniquement les données utiles visibles dans l’image et les fusionne avec ton profil enregistré.</p>
-      <div class="settingsForm">
-        <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="drone">Drone</option><option value="exclusive">Arme exclusive</option><option value="shop">Boutique du jeu</option><option value="vs">VS</option><option value="season">Saison</option></select></div>
+       <div class="settingsForm">
+         <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="drone">Drone</option><option value="exclusive">Arme exclusive</option><option value="shop">Boutique du jeu</option><option value="vs">VS</option><option value="season">Saison</option></select></div>
+         <div id="squadCaptureHelp" class="squadCaptureHelp hidden">
+           <div class="squadCaptureHelpBar"><span data-i18n="scan_squad_capture_hint">Avant de scanner une escouade, utilise l’écran Détails de la formation.</span><button id="squadCaptureHelpBtn" class="textAction" type="button" data-i18n="scan_squad_capture_help_button">Comment faire la bonne capture ?</button></div>
+           <div id="squadCaptureHelpPanel" class="squadCaptureHelpPanel hidden">
+             <div class="sectionTitle"><h3 data-i18n="scan_squad_capture_title">La bonne capture en 3 étapes</h3><span class="pill">3 étapes</span></div>
+             <div id="squadCaptureWrongNotice" class="squadCaptureWrongNotice hidden" data-i18n="scan_wrong_squad_capture">Cette capture n'est pas la bonne. Dans Last War : Préréglage de Formation → Voir les Détails → prends ensuite la capture “Détails de la formation”.</div>
+             <div class="squadCaptureSteps">
+               <div class="squadCaptureStep"><span class="squadCaptureNumber">1</span><div class="squadCaptureStepBody"><div class="squadCaptureMini squadCaptureTeam"><b>ÉQUIPE</b><i></i><i></i><i></i></div><strong data-i18n="scan_squad_capture_step1">Dans Last War, ouvre ton équipe puis appuie sur PRÉRÉGLAGE DE FORMATION</strong></div></div>
+               <div class="squadCaptureStep"><span class="squadCaptureNumber">2</span><div class="squadCaptureStepBody"><div class="squadCaptureMini squadCapturePreset"><b>FORMATION ACTUELLE</b><span>VOIR LES DÉTAILS</span></div><strong data-i18n="scan_squad_capture_step2">Dans Formation actuelle, appuie sur VOIR LES DÉTAILS</strong></div></div>
+               <div class="squadCaptureStep squadCaptureStepGood"><span class="squadCaptureNumber">3</span><div class="squadCaptureStepBody"><div class="squadCaptureMini squadCaptureDetails"><b>✓ DÉTAILS DE LA FORMATION</b><span>5 héros · équipements</span></div><strong data-i18n="scan_squad_capture_step3">Quand tu vois DÉTAILS DE LA FORMATION avec les 5 héros et leurs équipements, prends la capture. C'EST CETTE IMAGE QU'IL FAUT ENVOYER À WARBOOST.</strong><em data-i18n="scan_squad_capture_good">✅ BONNE CAPTURE</em></div></div>
+             </div>
+             <div class="squadCaptureWarning" data-i18n="scan_squad_capture_warning">❌ Ne scanne pas directement l'écran où les héros sont posés sur la base. Cet écran ne montre pas assez d'informations.</div>
+             <button id="squadCaptureAckBtn" class="secondaryBtn wideBtn" type="button" data-i18n="scan_squad_capture_ack">J'ai compris</button>
+           </div>
+         </div>
         <label class="captureButton" for="scanFile"><span>🖼️</span><b data-i18n="choose_capture">Prendre ou choisir une capture</b></label><input id="scanFile" class="hidden" type="file" accept="image/png,image/jpeg,image/webp" />
         <img id="scanPreview" class="scanPreview hidden" alt="Screenshot preview" />
         <button id="clearScanCaptureBtn" class="secondaryBtn wideBtn hidden" type="button" data-i18n="clear_capture">Effacer la capture de cet appareil</button>
