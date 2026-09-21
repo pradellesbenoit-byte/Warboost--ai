@@ -330,23 +330,6 @@ reconcileCurrentPlayerAllianceIdentity();
 let voiceGreetedSections=new Set(),availableVoices=[];
 const openRosterRoles=new Set();
 let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pendingExclusiveScan=[];
-const SQUAD_ACCORDION_KEY="warboost.squad-accordion.v2";
-function readSquadAccordionState(){
-  const result=new Map([1,2,3,4].map(id=>[id,false]));
-  try{
-    const value=JSON.parse(localStorage.getItem(SQUAD_ACCORDION_KEY)||"null");
-    if(value&&typeof value==="object"){
-      for(const id of [1,2,3,4])if(Object.prototype.hasOwnProperty.call(value,String(id)))result.set(id,value[id]===true);
-    }
-  }catch{}
-  return result;
-}
-const squadAccordionState=readSquadAccordionState();
-function persistSquadAccordionState(){
-  try{
-    localStorage.setItem(SQUAD_ACCORDION_KEY,JSON.stringify(Object.fromEntries([...squadAccordionState].map(([id,open])=>[id,open]))));
-  }catch{}
-}
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
 function resetPendingScanUi(){scanImageData=null;scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveScan=[];const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft()}
 async function restorePendingScans(){const owner=pendingScanOwner();try{const pending=await loadPendingSingleScan(owner);if(pending?.image_data_url){scanImageData=pending.image_data_url;scanImageName=pending.name||"capture.jpg";renderScanTypeOptions();const type=$("#scanType");if(type&&[...type.options].some(o=>o.value===pending.scan_type))type.value=pending.scan_type;updateSquadCaptureHelp(type?.value||"profile");const preview=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(preview){preview.src=scanImageData;preview.classList.remove("hidden")}if(clear)clear.classList.remove("hidden");if(status){status.className="notice";status.textContent=t("scan_ready")}}const files=await loadPendingRosterFiles(owner);if(files.length){rosterScanFiles=appendRosterScanFiles([],files,{limit:ROSTER_SCAN_FILE_LIMIT}).files;rosterScanDraft=[];renderRosterScanFiles();renderRosterScanDraft()}}catch{}}
@@ -1179,23 +1162,6 @@ function performSquadSwap(fromId,toId){
     if(note){note.className="notice";note.classList.remove("hidden");note.textContent=t("squad_swap_done",{from,to})}
   }catch{if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("squad_swap_failed")}}
 }
-function applySquadAccordionUi(card,isOpen){
-  if(!card)return;
-  const expanded=Boolean(isOpen),body=card.querySelector(".squadBody"),head=card.querySelector(".squadHead"),chevron=card.querySelector(".chev");
-  card.classList.toggle("open",expanded);
-  card.classList.toggle("closed",!expanded);
-  if(body){body.hidden=!expanded;body.style.display=expanded?"block":"none";body.setAttribute("aria-hidden",expanded?"false":"true")}
-  if(head)head.setAttribute("aria-expanded",expanded?"true":"false");
-  if(chevron)chevron.textContent=expanded?"⌃":"⌄";
-}
-function setSquadAccordion(id,isOpen,{persist=true}={}){
-  const squadId=Number(id),expanded=Boolean(isOpen);
-  squadAccordionState.set(squadId,expanded);
-  const shell=document.querySelector(`#squadList .squadShell[data-squad-id="${squadId}"]`);
-  applySquadAccordionUi(shell?.querySelector(".squad"),expanded);
-  if(persist)persistSquadAccordionState();
-}
-function toggleSquadAccordion(id){setSquadAccordion(id,squadAccordionState.get(Number(id))!==true)}
 function renderSquads(){
   const box=$("#squadList");if(!box)return;box.innerHTML="";
   state.squads.forEach((sq,i)=>{
@@ -1205,12 +1171,8 @@ function renderSquads(){
     const swapTargets=squadHasSavedData(sq)?state.squads.map((target,ti)=>({id:ti+1,target})).filter(x=>x.id!==id&&squadHasSavedData(x.target)):[];
     const swapButton=swapTargets.length?`<button class="squadSwapBtn" type="button" data-squad-swap-toggle="${id}" aria-label="${esc(t("squad_swap_aria",{squad:id}))}" title="${esc(t("squad_swap"))}">⇄</button>`:"";
     const swapMenu=swapTargets.length?`<div class="squadSwapMenu hidden" data-squad-swap-menu="${id}"><span>${esc(t("squad_swap_with"))}</span>${swapTargets.map(x=>`<button type="button" class="squadSwapTarget" data-squad-swap-target="${x.id}">${esc(t("squad"))} ${x.id}</button>`).join("")}</div>`:"";
-    const isExpanded=squadAccordionState.get(id)===true;
-    shell.innerHTML=`<div class="squad ${isExpanded?"open":"closed"}" data-squad-id="${id}"><button class="squadHead" type="button" data-squad-toggle="${id}" aria-controls="squadBody${id}" aria-expanded="${isExpanded?"true":"false"}"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true">${isExpanded?"⌃":"⌄"}</span></button><div id="squadBody${id}" class="squadBody" aria-hidden="${isExpanded?"false":"true"}">${(sq.heroes||[]).map((h,j)=>{const hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtConfirmedHeroPower(heroPowerForDisplay(sq,h)))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div></div>${swapButton}${swapMenu}`;
+    shell.innerHTML=`<div class="squad closed" data-squad-id="${id}"><input class="squadToggle" id="squadToggle${id}" type="checkbox" aria-controls="squadBody${id}" aria-label="${esc(name)}" /><label class="squadHead" for="squadToggle${id}" data-squad-toggle="${id}"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true"></span></label><div id="squadBody${id}" class="squadBody">${(sq.heroes||[]).map((h,j)=>{const hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtConfirmedHeroPower(heroPowerForDisplay(sq,h)))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div></div>${swapButton}${swapMenu}`;
     box.appendChild(shell);
-    const card=shell.querySelector(".squad");
-    applySquadAccordionUi(card,isExpanded);
-    shell.querySelector(".squadHead")?.addEventListener("click",e=>{e.preventDefault();toggleSquadAccordion(id)});
     const swapBtn=shell.querySelector(".squadSwapBtn");
     swapBtn?.addEventListener("pointerdown",e=>e.stopPropagation());
     swapBtn?.addEventListener("click",e=>{
@@ -1895,7 +1857,7 @@ $("#cancelExclusiveConfirmBtn")?.addEventListener("click",()=>{
   const status=$("#scanStatus");if(status){status.className="notice";status.textContent=t("scan_ready")}
 });
 $("#scanType")?.addEventListener("change",()=>{pendingExclusiveScan=[];$("#exclusiveConfirmPanel")?.classList.add("hidden");updateSquadCaptureHelp($("#scanType")?.value||"profile")});
-$("#collapseAllSquadsBtn")?.addEventListener("click",e=>{e.preventDefault();[1,2,3,4].forEach(id=>setSquadAccordion(id,false))});
+$("#collapseAllSquadsBtn")?.addEventListener("click",e=>{e.preventDefault();document.querySelectorAll("#squadList .squadToggle").forEach(input=>{input.checked=false})});
 $("#squadCaptureHelpBtn")?.addEventListener("click",()=>openSquadCaptureHelp(false));
 $("#squadCaptureAckBtn")?.addEventListener("click",closeSquadCaptureHelp);
 $("#analyzeScanBtn").addEventListener("click",async()=>{if(!scanImageData){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_wait");return}if(!requireBetaAccess()||!requireBetaConsent())return;if(!cloudSession?.access_token){openDrawer("account");authMessage(t("connect_pro"));return}const btn=$("#analyzeScanBtn");btn.disabled=true;btn.textContent=t("scan_processing");$("#scanStatus").className="notice";$("#scanStatus").textContent=t("scan_processing");try{const {response:r,json:j}=await fetchWarBoostScan({scan_type:$("#scanType").value,locale:lang,image_data_url:scanImageData,current_state:state});if(r.ok&&j.state){const scanType=$("#scanType").value;if(!scanResultHasUsefulData(scanType,j.state)){const st=$("#scanStatus");st.className="notice warn";st.textContent=t("scan_error");await savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName});return}const sm=String(scanType||"").match(/^squad([1-4])$/i);let suggestedNames=[],scanSlots=[],scanPowerConfirmed=false;if(sm){const idx=Number(sm[1])-1,incomingSq=j.state.squads?.[idx];scanPowerConfirmed=heroPowerIsConfirmed(incomingSq?.power);if(incomingSq?.heroes){scanSlots=Array.from({length:5},(_,i)=>({...((incomingSq.heroes?.[i]&&typeof incomingSq.heroes[i]==="object")?incomingSq.heroes[i]:{})}));suggestedNames=scanSlots.map(h=>String(h?.name||"").trim());delete incomingSq.heroes}}state=repairLegacySquadIdentity(mergeStateProtected(state,j.state,{preferBase:false})).state;if(sm){const staged=state.squads?.[Number(sm[1])-1];if(staged){if(!scanPowerConfirmed&&heroPowerIsConfirmed(staged.power)){staged.last_confirmed_power=staged.last_confirmed_power??staged.power;staged.power=null;staged.power_sync_status="pending"}else if(scanPowerConfirmed){staged.last_confirmed_power=staged.power;staged.power_sync_status="confirmed"}staged.needs_rescan=true;staged.composition_changed_at=j.scanned_at||new Date().toISOString()}}state.sync.last_scan=j.scanned_at||new Date().toISOString();state.sync.sources={...state.sync.sources,scan:true,};if(["profile","drone","exclusive","awakening"].includes(scanType)||sm)recordProgressionSnapshot(`scan_${scanType}`,j.scanned_at||new Date().toISOString());saveState();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden");if(sm){const count=suggestedNames.filter(Boolean).length;$("#scanStatus").className="notice warn";$("#scanStatus").textContent=count>0?t("hero_auto_recognized",{count}):t("hero_confirm_needed");startHeroConfirmation(Number(sm[1]),suggestedNames,scanSlots)}else{$("#scanStatus").className="notice";$("#scanStatus").textContent=t("scan_saved");closeHeroConfirmation(false);if(scanType==="vs"){render();openDrawer("vs");if(proFeatureAllowed()){const live=await requestAdvice("vs");$("#vsPlanText").textContent=structuredAdviceText("vs",live)}}}}else{const scanStatus=$("#scanStatus");scanStatus.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){scanStatus.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else scanStatus.textContent=j.code==="SCAN_NOT_CONFIGURED"?t("scan_unconfigured"):(j.message||t("scan_error"))}}catch(e){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=e?.message||t("scan_error")}finally{btn.disabled=false;btn.textContent=t("analyze")}});
@@ -2179,6 +2141,6 @@ window.addEventListener("focus",()=>{queueCriticalUiRepaint();void reconcileAuth
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){queueCriticalUiRepaint();void reconcileAuthenticatedRuntime("visible")}else if(document.visibilityState==="hidden"&&cloudDirty)void pushServerState({keepalive:true})});
 window.addEventListener("pageshow",e=>{queueCriticalUiRepaint();void reconcileAuthenticatedRuntime(e?.persisted?"pageshow-bfcache":"pageshow")});
 window.addEventListener("pagehide",()=>{if(cloudDirty)void pushServerState({keepalive:true})});
-if("serviceWorker" in navigator)window.addEventListener("load",async()=>{try{const generation="warboost-v2-5-28-hf8-6-28-squad-accordion-r1",reloadKey=`${generation}:reloaded`,reg=await navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"});let refreshing=sessionStorage.getItem(reloadKey)==="1";const activateWaiting=()=>{if(reg.waiting&&sessionStorage.getItem(reloadKey)!=="1")reg.waiting.postMessage({type:"WARBOOST_ACTIVATE"})};navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing||sessionStorage.getItem(reloadKey)==="1")return;refreshing=true;sessionStorage.setItem(reloadKey,"1");location.reload()});activateWaiting();reg.addEventListener("updatefound",()=>{const worker=reg.installing;if(worker)worker.addEventListener("statechange",()=>{if(worker.state==="installed")activateWaiting()})});await reg.update();activateWaiting()}catch{}});
+if("serviceWorker" in navigator)window.addEventListener("load",async()=>{try{const generation="warboost-v2-5-28-hf8-6-28-squad-native-checkbox-r1",reloadKey=`${generation}:reloaded`,reg=await navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"});let refreshing=sessionStorage.getItem(reloadKey)==="1";const activateWaiting=()=>{if(reg.waiting&&sessionStorage.getItem(reloadKey)!=="1")reg.waiting.postMessage({type:"WARBOOST_ACTIVATE"})};navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing||sessionStorage.getItem(reloadKey)==="1")return;refreshing=true;sessionStorage.setItem(reloadKey,"1");location.reload()});activateWaiting();reg.addEventListener("updatefound",()=>{const worker=reg.installing;if(worker)worker.addEventListener("statechange",()=>{if(worker.state==="installed")activateWaiting()})});await reg.update();activateWaiting()}catch{}});
 handleJoinLink();applyLanguage();refreshServerTime();initCloudAuth();render();renderAuth();renderBeta();restorePendingScans();
 // Legacy HF8.6.19 returning-player verification marker: function betaPrivateDataVisible(){const userId=String(cloudSession?.user?.id||"");const trustedLocal=Boolean(userId&&hasMeaningfulCore(readAccountState(userId))),checking=betaState?.access_status==="checking";return Boolean(cloudSession?.user)&&!checking&&betaAccessAllowed()&&betaConsentAccepted()&&(cloudProfileVerified||trustedLocal)}
