@@ -10,3 +10,5 @@
 - [Unified alliance authorization](alliance-authorization.md) — roster writes trust authenticated owner/membership or a uniquely linked canonical manager row, never browser-declared roles.
 - [Confirmed hero power](confirmed-hero-power.md) — parse unit-formatted values centrally; zero/empty hero power is unknown, and partial squad totals must stay pending until reconfirmed.
 - [Exclusive scan confirmation](exclusive-scan-confirmation.md) — stage non-empty OCR results in an editable panel, scroll it into view, and distinguish empty/provider failures before saving.
+- [Mobile accordion verification](mobile-accordion-verification.md) — verify Samsung-sensitive accordion behavior in a real narrow browser viewport, not only with DOM assertions.
+- [GitHub push fallback](github-push-fallback.md) — when the HTTPS remote lacks usable credentials, use the attached GitHub connector and verify the target branch commit.
