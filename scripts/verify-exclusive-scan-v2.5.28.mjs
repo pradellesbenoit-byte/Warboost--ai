@@ -102,6 +102,16 @@ for(const [input,expected] of [
   console.log("PASS: localized Carlie/Carly and Swift exclusive powers survive scan sanitization");
 }
 
+{
+  const state=sanitize({
+    exclusive_weapons:[{hero_name:"Carlie",power:"5.67M?"}]
+  },now,"exclusive");
+  assert.equal(state.exclusive_weapons[0].power,undefined);
+  assert.equal(state.exclusive_weapons[0].power_raw,"5.67M?");
+  assert.equal(state.exclusive_weapons[0].power_parse_status,"needs_verification");
+  console.log("PASS: unreadable visible exclusive power stays editable and unconfirmed");
+}
+
 // Existing squad and Drone scan paths remain useful and valid.
 {
   const drone=sanitize({drone:{level:150}},now,"drone");

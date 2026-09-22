@@ -15,3 +15,4 @@
 - [GitHub push fallback](github-push-fallback.md) — when the HTTPS remote lacks usable credentials, use the attached GitHub connector and verify the target branch commit.
 - [Shared event availability](shared-event-availability.md) — event planning uses explicit, sourced availability; unsourced unknown cloud rows cannot erase confirmed local status.
 - [Current game rule provenance](current-game-rule-provenance.md) — update rules stay explicitly sourced and partial scans cannot erase confirmed eligibility or shop content.
+- [OCR power confirmation](ocr-power-confirmation.md) — retain visibly unreadable power text for manual correction; only parsed positive values may propagate as confirmed hero power.

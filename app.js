@@ -17,7 +17,7 @@ import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan
 import {desertStormMemberKeys,normalizeDesertStormSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
 import {unlockDesertStormSearchInput} from "./lib/desert-storm-search.js";
 import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
-import {CANYON_STORM_RULESET,buildCanyonPlan,normalizeCanyonState,mergeCanyonState} from "./lib/canyon-storm-plan.js";
+import {CANYON_STORM_RULESET,buildCanyonPlan,normalizeCanyonState,mergeCanyonState,clearCanyonPreparationSelection} from "./lib/canyon-storm-plan.js";
 import {normalizeAvailabilityRecord,countAvailabilitySlots,recommendBestSlot} from "./lib/alliance-availability-planner.js";
 import {appendProgressionSnapshot,mergeProgressionSnapshots,progressionComparison,strongestSquadFromState} from "./lib/progression-history.js";
 import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMIT} from "./lib/roster-scan-queue.js";
@@ -373,7 +373,7 @@ function exclusivePower(value){const parsed=parseHeroPower(value);return parsed=
 function renderExclusiveConfirmation(rows=[]){
   pendingExclusiveScan=Array.isArray(rows)?rows.map(x=>({...x})).filter(x=>x&&typeof x==="object"):[];
   const panel=$("#exclusiveConfirmPanel"),box=$("#exclusiveConfirmRows");if(!panel||!box)return false;
-  const usableFields=["hero_name","weapon_name","level","power","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
+  const usableFields=["hero_name","weapon_name","level","power","power_raw","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
   pendingExclusiveScan=pendingExclusiveScan.filter(w=>usableFields.some(field=>w[field]!==undefined&&w[field]!==null&&String(w[field]).trim()!==""));
   if(!pendingExclusiveScan.length){panel.classList.add("hidden");box.innerHTML="";return false}
   box.innerHTML=pendingExclusiveScan.map((w,i)=>`<div class="exclusiveConfirmCard" data-exclusive-index="${i}">
@@ -381,7 +381,7 @@ function renderExclusiveConfirmation(rows=[]){
       <label>${esc(t("hero"))}<input data-exclusive-field="hero_name" value="${esc(w.hero_name||"")}" maxlength="80"/></label>
       <label>${esc(t("exclusive_weapon"))}<input data-exclusive-field="weapon_name" value="${esc(w.weapon_name||"")}" maxlength="120"/></label>
       <label>${esc(t("level"))}<input data-exclusive-field="level" type="number" min="0" max="999" step="1" value="${w.level??""}"/></label>
-       <label>${esc(t("power"))}<input data-exclusive-field="power" type="text" inputmode="decimal" autocomplete="off" value="${esc(w.power??"")}"/></label>
+        <label>${esc(t("power"))}<input data-exclusive-field="power" type="text" inputmode="decimal" autocomplete="off" value="${esc(w.power??w.power_raw??"")}"/><small class="exclusiveDetectedPower">${esc(w.power!==undefined&&w.power!==null?`Puissance détectée : ${w.power}`:w.power_raw?`Puissance détectée à vérifier : ${w.power_raw}`:"Puissance non visible : à rescanner")}</small></label>
       <label>${esc(t("scan_exclusive_hp_bonus"))}<input data-exclusive-field="hero_hp_bonus" type="number" step="any" value="${w.hero_hp_bonus??""}"/></label>
       <label>${esc(t("scan_exclusive_atk_bonus"))}<input data-exclusive-field="hero_atk_bonus" type="number" step="any" value="${w.hero_atk_bonus??""}"/></label>
       <label>${esc(t("scan_exclusive_def_bonus"))}<input data-exclusive-field="hero_def_bonus" type="number" step="any" value="${w.hero_def_bonus??""}"/></label>
@@ -394,14 +394,14 @@ function renderExclusiveConfirmation(rows=[]){
   return pendingExclusiveScan.length>0;
 }
 function exclusiveResultFieldCount(rows=[]){
-  const fields=["hero_name","weapon_name","level","power","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
+  const fields=["hero_name","weapon_name","level","power","power_raw","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
   return new Set(fields.filter(field=>(Array.isArray(rows)?rows:[]).some(w=>w?.[field]!==undefined&&w?.[field]!==null&&String(w[field]).trim()!==""))).size;
 }
 function collectExclusiveConfirmation(){
   const rows=[];$("#exclusiveConfirmRows")?.querySelectorAll("[data-exclusive-index]").forEach(card=>{
     const row={},read=field=>String(card.querySelector(`[data-exclusive-field="${field}"]`)?.value||"").trim();
     const hero=canonicalHeroName(read("hero_name")),weapon=read("weapon_name");if(hero)row.hero_name=hero;if(weapon)row.weapon_name=weapon;
-    const power=exclusivePower(read("power"));if(power!==null)row.power=power;
+    const powerText=read("power"),power=exclusivePower(powerText);if(power!==null)row.power=power;else if(powerText){row.power_raw=powerText;row.power_parse_status="needs_verification";}
     for(const field of ["level","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"]){const value=exclusiveNumber(read(field));if(value!==null)row[field]=value}
     if(Object.keys(row).length)rows.push(row);
   });
@@ -411,7 +411,7 @@ function exclusivePowerNeedsVerification(){
   let invalid=false;
   $("#exclusiveConfirmRows")?.querySelectorAll("[data-exclusive-index]").forEach(card=>{
     const index=Number(card.getAttribute("data-exclusive-index")),staged=pendingExclusiveScan[index]||{};
-    const stagedPower=String(staged.power??"").trim(),hero=canonicalHeroName(String(card.querySelector('[data-exclusive-field="hero_name"]')?.value||"").trim()||staged.hero_name);
+    const stagedPower=String(staged.power??staged.power_raw??"").trim(),hero=canonicalHeroName(String(card.querySelector('[data-exclusive-field="hero_name"]')?.value||"").trim()||staged.hero_name);
     if(!hero||!stagedPower)return;
     const visible=card.querySelector('[data-exclusive-field="power"]')?.value||"";
     if(confirmedHeroPower(exclusivePower(visible))===null)invalid=true;
@@ -420,7 +420,7 @@ function exclusivePowerNeedsVerification(){
 }
 function saveConfirmedExclusiveScan(){
   const confirmed=collectExclusiveConfirmation(),status=$("#scanStatus");
-  if(exclusivePowerNeedsVerification()){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_power_verify")}return false}
+  if(exclusivePowerNeedsVerification()){if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?"Puissance détectée à vérifier. Corrige la valeur avant l’enregistrement.":t("scan_exclusive_power_verify")}return false}
   if(!confirmed.some(w=>w.hero_name||w.weapon_name||w.level!==undefined||w.power!==undefined)){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_required")}return false}
   const now=new Date().toISOString();
   const staged=mergeStateProtected(state,{exclusive_weapons:confirmed},{preferBase:false});
@@ -1721,6 +1721,39 @@ function ensureCanyonState(){
   alliance.canyon=normalizeCanyonState(alliance.canyon);
   return alliance.canyon;
 }
+function canyonSelectionMessage(text,warn=false){
+  const message=$("#canyonStatusMessage");
+  if(!message)return;
+  message.className=`notice${warn?" warn":""}`;
+  message.textContent=text;
+  message.classList.remove("hidden");
+}
+function canyonHasPreparationSelection(canyon){
+  const availability=(canyon?.availability||[]).some(row=>row?.status&&row.status!=="unknown"||String(row?.time_slot||"").trim());
+  const plan=Boolean(canyon?.plan&&(canyon.plan.participants?.length||canyon.plan.substitutes?.length||canyon.plan.confirmation?.length||canyon.plan));
+  return Boolean(availability||plan||canyon?.adjudicator_key);
+}
+function clearCanyonSelection(){
+  const access=desertStormSelectionAccess();
+  if(!access.allowed){
+    canyonSelectionMessage(managerOnlyMessage(),true);
+    return false;
+  }
+  const canyon=ensureCanyonState(),hasSelection=canyonHasPreparationSelection(canyon);
+  if(!hasSelection){
+    canyonSelectionMessage("Aucune sélection à effacer");
+    return false;
+  }
+  const prompt=lang.startsWith("fr")?"Effacer la sélection Tempête du Canyon ?":"Clear the current Canyon Storm selection?";
+  if(!window.confirm(prompt))return false;
+  const now=new Date().toISOString(),members=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members);
+  state.alliance.canyon=clearCanyonPreparationSelection(canyon,members,now);
+  state.alliance.updated_at=now;
+  saveState();
+  renderCanyonPlanner();
+  canyonSelectionMessage(lang.startsWith("fr")?"Sélection Tempête du Canyon effacée.":"Canyon Storm selection cleared.");
+  return true;
+}
 function canyonFactionLabel(value){return ({instigators:"Instaurateurs",scouts:"Éclaireurs",unknown:"Inconnue"})[value]||"Inconnue"}
 function canyonStatusLabel(value){return ({preparation:"Préparation",battle:"Bataille",completed:"Terminé"})[value]||"Préparation"}
 function canyonRoleLabel(value){return ({capture:"Capture",defense_garrison:"Garnison / défense",mobile_reaction:"Mobile / réaction",collection_energy:"Collecte / énergie",adjudicator:"Judicateur"})[value]||"À confirmer"}
@@ -1780,10 +1813,11 @@ function renderCanyonPlan(){
   if(validate)validate.classList.toggle("hidden",Boolean(canyon.validated_at));
 }
 function renderCanyonPlanner(){
-  const section=$("#canyonPlanner");if(!section)return;const canyon=ensureCanyonState(),access=desertStormSelectionAccess(),runtime=runtimeAccessState(),disabled=!runtime.privateVisible||!access.allowed;
+   const section=$("#canyonPlanner");if(!section)return;const canyon=ensureCanyonState(),access=desertStormSelectionAccess(),runtime=runtimeAccessState(),disabled=!runtime.privateVisible||!access.allowed;
   section.classList.toggle("managerLocked",disabled);
    const faction=$("#canyonFaction"),status=$("#canyonStatus"),date=$("#canyonDateTime"),adjudicator=$("#canyonAdjudicator"),adjudicatorField=$("#canyonAdjudicatorField"),search=$("#canyonSearch"),generate=$("#canyonGenerateBtn"),clear=$("#canyonClearBtn");
-   for(const el of [faction,status,date,adjudicator,search,generate,clear])if(el)el.disabled=disabled;
+    for(const el of [faction,status,date,adjudicator,search,generate])if(el)el.disabled=disabled;
+    if(clear)clear.disabled=!runtime.privateVisible;
   if(faction)faction.value=canyon.faction;if(status)status.value=canyon.status;if(date)date.value=canyon.scheduled_at||"";if(search&&search!==document.activeElement)search.value=canyonSearchTerm;
   const active=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members),available=active.filter(m=>canyonAvailabilityFor(canyon,m).status==="present");
   if(adjudicatorField)adjudicatorField.classList.toggle("hidden",canyon.faction!=="instigators");
@@ -1974,8 +2008,12 @@ async function analyzeExclusiveScan(){
       await savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName});
       status.className="notice warn";status.textContent=t("scan_exclusive_no_data");return;
     }
-    const first=rows[0],hero=first?.hero_name||first?.weapon_name||t("exclusive_weapon"),fields=exclusiveResultFieldCount(rows);
-    status.className="notice";status.textContent=t("scan_exclusive_result_ready",{hero,fields});
+     const first=rows[0],hero=first?.hero_name||first?.weapon_name||t("exclusive_weapon"),fields=exclusiveResultFieldCount(rows);
+     const needsPowerReview=rows.some(row=>{const raw=String(row?.power_raw??"").trim();return Boolean(raw&&confirmedHeroPower(exclusivePower(row?.power??raw))===null)});
+     status.className=needsPowerReview?"notice warn":"notice";
+     status.textContent=needsPowerReview
+       ?(lang.startsWith("fr")?"Puissance détectée à vérifier. Corrige la valeur dans le panneau avant l’enregistrement.":t("scan_exclusive_power_verify"))
+       :t("scan_exclusive_result_ready",{hero,fields});
   }catch(error){status.className="notice warn";status.textContent=error?.message||t("scan_error")}
   finally{btn.disabled=false;btn.textContent=t("analyze")}
 }
@@ -2019,7 +2057,7 @@ $("#canyonSearch")?.addEventListener("input",e=>{canyonSearchTerm=String(e.targe
  $("#canyonDateTime")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.scheduled_at=String(e.target.value||"")||null;canyon.plan=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
  $("#canyonFaction")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.faction=["instigators","scouts"].includes(e.target.value)?e.target.value:"unknown";if(canyon.faction!=="instigators")canyon.adjudicator_key=null;canyon.plan=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
  $("#canyonAdjudicator")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.adjudicator_key=String(e.target.value||"")||null;canyon.plan=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
- $("#canyonClearBtn")?.addEventListener("click",()=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),plan=canyon.plan,hasSelection=Boolean(plan?.participants?.length||plan?.substitutes?.length||canyon.adjudicator_key);const prompt=lang.startsWith("fr")?"Effacer la sélection Tempête du Canyon ?": "Clear the current Canyon Storm selection?";if(hasSelection&&!window.confirm(prompt))return;const now=new Date().toISOString();canyon.plan=null;canyon.adjudicator_key=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState();const message=$("#canyonStatusMessage");if(message){message.className="notice";message.textContent=lang.startsWith("fr")?"Sélection Tempête du Canyon effacée.":"Canyon Storm selection cleared.";message.classList.remove("hidden")}});
+  $("#allianceDrawer")?.addEventListener("click",event=>{const button=event.target?.closest?.("#canyonClearBtn");if(!button)return;event.preventDefault();clearCanyonSelection()});
  $("#canyonGenerateBtn")?.addEventListener("click",()=>{const message=$("#canyonStatusMessage");if(!desertStormSelectionAccess().allowed){if(message){message.className="notice warn";message.textContent=managerOnlyMessage();message.classList.remove("hidden")}return}if(!desertStormFeatureAccess())return;const canyon=ensureCanyonState(),members=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members).map(m=>({...m,lifecycle_key:rosterLifecycleKey(m)})),scheduled=String(canyon.scheduled_at||""),[date,time=""]=scheduled.split("T"),now=new Date().toISOString();canyon.plan=buildCanyonPlan(members,canyon.availability,{faction:canyon.faction,status:canyon.status,date:date||null,time:time.slice(0,5)||null,adjudicator_key:canyon.adjudicator_key});canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;canyonActiveTab="plan";saveState();if(message){message.className="notice";message.textContent=canyon.plan.faction_to_confirm?"Plan générique créé · faction à confirmer.":"Plan Canyon créé · validation R4/R5 requise.";message.classList.remove("hidden")}});
 $("#canyonValidateBtn")?.addEventListener("click",()=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState();if(!canyon.plan)return;const now=new Date().toISOString();canyon.validated_at=now;canyon.validated_by=String(state.player?.name||state.player_id||"R4/R5");canyon.updated_at=now;state.alliance.updated_at=now;saveState();const message=$("#canyonStatusMessage");if(message){message.className="notice";message.textContent="Plan Canyon validé par un R4/R5.";message.classList.remove("hidden")}});
 $("#vsPlanBtn").addEventListener("click",async()=>{if(!requirePro())return;const j=await requestAdvice("vs");$("#vsPlanText").textContent=structuredAdviceText("vs",j)});$("#seasonLifecycleSelect")?.addEventListener("change",()=>{const value=$("#seasonLifecycleSelect").value||"unknown",now=new Date().toISOString();state.season=repairSeasonState({...state.season,lifecycle:value,lifecycle_source:"manual",ended_at:(value==="ended"||value==="interseason")?(state.season.ended_at||now):null,updated_at:now});saveState();$("#seasonAdviceText").textContent=t("season_empty")});

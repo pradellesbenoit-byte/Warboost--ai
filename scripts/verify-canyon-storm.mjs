@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {normalizeAvailabilityRecord,mergeAvailabilityRecords,countAvailabilitySlots,recommendBestSlot,planAvailabilityRoster} from '../lib/alliance-availability-planner.js';
-import {CANYON_STORM_RULESET,buildCanyonPlan,normalizeCanyonState,mergeCanyonState} from '../lib/canyon-storm-plan.js';
+import {CANYON_STORM_RULESET,buildCanyonPlan,normalizeCanyonState,mergeCanyonState,clearCanyonPreparationSelection} from '../lib/canyon-storm-plan.js';
 import {normalizeState,mergeNewest} from '../lib/normalize.js';
 import {hydrateCloudState} from '../lib/cloud-state-recovery.js';
 
@@ -38,6 +38,9 @@ assert.deepEqual(persisted.alliance.desert_storm.registered_keys,['keep-desert']
 const cleared=normalizeState({alliance:{canyon:{...normalizeCanyonState({status:'preparation',scheduled_at:'2026-01-01T20:00',faction:'instigators',adjudicator_key:'p0',availability:records,plan:{participants:members.slice(0,20),substitutes:members.slice(20,30)}}),plan:null,adjudicator_key:null,updated_at:'2026-01-01T11:00:00Z'}}});
 assert.equal(cleared.alliance.canyon.plan,null);assert.equal(cleared.alliance.canyon.adjudicator_key,null);
 assert.equal(cleared.alliance.canyon.availability.length,35);assert.equal(cleared.alliance.canyon.scheduled_at,'2026-01-01T20:00');
+const clearedPreparation=clearCanyonPreparationSelection({faction:'instigators',scheduled_at:'2026-01-01T20:00',adjudicator_key:'p0',availability:records.map(x=>({...x,status:'present',time_slot:'20:00'})),plan:{participants:members.slice(0,20),substitutes:members.slice(20,30)}},members,'2026-01-01T12:00:00Z');
+assert.equal(clearedPreparation.plan,null);assert.equal(clearedPreparation.adjudicator_key,null);assert.equal(clearedPreparation.scheduled_at,'2026-01-01T20:00');
+assert.ok(clearedPreparation.availability.every(x=>x.status==='unknown'&&x.time_slot===null&&x.display_status==='to_confirm'));
 const older={alliance:{canyon:{faction:'scouts',availability:[],updated_at:'2026-01-01T09:00:00Z'}}};
 assert.equal(mergeNewest(persisted,older).alliance.canyon.faction,'instigators');
 assert.equal(hydrateCloudState(older,persisted,'player').alliance.canyon.availability.length,35);
@@ -45,7 +48,7 @@ assert.equal(mergeCanyonState(persisted.alliance.canyon,older.alliance.canyon).f
 assert.equal(mergeAvailabilityRecords(records[0],{...records[0],status:'unknown',source:null,updated_at:'2026-01-02T00:00:00Z'})[0].status,'present');
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8'),app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
  for(const id of ['canyonPlanner','canyonStatus','canyonDateTime','canyonFaction','canyonAdjudicator','canyonAvailabilityList','canyonClearBtn','canyonGenerateBtn','canyonValidateBtn','canyonObjectives','canyonSkills','canyonPlan'])assert.match(html,new RegExp(`id=[\"']${id}[\"']`));
-assert.match(app,/function renderCanyonPlanner\(\)/);assert.match(app,/buildCanyonPlan\(members,canyon\.availability/);assert.match(app,/canyonClearBtn/);assert.match(app,/window\.confirm/);assert.match(app,/canyon\.plan=null/);
+assert.match(app,/function renderCanyonPlanner\(\)/);assert.match(app,/buildCanyonPlan\(members,canyon\.availability/);assert.match(app,/canyonClearBtn/);assert.match(app,/clearCanyonPreparationSelection/);assert.match(app,/window\.confirm/);assert.match(app,/canyonSelectionMessage/);
 assert.doesNotMatch(html,/Sélection efficace|canyonEfficientSelectBtn|canyonSelectionProposal/);
 assert.doesNotMatch(app,/buildEfficientCanyonSelection|canyonSelectionProposal|Appliquer cette sélection|removeCanyonStarter|promoteCanyonSubstitute/);
 console.log('Canyon Storm verification: PASS');

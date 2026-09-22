@@ -57,16 +57,25 @@ function exclusiveWeaponRecord(raw,now){
   const level=visibleLevel(objectValue(merged,["level","weapon_level","exclusive_level","visible_level","lv","lvl","niveau","niveau_arme"]));
   if(level!=null&&level>=0&&level<=999)x.level=level;
   const numericFields={
-    power:["power","weapon_power","exclusive_power"],
+    power:["power","power_raw","weapon_power","exclusive_power","hero_power","combat_power","combat_power_value"],
     hero_hp_bonus:["hero_hp_bonus","hp_bonus","health_bonus"],
     hero_atk_bonus:["hero_atk_bonus","atk_bonus","attack_bonus"],
     hero_def_bonus:["hero_def_bonus","def_bonus","defense_bonus"],
     all_damage_resistance_pct:["all_damage_resistance_pct","damage_resistance_pct","resistance_pct"],
     max_skill_level:["max_skill_level","skill_cap","skill_level"]
   };
+  const rawPower=objectValue(merged,["power","power_raw","visible_power","power_text","weapon_power","exclusive_power","hero_power","combat_power","combat_power_value"]);
+  if(rawPower!==null&&rawPower!==undefined&&String(rawPower).trim()){
+    if(parseHeroPower(rawPower)===null){
+      x.power_raw=str(rawPower,80);
+      x.power_parse_status="needs_verification";
+    }
+  }
   for(const [target,keys] of Object.entries(numericFields)){
     const rawValue=objectValue(merged,keys);
-    const value=target==="power"?parseHeroPower(rawValue):looseNum(rawValue);
+    const value=target==="power"
+      ?keys.map(key=>parseHeroPower(merged?.[key])).find(value=>value!==null)??null
+      :looseNum(rawValue);
     if(value!=null)x[target]=value;
   }
   return Object.keys(x).length>1?x:null;
@@ -209,7 +218,7 @@ Alliance tag expected from WarBoost context is ${allianceTag||"unknown"}. A lead
 
 Identify the hero when the hero name is visible or clearly attached to the weapon screen (for example DVA or D.V.A.). Identify the exact visible exclusive-weapon name/type when present (for example "Lame de Frappe DVA"). Most importantly, read the weapon level shown next to the level marker, such as "Lv.26", and return it as the number 26. Do not confuse the hero level, skill level, star count, or another number with the weapon level.
 
-Return one JSON object, allowing a partial but valid result: {"exclusive_weapons":[{"hero_name":string,"weapon_name":string,"level":number,"power":number,"hero_hp_bonus":number,"hero_atk_bonus":number,"hero_def_bonus":number,"all_damage_resistance_pct":number,"max_skill_level":number}]}. Omit any field that is absent, cropped, unreadable, or uncertain; never use null, zero, or a guess to fill a missing field. Secondary statistics are optional and must not prevent returning the hero, weapon name, or visible level. The array may contain one item for this screen. Weapon power, if visible, is the full integer, not millions.`;
+Return one JSON object, allowing a partial but valid result: {"exclusive_weapons":[{"hero_name":string,"weapon_name":string,"level":number,"power":number|string,"power_raw":string,"hero_hp_bonus":number,"hero_atk_bonus":number,"hero_def_bonus":number,"all_damage_resistance_pct":number,"max_skill_level":number}]}. Omit any field that is absent, cropped, unreadable, or uncertain; never use null, zero, or a guess to fill a missing field. If a visible power cannot be safely converted, preserve its exact visible text in power_raw and omit power. Secondary statistics are optional and must not prevent returning the hero, weapon name, or visible level. The array may contain one item for this screen. Weapon power, if visible, is the full integer, not millions.`;
   if(scanType==="awakening")return `${common} Return visible Awakening data only as {"hero_progression":[{"hero_name":string,"stars":number,"exclusive":number,"awakening":{"unlocked":boolean,"stars":number,"skill_level":number,"named_shards":number,"universal_shards":number,"trial_complete":boolean,"in_base":boolean,"power":number,"reshape_stage":number,"reshape_value":number}}]}.`;
   if(scanType==="shop")return `${common} Return visible shop data only as {"shop":{"store_type":string,"currency":string,"currency_balance":number,"vip_level":number,"vip_days_remaining":number,"offers":[{"item_name":string,"quantity":number,"price":number,"currency":string,"limit":string,"discount_pct":number,"category":string,"rarity":string,"contents":string,"offer_kind":string,"sold":boolean,"content_verified":boolean,"cost_gain_verified":boolean,"price_confidence":number,"currency_confidence":number}]}}. Preserve contents only when readable; do not treat a displayed discount as proof of value. Do not invent hidden offers or prices.`;
   if(scanType==="vs")return `${common} Return visible Alliance Duel data only as {"vs":{"theme":string,"time_remaining_text":string,"time_remaining_seconds":number,"our_server_id":string,"our_tag":string,"our_alliance":string,"opponent_server_id":string,"opponent_tag":string,"opponent":string,"our_score":number,"their_score":number,"our_percent":number,"their_percent":number,"personal_name":string,"personal_rank":number,"personal_score":number,"leaderboard":[{"rank":number,"alliance_tag":string,"player_name":string,"score":number}]}}. Read the active theme/day when visible; do not infer a fixed VS schedule if it is not visible.`;
