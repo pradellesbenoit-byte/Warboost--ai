@@ -3,9 +3,19 @@ import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {sanitize,usefulState} from "../api/scan.js";
+import {parseHeroPower} from "../lib/hero-power.js";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const now="2026-09-18T12:00:00.000Z";
+
+for(const [input,expected] of [
+  ["5665085",5665085],
+  ["5 665 085",5665085],
+  ["5.665.085",5665085],
+  ["5,665,085",5665085],
+  ["5,65 M",5650000],
+  ["5 269 612",5269612]
+])assert.equal(parseHeroPower(input),expected);
 
 // Real-player regression: DVA's exclusive weapon screen shows a localized Lv.26 label
 // and can omit secondary values from the provider response.
@@ -78,6 +88,20 @@ const now="2026-09-18T12:00:00.000Z";
   console.log("PASS: Swift exclusive weapon power 526612 and visible stats survive sanitization");
 }
 
+{
+  const state=sanitize({
+    exclusive_weapons:[
+      {hero_name:"Carly",power:"5 665 085"},
+      {hero_name:"Swift",power:"5 269 612"}
+    ]
+  },now,"exclusive");
+  assert.deepEqual(state.exclusive_weapons.map(x=>[x.hero_name,x.power]),[
+    ["Carlie",5665085],
+    ["Swift",5269612]
+  ]);
+  console.log("PASS: localized Carlie/Carly and Swift exclusive powers survive scan sanitization");
+}
+
 // Existing squad and Drone scan paths remain useful and valid.
 {
   const drone=sanitize({drone:{level:150}},now,"drone");
@@ -97,6 +121,9 @@ assert.match(scan,/partial_results_allowed:scanType==="exclusive"/);
 assert.match(scan,/requires_confirmation:\/\^squad\[1-4\]\$\/i\.test\(scanType\)\|\|scanType==="exclusive"/);
 assert.match(app,/event\.stopImmediatePropagation\(\)/);
 assert.match(app,/renderExclusiveConfirmation\(rows\)/);
+assert.match(app,/type="text" inputmode="decimal"/);
+assert.match(app,/scan_exclusive_power_verify/);
+assert.match(app,/exclusivePowerNeedsVerification/);
 assert.match(app,/exclusiveResultFieldCount\(rows\)/);
 assert.match(app,/scrollIntoView\(\{behavior:"smooth",block:"nearest"\}\)/);
 assert.match(app,/scan_exclusive_result_ready/);

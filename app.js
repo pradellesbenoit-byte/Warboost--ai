@@ -28,7 +28,7 @@ import {hasMeaningfulCoreState,hydrateCloudState,mergeDesertStormState,canUseKee
 import {readOwnProfileDirect} from "./lib/cloud-profile-direct.js";
 import {shouldPreserveVerifiedSessionAccess,betaStateForSessionBootstrap,preserveAllowedAfterTransient,restoreAttemptSucceeded,canRevealOwnedPrivateState,deriveRuntimeAccessState} from "./lib/session-bootstrap.js";
 import {canonicalPowerMillions} from "./lib/power-units.js";
-import {confirmedHeroPower,heroPowerIsConfirmed} from "./lib/hero-power.js";
+import {parseHeroPower,confirmedHeroPower,heroPowerIsConfirmed} from "./lib/hero-power.js";
 import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -369,6 +369,7 @@ async function restorePendingScans(){const owner=pendingScanOwner();try{const pe
 async function persistPendingRosterQueue(){return await savePendingRosterFiles(pendingScanOwner(),rosterScanFiles).catch(()=>false)}
 function clearScanImage({forget=true}={}){const owner=pendingScanOwner();scanImageData=null;scanImageName="capture.jpg";pendingExclusiveScan=[];const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");if(forget)void clearPendingSingleScan(owner)}
 function exclusiveNumber(value){const text=String(value??"").trim().replace(",",".");if(!text)return null;const n=Number(text);return Number.isFinite(n)?n:null}
+function exclusivePower(value){const parsed=parseHeroPower(value);return parsed===null?null:parsed}
 function renderExclusiveConfirmation(rows=[]){
   pendingExclusiveScan=Array.isArray(rows)?rows.map(x=>({...x})).filter(x=>x&&typeof x==="object"):[];
   const panel=$("#exclusiveConfirmPanel"),box=$("#exclusiveConfirmRows");if(!panel||!box)return false;
@@ -380,7 +381,7 @@ function renderExclusiveConfirmation(rows=[]){
       <label>${esc(t("hero"))}<input data-exclusive-field="hero_name" value="${esc(w.hero_name||"")}" maxlength="80"/></label>
       <label>${esc(t("exclusive_weapon"))}<input data-exclusive-field="weapon_name" value="${esc(w.weapon_name||"")}" maxlength="120"/></label>
       <label>${esc(t("level"))}<input data-exclusive-field="level" type="number" min="0" max="999" step="1" value="${w.level??""}"/></label>
-      <label>${esc(t("power"))}<input data-exclusive-field="power" type="number" min="0" step="1" value="${w.power??""}"/></label>
+       <label>${esc(t("power"))}<input data-exclusive-field="power" type="text" inputmode="decimal" autocomplete="off" value="${esc(w.power??"")}"/></label>
       <label>${esc(t("scan_exclusive_hp_bonus"))}<input data-exclusive-field="hero_hp_bonus" type="number" step="any" value="${w.hero_hp_bonus??""}"/></label>
       <label>${esc(t("scan_exclusive_atk_bonus"))}<input data-exclusive-field="hero_atk_bonus" type="number" step="any" value="${w.hero_atk_bonus??""}"/></label>
       <label>${esc(t("scan_exclusive_def_bonus"))}<input data-exclusive-field="hero_def_bonus" type="number" step="any" value="${w.hero_def_bonus??""}"/></label>
@@ -400,13 +401,26 @@ function collectExclusiveConfirmation(){
   const rows=[];$("#exclusiveConfirmRows")?.querySelectorAll("[data-exclusive-index]").forEach(card=>{
     const row={},read=field=>String(card.querySelector(`[data-exclusive-field="${field}"]`)?.value||"").trim();
     const hero=canonicalHeroName(read("hero_name")),weapon=read("weapon_name");if(hero)row.hero_name=hero;if(weapon)row.weapon_name=weapon;
-    for(const field of ["level","power","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"]){const value=exclusiveNumber(read(field));if(value!==null)row[field]=value}
+    const power=exclusivePower(read("power"));if(power!==null)row.power=power;
+    for(const field of ["level","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"]){const value=exclusiveNumber(read(field));if(value!==null)row[field]=value}
     if(Object.keys(row).length)rows.push(row);
   });
   return rows;
 }
+function exclusivePowerNeedsVerification(){
+  let invalid=false;
+  $("#exclusiveConfirmRows")?.querySelectorAll("[data-exclusive-index]").forEach(card=>{
+    const index=Number(card.getAttribute("data-exclusive-index")),staged=pendingExclusiveScan[index]||{};
+    const stagedPower=String(staged.power??"").trim(),hero=canonicalHeroName(String(card.querySelector('[data-exclusive-field="hero_name"]')?.value||"").trim()||staged.hero_name);
+    if(!hero||!stagedPower)return;
+    const visible=card.querySelector('[data-exclusive-field="power"]')?.value||"";
+    if(confirmedHeroPower(exclusivePower(visible))===null)invalid=true;
+  });
+  return invalid;
+}
 function saveConfirmedExclusiveScan(){
   const confirmed=collectExclusiveConfirmation(),status=$("#scanStatus");
+  if(exclusivePowerNeedsVerification()){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_power_verify")}return false}
   if(!confirmed.some(w=>w.hero_name||w.weapon_name||w.level!==undefined||w.power!==undefined)){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_required")}return false}
   const now=new Date().toISOString();
   const staged=mergeStateProtected(state,{exclusive_weapons:confirmed},{preferBase:false});

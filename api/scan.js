@@ -65,7 +65,8 @@ function exclusiveWeaponRecord(raw,now){
     max_skill_level:["max_skill_level","skill_cap","skill_level"]
   };
   for(const [target,keys] of Object.entries(numericFields)){
-    const value=looseNum(objectValue(merged,keys));
+    const rawValue=objectValue(merged,keys);
+    const value=target==="power"?parseHeroPower(rawValue):looseNum(rawValue);
     if(value!=null)x[target]=value;
   }
   return Object.keys(x).length>1?x:null;

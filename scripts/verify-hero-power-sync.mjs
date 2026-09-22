@@ -2,9 +2,17 @@ import assert from "node:assert/strict";
 import {parseHeroPower,confirmedHeroPower,confirmedHeroPowerMillions} from "../lib/hero-power.js";
 import {normalizeState} from "../lib/normalize.js";
 import {reconcileConfirmedSquad,synchronizeHeroProfiles,mergeConfirmedExclusiveWeaponPowers} from "../lib/squad-identity.js";
+import {canonicalHeroName} from "../lib/heroes.js";
 
 assert.equal(parseHeroPower("5,65 M"),5_650_000);
 assert.equal(parseHeroPower("5.11M"),5_110_000);
+assert.equal(parseHeroPower("5665085"),5_665_085);
+assert.equal(parseHeroPower("5 665 085"),5_665_085);
+assert.equal(parseHeroPower("5.665.085"),5_665_085);
+assert.equal(parseHeroPower("5,665,085"),5_665_085);
+assert.equal(parseHeroPower("5,65 M"),5_650_000);
+assert.equal(parseHeroPower("5 269 612"),5_269_612);
+assert.equal(canonicalHeroName("Carly"),"Carlie");
 assert.equal(confirmedHeroPower("0 M"),null);
 assert.equal(confirmedHeroPowerMillions("5,65 M"),5.65);
 
@@ -71,17 +79,30 @@ const exclusiveBase=normalizeState({
     power:"39.73 M",
     power_sync_status:"confirmed",
     heroes:[{name:"DVA",power:"5.65 M"},{name:"Lucius",power:"5.53 M"},{name:"Skyler",power:"5.11 M"},{name:"Morrison",power:"5.1 M"},{name:"Carlie",power:null}]
-  },{},{}],
+  },{power:"40.6 M",heroes:squad3},{}],
   exclusive_weapons:[{hero_name:"Carlie",level:2,power:4000000}]
 });
 const exclusiveApplied=mergeConfirmedExclusiveWeaponPowers(exclusiveBase,{
-  weapons:[{hero_name:"Carlie",level:3,power:5665085}],
+  weapons:[{hero_name:"Carly",level:3,power:"5 665 085"},{hero_name:"Swift",level:4,power:"5 269 612"}],
   updatedAt:"2026-09-20T11:00:00Z"
 }).state;
 assert.equal(confirmedHeroPowerMillions(exclusiveApplied.squads[1].heroes[4].power),5.665085);
+assert.equal(confirmedHeroPowerMillions(exclusiveApplied.squads[2].heroes[4].power),5.269612);
 assert.equal(confirmedHeroPowerMillions(exclusiveApplied.squads[1].power),39.73);
 assert.equal(exclusiveApplied.hero_profiles.filter(x=>x.hero_name==="Carlie").length,1);
 assert.equal(exclusiveApplied.hero_profiles.find(x=>x.hero_name==="Carlie").power,5665085);
+assert.equal(exclusiveApplied.hero_profiles.find(x=>x.hero_name==="Swift").power,5269612);
+const reopened=normalizeState(JSON.parse(JSON.stringify(exclusiveApplied)));
+assert.equal(confirmedHeroPowerMillions(reopened.squads[1].heroes[4].power),5.665085);
+assert.equal(confirmedHeroPowerMillions(reopened.squads[2].heroes[4].power),5.269612);
+const afterSync=mergeConfirmedExclusiveWeaponPowers(reopened,{
+  weapons:[{hero_name:"Carlie",power:"5,665,085"},{hero_name:"Swift",power:"5.269.612"}],
+  updatedAt:"2026-09-20T12:30:00Z"
+}).state;
+assert.equal(confirmedHeroPowerMillions(afterSync.squads[1].heroes[4].power),5.665085);
+assert.equal(confirmedHeroPowerMillions(afterSync.squads[2].heroes[4].power),5.269612);
+assert.equal(afterSync.hero_profiles.find(x=>x.hero_name==="Carlie").power,5665085);
+assert.equal(afterSync.hero_profiles.find(x=>x.hero_name==="Swift").power,5269612);
 const partialExclusive=mergeConfirmedExclusiveWeaponPowers(exclusiveApplied,{
   weapons:[{hero_name:"Carlie",level:4,power:0},{hero_name:"Carlie",level:5}],
   updatedAt:"2026-09-20T12:00:00Z"

@@ -99,6 +99,7 @@ Object.assign(FR,{
   scan_exclusive_cancel:"Annuler",
   scan_exclusive_confirmed:"Les données de l’arme exclusive ont été confirmées et enregistrées.",
   scan_exclusive_required:"Confirme au moins le héros visible, le nom de l’arme ou son niveau avant d’enregistrer.",
+  scan_exclusive_power_verify:"Puissance détectée à vérifier. Corrige-la avant de confirmer.",
   scan_exclusive_hp_bonus:"Bonus PV héros",
   scan_exclusive_atk_bonus:"Bonus ATQ héros",
   scan_exclusive_def_bonus:"Bonus DEF héros",
