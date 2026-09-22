@@ -25,6 +25,7 @@
     "test:exclusive-power-persistence": "node scripts/verify-exclusive-power-persistence-v2.5.28.mjs",
     "test:hero-power-backfill": "node scripts/verify-hero-power-backfill.mjs",
     "test:canyon-storm": "node scripts/verify-canyon-storm.mjs",
+    "test:availability-capacity": "node scripts/verify-availability-capacity.mjs",
     "test:event-availability": "node scripts/verify-event-availability.mjs",
     "test:shared-alliance-roster": "node scripts/verify-shared-alliance-roster.mjs",
     "dev": "node server.mjs",
