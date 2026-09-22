@@ -11,7 +11,8 @@ import {createWarBoostSupabaseAuthClient} from "./lib/browser-auth.js";
 import {formatGearSummary} from "./lib/gear.js";
 import {ACTIVITY_EVENT_TYPES,PLAYER_ACTIVITY_EVENT_TYPES,activityEventId,mergeActivityEvents,confirmedActivityEvents,eventCountsByType,participationEventRecords,participationSummaryByType,parseParticipationImport} from "./lib/activity-events.js";
 import {AVAILABILITY_EVENT_TYPES,normalizeEventAvailability,mergeEventAvailabilities,mergeAvailabilityHistory,availabilityForMember,upsertEventAvailability} from "./lib/event-availability.js";
-import {backfillRosterIdentityContext,linkCurrentPlayerIdentityIntoRoster,rosterLinkSummary} from "./lib/alliance-identity.js";
+import {backfillRosterIdentityContext,linkCurrentPlayerIdentityIntoRoster,rosterLinkSummary,normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from "./lib/alliance-identity.js";
+import {mergeSharedAllianceRoster} from "./lib/shared-alliance-roster.js";
 import {playerParticipationInsight,allianceParticipationOverview,allianceParticipationByEvent} from "./lib/alliance-participation-insights.js";
 import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine,vsSnapshotFreshness} from "./lib/vs-live.js";
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan.js";
@@ -332,7 +333,7 @@ function renderPlayerProgression(){
 if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.progression_snapshots=appendProgressionSnapshot([],state,{source:"baseline",at:state.updated_at||new Date().toISOString()});
 let desertStormSearchTerm="",desertStormSearchRenderGeneration=0,canyonSearchTerm="",canyonSearchRenderGeneration=0,canyonActiveTab="preparation";
 let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
-let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0;
+let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0,sharedRosterLinkPromise=null;
 function searchInputIsContentEditable(input){return Boolean(input?.isContentEditable||input?.getAttribute?.("contenteditable")==="plaintext-only")}
 function searchInputValue(input){return searchInputIsContentEditable(input)?String(input.textContent||""):String(input?.value||"")}
 function preserveSearchInput(input,value){
@@ -518,6 +519,20 @@ function applyCanonicalRosterKeys(alliance={}){
     return {...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId,allianceTag})};
   }):[];
   return {...alliance,members};
+}
+function hydrateSharedAllianceRoster(rows=[],meta={}){
+  if(!Array.isArray(rows)||!rows.length)return false;
+  const serverId=normalizeServerId(meta.server_id||state.alliance?.server_id||state.player?.server_id),allianceTag=normalizeAllianceTag(meta.tag||state.alliance?.tag);
+  const members=mergeSharedAllianceRoster(rows,state.alliance?.members,{serverId,allianceTag});
+  const before=JSON.stringify(state.alliance?.members||[]);
+  state.alliance={...state.alliance,id:meta.id||state.alliance?.id||null,name:meta.name||state.alliance?.name||"",owner_player_id:meta.owner_player_id||state.alliance?.owner_player_id||null,server_id:serverId,tag:allianceTag,members:applyCanonicalRosterKeys({...state.alliance,members}).members,roster_updated_at:meta.roster_updated_at||state.alliance?.roster_updated_at||null};
+  const changed=before!==JSON.stringify(state.alliance.members);
+  canonicalRosterReady=true;
+  if(changed){
+    safeLocalSet(STORE_KEY,JSON.stringify(state));
+    if(cloudSession?.user?.id)rememberAccountState(cloudSession.user.id,state);
+  }
+  return changed;
 }
 function allianceRoleEvidence(){
   const alliance=state?.alliance||{},userId=String(state?.player_id||cloudSession?.user?.id||"").trim();
@@ -1526,18 +1541,27 @@ function rosterDiagnosticText(){
   if(legacyRosterCapDetected())return t("rank_manager_roster_diagnostic_legacy",{count:state.alliance.members.length});
   return t("rank_manager_roster_diagnostic_unknown",{count:Array.isArray(state.alliance?.members)?state.alliance.members.length:0});
 }
-async function refreshRosterDiagnostic(){
+async function refreshRosterDiagnostic({force=false}={}){
   if(rosterDiagnosticPromise||!cloudSession?.access_token)return false;
-  if((rosterDiagnostic.status==="ready"||rosterDiagnostic.status==="error")&&Date.now()-Number(rosterDiagnostic.at||0)<60000)return true;
+  if(!force&&(rosterDiagnostic.status==="ready"||rosterDiagnostic.status==="error")&&Date.now()-Number(rosterDiagnostic.at||0)<60000)return true;
   rosterDiagnostic={...rosterDiagnostic,status:"loading"};
   rosterDiagnosticPromise=(async()=>{
+    let sharedChanged=false;
     try{
       const {response:r,json:j}=await fetchJsonBounded("/api/alliance-role?action=roster_diagnostic",{method:"GET",headers:authHeaders()},12000);
       if(!r.ok)throw new Error(j?.error||"roster_diagnostic_failed");
-      rosterDiagnostic={status:"ready",source:j.source||"unknown",canonical_count:Number.isFinite(Number(j.canonical_count))?Number(j.canonical_count):null,cloud_member_count:Number.isFinite(Number(j.cloud_member_count))?Number(j.cloud_member_count):null,link_status:j.link_status||"unknown",link_candidates:Array.isArray(j.link_candidates)?j.link_candidates:[],account_identity:j.account_identity||null,at:Date.now()};
+      const sharedRows=Array.isArray(j.roster)?j.roster:[],sharedMeta={...(j.alliance||{}),roster_updated_at:j.canonical_updated_at||null};
+      sharedChanged=hydrateSharedAllianceRoster(sharedRows,sharedMeta);
+      canonicalRosterReady=Boolean(j.source==="canonical"||sharedRows.length);
+      rosterDiagnostic={status:"ready",source:j.source||"unknown",canonical_count:Number.isFinite(Number(j.canonical_count))?Number(j.canonical_count):null,cloud_member_count:Number.isFinite(Number(j.cloud_member_count))?Number(j.cloud_member_count):null,link_status:j.link_status||"unknown",link_candidates:Array.isArray(j.link_candidates)?j.link_candidates:[],account_identity:j.account_identity||null,roster:sharedRows,alliance:j.alliance||null,authorization:j.authorization||null,at:Date.now()};
+      const candidate=rosterDiagnostic.link_candidates?.length===1?rosterDiagnostic.link_candidates[0]:null;
+      if(candidate&&candidate.linked_to_self!==true&&["R4","R5"].includes(normalizedRole(candidate.role))&&rosterDiagnostic.link_status==="ready"&&!sharedRosterLinkPromise){
+        sharedRosterLinkPromise=linkOwnCanonicalIdentity().finally(()=>{sharedRosterLinkPromise=null});
+        await sharedRosterLinkPromise;
+      }
       return true;
     }catch{rosterDiagnostic={...rosterDiagnostic,status:"error",at:Date.now()};return false}
-    finally{rosterDiagnosticPromise=null;renderAllianceRankManager()}
+    finally{rosterDiagnosticPromise=null;renderAllianceRankManager();if(sharedChanged)render()}
   })();
   return rosterDiagnosticPromise;
 }
