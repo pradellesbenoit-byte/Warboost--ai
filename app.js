@@ -878,7 +878,7 @@ async function pushServerState({keepalive=false}={}){
       const remote=hydrateCloudState(j.state,initialState(),cloudSession.user.id);
       let merged;
       try{merged=mergeStateProtected(state,remote,{preferBase:false})}catch{merged=remote}
-      try{state=repairLegacySquadIdentity(merged).state}catch{state=remote}
+      try{state=repairLegacySquadIdentity(merged).state;const restored=backfillConfirmedHeroPowers(state,{now:new Date().toISOString()});state=restored.state}catch{state=remote}
       state.player_id=cloudSession.user.id;
       rememberLastGoodState(state,"cloud-post-authoritative");
     }
@@ -903,13 +903,15 @@ async function pullDirectOwnProfile(loginSeed=null){
   else{try{merged=mergeStateProtected(state,remote,{preferBase:preferLocal})}catch{merged=remote}}
   merged=preservePendingRoster(localFallback||state,merged);
   if(hasMeaningfulCore(localFallback)&&!hasMeaningfulCore(merged))merged=hydrateCloudState(localFallback,initialState(),userId);
-  try{const recovered=recoverLocalHeroHistory(merged);state=repairLegacySquadIdentity(recovered.state).state}catch{state=remote}
+  let heroPowerBackfillChanged=false;
+  try{const recovered=recoverLocalHeroHistory(merged);state=repairLegacySquadIdentity(recovered.state).state;const restored=backfillConfirmedHeroPowers(state,{now:new Date().toISOString()});state=restored.state;heroPowerBackfillChanged=restored.changed}catch{state=remote}
   if(!hasMeaningfulCore(state)&&hasMeaningfulCore(remote))state=remote;
   state.player_id=userId;state.updated_at=preferLocal?(state.updated_at||out.updated_at||new Date().toISOString()):(out.state?.updated_at||out.updated_at||state.updated_at);
   state.sync={...state.sync,status:"ok",last_sync:out.updated_at||new Date().toISOString(),last_error:null,pending_cloud_save:false};
   safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-direct-rls-pull");rememberAccountState(userId,state);
   suppressPush=false;render();renderBeta();renderProvider();
   if(preferLocal&&hasMeaningfulCore(state)){cloudDirty=true;scheduleCloudRetry(750)}
+  else if(heroPowerBackfillChanged&&hasMeaningfulCore(state))scheduleServerSave(350);
   return {ok:true,cloud_empty:false,direct:true};
 }
 
@@ -953,9 +955,11 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     }
     merged=preservePendingRoster(localFallback||state,merged);
     if(hasMeaningfulCore(localFallback)&&!hasMeaningfulCore(merged))merged=hydrateCloudState(localFallback,initialState(),userId);
+    let heroPowerBackfillChanged=false;
     try{
       const localRecovered=recoverLocalHeroHistory(merged);
       state=repairLegacySquadIdentity(localRecovered.state).state;
+      const restored=backfillConfirmedHeroPowers(state,{now:new Date().toISOString()});state=restored.state;heroPowerBackfillChanged=restored.changed;
     }catch{state=hydrateCloudState(merged,initialState(),userId)}
     if(!hasMeaningfulCore(state)&&hasMeaningfulCore(remote))state=remote;
     if(canonicalRosterReady&&state?.alliance)state.alliance=applyCanonicalRosterKeys(state.alliance);
@@ -966,6 +970,7 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     // If an unsent local state is newer (for example because an oversized keepalive write was
     // deferred), push it normally in the foreground after the authoritative pull/merge.
     if(preferLocal&&hasMeaningfulCore(state)){cloudDirty=true;scheduleCloudRetry(750)}
+    else if(heroPowerBackfillChanged&&hasMeaningfulCore(state))scheduleServerSave(350);
     return {ok:true,cloud_empty:false,canonical_alliance:canonicalRosterReady}
   }catch(e){
     suppressPush=false;
@@ -1180,6 +1185,10 @@ function heroPowerForDisplay(squad,hero){
   return slotPower;
 }
 function fmtConfirmedHeroPower(value){const power=confirmedHeroPower(value);return power===null?"—":fmtPower(power)}
+function fmtHeroPowerForDisplay(squad,hero){
+  const power=confirmedHeroPower(heroPowerForDisplay(squad,hero));
+  return power===null&&!isGenericHeroName(hero?.name)?t("hero_power_rescan"):power===null?"—":fmtPower(power);
+}
 function fmtConfirmedSquadPower(squad){
   if(squad?.power_sync_status==="pending")return t("sync_needed");
   const power=confirmedHeroPower(squad?.power);
@@ -1202,7 +1211,7 @@ function renderSquads(){
     const swapTargets=squadHasSavedData(sq)?state.squads.map((target,ti)=>({id:ti+1,target})).filter(x=>x.id!==id&&squadHasSavedData(x.target)):[];
     const swapButton=swapTargets.length?`<button class="squadSwapBtn" type="button" data-squad-swap-toggle="${id}" aria-label="${esc(t("squad_swap_aria",{squad:id}))}" title="${esc(t("squad_swap"))}">⇄</button>`:"";
     const swapMenu=swapTargets.length?`<div class="squadSwapMenu hidden" data-squad-swap-menu="${id}"><span>${esc(t("squad_swap_with"))}</span>${swapTargets.map(x=>`<button type="button" class="squadSwapTarget" data-squad-swap-target="${x.id}">${esc(t("squad"))} ${x.id}</button>`).join("")}</div>`:"";
-      shell.innerHTML=`<details class="squad" data-squad-id="${id}"><summary class="squadHead"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true"></span></summary><div id="squadBody${id}" class="squadBody">${Array.from({length:5},(_,j)=>{const h=heroes[j]||emptyHero(j+1),hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtConfirmedHeroPower(heroPowerForDisplay(sq,h)))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div></details>${swapButton}${swapMenu}`;
+      shell.innerHTML=`<details class="squad" data-squad-id="${id}"><summary class="squadHead"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true"></span></summary><div id="squadBody${id}" class="squadBody">${Array.from({length:5},(_,j)=>{const h=heroes[j]||emptyHero(j+1),hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtHeroPowerForDisplay(sq,h))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div></details>${swapButton}${swapMenu}`;
     box.appendChild(shell);
     const swapBtn=shell.querySelector(".squadSwapBtn");
     swapBtn?.addEventListener("pointerdown",e=>e.stopPropagation());
