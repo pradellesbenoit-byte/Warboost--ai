@@ -62,7 +62,7 @@ assert.match(picker,/if\(!desertStormSelectionAccess\(\)\.allowed\)\{ch\.checked
 assert.match(app,/toggleDesertStormSelection\(current\.registered_keys,key,ch\.checked\)/);
 assert.doesNotMatch(picker,/saveState\(\);\s*render\(\)/);
 assert.doesNotMatch(picker,/selected\.has\(b\._key\)/);
-assert.match(picker,/const rows=members\.filter/);
+assert.match(picker,/const rows=sortAvailabilityAssignmentRows\(members,participantKeys,substituteKeys/);
 
 const alice=member("Alice","R4",{canonical_member_key:"canonical:alice|884|ALL4",power_m:120});
 const bob=member("Bob","R3",{canonical_member_key:"canonical:bob|884|ALL4",power_m:110});

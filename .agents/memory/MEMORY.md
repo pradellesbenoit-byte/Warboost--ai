@@ -19,3 +19,4 @@
 - [OCR power confirmation](ocr-power-confirmation.md) — retain visibly unreadable power text for manual correction; only parsed positive values may propagate as confirmed hero power.
 - [Hybrid event availability](event-availability-hybrid.md) — player declarations sync only to their exact linked roster row; alliance views aggregate sources without replacing unlinked members.
 - [Shared roster view](shared-roster-view.md) — hydrate alliance screens from the canonical cloud roster; local player state may enrich but never replace or truncate it.
+- [Behavior-oriented UI checks](behavior-oriented-ui-checks.md) — render tests should assert the intended ordering helper/behavior, not brittle exact loop syntax.
