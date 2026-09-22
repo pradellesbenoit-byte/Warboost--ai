@@ -1769,7 +1769,7 @@ function renderDesertStormPicker(){
   const members=activeMembers.map(m=>({...m,_key:desertStormMemberKeys(m)[0]})).filter(m=>m._key),capacity=desertStormAvailabilityCapacity(activeMembers),participantKeys=new Set(capacity.participants.flatMap(m=>desertStormMemberKeys(m))),substituteKeys=new Set(capacity.substitutes.flatMap(m=>desertStormMemberKeys(m))),selectionAccess=desertStormSelectionAccess(),selected=new Set(ds.registered_keys),q=rosterNameKey(desertStormSearchTerm);
   // Keep the roster order stable while users tap on mobile. Moving selected rows
   // after every click changes hit targets and can toggle a different checkbox.
-  const rows=members.filter(m=>!q||rosterNameKey(m.name).includes(q));
+  const rows=sortAvailabilityAssignmentRows(members,participantKeys,substituteKeys,m=>[m._key,...desertStormMemberKeys(m)]).filter(m=>!q||rosterNameKey(m.name).includes(q));
   if(counter)counter.textContent=`Participants ${capacity.participants.length}/20 · Remplaçants ${capacity.substitutes.length}/10`;
   const notice=selectionAccess.syncing?t("ds_selection_syncing"):selectionAccess.allowed?"":t("ds_selection_requires_verified_access"),disabled=selectionAccess.allowed?"":" disabled aria-disabled=\"true\"";
   box.innerHTML=`${notice?`<div class="notice warn dsSelectionGuard">${esc(notice)}</div>`:""}${rows.length?rows.map(m=>{const badge=participantKeys.has(m._key)?`<span class="availabilityAssignmentBadge participant" role="img" aria-label="Participant" title="Participant">✓ Participant</span>`:substituteKeys.has(m._key)?`<span class="availabilityAssignmentBadge substitute" role="img" aria-label="Remplaçant" title="Remplaçant">Remplaçant</span>`:"";return `<label class="dsPlayerPick${selected.has(m._key)?" selected":""}${selectionAccess.allowed?"":" locked"}"><input type="checkbox" data-ds-player-key="${esc(m._key)}"${selected.has(m._key)?" checked":""}${disabled}/><span><b>${esc(m.name||t("player"))}${badge}</b><small>${esc(normalizeAllianceRole(m.role))} · ${t("hq")} ${esc(m.hq_level??"—")} · ${m.squad_power_m?`${esc(t("combat_squad_short"))} ${esc(fmtPower(m.squad_power_m))} · `:""}${esc(t("combat_account_short"))} ${esc(fmtPower(m.power_m))}</small></span></label>`}).join(""):`<div class="notice">${esc(t("ds_no_match"))}</div>`}`;
@@ -1819,6 +1819,10 @@ function desertStormAvailabilityCapacity(members=activeAllianceRosterMembers()){
 function desertStormPresentKeys(members=activeAllianceRosterMembers()){
   const capacity=desertStormAvailabilityCapacity(members);
   return [...capacity.participants,...capacity.substitutes].map(member=>desertStormMemberKeys(member)[0]||member.lifecycle_key||rosterLifecycleKey(member)).filter(Boolean);
+}
+function sortAvailabilityAssignmentRows(rows,participantKeys,substituteKeys,keyFn){
+  return rows.map((row,index)=>({row,index,rank:keyFn(row).some(key=>participantKeys.has(key))?0:keyFn(row).some(key=>substituteKeys.has(key))?1:2}))
+    .sort((a,b)=>a.rank-b.rank||a.index-b.index).map(entry=>entry.row);
 }
 
 function ensureCanyonState(){
