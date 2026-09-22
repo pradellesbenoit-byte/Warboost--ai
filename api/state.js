@@ -9,7 +9,7 @@ import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRo
 import {isManagerRole} from "../lib/alliance-scope.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 import {canonicalAllianceAuthorization} from "../lib/alliance-authorization.js";
-import {mergeEventAvailabilities,mergeAvailabilityHistory} from "../lib/event-availability.js";
+import {mergeEventAvailabilities,mergeAvailabilityHistory,mergePlayerAvailabilityIntoRoster} from "../lib/event-availability.js";
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
 
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
@@ -104,6 +104,39 @@ async function canonicalizeAllianceState(input,playerId){
       }
     }
   }
+  // A normal player-state save must publish only the authenticated player's
+  // availability to that player's already-linked canonical roster row. This
+  // mirrors /api/sync without allowing browser-supplied rows for other members.
+  const ownAvailability=mergePlayerAvailabilityIntoRoster(canonicalWithKeys,state.player_availability,{
+    playerId,
+    name:state.player?.name,
+    serverId:authoritativeServer,
+    allianceTag:authoritativeTag
+  });
+  if(ownAvailability.changed){
+    try{
+      const savedAvailability=await updateAllianceScopeRoster({
+        alliance_id:ctx.alliance.id,
+        server_id:authoritativeServer,
+        tag:authoritativeTag,
+        name:ctx.alliance.name,
+        roster:ownAvailability.rows,
+        roster_tombstones:ctx.roster_tombstones,
+        expected_updated_at:ctx.alliance.updated_at
+      });
+      canonical=markCanonicalRosterPresence(savedAvailability?.roster||ownAvailability.rows,savedAvailability?.roster_updated_at||ctx.alliance.roster_updated_at).map(raw=>{
+        const row={...raw,server_id:normalizeServerId(raw?.server_id)||authoritativeServer,alliance_tag:normalizeAllianceTag(raw?.alliance_tag)||authoritativeTag};
+        return {...row,canonical_member_key:canonicalRosterMemberKey(row,context)};
+      });
+      if(savedAvailability?.updated_at)ctx.alliance={...ctx.alliance,...savedAvailability};
+    }catch{
+      // Keep the player profile write durable; the next authenticated state
+      // read retries the CAS-protected canonical propagation.
+    }
+  }else{
+    canonical=canonicalWithKeys;
+  }
+  canonicalWithKeys=canonical;
   const stableStamp=state.updated_at||state.alliance?.updated_at||new Date().toISOString();
 
   const identityMerge=mergeCloudRosterWithIdentity(canonicalWithKeys,ctx.cloud_roster||[],{...context,removal_tombstones:ctx.roster_tombstones});
