@@ -4,6 +4,7 @@
 - [Roster source diagnostics](roster-source-diagnostics.md) — a roster count of 100 is ambiguous; distinguish canonical cloud data from legacy capped imports using read-only evidence.
 - [Canonical roster presence evidence](canonical-roster-presence.md) — current canonical presence outranks stale lifecycle blockers; only strictly newer confirmed departures can exclude a member.
 - [Canonical rank identity](canonical-rank-identity.md) — hydrate canonical keys before merges; fallback requires one exact identity plus the expected source rank.
+- [Alliance rank provenance](rank-provenance.md) — manual changes outrank older scans; newer explicit Last War R4/R5 scans can supersede older rank evidence, while missing rank stays unknown.
 - [Desert Storm selection identity](desert-storm-selection-identity.md) — canonical keys migrate legacy lifecycle aliases without losing selections during filtered rerenders.
 - [Verification environment](verification-environment.md) — beta verification assumes Supabase variables are absent; injected secrets make the configured-state assertions differ.
 - [Canonical roster field boundary](canonical-roster-field-boundary.md) — canonical roster persistence must whitelist gameplay fields and never forward arbitrary imported profile fields.

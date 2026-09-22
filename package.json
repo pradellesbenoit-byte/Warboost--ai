@@ -19,6 +19,7 @@
     "test:rank-canonical-resolution": "node scripts/verify-rank-canonical-resolution.mjs",
     "test:roster-rank-persistence": "node scripts/verify-roster-rank-persistence.mjs",
     "test:roster-anti-rollback": "node scripts/verify-roster-anti-rollback.mjs",
+    "test:rank-provenance": "node scripts/verify-rank-provenance.mjs",
     "test:restore-canonicalization": "node scripts/verify-restore-canonicalization.mjs",
     "test:hero-slot-integrity": "node scripts/verify-hero-slot-integrity-v2.5.28.mjs",
     "test:exclusive-power-persistence": "node scripts/verify-exclusive-power-persistence-v2.5.28.mjs",

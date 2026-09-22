@@ -6,6 +6,7 @@ import {cleanRosterOcrName,rosterIdentityKey} from "../lib/roster-identity-resol
 import {fetchWithTimeout} from "../lib/http-timeout.js";
 import {canonicalPowerMillions} from "../lib/power-units.js";
 import {parseHeroPower} from "../lib/hero-power.js";
+import {explicitLastWarManagerRank,LAST_WAR_SCAN_RANK_SOURCE} from "../lib/rank-provenance.js";
 
 // HF8.6.28 R2 — stable single-pass WarBoost Vision.
 // One screenshot = one bounded provider request. Optional portrait passes are deliberately
@@ -131,12 +132,12 @@ function safeRosterHq(v){
 function rosterRowFromRaw(raw,now,allianceTag="",profileContext=null){
   if(!raw||typeof raw!=="object")return null;
   const name=cleanRosterOcrName(str(raw?.name||raw?.player_name||raw?.nickname,80)||"",allianceTag);
-  const role=rosterRole(raw?.role||raw?.rank);
+  const role=rosterRole(raw?.role||raw?.rank),confirmedRole=explicitLastWarManagerRank(role);
   const hq=safeRosterHq(raw?.hq_level??raw?.hq);
   const power=canonicalPowerMillions(raw?.power_m??raw?.power);
   const confidence=num(raw?.confidence);
   const key=rosterIdentityKey(name,allianceTag);
-  if(!name||!role||!key)return null;
+  if(!name||!key)return null;
 
   // Individual profile guard: alliance display name must never become the player nickname.
   const allianceName=profileContext?.alliance_name||raw?.alliance_name||"";
@@ -149,10 +150,12 @@ function rosterRowFromRaw(raw,now,allianceTag="",profileContext=null){
     power_m:power!=null&&power>0?Math.round(power*100)/100:null,
     confidence:confidence==null?null:Math.max(0,Math.min(1,confidence)),
     updated_at:now,
-    source:"roster_scan"
+    source:"roster_scan",
+    rank_confirmation_status:confirmedRole?"confirmed_scan":"unconfirmed",
+    ...(confirmedRole?{rank_confirmed_at:now,rank_confirmed_source:LAST_WAR_SCAN_RANK_SOURCE}: {})
   };
 }
-function sanitizeRosterRows(extracted,now,allianceTag=""){
+export function sanitizeRosterRows(extracted,now,allianceTag=""){
   const screenType=String(extracted?.screen_type||extracted?.layout||"").trim().toLowerCase();
   const profile=extracted?.player_profile&&typeof extracted.player_profile==="object"?extracted.player_profile:null;
 
@@ -176,7 +179,7 @@ function sanitizeRosterRows(extracted,now,allianceTag=""){
 }
 export function sanitize(extracted,now,scanType){
   const out={},forced=String(scanType||"").match(/^squad([1-4])$/i),forcedId=forced?Number(forced[1]):null;
-  if(extracted?.player){const p={updated_at:now};for(const k of ["name","server_id","coordinates","role"]){const v=str(extracted.player[k],80);if(v)p[k]=v}const hq=num(extracted.player.hq_level),power=canonicalPowerMillions(extracted.player.power_m);if(hq!=null)p.hq_level=hq;if(power!=null)p.power_m=power;if(Object.keys(p).length>1)out.player=p}
+  if(extracted?.player){const p={updated_at:now};for(const k of ["name","server_id","coordinates","role"]){const v=str(extracted.player[k],80);if(v)p[k]=v}const confirmedRole=explicitLastWarManagerRank(p.role);p.role_confirmation_status=confirmedRole?"confirmed_scan":"unconfirmed";if(confirmedRole){p.rank_confirmed_at=now;p.rank_confirmed_source=LAST_WAR_SCAN_RANK_SOURCE}const hq=num(extracted.player.hq_level),power=canonicalPowerMillions(extracted.player.power_m);if(hq!=null)p.hq_level=hq;if(power!=null)p.power_m=power;if(Object.keys(p).length>1)out.player=p}
   if(extracted?.drone){const d={updated_at:now},level=num(extracted.drone.level),power=canonicalPowerMillions(extracted.drone.power_m);if(level!=null)d.level=level;if(power!=null)d.power_m=power;if(Object.keys(d).length>1)out.drone=d}
    if(Array.isArray(extracted?.squads)&&extracted.squads.length){const arr=Array(4).fill(null),source=forcedId?extracted.squads.slice(0,1):extracted.squads.slice(0,4);for(const raw of source){const id=forcedId||Math.max(1,Math.min(4,Number(raw?.id)||1)),q={id,name:`Squad ${id}`,updated_at:now};const power=canonicalPowerMillions(raw?.power_m??raw?.power);if(power!=null)q.power=power;if(Array.isArray(raw?.heroes)){q.heroes=Array.from({length:5},(_,i)=>{const h=raw.heroes[i]||{},x={};const name=heroNameFromVisibleText(h);if(name)x.name=name;const level=num(h?.level),stars=num(h?.stars),heroPower=parseHeroPower(h?.power);if(level!=null)x.level=level;if(stars!=null)x.stars=stars;if(heroPower!=null)x.power=heroPower;const ex=str(h?.exclusive,100);if(ex)x.exclusive=ex;const gear=sanitizeGear(h?.gear);if(gear)x.gear=gear;return x})}else if(forcedId)q.heroes=Array.from({length:5},()=>({}));arr[id-1]=q}out.squads=arr}
   const rawWeapons=Array.isArray(extracted?.exclusive_weapons)?extracted.exclusive_weapons:
@@ -198,9 +201,9 @@ function promptFor(scanType,locale,allianceTag){
   const common=`You are WarBoost Vision reading a Last War: Survival screenshot. Read only facts actually visible in the image. Never invent hidden values. User locale: ${locale}. Return ONE valid JSON object only, without markdown or commentary.`;
   if(scanType==="alliance_roster")return `${common} This WarBoost action accepts TWO Last War layouts: (A) the alliance member list, or (B) an individual screen titled "PROFIL DU JOUEUR" / "PLAYER PROFILE". First identify the layout.
 
-For an ALLIANCE MEMBER LIST, return exactly {"screen_type":"member_list","alliance_roster":[{"name":string,"role":"R1|R2|R3|R4|R5","hq_level":number,"power_m":number,"confidence":number}]}. Include only rows visibly present. Include the R5 if visibly shown separately above the R4/R3/R2/R1 lists.
+For an ALLIANCE MEMBER LIST, return exactly {"screen_type":"member_list","alliance_roster":[{"name":string,"role":"R1|R2|R3|R4|R5|null","hq_level":number,"power_m":number,"confidence":number}]}. Include only rows visibly present. If the grade is not clearly visible, use null; never use R1/R2/R3 as a guess. Include the R5 if visibly shown separately above the R4/R3/R2/R1 lists.
 
-For an INDIVIDUAL PLAYER PROFILE, return exactly {"screen_type":"player_profile","player_profile":{"name":string,"role":"R1|R2|R3|R4|R5","hq_level":number,"power_m":number,"alliance_tag":string,"alliance_name":string,"server_id":string,"confidence":number}} and NO alliance_roster array. On this layout:
+For an INDIVIDUAL PLAYER PROFILE, return exactly {"screen_type":"player_profile","player_profile":{"name":string,"role":"R1|R2|R3|R4|R5|null","hq_level":number,"power_m":number,"alliance_tag":string,"alliance_name":string,"server_id":string,"confidence":number}} and NO alliance_roster array. If the grade is not clearly visible, use null; never infer R1/R2/R3. On this layout:
 - The PLAYER NICKNAME is in the TOP BLUE HEADER, immediately after the player's "Niv.XX" and optional alliance tag. Example: "Niv.35 [ALL4]Space commander" means nickname "Space commander" and HQ/QG 35.
 - The HQ/QG is ONLY the "Niv.XX" in that same top header immediately before the nickname.
 - NEVER use another level shown elsewhere on the profile as HQ/QG. A value such as "Niv.100" beside another icon/stat is NOT the QG.
