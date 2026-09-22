@@ -17,7 +17,7 @@ import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan
 import {desertStormMemberKeys,normalizeDesertStormSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
 import {unlockDesertStormSearchInput} from "./lib/desert-storm-search.js";
 import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
-import {CANYON_STORM_RULESET,buildCanyonPlan,normalizeCanyonState,mergeCanyonState} from "./lib/canyon-storm-plan.js";
+import {CANYON_STORM_RULESET,buildCanyonPlan,buildEfficientCanyonSelection,normalizeCanyonState,mergeCanyonState} from "./lib/canyon-storm-plan.js";
 import {normalizeAvailabilityRecord,countAvailabilitySlots,recommendBestSlot} from "./lib/alliance-availability-planner.js";
 import {appendProgressionSnapshot,mergeProgressionSnapshots,progressionComparison,strongestSquadFromState} from "./lib/progression-history.js";
 import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMIT} from "./lib/roster-scan-queue.js";
@@ -327,7 +327,7 @@ function renderPlayerProgression(){
   const cls=x=>x?.change_m>0?"deltaUp":"deltaFlat";box.innerHTML=`<div class="progressionMetric"><small>${esc(t("progression_account"))} · ${esc(cmp.account.elapsed_days??"—")}j</small><b>${esc(fmtPower(cmp.account.current))}</b><span class="${cls(cmp.account)}">${cmp.account.change_m===null?"—":esc(`${cmp.account.change_m>=0?"+":""}${cmp.account.change_m} M · ${cmp.account.pct??"—"}%`)}</span></div><div class="progressionMetric"><small>${esc(t("progression_squad"))} · ${esc(cmp.main_squad.elapsed_days??"—")}j</small><b>${esc(fmtPower(cmp.main_squad.current))}</b><span class="${cls(cmp.main_squad)}">${cmp.main_squad.change_m===null?"—":esc(`${cmp.main_squad.change_m>=0?"+":""}${cmp.main_squad.change_m} M · ${cmp.main_squad.pct??"—"}%`)}</span></div>`;
 }
 if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.progression_snapshots=appendProgressionSnapshot([],state,{source:"baseline",at:state.updated_at||new Date().toISOString()});
-let desertStormSearchTerm="",desertStormSearchRenderGeneration=0,canyonSearchTerm="",canyonSearchRenderGeneration=0,canyonActiveTab="preparation";
+let desertStormSearchTerm="",desertStormSearchRenderGeneration=0,canyonSearchTerm="",canyonSearchRenderGeneration=0,canyonActiveTab="preparation",canyonSelectionProposal=null;
 let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
 let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0;
 function searchInputIsContentEditable(input){return Boolean(input?.isContentEditable||input?.getAttribute?.("contenteditable")==="plaintext-only")}
@@ -1735,7 +1735,7 @@ function upsertCanyonAvailability(member,patch={}){
   const explicit=Object.hasOwn(patch,"status")||Object.hasOwn(patch,"time_slot");
   const next=normalizeAvailabilityRecord({...existing,...member,...patch,event_type:"canyon_storm",source:explicit?"alliance_manager_manual":null,reliability:explicit?1:null,updated_at:at});
   if(existingIndex>=0)canyon.availability[existingIndex]=next;else canyon.availability.push(next);
-  canyon.plan=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=at;state.alliance.updated_at=at;
+  canyon.plan=null;canyonSelectionProposal=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=at;state.alliance.updated_at=at;
   saveState({renderUi:false});
 }
 function canyonScheduledTime(canyon){const value=String(canyon?.scheduled_at||"");return value.includes("T")?value.split("T")[1].slice(0,5):""}
@@ -1751,6 +1751,36 @@ function renderCanyonAvailability(){
   const byKey=new Map(active.flatMap(m=>canyonMemberKeys(m).map(k=>[k,m])));
   box.querySelectorAll("[data-canyon-status]").forEach(input=>input.addEventListener("change",()=>{const member=byKey.get(input.dataset.canyonStatus);if(!member)return;const slot=[...box.querySelectorAll("[data-canyon-slot]")].find(x=>x.dataset.canyonSlot===input.dataset.canyonStatus)?.value||canyonAvailabilityFor(canyon,member).time_slot||canyonScheduledTime(canyon);upsertCanyonAvailability(member,{status:input.value,time_slot:slot||null});renderCanyonPlanner()}));
   box.querySelectorAll("[data-canyon-slot]").forEach(input=>input.addEventListener("change",()=>{const member=byKey.get(input.dataset.canyonSlot);if(!member)return;upsertCanyonAvailability(member,{time_slot:input.value||null});renderCanyonPlanner()}));
+}
+function canyonSelectionItemMarkup(item){
+  const missing=item.selection_missing_data?` <span class="canyonMissingBadge">données manquantes</span>`:"";
+  return `<div class="canyonSelectionItem"><b>${esc(item.name||t("player"))}</b><small>${esc(item.selection_reason||"Disponibilité à confirmer")}${missing}</small></div>`;
+}
+function renderCanyonSelectionProposal(){
+  const box=$("#canyonSelectionProposal");if(!box)return;
+  const proposal=canyonSelectionProposal;
+  if(!proposal){box.classList.add("hidden");box.innerHTML="";return}
+  const missing=Number(proposal.missing_data_count)||0,confirmations=(proposal.confirmation||[]).length;
+  box.classList.remove("hidden");
+  box.innerHTML=`<div class="canyonSelectionTop"><div><b>Sélection efficace proposée</b><small>${proposal.selected_slot&&proposal.selected_slot!=="to_confirm"?`Créneau ${esc(proposal.selected_slot)} · `:""}Présents prioritaires, puis disponibilités à confirmer.</small></div></div>
+    <div class="canyonSelectionCounts"><b>${proposal.starters.length} titulaires proposés</b><b>${proposal.substitutes.length} remplaçants proposés</b></div>
+    ${missing?`<div class="notice warn canyonMissingNotice">${missing} joueur${missing>1?"s":""} proposé${missing>1?"s":""} avec des données manquantes. La puissance absente n'est pas interprétée comme une faiblesse.</div>`:""}
+    ${confirmations?`<div class="notice canyonConfirmationNotice">${confirmations} disponibilité${confirmations>1?"s":""} reste${confirmations>1?"nt":""} à confirmer ; elles ne sont pas exclues automatiquement.</div>`:""}
+    <div class="canyonSelectionColumns"><div><h4>Titulaires</h4>${proposal.starters.length?proposal.starters.map(canyonSelectionItemMarkup).join(""):`<div class="notice">Aucun titulaire éligible.</div>`}</div><div><h4>Remplaçants</h4>${proposal.substitutes.length?proposal.substitutes.map(canyonSelectionItemMarkup).join(""):`<div class="notice">Aucun remplaçant disponible.</div>`}</div></div>
+    <div class="buttonRow canyonSelectionActions"><button id="canyonApplySelectionBtn" class="primaryAction" type="button">Appliquer cette sélection</button><button id="canyonCancelSelectionBtn" class="secondaryBtn" type="button">Annuler</button></div>`;
+  $("#canyonApplySelectionBtn")?.addEventListener("click",applyCanyonSelectionProposal);
+  $("#canyonCancelSelectionBtn")?.addEventListener("click",()=>{canyonSelectionProposal=null;renderCanyonPlanner()});
+}
+function canyonSelectionMembers(){
+  return currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members)
+    .map(member=>({...member,lifecycle_key:rosterLifecycleKey(member)}));
+}
+function applyCanyonSelectionProposal(){
+  if(!canyonSelectionProposal||!desertStormSelectionAccess().allowed||!desertStormFeatureAccess())return;
+  const canyon=ensureCanyonState(),members=canyonSelectionMembers(),scheduled=String(canyon.scheduled_at||""),[date,time=""]=scheduled.split("T"),now=new Date().toISOString();
+  canyon.plan=buildCanyonPlan(members,canyon.availability,{faction:canyon.faction,status:canyon.status,date:date||null,time:canyonSelectionProposal.selected_slot||time.slice(0,5)||null,adjudicator_key:canyon.adjudicator_key,selection:canyonSelectionProposal});
+  canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;canyonSelectionProposal=null;canyonActiveTab="plan";saveState();
+  const message=$("#canyonStatusMessage");if(message){message.className="notice";message.textContent="Sélection efficace appliquée · validation R4/R5 requise.";message.classList.remove("hidden")}
 }
 function renderCanyonRules(){
   const objectives=$("#canyonObjectives"),skills=$("#canyonSkills"),faction=ensureCanyonState().faction;
@@ -1770,20 +1800,48 @@ function renderCanyonRules(){
     ${faction!=="scouts"?`<div class="canyonRuleCard"><b>Jour du Jugement · Judicateur Instaurateurs</b><small>120 s · coût 1000000 · recharge 300 s · téléportation réussie : 5000 dégâts ; destruction : recharge −30 s ; base ennemie détruite : recharge de téléportation +60 s.</small></div>`:""}
     <div class="canyonRuleCard"><b>Obtention d’énergie</b><small>Bataille · Assistance · Stratégie / garnison. Valeurs non confirmées : à confirmer.</small></div></div>`;
 }
+function canyonPlanMemberKey(item){return String(item?.canonical_member_key||item?.lifecycle_key||item?.name||"").trim()}
+function refreshCanyonPlanAfterManualEdit(){
+  const canyon=ensureCanyonState(),plan=canyon.plan;if(!plan)return;
+  const next=buildCanyonPlan([],[],{
+    faction:canyon.faction,status:canyon.status,date:canyon.scheduled_at?.split("T")[0]||null,
+    time:plan.selected_slot||canyonScheduledTime(canyon),adjudicator_key:canyon.adjudicator_key,
+    selection:{starters:Array.isArray(plan.participants)?plan.participants:[],substitutes:Array.isArray(plan.substitutes)?plan.substitutes:[],confirmation:Array.isArray(plan.confirmation)?plan.confirmation:[],selected_slot:plan.selected_slot}
+  });
+  canyon.plan=next;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=new Date().toISOString();state.alliance.updated_at=canyon.updated_at;saveState();
+}
+function removeCanyonStarter(key){
+  const canyon=ensureCanyonState(),plan=canyon.plan;if(!plan||canyon.validated_at)return;
+  const index=(plan.participants||[]).findIndex(item=>canyonPlanMemberKey(item)===key);if(index<0)return;
+  const [removed]=plan.participants.splice(index,1);
+  if(removed&&(plan.substitutes||[]).length<10)plan.substitutes.push(removed);
+  refreshCanyonPlanAfterManualEdit();
+}
+function promoteCanyonSubstitute(key){
+  const canyon=ensureCanyonState(),plan=canyon.plan;if(!plan||canyon.validated_at)return;
+  const index=(plan.substitutes||[]).findIndex(item=>canyonPlanMemberKey(item)===key);if(index<0)return;
+  const [promoted]=plan.substitutes.splice(index,1);
+  if((plan.participants||[]).length>=20){const demoted=plan.participants.pop();if(demoted)plan.substitutes.push(demoted)}
+  plan.participants.push(promoted);refreshCanyonPlanAfterManualEdit();
+}
 function renderCanyonPlan(){
   const box=$("#canyonPlan"),validate=$("#canyonValidateBtn");if(!box)return;const canyon=ensureCanyonState(),plan=canyon.plan;
   if(!plan){box.innerHTML=`<div class="notice">Renseigne les disponibilités réelles puis génère une proposition. Les données manquantes resteront « à confirmer ».</div>`;validate?.classList.add("hidden");return}
   const roleWhy={capture:"Sécuriser les objectifs de production confirmés.",defense_garrison:"Tenir les structures et la garnison.",mobile_reaction:"Réagir entre les objectifs sans abandonner la défense.",collection_energy:"Collecter l’énergie et les points excédentaires.",adjudicator:"Utiliser le rôle Judicateur confirmé pour les Instaurateurs."};
   const phases=(plan.phases||[]).map((phase,index)=>`<div class="canyonPhase"><h4>Phase ${index+1} · ${esc((phase.objectives||[]).map(canyonObjectiveLabel).join(" · "))}</h4>${(phase.assignments||[]).length?(phase.assignments||[]).map(x=>`<div class="canyonAssignment"><b>${esc(x.name)} · ${esc(canyonRoleLabel(x.role))}</b><small>Pourquoi : ${esc(roleWhy[x.role]||"À confirmer")} · Sources : ${esc((x.sources||[]).map(s=>s==="confirmed_rule"?"règle confirmée":s==="player_data"?"donnée joueur":"donnée alliance").join(", "))}</small></div>`).join(""):`<div class="notice">Affectations à confirmer.</div>`}</div>`).join("");
-  const subs=(plan.substitutes||[]).map(x=>x.name).filter(Boolean),confirm=(plan.confirmation||[]).length;
-  box.innerHTML=`<div class="canyonPlanTop"><b>${canyon.validated_at?"Plan validé R4/R5":"Proposition à valider"}</b><small>${plan.participants?.length||0}/20 titulaires · ${subs.length}/10 remplaçants · ${confirm} disponibilités à confirmer${plan.faction_to_confirm?" · faction à confirmer":""}</small></div>${subs.length?`<div class="dsSubs"><b>Remplaçants</b><small>${esc(subs.join(" · "))}</small></div>`:""}<div class="canyonPhaseList">${phases}</div>`;
+  const participants=Array.isArray(plan.participants)?plan.participants:[],subs=Array.isArray(plan.substitutes)?plan.substitutes:[],confirm=(plan.confirmation||[]).length,manual=!canyon.validated_at;
+  const memberMarkup=(item,type)=>`<div class="canyonSelectionItem"><div><b>${esc(item.name||t("player"))}</b><small>${esc(item.selection_reason||"Sélection confirmée")}${item.selection_missing_data?` <span class="canyonMissingBadge">données manquantes</span>`:""}</small></div>${manual?`<button type="button" class="smallBtn canyonManualBtn" ${type==="starter"?"data-canyon-remove-starter":"data-canyon-promote-substitute"}="${esc(canyonPlanMemberKey(item))}">${type==="starter"?"Retirer":"Titulaire"}</button>`:""}</div>`;
+  const selectionLists=`<div class="canyonSelectionColumns canyonPersistedSelection"><div><h4>Titulaires</h4>${participants.length?participants.map(item=>memberMarkup(item,"starter")).join(""):`<div class="notice">Aucun titulaire.</div>`}</div><div><h4>Remplaçants</h4>${subs.length?subs.map(item=>memberMarkup(item,"substitute")).join(""):`<div class="notice">Aucun remplaçant.</div>`}</div></div>`;
+  box.innerHTML=`<div class="canyonPlanTop"><b>${canyon.validated_at?"Plan validé R4/R5":"Proposition à valider"}</b><small>${participants.length}/20 titulaires · ${subs.length}/10 remplaçants · ${confirm} disponibilités à confirmer${plan.faction_to_confirm?" · faction à confirmer":""}</small></div>${selectionLists}<div class="canyonPhaseList">${phases}</div>`;
+  box.querySelectorAll("[data-canyon-remove-starter]").forEach(button=>button.addEventListener("click",()=>removeCanyonStarter(button.dataset.canyonRemoveStarter)));
+  box.querySelectorAll("[data-canyon-promote-substitute]").forEach(button=>button.addEventListener("click",()=>promoteCanyonSubstitute(button.dataset.canyonPromoteSubstitute)));
   if(validate)validate.classList.toggle("hidden",Boolean(canyon.validated_at));
 }
 function renderCanyonPlanner(){
   const section=$("#canyonPlanner");if(!section)return;const canyon=ensureCanyonState(),access=desertStormSelectionAccess(),runtime=runtimeAccessState(),disabled=!runtime.privateVisible||!access.allowed;
   section.classList.toggle("managerLocked",disabled);
-  const faction=$("#canyonFaction"),status=$("#canyonStatus"),date=$("#canyonDateTime"),adjudicator=$("#canyonAdjudicator"),adjudicatorField=$("#canyonAdjudicatorField"),search=$("#canyonSearch"),generate=$("#canyonGenerateBtn");
-  for(const el of [faction,status,date,adjudicator,search,generate])if(el)el.disabled=disabled;
+   const faction=$("#canyonFaction"),status=$("#canyonStatus"),date=$("#canyonDateTime"),adjudicator=$("#canyonAdjudicator"),adjudicatorField=$("#canyonAdjudicatorField"),search=$("#canyonSearch"),generate=$("#canyonGenerateBtn"),efficient=$("#canyonEfficientSelectBtn");
+   for(const el of [faction,status,date,adjudicator,search,generate,efficient])if(el)el.disabled=disabled;
   if(faction)faction.value=canyon.faction;if(status)status.value=canyon.status;if(date)date.value=canyon.scheduled_at||"";if(search&&search!==document.activeElement)search.value=canyonSearchTerm;
   const active=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members),available=active.filter(m=>canyonAvailabilityFor(canyon,m).status==="present");
   if(adjudicatorField)adjudicatorField.classList.toggle("hidden",canyon.faction!=="instigators");
@@ -1792,7 +1850,7 @@ function renderCanyonPlanner(){
   if(summary)summary.innerHTML=`<div><small>Faction</small><b>${esc(canyonFactionLabel(canyon.faction))}</b></div><div><small>Participants</small><b>${plan?.participants?.length||0}/20</b></div><div><small>Remplaçants</small><b>${plan?.substitutes?.length||0}/10</b></div><div><small>Priorité</small><b>${esc(best.slot&&best.slot!=="to_confirm"?`${priority} · ${best.slot}`:priority)}</b></div>`;
   section.querySelectorAll("[data-canyon-tab]").forEach(btn=>btn.classList.toggle("active",btn.dataset.canyonTab===canyonActiveTab));
   section.querySelectorAll("[data-canyon-panel]").forEach(panel=>panel.classList.toggle("hidden",panel.dataset.canyonPanel!==canyonActiveTab));
-  renderCanyonAvailability();renderCanyonRules();renderCanyonPlan();
+   renderCanyonAvailability();renderCanyonSelectionProposal();renderCanyonRules();renderCanyonPlan();
 }
 
 function memberNames(items,limit=6){const rows=(Array.isArray(items)?items:[]).filter(Boolean),shown=rows.slice(0,limit),more=Math.max(0,rows.length-shown.length);return shown.length?`${shown.join(" / ")}${more?` · +${more}`:""}`:"—"}
@@ -2015,11 +2073,12 @@ $("#desertStormClearBtn")?.addEventListener("click",()=>{const clearPrompt=lang.
 $("#desertStormGenerateBtn")?.addEventListener("click",()=>{const st=$("#desertStormStatus");if(!hasDeclaredAllianceCommandRole()){if(st){st.className="notice warn";st.textContent=managerOnlyMessage();st.classList.remove("hidden")}return}if(!desertStormFeatureAccess())return;const ds=ensureDesertStormState(),activeMembers=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members),inactiveMembers=[...(state.alliance.roster_review||[]),...(state.alliance.former_members||[])],members=activeMembers.map(m=>({...m,lifecycle_key:rosterLifecycleKey(m)}));ds.registered_keys=normalizeDesertStormSelections(ds.registered_keys,activeMembers,inactiveMembers);if(!ds.registered_keys.length){if(st){st.className="notice warn";st.textContent=t("ds_no_registered");st.classList.remove("hidden")}return}ds.plan=buildDesertStormPlan(members,ds.registered_keys,{nowMs:serverNow.getTime(),team:ds.team,battleTime:ds.battle_time});ds.updated_at=new Date().toISOString();state.alliance.updated_at=ds.updated_at;saveState();if(st){st.className="notice";st.textContent=t("ds_plan_ready");st.classList.remove("hidden")}});
 $("#canyonPlanner")?.querySelectorAll("[data-canyon-tab]").forEach(btn=>btn.addEventListener("click",()=>{canyonActiveTab=btn.dataset.canyonTab||"preparation";renderCanyonPlanner()}));
 $("#canyonSearch")?.addEventListener("input",e=>{canyonSearchTerm=String(e.target.value||"");scheduleCanyonSearchRender()});
-$("#canyonStatus")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.status=e.target.value;canyon.plan=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
-$("#canyonDateTime")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.scheduled_at=String(e.target.value||"")||null;canyon.plan=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
-$("#canyonFaction")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.faction=["instigators","scouts"].includes(e.target.value)?e.target.value:"unknown";if(canyon.faction!=="instigators")canyon.adjudicator_key=null;canyon.plan=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
-$("#canyonAdjudicator")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.adjudicator_key=String(e.target.value||"")||null;canyon.plan=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
-$("#canyonGenerateBtn")?.addEventListener("click",()=>{const message=$("#canyonStatusMessage");if(!desertStormSelectionAccess().allowed){if(message){message.className="notice warn";message.textContent=managerOnlyMessage();message.classList.remove("hidden")}return}if(!desertStormFeatureAccess())return;const canyon=ensureCanyonState(),members=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members).map(m=>({...m,lifecycle_key:rosterLifecycleKey(m)})),scheduled=String(canyon.scheduled_at||""),[date,time=""]=scheduled.split("T"),now=new Date().toISOString();canyon.plan=buildCanyonPlan(members,canyon.availability,{faction:canyon.faction,status:canyon.status,date:date||null,time:time.slice(0,5)||null,adjudicator_key:canyon.adjudicator_key});canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;canyonActiveTab="plan";saveState();if(message){message.className="notice";message.textContent=canyon.plan.faction_to_confirm?"Plan générique créé · faction à confirmer.":"Plan Canyon créé · validation R4/R5 requise.";message.classList.remove("hidden")}});
+ $("#canyonStatus")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.status=e.target.value;canyon.plan=null;canyonSelectionProposal=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
+ $("#canyonDateTime")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.scheduled_at=String(e.target.value||"")||null;canyon.plan=null;canyonSelectionProposal=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
+ $("#canyonFaction")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.faction=["instigators","scouts"].includes(e.target.value)?e.target.value:"unknown";if(canyon.faction!=="instigators")canyon.adjudicator_key=null;canyon.plan=null;canyonSelectionProposal=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
+ $("#canyonAdjudicator")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.adjudicator_key=String(e.target.value||"")||null;canyon.plan=null;canyonSelectionProposal=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
+ $("#canyonEfficientSelectBtn")?.addEventListener("click",()=>{if(!desertStormSelectionAccess().allowed||!desertStormFeatureAccess())return;const canyon=ensureCanyonState(),scheduled=String(canyon.scheduled_at||""),[,time=""]=scheduled.split("T");canyonSelectionProposal=buildEfficientCanyonSelection(canyonSelectionMembers(),canyon.availability,{faction:canyon.faction,time:time.slice(0,5)||null,adjudicator_key:canyon.adjudicator_key});renderCanyonPlanner()});
+ $("#canyonGenerateBtn")?.addEventListener("click",()=>{const message=$("#canyonStatusMessage");if(!desertStormSelectionAccess().allowed){if(message){message.className="notice warn";message.textContent=managerOnlyMessage();message.classList.remove("hidden")}return}if(!desertStormFeatureAccess())return;const canyon=ensureCanyonState(),members=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members).map(m=>({...m,lifecycle_key:rosterLifecycleKey(m)})),scheduled=String(canyon.scheduled_at||""),[date,time=""]=scheduled.split("T"),now=new Date().toISOString();canyonSelectionProposal=null;canyon.plan=buildCanyonPlan(members,canyon.availability,{faction:canyon.faction,status:canyon.status,date:date||null,time:time.slice(0,5)||null,adjudicator_key:canyon.adjudicator_key});canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;canyonActiveTab="plan";saveState();if(message){message.className="notice";message.textContent=canyon.plan.faction_to_confirm?"Plan générique créé · faction à confirmer.":"Plan Canyon créé · validation R4/R5 requise.";message.classList.remove("hidden")}});
 $("#canyonValidateBtn")?.addEventListener("click",()=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState();if(!canyon.plan)return;const now=new Date().toISOString();canyon.validated_at=now;canyon.validated_by=String(state.player?.name||state.player_id||"R4/R5");canyon.updated_at=now;state.alliance.updated_at=now;saveState();const message=$("#canyonStatusMessage");if(message){message.className="notice";message.textContent="Plan Canyon validé par un R4/R5.";message.classList.remove("hidden")}});
 $("#vsPlanBtn").addEventListener("click",async()=>{if(!requirePro())return;const j=await requestAdvice("vs");$("#vsPlanText").textContent=structuredAdviceText("vs",j)});$("#seasonLifecycleSelect")?.addEventListener("change",()=>{const value=$("#seasonLifecycleSelect").value||"unknown",now=new Date().toISOString();state.season=repairSeasonState({...state.season,lifecycle:value,lifecycle_source:"manual",ended_at:(value==="ended"||value==="interseason")?(state.season.ended_at||now):null,updated_at:now});saveState();$("#seasonAdviceText").textContent=t("season_empty")});
 $("#seasonAdviceBtn").addEventListener("click",async()=>{if(!requirePro())return;const j=await requestAdvice("season");$("#seasonAdviceText").textContent=structuredAdviceText("season",j)});
