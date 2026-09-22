@@ -7,7 +7,7 @@
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization
 // Scan request restore: keep server-side scan completion authoritative; browser no longer aborts /api/scan at 60 s.
-const CACHE="warboost-v2-5-28-hf8-6-28-squad-native-checkbox-r1";
+const CACHE="warboost-v2-5-28-hf8-6-28-squad-accordion-fix-r2";
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-25-player-launch-integrity
 // Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
