@@ -10,6 +10,7 @@ import {seasonLifecycle,seasonIsActive,activeSeasonProgress} from '../lib/season
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {selectPrimarySquad} from '../lib/squad-identity.js';
 import {scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine} from '../lib/vs-live.js';
+import {LAST_WAR_RULES,LAST_WAR_RULES_VERSION,crystalEventEligibility,crystalBossGuidance,shopRuleGuidance,lastWarRuleContext,ruleProvenance} from '../lib/last-war-rules.js';
 const ENGINE_VERSION="2.5.28";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
@@ -578,8 +579,15 @@ function shopTargetReason(category,target,locale){
 }
 
 function normItem(v){return cleanName(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
-const KNOWN_SHOP_CATEGORIES=new Set(["vip_time","blueprint","exclusive","hero","drone","stamina","armament","skill","speed_heal","speed_research","speed_build","speed_train","speed","shield","teleport","campaign_chest","resource","cosmetic","chest","monthly_pass","training","overlord","badge_value","gear_material","armament_material","decoration_component","superalloy","season_skill","profession","hero_recruit","survivor","trade","transfer","combat_data","event_pack","diamond_topup","gold_brick"]);
+const KNOWN_SHOP_CATEGORIES=new Set(["vip_time","blueprint","exclusive","hero","drone","stamina","armament","skill","speed_heal","speed_research","speed_build","speed_train","speed","shield","teleport","campaign_chest","resource","cosmetic","chest","monthly_pass","super_monthly_pass","training","overlord","badge_value","gear_material","armament_material","decoration_component","superalloy","season_skill","profession","hero_recruit","survivor","trade","transfer","combat_data","event_pack","diamond_topup","gold_brick","crystal_pass","crystal_shop_pass","crystal_boss","silver_brick","battle_pass","alliance_star_party"]);
 function itemCategory(name,explicitCategory="",store=""){const explicit=normItem(explicitCategory).replace(/\s+/g,"_");if(KNOWN_SHOP_CATEGORIES.has(explicit))return explicit;const ref=referenceCategoryForItem(name,store);if(ref)return ref;const s=normItem(`${name||""} ${explicitCategory||""}`);
+  if(/super.*monthly|monthly.*super|super.*mensuel|super.*monat|超级月卡|超級月卡|スーパー.*マンスリー/.test(s))return "super_monthly_pass";
+  if(/crystal.*(shop|pass|store)|shop.*crystal|pass.*crystal|cristal.*(boutique|pass)|晶石.*商店|晶石.*通行证|水晶.*商店/.test(s))return "crystal_shop_pass";
+  if(/crystal.*boss|boss.*crystal|boss.*cristal|晶石.*boss|水晶.*boss/.test(s))return "crystal_boss";
+  if(/silver.*brick|brick.*silver|brique.*argent|brique.*d'argent|银砖|銀レンガ/.test(s))return "silver_brick";
+  if(/battle.*pass|pass.*battle|pass.*combat|pase.*batalla|战斗通行证|バトルパス/.test(s))return "battle_pass";
+  if(/star.*party|party.*star|fête.*étoile|fete.*etoile|星.*派对|スター.*パーティ/.test(s))return "alliance_star_party";
+  if(/crystal.*event|event.*crystal|evenement.*cristal|événement.*cristal|晶石.*活动|水晶.*活动/.test(s))return "crystal_pass";
   if(/vip.*(30|day|jour|dia|tag|日)|30.*vip|vip.*time|vip.*temps|vip.*zeit/.test(s))return "vip_time";
   if(/mythic.*blueprint|mythical.*blueprint|legendary.*blueprint|blueprint|plan.*equip|equip.*plan|equip.*blueprint|memoire.*equip|装備.*レシピ|装备.*蓝图/.test(s))return "blueprint";
   if(/exclusive.*weapon|weapon.*shard|arme.*exclusive|fragment.*arme|专属武器|専用武器/.test(s))return "exclusive";
@@ -779,7 +787,13 @@ function situationalUtilityGuard(cat,state,locale,name=""){
 }
 function baseOfferScore(cat,needs){
   if(cat==="vip_time")return 94;
-  if(cat==="monthly_pass")return 52;
+  if(cat==="monthly_pass"||cat==="super_monthly_pass")return 58;
+  if(cat==="crystal_pass")return 62;
+  if(cat==="crystal_shop_pass")return 60;
+  if(cat==="crystal_boss")return 58;
+  if(cat==="battle_pass")return 56;
+  if(cat==="alliance_star_party")return 54;
+  if(cat==="silver_brick")return 28;
   if(cat==="blueprint")return 84+needs.gearUrgency*14;
   if(cat==="gear_material")return 68+needs.gearUrgency*18;
   if(cat==="exclusive")return 62+needs.exclusiveUrgency*36;
@@ -821,7 +835,15 @@ function scoreVisibleOffer(o,needs,state){const rawStore=o?.store_type||o?.store
   if(store==="diamond"){if(cat==="resource"||cat==="hero"||cat==="chest")score=Math.min(score,28);}
   const vsBoost=vsContextBoost(cat,o?.item_name,state?.vs?.day);if(vsBoost){score+=vsBoost;factors.push(a.vs(state.vs.day));}
   if(num(state?.season?.day)!==null){if(cat==="stamina")score+=3;if(cat==="drone")score+=2;}
-  const discount=Math.max(0,Math.min(4,(num(o?.discount_pct)||0)/20));score+=discount;
+  // A displayed discount is presentation data, not proof of value. Keep it on
+  // the offer for transparency, but never let it increase the recommendation.
+  if(num(o?.discount_pct)!==null)factors.push(shopRuleGuidance(state?._locale));
+  const crystal=crystalEventEligibility(state);
+  if(["crystal_pass","crystal_shop_pass","crystal_boss"].includes(cat)){
+    if(crystal.eligible===false){score=0;factors.push(state?._locale&&String(state._locale).toLowerCase().startsWith("fr")?"Compte non confirmé comme éligible à l’événement Crystal.":"Account is not confirmed eligible for the Crystal Event.");}
+    else if(!crystal.known){score=Math.min(score,48);factors.push(state?._locale&&String(state._locale).toLowerCase().startsWith("fr")?"Éligibilité Crystal non confirmée : scanne ou saisis le statut du compte.":"Crystal eligibility is not confirmed: scan or enter the account status.");}
+    if(cat==="crystal_boss")factors.push(crystalBossGuidance(state?._locale));
+  }
   const currency=cleanName(o?.currency)||cleanName(shop?.currency),price=num(o?.price),balance=num(shop?.currency_balance),reserve=VIP30_REFERENCE_POLICY.diamonds;
   const diamond=isDiamondCurrency(currency)||((store==="vip"||store==="diamond")&&!isCashCurrency(currency));
   if(diamond&&price!==null){
@@ -831,7 +853,7 @@ function scoreVisibleOffer(o,needs,state){const rawStore=o?.store_type||o?.store
       else {const discretionary=Math.max(0,balance-reserve);if(cat!=="vip_time"&&discretionary>0&&price>discretionary*.25)score-=6;factors.push(a.budgetOk);}
     }else factors.push(a.unknownBudget);
   }
-  if(isCashCurrency(currency)){const targeted=["exclusive","blueprint","gear_material","drone","armament","armament_material","monthly_pass"].includes(cat);score=Math.min(score,targeted?88:78);factors.push(a.realMoney);}
+  if(isCashCurrency(currency)){const targeted=["exclusive","blueprint","gear_material","drone","armament","armament_material","monthly_pass","super_monthly_pass","crystal_pass","crystal_shop_pass","battle_pass"].includes(cat);score=Math.min(score,targeted?88:78);factors.push(a.realMoney);}
   if(cat==="hero"&&!needs.needStars)factors.push(a.allStars);
   if(needs.needExclusive&&["drone","stamina","speed","speed_build","speed_research","speed_train","speed_heal","hero"].includes(cat)){const t=needs.exTargets.slice(0,2).map(exTargetLabel).filter(Boolean).join(" / ");factors.push(a.exFirst(t));}
   const da=diagnosticShopAdjustment(cat,state?._shop_alignment,state?._locale);score+=da.bonus;factors.push(...da.reasons);
@@ -843,7 +865,7 @@ function scoreVisibleOffer(o,needs,state){const rawStore=o?.store_type||o?.store
   return {score,cat,factors,budget:{currency,price,balance,reserve,diamond},opaque_container:opaqueGuard.opaque,opaque_score_cap:opaqueGuard.cap,situational_resource:situationalGuard.situational,situational_context_confirmed:situationalGuard.contextual,situational_score_cap:situationalGuard.cap};
 }
 function verdict(score,p){return score>=85?{key:"buy_now",label:p.buy}:score>=55?{key:"consider",label:p.consider}:{key:"skip",label:p.skip};}
-function offerReason(cat,needs,p){const exTarget=needs.exTargets.slice(0,2).map(exTargetLabel).filter(Boolean).join(" / "),starTarget=needs.starTargets.slice(0,2).map(x=>x.name).join(" / ");if(cat==="blueprint"||cat==="gear_material")return p.reasonBlueprint;if(cat==="exclusive")return p.reasonExclusive(exTarget);if(cat==="hero"||cat==="hero_recruit")return p.reasonHero(starTarget);if(cat==="drone")return p.reasonDrone;if(cat==="stamina")return p.reasonStamina;if(["speed","speed_build","speed_research","speed_train","speed_heal"].includes(cat))return p.reasonSpeed;if(cat==="shield")return p.reasonShield;if(["resource","cosmetic","diamond_topup","gold_brick","event_pack"].includes(cat))return p.reasonResource;return p.reasonVisible;}
+function offerReason(cat,needs,p,locale="en"){const exTarget=needs.exTargets.slice(0,2).map(exTargetLabel).filter(Boolean).join(" / "),starTarget=needs.starTargets.slice(0,2).map(x=>x.name).join(" / ");if(cat==="blueprint"||cat==="gear_material")return p.reasonBlueprint;if(cat==="exclusive")return p.reasonExclusive(exTarget);if(cat==="hero"||cat==="hero_recruit")return p.reasonHero(starTarget);if(cat==="drone")return p.reasonDrone;if(cat==="stamina")return p.reasonStamina;if(["speed","speed_build","speed_research","speed_train","speed_heal"].includes(cat))return p.reasonSpeed;if(cat==="shield")return p.reasonShield;if(["crystal_pass","crystal_shop_pass","crystal_boss","battle_pass","alliance_star_party","super_monthly_pass"].includes(cat))return shopRuleGuidance(locale);if(["resource","cosmetic","diamond_topup","gold_brick","event_pack"].includes(cat))return p.reasonResource;return p.reasonVisible;}
 const CURRENCY_LABELS={
   fr:{diamonds:"diamants",alliance_coins:"jetons Alliance",honor_medals:"médailles d’Honneur",campaign_points:"points Campagne",season_tokens:"jetons Saison",cosmetic_tokens:"jetons Cosmétiques",coupons:"coupons"},
   en:{diamonds:"diamonds",alliance_coins:"Alliance coins",honor_medals:"Honor medals",campaign_points:"Campaign points",season_tokens:"Season tokens",cosmetic_tokens:"Cosmetic tokens",coupons:"coupons"},
@@ -970,6 +992,7 @@ function referenceObservedPriceLabel(offer,store,locale){
 
 function buildShopAdvice(state,locale,analysis){
   const p=shopText(locale),a=adaptiveText(locale),safe=shopSafetyText(locale),rawNeeds=heroNeedSnapshot(state),needs=alignShopNeedsWithDiagnostic(rawNeeds,analysis),shop=state?.shop||{},profileConfidence=shopProfileConfidence(needs),alignment=buildShopDiagnosticAlignment(analysis),stateCtx={...state,_locale:locale,_shop_alignment:alignment},caps=Array.isArray(state?.sync?.capabilities)?state.sync.capabilities:[],officialCatalog=Boolean(state?.sync?.sources?.official&&(caps.includes("shop_catalog")||caps.includes("shop")||caps.includes("store_catalog"))),referenceStats=shopReferenceStats();
+  needs._locale=locale;
   let recommendations=[],confidence=Math.min(90,profileConfidence),scanBased=false,store="Last War Shop",catalogFreshness=freshnessInfo(shop?.updated_at||null,"shop",locale),observed=officialCatalog?{rows:(Array.isArray(shop?.offers)?shop.offers.filter(o=>o?.sold!==true).map(o=>({...o,_store_type:canonicalShopStore(shop?.store_type)||shop?.store_type||"Last War Shop",_currency:normalizeObservedCurrency({...o,_store_type:shop?.store_type,_currency:o?.currency||shop?.currency}).currency,_currency_balance:shop?.currency_balance,_updated_at:shop?.updated_at})):[]),raw_count:Array.isArray(shop?.offers)?shop.offers.length:0,unique_count:Array.isArray(shop?.offers)?shop.offers.filter(o=>o?.sold!==true).length:0,sold_count:Array.isArray(shop?.offers)?shop.offers.filter(o=>o?.sold===true).length:0,deduped_count:0,price_conflict_count:0}:observedShopOffers(shop);
   const liveObserved=observed.rows.filter(o=>freshnessInfo(o?._updated_at||null,"shop",locale).status!=="stale"&&freshnessInfo(o?._updated_at||null,"shop",locale).status!=="unknown");
   if(liveObserved.length){
@@ -1252,7 +1275,8 @@ export default async function handler(req,res){
   const scope=String(req.body?.scope||"player"),s=req.body?.state||{},loc=String(req.body?.locale||"en-GB");
   if(scope==="player"){
     const analysis=buildPlayerAnalysis(s,loc);
-    analysis.shop=buildShopAdvice(s,loc,analysis);
+     analysis.shop=buildShopAdvice(s,loc,analysis);
+     analysis.last_war_rules=lastWarRuleContext();
     analysis.seven_day_plan=buildSevenDayPlan(s,analysis);
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
