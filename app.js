@@ -1,5 +1,5 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
-import {HERO_CATALOG,canonicalHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
+import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
 import {canonicalShopStore} from "./lib/shop-catalog.js";
 import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad} from "./lib/squad-identity.js";
@@ -85,18 +85,27 @@ function emptyHero(i){return {name:"",level:null,stars:null,power:null,exclusive
 function emptySquad(i){return {id:i,name:`Squad ${i}`,power:null,last_confirmed_power:null,power_sync_status:"confirmed",updated_at:null,needs_rescan:false,composition_changed_at:null,composition_confirmed_at:null,composition_source:null,confirmed_composition:Array.from({length:5},()=>""),composition_conflict:null,heroes:Array.from({length:5},emptyHero)}}
 function initialState(){return {version:APP_VERSION,player_id:clientId(),updated_at:null,player:{name:"",server_id:"",hq_level:null,power_m:null,coordinates:null,role:"R1",updated_at:null},player_context:{objective:"auto",account_age_days:null,server_profile:"auto",updated_at:null},activity_events:[],player_availability:[],availability_history:[],exclusive_weapons:[],hero_progression:[],hero_profiles:[],progression_snapshots:[],drone:{level:null,power_m:null,updated_at:null},shop:{store_type:"",currency:"",currency_balance:null,vip_level:null,vip_days_remaining:null,offers:[],snapshots:[],updated_at:null},squads:[1,2,3,4].map(emptySquad),alliance:{id:null,owner_player_id:null,server_id:"",tag:"",name:"",role:"R1",cloud_role_verified:false,management_verified:false,invite_code:"",members:[],roster_review:[],former_members:[],event_availability:[],availability_history:[],roster_updated_at:null,roster_snapshot_complete_at:null,unlinked_accounts:[],identity_link_status:"unknown",desert_storm:{team:"A",battle_time:"",registered_keys:[],plan:null,updated_at:null},canyon:normalizeCanyonState({}),updated_at:null},vs:{week:null,day:null,theme:"",our_alliance:"",our_tag:"",our_server_id:"",opponent:"",opponent_tag:"",opponent_server_id:"",our_score:null,their_score:null,our_percent:null,their_percent:null,time_remaining_text:"",time_remaining_seconds:null,personal_name:"",personal_rank:null,personal_score:null,leaderboard:[],score_confirmed:false,snapshots:[],updated_at:null},season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:null,resistance:null,focus:null,lifecycle:"unknown",lifecycle_source:null,ended_at:null,measured_hybrid_synergy:false,awakening_swap:null,updated_at:null},technology:{type_mastery_pct:null,hero_tech_pct:null,siege_to_seize_pct:null,defensive_fortification_pct:null,tactical_weapon_pct:null,updated_at:null},sync:{provider:"warboost-local",provider_kind:"local",access_status:"pending",capabilities:[],status:"local",last_sync:null,last_error:null,auto_ready:true,last_scan:null,official_last_sync:null,public_last_sync:null,sources:{official:false,public:false,scan:false,alliance:false}}}}
 function canonicalStoredHeroName(v){return canonicalHeroName(v)}
+function canonicalStoredExclusiveHeroName(row={}){return canonicalExclusiveWeaponHeroName(row?.hero_name,row?.weapon_name)}
 function mergeExclusiveWeapons(baseList,incomingList){
-  const out=Array.isArray(baseList)?baseList.map(x=>({...x,hero_name:canonicalStoredHeroName(x?.hero_name)})):[];
+  const out=Array.isArray(baseList)?baseList.map(x=>({...x,hero_name:canonicalStoredExclusiveHeroName(x)})):[];
   if(!Array.isArray(incomingList))return out;
-  const keyOf=x=>String(canonicalStoredHeroName(x?.hero_name)||x?.weapon_name||"").trim().toLowerCase();
+  const keyOf=x=>String(canonicalStoredExclusiveHeroName(x)||x?.weapon_name||"").trim().toLowerCase();
   for(const item of incomingList){
     if(!item||typeof item!=="object")continue;
     const key=keyOf(item);
     if(!key)continue;
     const idx=out.findIndex(x=>keyOf(x)===key);
-    const normalized={...item,hero_name:canonicalStoredHeroName(item?.hero_name)};
-    if(idx>=0&&confirmedHeroPower(out[idx]?.power)&&!confirmedHeroPower(normalized.power))normalized.power=out[idx].power;
-    if(idx>=0)out[idx]={...out[idx],...normalized};
+    const normalized={...item,hero_name:canonicalStoredExclusiveHeroName(item)};
+    if(idx>=0){
+      const old=out[idx],oldAt=Date.parse(old?.updated_at||"")||0,newAt=Date.parse(normalized?.updated_at||"")||0;
+      const merged=newAt>=oldAt?{...old,...normalized}:{...normalized,...old};
+      for(const field of ["weapon_name","level","power","power_raw","power_parse_status","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level","updated_at"]){
+        if(normalized[field]===null||normalized[field]===undefined||normalized[field]==="")merged[field]=old[field];
+      }
+      if(confirmedHeroPower(old?.power)&&(!confirmedHeroPower(normalized.power)||oldAt>newAt))merged.power=old.power;
+      merged.hero_name=canonicalStoredExclusiveHeroName(merged);
+      out[idx]=merged;
+    }
     else out.push(normalized);
   }
   return out.slice(0,24);

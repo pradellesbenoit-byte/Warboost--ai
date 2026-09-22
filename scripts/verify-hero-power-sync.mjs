@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {parseHeroPower,confirmedHeroPower,confirmedHeroPowerMillions} from "../lib/hero-power.js";
 import {normalizeState} from "../lib/normalize.js";
 import {reconcileConfirmedSquad,synchronizeHeroProfiles,mergeConfirmedExclusiveWeaponPowers} from "../lib/squad-identity.js";
-import {canonicalHeroName} from "../lib/heroes.js";
+import {canonicalHeroName,canonicalExclusiveWeaponHeroName} from "../lib/heroes.js";
 
 assert.equal(parseHeroPower("5,65 M"),5_650_000);
 assert.equal(parseHeroPower("5.11M"),5_110_000);
@@ -13,6 +13,10 @@ assert.equal(parseHeroPower("5,665,085"),5_665_085);
 assert.equal(parseHeroPower("5,65 M"),5_650_000);
 assert.equal(parseHeroPower("5 269 612"),5_269_612);
 assert.equal(canonicalHeroName("Carly"),"Carlie");
+assert.equal(canonicalHeroName("Charlie"),"Carlie");
+assert.equal(canonicalExclusiveWeaponHeroName("Tonnerre Swift",""),"Swift");
+assert.equal(canonicalExclusiveWeaponHeroName("Tonnere Swift",""),"Swift");
+assert.equal(canonicalExclusiveWeaponHeroName("Tesla","Tonnerre Swift"),"Swift");
 assert.equal(confirmedHeroPower("0 M"),null);
 assert.equal(confirmedHeroPowerMillions("5,65 M"),5.65);
 
@@ -109,5 +113,50 @@ const partialExclusive=mergeConfirmedExclusiveWeaponPowers(exclusiveApplied,{
 }).state;
 assert.equal(partialExclusive.squads[1].heroes[4].power,5665085);
 assert.equal(partialExclusive.hero_profiles.filter(x=>x.hero_name==="Carlie").length,1);
+
+const legacyNames=normalizeState({
+  squads:[
+    {},
+    {updated_at:"2026-09-20T08:00:00Z",heroes:[{name:"Charlie",power:null},{name:"Lucius",power:2_000_000},{name:"Morrison",power:2_000_000},{name:"DVA",power:2_000_000},{name:"Carlie",power:null}]},
+    {updated_at:"2026-09-20T08:00:00Z",heroes:[{name:"Tesla",power:2_000_000},{name:"Swift",power:null},{name:"Fiona",power:2_000_000},{name:"McGregor",power:2_000_000},{name:"Adam",power:2_000_000}]},
+    {}
+  ],
+  exclusive_weapons:[
+    {hero_name:"Charlie",weapon_name:"Arme de Carlie",power:"5,67 M",updated_at:"2026-09-20T09:00:00Z"},
+    {hero_name:"Carly",weapon_name:"Arme de Carlie",power:"5,60 M",updated_at:"2026-09-20T08:00:00Z"},
+    {hero_name:"Tesla",weapon_name:"Tonnerre Swift",power:"5,12 M",updated_at:"2026-09-20T10:00:00Z"},
+    {hero_name:"Tonnere Swift",weapon_name:"Tonnerre Swift",power:"5,10 M",updated_at:"2026-09-20T09:00:00Z"}
+  ],
+  hero_profiles:[
+    {hero_name:"Charlie",power:"5,67 M",updated_at:"2026-09-20T09:00:00Z"},
+    {hero_name:"Tonnere Swift",power:"5,12 M",updated_at:"2026-09-20T10:00:00Z"}
+  ]
+});
+assert.equal(legacyNames.exclusive_weapons.length,2,"legacy Carlie/Swift weapon rows are deduplicated");
+assert.deepEqual(legacyNames.exclusive_weapons.map(x=>x.hero_name).sort(),["Carlie","Swift"]);
+assert.equal(legacyNames.squads[1].heroes[0].name,"Carlie");
+assert.equal(confirmedHeroPowerMillions(legacyNames.squads[1].heroes[0].power),5.67);
+assert.equal(confirmedHeroPowerMillions(legacyNames.squads[1].heroes[4].power),5.67);
+assert.equal(confirmedHeroPowerMillions(legacyNames.squads[2].heroes[1].power),5.12);
+assert.equal(legacyNames.hero_profiles.filter(x=>x.hero_name==="Carlie").length,1);
+assert.equal(legacyNames.hero_profiles.filter(x=>x.hero_name==="Swift").length,1);
+assert.equal(legacyNames.hero_profiles.find(x=>x.hero_name==="Carlie").power,5_670_000);
+assert.equal(legacyNames.hero_profiles.find(x=>x.hero_name==="Swift").power,5_120_000);
+for(const name of ["DVA","Morrison","Tesla","Lucius","Fiona","McGregor","Adam"]){
+  assert.equal(legacyNames.squads.flatMap(s=>s.heroes).filter(h=>h.name===name).length,1,`${name} identity remains untouched`);
+}
+
+const newerWins=normalizeState({
+  exclusive_weapons:[
+    {hero_name:"Charlie",power:5_000_000,updated_at:"2026-09-20T11:00:00Z"},
+    {hero_name:"Carlie",power:6_000_000,updated_at:"2026-09-20T12:00:00Z"},
+    {hero_name:"Tonnere Swift",weapon_name:"Tonnere Swift",power:5_100_000,updated_at:"2026-09-20T11:00:00Z"},
+    {hero_name:"Tesla",weapon_name:"Tonnerre Swift",power:5_900_000,updated_at:"2026-09-20T12:00:00Z"}
+  ]
+});
+assert.equal(newerWins.exclusive_weapons.find(x=>x.hero_name==="Carlie").power,6_000_000);
+assert.equal(newerWins.exclusive_weapons.find(x=>x.hero_name==="Swift").power,5_900_000);
+assert.equal(newerWins.exclusive_weapons.filter(x=>x.hero_name==="Carlie").length,1);
+assert.equal(newerWins.exclusive_weapons.filter(x=>x.hero_name==="Swift").length,1);
 
 console.log("PASS: hero powers normalize across units, confirmed values survive partial scans, zeros stay unknown, and squad totals can be marked pending without losing history");

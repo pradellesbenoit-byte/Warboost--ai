@@ -1,5 +1,5 @@
 import {requireBetaUser} from "../lib/beta-access.js";
-import {canonicalHeroName,catalogHeroName} from "../lib/heroes.js";
+import {canonicalHeroName,catalogHeroName,canonicalExclusiveWeaponHeroName} from "../lib/heroes.js";
 import {sanitizeGear} from "../lib/gear.js";
 import {normalizeSeasonLifecycle} from "../lib/season-lifecycle.js";
 import {cleanRosterOcrName,rosterIdentityKey} from "../lib/roster-identity-resolution.js";
@@ -49,9 +49,9 @@ function exclusiveWeaponRecord(raw,now){
     raw.weapon&&typeof raw.weapon==="object"?raw.weapon:{};
   const merged={...nested,...raw};
   const x={updated_at:now};
-  const hero=canonicalHeroName(textValue(merged,["hero_name","hero","character_name","character","owner_name"]));
   const weapon=textValue(merged,["weapon_name","exclusive_weapon_name","exclusive_name","item_name","title","name"])||
     (typeof raw.weapon==="string"?str(raw.weapon,80):null);
+  const hero=canonicalExclusiveWeaponHeroName(textValue(merged,["hero_name","hero","character_name","character","owner_name"]),weapon);
   if(hero)x.hero_name=hero;
   if(weapon)x.weapon_name=weapon;
   const level=visibleLevel(objectValue(merged,["level","weapon_level","exclusive_level","visible_level","lv","lvl","niveau","niveau_arme"]));

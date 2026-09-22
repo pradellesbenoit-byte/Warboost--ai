@@ -13,6 +13,12 @@ import {mergeEventAvailabilities,mergeAvailabilityHistory} from "../lib/event-av
 
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 function recoverySummary(r){return {changed:Boolean(r?.changed),recovered_fields:Number(r?.recovered_fields||0),recovered_heroes:Array.isArray(r?.recovered_heroes)?r.recovered_heroes:[],conflicts:Array.isArray(r?.conflicts)?r.conflicts:[],sources:Array.isArray(r?.sources)?r.sources:[]}}
+function heroPowerRepairProjection(state={}){
+  const profiles=(Array.isArray(state?.hero_profiles)?state.hero_profiles:[]).map(x=>({hero_name:x?.hero_name||x?.name||"",power:x?.power??null,updated_at:x?.updated_at||null,field_updated_at:x?.field_updated_at?.power||null})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  const weapons=(Array.isArray(state?.exclusive_weapons)?state.exclusive_weapons:[]).map(x=>({hero_name:x?.hero_name||"",weapon_name:x?.weapon_name||"",level:x?.level??null,power:x?.power??null,updated_at:x?.updated_at||null})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  const squads=(Array.isArray(state?.squads)?state.squads:[]).map((sq,i)=>({id:sq?.id||i+1,heroes:(Array.isArray(sq?.heroes)?sq.heroes:[]).map(h=>({name:h?.name||"",power:h?.power??null}))}));
+  return JSON.stringify({profiles,weapons,squads});
+}
 function fastRestoreRequested(req){return String(req.query?.restore||"")==="1"||(()=>{try{return new URL(req.url||"/","http://localhost").searchParams.get("restore")==="1"}catch{return false}})()}
 function betaConsentHeader(req){return String(req.headers?.["x-warboost-beta-consent"]||"").trim()}
 function betaAccessError(beta){if(!beta?.configured)return {status:503,code:"BETA_INVITES_NOT_CONFIGURED",message:"Le registre d’invitations WarBoost doit être configuré avant l’ouverture de la bêta."};if(beta?.allowed)return null;const status=String(beta?.access_status||"");return {status:403,code:status==="revoked"?"BETA_INVITE_REVOKED":status==="expired"?"BETA_INVITE_EXPIRED":"BETA_INVITE_REQUIRED",message:status==="revoked"?"Accès bêta WarBoost révoqué":status==="expired"?"Invitation bêta WarBoost expirée":"Invitation bêta WarBoost requise"}}
@@ -162,7 +168,8 @@ export default async function handler(req,res){
       let finalState=normalizeState({...recovered.state,player_id:playerId}),updatedAt=row.updated_at||finalState.updated_at;
       const rosterRepair=await canonicalizeAllianceState(finalState,playerId);
       finalState=rosterRepair.state;
-      if(recovered.changed||rosterRepair.changed){
+      const normalizedHeroPowerDataChanged=heroPowerRepairProjection(row.state)!==heroPowerRepairProjection(finalState);
+      if(recovered.changed||rosterRepair.changed||normalizedHeroPowerDataChanged){
         try{const saved=await saveOwn(finalState,row.updated_at||null);finalState=normalizeState(saved?.state||finalState);updatedAt=saved?.updated_at||updatedAt}
         catch(error){if(error?.code!=="profile_write_conflict")throw error;const latest=await getOwn();finalState=normalizeState({...latest?.state,player_id:playerId});updatedAt=latest?.updated_at||updatedAt}
       }
