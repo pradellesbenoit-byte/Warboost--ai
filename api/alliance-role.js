@@ -4,6 +4,7 @@ import {normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from ".
 import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLink,canonicalRosterMemberKey,resolveCanonicalRosterMember,dedupeCanonicalRosterRows,normalizeAllianceRank} from "../lib/alliance-rank-management.js";
 import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/alliance-authorization.js";
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
+import {normalizeRosterRemovalTombstones,rosterLifecycleKey} from "../lib/alliance-roster-lifecycle.js";
 
 function role(v){return normalizeAllianceRank(v)}
 function clean(v,max=120){return String(v??"").trim().slice(0,max)}
@@ -61,6 +62,28 @@ export default async function handler(req,res){
       authorization=canonicalAllianceAuthorization({playerId:user.id,membership:actorContext?.membership||actor,alliance:actorContext?.alliance||alliance,roster:actorRoster,identity:actorIdentity});
       access={allowed:authorization.allowed,owner:authorization.owner,cloud_role:authorization.effective_role};
       actorRole=authorization.effective_role;isOwner=authorization.owner;
+
+     if(req.body?.action==="remove_roster_members"){
+       if(!access.allowed)return res.status(403).json({error:"management_role_required"});
+       const requested=Array.isArray(req.body?.members)?req.body.members:(Array.isArray(req.body?.member_keys)?req.body.member_keys.map(member_key=>({member_key})):[]);
+       if(!requested.length||requested.length>20)return res.status(400).json({error:"member_keys_required"});
+       const context={serverId:normalizeServerId(alliance.server_id),allianceTag:normalizeAllianceTag(alliance.tag)},current=Array.isArray(actorContext?.alliance?.roster)?actorContext.alliance.roster:actorRoster;
+       const selected=[],unresolved=[];
+       for(const raw of requested){
+         const resolution=resolveCanonicalRosterMember(current,typeof raw==="string"?{member_key:raw}:raw,context);
+         if(resolution.ok)selected.push(resolution.member);
+         else if(typeof raw!=="string"&&String(raw?.name||"").trim()&&String(raw?.server_id||context.serverId).trim()&&String(raw?.alliance_tag||context.allianceTag).trim())selected.push({...raw,canonical_member_key:raw.canonical_member_key||`canonical:${normalizeLastWarNickname(raw.name,raw.alliance_tag||context.allianceTag)}|${normalizeServerId(raw.server_id||context.serverId)}|${normalizeAllianceTag(raw.alliance_tag||context.allianceTag)}`});
+         else unresolved.push(resolution.code||"member_not_found");
+       }
+       if(unresolved.length)return res.status(409).json({error:unresolved[0]});
+       const unique=new Map(selected.map(row=>[row.canonical_member_key||`canonical:${normalizeLastWarNickname(row.name,context.allianceTag)}|${normalizeServerId(row.server_id||context.serverId)}|${normalizeAllianceTag(row.alliance_tag||context.allianceTag)}`,row]));
+       const rows=[...unique.values()],r5Count=current.filter(x=>role(x?.role)==="R5").length;
+       if(rows.some(x=>role(x?.role)==="R5")&&r5Count-rows.filter(x=>role(x?.role)==="R5").length<1)return res.status(400).json({error:"last_r5_protected"});
+       if(actorRole==="R4"&&rows.some(x=>role(x?.role)==="R5"))return res.status(403).json({error:"r5_protected"});
+       const now=new Date().toISOString(),removedKeys=new Set(rows.map(x=>x.canonical_member_key||`canonical:${normalizeLastWarNickname(x.name,context.allianceTag)}|${normalizeServerId(x.server_id||context.serverId)}|${normalizeAllianceTag(x.alliance_tag||context.allianceTag)}`)),next=current.filter(x=>!removedKeys.has(x.canonical_member_key||`canonical:${normalizeLastWarNickname(x.name,context.allianceTag)}|${normalizeServerId(x.server_id||context.serverId)}|${normalizeAllianceTag(x.alliance_tag||context.allianceTag)}`)),newTombstones=rows.map(x=>({key:x.canonical_member_key||`canonical:${normalizeLastWarNickname(x.name,context.allianceTag)}|${normalizeServerId(x.server_id||context.serverId)}|${normalizeAllianceTag(x.alliance_tag||context.allianceTag)}`,name:x.name,server_id:x.server_id||context.serverId,alliance_tag:x.alliance_tag||context.allianceTag,removed_at:now}));
+       const tombstones=normalizeRosterRemovalTombstones([...(actorContext?.roster_tombstones||[]),...newTombstones]),saved=await updateAllianceScopeRoster({alliance_id:actorContext.alliance.id||actor?.alliance_id,roster:next,roster_tombstones:tombstones,expected_updated_at:actorContext.alliance.updated_at});
+       return res.status(200).json({ok:true,mode:"roster_members_removed",removed:rows.map(x=>({name:x.name,member_key:x.canonical_member_key||rosterLifecycleKey(x)})),roster:Array.isArray(saved?.roster)?saved.roster.filter(x=>!x?.__warboost_type):next,removal_tombstones:tombstones,alliance_updated_at:saved?.updated_at||now});
+     }
 
      // Explicitly repair only the authenticated user's own membership role from a
      // uniquely linked canonical roster row. This never accepts a target id and

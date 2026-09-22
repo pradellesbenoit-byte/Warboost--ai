@@ -56,7 +56,7 @@ async function canonicalizeAllianceState(input,playerId){
   let membership=ctx.membership,linkPersisted=false;
   if(identityLink.persist_link){
     try{
-      const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name,roster:identityLink.members,expected_updated_at:ctx.alliance.updated_at});
+      const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name,roster:identityLink.members,roster_tombstones:ctx.roster_tombstones,expected_updated_at:ctx.alliance.updated_at});
       canonical=Array.isArray(saved?.roster)?saved.roster:identityLink.members;
       linkPersisted=true;
       if(saved?.updated_at)ctx.alliance={...ctx.alliance,...saved};
@@ -95,7 +95,7 @@ async function canonicalizeAllianceState(input,playerId){
     });
     if(canonicalChanged){
       try{
-        const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name,roster:canonical,expected_updated_at:ctx.alliance.updated_at});
+        const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name,roster:canonical,roster_tombstones:ctx.roster_tombstones,expected_updated_at:ctx.alliance.updated_at});
         if(saved?.roster)canonical=saved.roster;
         if(saved?.updated_at)ctx.alliance={...ctx.alliance,...saved};
       }catch{
@@ -106,7 +106,7 @@ async function canonicalizeAllianceState(input,playerId){
   }
   const stableStamp=state.updated_at||state.alliance?.updated_at||new Date().toISOString();
 
-  const identityMerge=mergeCloudRosterWithIdentity(canonicalWithKeys,ctx.cloud_roster||[],context);
+  const identityMerge=mergeCloudRosterWithIdentity(canonicalWithKeys,ctx.cloud_roster||[],{...context,removal_tombstones:ctx.roster_tombstones});
   const rosterWithActivity=mergeCurrentPlayerActivityIntoRoster(identityMerge.roster,{
     playerId,
     name:state.player?.name,
@@ -115,12 +115,14 @@ async function canonicalizeAllianceState(input,playerId){
     activityEvents:state.activity_events,
     updatedAt:stableStamp
   });
-  const rosterWithLifecycle=mergeRosterLifecycleMetadata(state.alliance?.members,rosterWithActivity);
-  const preservedR5=preserveVerifiedR5(state.alliance?.members,rosterWithLifecycle);
-  const activeRoster=currentActiveRosterMembers(preservedR5.rows,state.alliance?.roster_review,state.alliance?.former_members);
+  const rosterWithLifecycle=mergeRosterLifecycleMetadata(state.alliance?.members,rosterWithActivity,{removal_tombstones:ctx.roster_tombstones});
+  const preservedR5=preserveVerifiedR5(state.alliance?.members,rosterWithLifecycle,{removal_tombstones:ctx.roster_tombstones});
+  const activeRoster=currentActiveRosterMembers(preservedR5.rows,state.alliance?.roster_review,state.alliance?.former_members,ctx.roster_tombstones);
 
   const nextAlliance={
     ...state.alliance,
+    former_members:[],
+    roster_removal_tombstones:ctx.roster_tombstones||[],
     id:ctx.alliance.id,
     owner_player_id:ctx.alliance.owner_player_id||state.alliance?.owner_player_id||null,
     server_id:authoritativeServer,
