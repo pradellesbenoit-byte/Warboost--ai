@@ -7,6 +7,7 @@ import {allianceScopeFromState,sanitizeCanonicalRoster,joinProofForAlliance,isMa
 import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers,preserveVerifiedR5} from "../lib/alliance-roster-lifecycle.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/alliance-authorization.js";
+import {mergePlayerAvailabilityIntoRoster,mergeEventAvailabilities,mergeAvailabilityHistory} from "../lib/event-availability.js";
 void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remains exported and audited
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
@@ -40,10 +41,24 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
           }
 
           const authoritativeTag=normalizeAllianceTag(ctx.alliance.tag||merged.alliance?.tag),authoritativeServer=normalizeServerId(ctx.alliance.server_id||merged.player?.server_id),context={serverId:authoritativeServer,allianceTag:authoritativeTag};
-          const canonical=markCanonicalRosterPresence(Array.isArray(ctx.roster)?ctx.roster:[],ctx.alliance?.roster_updated_at).map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:authoritativeServer,allianceTag:authoritativeTag})}));
+           let canonical=markCanonicalRosterPresence(Array.isArray(ctx.roster)?ctx.roster:[],ctx.alliance?.roster_updated_at).map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:authoritativeServer,allianceTag:authoritativeTag})}));
+           // A linked player may publish only their own event declaration. The
+           // identity match is exact (player id, or nickname + server + alliance);
+           // browser-supplied rows for other members are never accepted here.
+           const ownAvailability=mergePlayerAvailabilityIntoRoster(canonical,merged.player_availability,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag});
+           if(ownAvailability.changed){
+             try{
+               const savedAvailability=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name,roster:ownAvailability.rows,expected_updated_at:ctx.alliance.updated_at});
+               canonical=markCanonicalRosterPresence(savedAvailability?.roster||ownAvailability.rows,savedAvailability?.roster_updated_at||ctx.alliance.roster_updated_at).map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:authoritativeServer,allianceTag:authoritativeTag})}));
+               if(savedAvailability?.updated_at)ctx.alliance={...ctx.alliance,...savedAvailability};
+             }catch{
+               // The profile write remains durable; a later cloud refresh retries
+               // the CAS-safe canonical propagation.
+             }
+           }
           const ownLink=linkCurrentPlayerIdentityIntoRoster(canonical,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag,activityEvents:merged.activity_events,updatedAt:now});
           const identityMerge=mergeCloudRosterWithIdentity(ownLink.members,ctx.cloud_roster||[],context);
-          const rosterWithActivity=mergeCurrentPlayerActivityIntoRoster(identityMerge.roster,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag,activityEvents:merged.activity_events,updatedAt:now});
+           const rosterWithActivity=mergeCurrentPlayerActivityIntoRoster(identityMerge.roster,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag,activityEvents:merged.activity_events,updatedAt:now});
           const rosterMerged=mergeRosterLifecycleMetadata(merged.alliance?.members,rosterWithActivity);
           const preservedR5=preserveVerifiedR5(merged.alliance?.members,rosterMerged);
           // A stale server-side canonical roster must never resurrect a player that R5/R4 explicitly removed
@@ -51,7 +66,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
           const roster=currentActiveRosterMembers(preservedR5.rows,merged.alliance?.roster_review,merged.alliance?.former_members);
            const refreshedAuthorization=canonicalAllianceAuthorization({playerId,membership:ctx.membership,alliance:ctx.alliance,roster:canonical,identity:{name:merged.player?.name,server_id:merged.player?.server_id,alliance_tag:merged.alliance?.tag}});
            managementVerified=refreshedAuthorization.allowed;
-            merged.alliance={...merged.alliance,id:ctx.alliance.id,owner_player_id:ctx.alliance.owner_player_id||merged.alliance.owner_player_id||null,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name||merged.alliance.name,invite_code:ctx.alliance.invite_code||merged.alliance.invite_code,role:ctx.membership.role||"R1",cloud_role_verified:Boolean(ctx.membership?.role),management_verified:Boolean(String(ctx.alliance.owner_player_id||"")===String(playerId)||managementVerified),identity_link_status:ownLink.status,members:roster,r5_sync_required:Boolean(preservedR5.preserved),unlinked_accounts:identityMerge.unlinked_accounts,roster_updated_at:ctx.alliance.roster_updated_at||merged.alliance.roster_updated_at||null,roster_sync_status:rosterPersisted||!requestedRosterSync?"synced":"pending",roster_sync_error:null,updated_at:now};merged.sync.sources.alliance=true}
+           merged.alliance={...merged.alliance,id:ctx.alliance.id,owner_player_id:ctx.alliance.owner_player_id||merged.alliance.owner_player_id||null,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name||merged.alliance.name,invite_code:ctx.alliance.invite_code||merged.alliance.invite_code,role:ctx.membership.role||"R1",cloud_role_verified:Boolean(ctx.membership?.role),management_verified:Boolean(String(ctx.alliance.owner_player_id||"")===String(playerId)||managementVerified),identity_link_status:ownLink.status,members:roster,event_availability:mergeEventAvailabilities(merged.alliance?.event_availability,roster.flatMap(row=>row.event_availability||[])),availability_history:mergeAvailabilityHistory(merged.alliance?.availability_history,roster.flatMap(row=>row.availability_history||[])),r5_sync_required:Boolean(preservedR5.preserved),unlinked_accounts:identityMerge.unlinked_accounts,roster_updated_at:ctx.alliance.roster_updated_at||merged.alliance.roster_updated_at||null,roster_sync_status:rosterPersisted||!requestedRosterSync?"synced":"pending",roster_sync_error:null,updated_at:now};merged.sync.sources.alliance=true}
           if(requestedRosterSync&&!rosterPersisted){
             const currentAuthorization=canonicalAllianceAuthorization({playerId,membership:ctx.membership,alliance:ctx.alliance,roster:canonical,identity:{name:merged.player?.name,server_id:merged.player?.server_id,alliance_tag:merged.alliance?.tag}});
             const message=!currentAuthorization.allowed?authorizationMessage(currentAuthorization):"Le roster candidat ne correspond pas au serveur et à l’alliance canoniques, ou sa révision cloud a changé.";

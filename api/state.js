@@ -9,6 +9,7 @@ import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRo
 import {isManagerRole} from "../lib/alliance-scope.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 import {canonicalAllianceAuthorization} from "../lib/alliance-authorization.js";
+import {mergeEventAvailabilities,mergeAvailabilityHistory} from "../lib/event-availability.js";
 
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 function recoverySummary(r){return {changed:Boolean(r?.changed),recovered_fields:Number(r?.recovered_fields||0),recovered_heroes:Array.isArray(r?.recovered_heroes)?r.recovered_heroes:[],conflicts:Array.isArray(r?.conflicts)?r.conflicts:[],sources:Array.isArray(r?.sources)?r.sources:[]}}
@@ -100,6 +101,8 @@ async function canonicalizeAllianceState(input,playerId){
     identity_link_status:ownLink.status,
     members:activeRoster,
     r5_sync_required:Boolean(preservedR5.preserved),
+    event_availability:mergeEventAvailabilities(state.alliance?.event_availability,activeRoster.flatMap(row=>row.event_availability||[])),
+    availability_history:mergeAvailabilityHistory(state.alliance?.availability_history,activeRoster.flatMap(row=>row.availability_history||[])),
     unlinked_accounts:identityMerge.unlinked_accounts,
     roster_updated_at:ctx.alliance.roster_updated_at||state.alliance?.roster_updated_at||null
   };
