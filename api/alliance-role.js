@@ -1,8 +1,9 @@
-import {configured,getProfile,getAllianceMembership,getAllianceById,getAllianceRoster,setAllianceMemberRole,updateAllianceScopeRoster} from "../lib/supabase.js";
+import {configured,getProfile,getAllianceMembership,getAllianceById,getAllianceRoster,setAllianceMemberRole,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import {normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLink,canonicalRosterMemberKey,resolveCanonicalRosterMember,dedupeCanonicalRosterRows,normalizeAllianceRank} from "../lib/alliance-rank-management.js";
 import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/alliance-authorization.js";
+import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
 
 function role(v){return normalizeAllianceRank(v)}
 function clean(v,max=120){return String(v??"").trim().slice(0,max)}
@@ -20,46 +21,46 @@ export default async function handler(req,res){
   try{
     const {user}=await requireBetaUser(req,{consent:true});
     if(req.method==="GET"&&String(req.query?.action||"")==="roster_diagnostic"){
-      const membership=await getAllianceMembership(user.id);
-      if(!membership)return res.status(403).json({error:"alliance_membership_required"});
-      const ctx=await getAllianceRoster(user.id);
+       const profile=await getProfile(user.id),identity=profileIdentity(profile),membership=await getAllianceMembership(user.id),ctx=await getAllianceRoster(user.id,{serverId:identity.server_id,allianceTag:identity.alliance_tag});
       if(!ctx?.alliance)return res.status(404).json({error:"alliance_not_found"});
       const canonical=Array.isArray(ctx.alliance.roster)?ctx.alliance.roster:[];
       const cloudMembers=Array.isArray(ctx.cloud_roster)?ctx.cloud_roster:[];
-      const profile=await getProfile(user.id),identity=profileIdentity(profile),preview=previewSelfIdentityLink(canonical,{userId:user.id,name:identity.name,serverId:identity.server_id,allianceTag:identity.alliance_tag}),authorization=canonicalAllianceAuthorization({playerId:user.id,membership,alliance:ctx.alliance,roster:ctx.roster,identity});
+       const preview=previewSelfIdentityLink(canonical,{userId:user.id,name:identity.name,serverId:identity.server_id,allianceTag:identity.alliance_tag}),authorization=canonicalAllianceAuthorization({playerId:user.id,membership:ctx.membership||membership,alliance:ctx.alliance,roster:ctx.roster,identity});
       return res.status(200).json({ok:true,source:canonical.length?"canonical":"cloud_members",canonical_count:canonical.length,cloud_member_count:cloudMembers.length,canonical_updated_at:ctx.alliance.roster_updated_at||null,alliance:{id:ctx.alliance.id||membership.alliance_id,tag:normalizeAllianceTag(ctx.alliance.tag),name:clean(ctx.alliance.name,100),server_id:normalizeServerId(ctx.alliance.server_id),owner_player_id:ctx.alliance.owner_player_id||null,updated_at:ctx.alliance.updated_at||null},roster:(canonical.length?canonical:cloudMembers),link_status:preview.code||"ready",account_identity:identity,authorization,link_candidates:(preview.matches||[]).map(row=>publicIdentityRow(row,user.id))});
     }
     if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
-    const actor=await getAllianceMembership(user.id);
-    if(!actor)return res.status(403).json({error:"alliance_membership_required"});
-    const alliance=await getAllianceById(actor.alliance_id);
+     const actor=await getAllianceMembership(user.id),actorProfile=await getProfile(user.id),actorIdentity=profileIdentity(actorProfile),actorContext=await getAllianceRoster(user.id,{serverId:actorIdentity.server_id,allianceTag:actorIdentity.alliance_tag}),alliance=actorContext?.alliance||(actor?await getAllianceById(actor.alliance_id):null);
     if(!alliance)return res.status(404).json({error:"alliance_not_found"});
-     const actorProfile=await getProfile(user.id),actorIdentity=profileIdentity(actorProfile),actorContext=await getAllianceRoster(user.id),actorRoster=Array.isArray(actorContext?.roster)?actorContext.roster:(Array.isArray(alliance.roster)?alliance.roster:[]),authorization=canonicalAllianceAuthorization({playerId:user.id,membership:actor,alliance:actorContext?.alliance||alliance,roster:actorRoster,identity:actorIdentity});
-     const access={allowed:authorization.allowed,owner:authorization.owner,cloud_role:authorization.effective_role},actorRole=authorization.effective_role,isOwner=authorization.owner;
+      const actorRoster=Array.isArray(actorContext?.roster)?actorContext.roster:(Array.isArray(alliance.roster)?alliance.roster:[]);
+      let authorization=null,access=null,actorRole=null,isOwner=false;
 
       if(req.body?.action==="link_self_identity"){
         const profile=await getProfile(user.id),identity=profileIdentity(profile),requested={name:String(req.body?.name||"").trim(),server_id:normalizeServerId(req.body?.server_id),alliance_tag:normalizeAllianceTag(req.body?.alliance_tag)};
         if(!identity.name||!identity.server_id||!identity.alliance_tag)return res.status(409).json({error:"self_identity_incomplete",message:"Le profil WarBoost doit contenir le pseudo, le serveur et l’alliance avant la liaison."});
         if(normalizeLastWarNickname(requested.name,requested.alliance_tag)!==normalizeLastWarNickname(identity.name,identity.alliance_tag)||requested.server_id!==identity.server_id||requested.alliance_tag!==identity.alliance_tag)return res.status(403).json({error:"self_identity_mismatch",message:"La ligne choisie ne correspond pas au profil du compte connecté."});
         if(identity.server_id!==normalizeServerId(alliance.server_id)||identity.alliance_tag!==normalizeAllianceTag(alliance.tag))return res.status(409).json({error:"self_identity_context_conflict",message:"Le profil du compte ne correspond pas au serveur et à l’alliance cloud."});
-        const ctx=await getAllianceRoster(user.id),canonical=Array.isArray(ctx?.alliance?.roster)?ctx.alliance.roster:[];
+         const ctx=actorContext||await getAllianceRoster(user.id,{serverId:identity.server_id,allianceTag:identity.alliance_tag}),canonical=Array.isArray(ctx?.alliance?.roster)?ctx.alliance.roster:[];
         if(!canonical.length)return res.status(409).json({error:"alliance_roster_not_ready"});
-        const preview=previewSelfIdentityLink(canonical,{userId:user.id,name:identity.name,serverId:identity.server_id,allianceTag:identity.alliance_tag});
-        if(!preview.ok)return res.status(409).json({error:preview.code,message:preview.code==="member_identity_ambiguous"?"Plusieurs lignes canoniques correspondent au pseudo, serveur et alliance.":preview.code==="roster_member_already_linked"?"Cette ligne canonique est déjà liée à un autre compte WarBoost.":preview.code==="account_already_linked"?"Ce compte WarBoost est déjà lié à une autre ligne canonique.":"Aucune ligne canonique unique ne correspond au profil authentifié."});
-        const linked=canonical.map((row,index)=>index===preview.index?{...row,player_id:user.id,warboost_linked:true,identity_basis:"lastwar_nickname_server_alliance"}:row);
-        const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id||actor.alliance_id,roster:linked,expected_updated_at:ctx.alliance.updated_at});
-        const refreshed=await getAllianceRoster(user.id);
-        const refreshedMembership=await getAllianceMembership(user.id);
-        const refreshedAlliance=refreshed?.alliance||alliance,refreshedCanonical=Array.isArray(refreshedAlliance.roster)?refreshedAlliance.roster:[],self=confirmedCanonicalSelfRole(refreshedCanonical,user.id);
+         const resolution=resolveCanonicalIdentity(canonical,{playerId:user.id,name:identity.name,serverId:identity.server_id,allianceTag:identity.alliance_tag,updatedAt:new Date().toISOString()});
+         if(!resolution.member||!["linked_exact","linked_existing"].includes(resolution.status))return res.status(409).json({error:resolution.status==="ambiguous"?"member_identity_ambiguous":resolution.status==="roster_member_already_linked"?"roster_member_already_linked":resolution.status==="account_already_linked"?"account_already_linked":"self_identity_no_match",message:resolution.status==="ambiguous"?"Plusieurs lignes canoniques correspondent au pseudo, serveur et alliance.":resolution.status==="roster_member_already_linked"?"Cette ligne canonique est déjà liée à un autre compte WarBoost.":resolution.status==="account_already_linked"?"Ce compte WarBoost est déjà lié à une autre ligne canonique.":"Aucune ligne canonique unique ne correspond au profil authentifié."});
+         let linked=canonical,saved=null;
+         if(resolution.persist_link){
+           saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id||actor?.alliance_id,roster:resolution.members,expected_updated_at:ctx.alliance.updated_at});
+           linked=Array.isArray(saved?.roster)?saved.roster:resolution.members;
+         }
+         let refreshed=await getAllianceRoster(user.id,{serverId:identity.server_id,allianceTag:identity.alliance_tag});
+         const refreshedAlliance=refreshed?.alliance||ctx.alliance,refreshedCanonical=Array.isArray(refreshedAlliance.roster)?refreshedAlliance.roster:linked,self=confirmedCanonicalSelfRole(refreshedCanonical,user.id);
         if(!self.ok)return res.status(409).json({error:self.code||"self_identity_unconfirmed"});
-        let membership=refreshedMembership;
-        const refreshedAccess=cloudRankManagerAccess({userId:user.id,membershipRole:membership?.role,ownerPlayerId:refreshedAlliance.owner_player_id});
-        if(membership&&(!refreshedAccess.owner||self.role!==refreshedAccess.cloud_role)&&["R4","R5"].includes(self.role)){
-          membership=await setAllianceMemberRole({alliance_id:membership.alliance_id,player_id:user.id,role:self.role,expected_updated_at:membership.updated_at});
-        }
-        const finalAccess=cloudRankManagerAccess({userId:user.id,membershipRole:membership?.role,ownerPlayerId:refreshedAlliance.owner_player_id});
-        return res.status(200).json({ok:true,mode:"self_identity_linked",identity:publicIdentityRow(self.member,user.id),membership,owner:finalAccess.owner,cloud_role_verified:Boolean(membership?.role),management_verified:finalAccess.allowed,alliance_updated_at:saved?.updated_at||null});
+         let membership=refreshed?.membership||actorContext?.membership||actor;
+         if(canonicalMembershipNeedsRepair(membership,refreshedAlliance.id||ctx.alliance.id,user.id,self.role))membership=await joinAlliance({alliance_id:refreshedAlliance.id||ctx.alliance.id,player_id:user.id,role:self.role});
+         const finalAuthorization=canonicalAllianceAuthorization({playerId:user.id,membership,alliance:refreshedAlliance,roster:refreshedCanonical,identity});
+         return res.status(200).json({ok:true,mode:"self_identity_linked",identity:publicIdentityRow(self.member,user.id),membership,owner:finalAuthorization.owner,cloud_role_verified:Boolean(membership?.role),management_verified:finalAuthorization.allowed,alliance_updated_at:saved?.updated_at||null});
       }
+
+      if(!actor)return res.status(403).json({error:"alliance_membership_required"});
+      authorization=canonicalAllianceAuthorization({playerId:user.id,membership:actorContext?.membership||actor,alliance:actorContext?.alliance||alliance,roster:actorRoster,identity:actorIdentity});
+      access={allowed:authorization.allowed,owner:authorization.owner,cloud_role:authorization.effective_role};
+      actorRole=authorization.effective_role;isOwner=authorization.owner;
 
      // Explicitly repair only the authenticated user's own membership role from a
      // uniquely linked canonical roster row. This never accepts a target id and

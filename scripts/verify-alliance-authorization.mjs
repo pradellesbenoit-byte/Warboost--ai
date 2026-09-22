@@ -13,8 +13,8 @@ const linkedManager={name:"Captain Alpha",server_id:"123",alliance_tag:"WB",play
     roster:[{name:"Other",server_id:"123",alliance_tag:"WB",role:"R1"}],
     identity
   });
-  assert.equal(result.allowed,true,"a canonical R4 membership may sync a snapshot that omits the manager row");
-  assert.equal(result.reason,"membership_role_confirmed");
+  assert.equal(result.allowed,false,"a manager membership without an exact canonical identity must stay blocked");
+  assert.equal(result.reason,"canonical_identity_not_found");
 }
 
 {

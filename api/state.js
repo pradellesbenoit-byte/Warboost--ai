@@ -1,4 +1,4 @@
-import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster,updateAllianceScopeRoster} from "../lib/supabase.js";
+import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
 import {normalizeState} from "../lib/normalize.js";
 import {recoverHeroData,heroDataSignature} from "../lib/hero-history.js";
 import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../lib/beta-access.js";
@@ -10,6 +10,7 @@ import {isManagerRole} from "../lib/alliance-scope.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 import {canonicalAllianceAuthorization} from "../lib/alliance-authorization.js";
 import {mergeEventAvailabilities,mergeAvailabilityHistory} from "../lib/event-availability.js";
+import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
 
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 function recoverySummary(r){return {changed:Boolean(r?.changed),recovered_fields:Number(r?.recovered_fields||0),recovered_heroes:Array.isArray(r?.recovered_heroes)?r.recovered_heroes:[],conflicts:Array.isArray(r?.conflicts)?r.conflicts:[],sources:Array.isArray(r?.sources)?r.sources:[]}}
@@ -30,7 +31,7 @@ function confirmedRankAt(row){const n=Date.parse(row?.rank_confirmed_at||"");ret
 async function canonicalizeAllianceState(input,playerId){
   let state=normalizeState({...input,player_id:playerId});
   if(!configured())return {state,changed:false,status:"service_unavailable"};
-  const ctx=await getAllianceRoster(playerId).catch(()=>null);
+  const ctx=await getAllianceRoster(playerId,{serverId:state.player?.server_id,allianceTag:state.alliance?.tag}).catch(()=>null);
   if(!ctx?.alliance)return {state,changed:false,status:"no_alliance"};
   let canonical=Array.isArray(ctx.roster)?ctx.roster:[];
   if(!canonical.length)return {state,changed:false,status:"no_canonical_roster"};
@@ -38,7 +39,45 @@ async function canonicalizeAllianceState(input,playerId){
   const authoritativeTag=normalizeAllianceTag(ctx.alliance.tag||state.alliance?.tag);
   const authoritativeServer=normalizeServerId(ctx.alliance.server_id||state.player?.server_id);
   const context={serverId:authoritativeServer,allianceTag:authoritativeTag};
-  const authorization=canonicalAllianceAuthorization({playerId,membership:ctx.membership,alliance:ctx.alliance,roster:ctx.roster,identity:{name:state.player?.name,server_id:state.player?.server_id,alliance_tag:state.alliance?.tag}});
+  const identity={name:state.player?.name,server_id:state.player?.server_id,alliance_tag:state.alliance?.tag};
+  let canonicalWithPresence=markCanonicalRosterPresence(canonical,ctx.alliance.roster_updated_at);
+  let canonicalWithKeys=canonicalWithPresence.map(raw=>{
+    const row={...raw,server_id:normalizeServerId(raw?.server_id)||authoritativeServer,alliance_tag:normalizeAllianceTag(raw?.alliance_tag)||authoritativeTag};
+    return {...row,canonical_member_key:canonicalRosterMemberKey(row,context)};
+  });
+  const identityLink=resolveCanonicalIdentity(canonicalWithKeys,{
+    playerId,
+    name:identity.name,
+    serverId:authoritativeServer,
+    allianceTag:authoritativeTag,
+    activityEvents:state.activity_events,
+    updatedAt:state.updated_at||state.alliance?.updated_at||new Date().toISOString()
+  });
+  let membership=ctx.membership,linkPersisted=false;
+  if(identityLink.persist_link){
+    try{
+      const saved=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name,roster:identityLink.members,expected_updated_at:ctx.alliance.updated_at});
+      canonical=Array.isArray(saved?.roster)?saved.roster:identityLink.members;
+      linkPersisted=true;
+      if(saved?.updated_at)ctx.alliance={...ctx.alliance,...saved};
+    }catch{
+      // Do not grant access from an unpersisted identity link. The next refresh
+      // retries the CAS-safe exact match.
+    }
+  }else if(identityLink.status!=="linked_existing"){
+    canonical=canonicalWithKeys;
+  }
+  canonicalWithPresence=markCanonicalRosterPresence(canonical,ctx.alliance.roster_updated_at);
+  canonicalWithKeys=canonicalWithPresence.map(raw=>{
+    const row={...raw,server_id:normalizeServerId(raw?.server_id)||authoritativeServer,alliance_tag:normalizeAllianceTag(raw?.alliance_tag)||authoritativeTag};
+    return {...row,canonical_member_key:canonicalRosterMemberKey(row,context)};
+  });
+  const linkedMember=canonicalWithKeys.find(row=>String(row?.player_id||"").trim()===String(playerId||"").trim()&&row?.warboost_linked===true);
+  const canonicalRole=linkedMember?.role||identityLink.canonical_role;
+  if((linkPersisted||identityLink.status==="linked_existing")&&canonicalMembershipNeedsRepair(membership,ctx.alliance.id,playerId,canonicalRole)){
+    try{membership=await joinAlliance({alliance_id:ctx.alliance.id,player_id:playerId,role:canonicalRole})}catch{}
+  }
+  const authorization=canonicalAllianceAuthorization({playerId,membership,alliance:ctx.alliance,roster:canonicalWithKeys,identity});
   // A confirmed manual rank change can race an older generic profile save. The
   // role endpoint writes the confirmation marker to the canonical roster; if a
   // late /api/state request carries that same newer marker, repair the canonical
@@ -65,22 +104,9 @@ async function canonicalizeAllianceState(input,playerId){
       }
     }
   }
-  const canonicalWithPresence=markCanonicalRosterPresence(canonical,ctx.alliance.roster_updated_at);
-  const canonicalWithKeys=canonicalWithPresence.map(raw=>{
-    const row={...raw,server_id:normalizeServerId(raw?.server_id)||authoritativeServer,alliance_tag:normalizeAllianceTag(raw?.alliance_tag)||authoritativeTag};
-    return {...row,canonical_member_key:canonicalRosterMemberKey(row,context)};
-  });
   const stableStamp=state.updated_at||state.alliance?.updated_at||new Date().toISOString();
 
-  const ownLink=linkCurrentPlayerIdentityIntoRoster(canonicalWithKeys,{
-    playerId,
-    name:state.player?.name,
-    serverId:authoritativeServer,
-    allianceTag:authoritativeTag,
-    activityEvents:state.activity_events,
-    updatedAt:stableStamp
-  });
-  const identityMerge=mergeCloudRosterWithIdentity(ownLink.members,ctx.cloud_roster||[],context);
+  const identityMerge=mergeCloudRosterWithIdentity(canonicalWithKeys,ctx.cloud_roster||[],context);
   const rosterWithActivity=mergeCurrentPlayerActivityIntoRoster(identityMerge.roster,{
     playerId,
     name:state.player?.name,
@@ -101,10 +127,10 @@ async function canonicalizeAllianceState(input,playerId){
     tag:authoritativeTag,
     name:ctx.alliance.name||state.alliance?.name,
     invite_code:ctx.alliance.invite_code||state.alliance?.invite_code,
-    role:ctx.membership?.role||state.alliance?.role||"R1",
-    cloud_role_verified:Boolean(ctx.membership?.role),
+    role:membership?.role||state.alliance?.role||"R1",
+    cloud_role_verified:Boolean(membership?.role),
     management_verified:authorization.allowed,
-    identity_link_status:ownLink.status,
+    identity_link_status:identityLink.status,
     members:activeRoster,
     r5_sync_required:Boolean(preservedR5.preserved),
     event_availability:mergeEventAvailabilities(state.alliance?.event_availability,activeRoster.flatMap(row=>row.event_availability||[])),

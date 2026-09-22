@@ -44,7 +44,7 @@ const identity={userId:"u1",name:"Captain Alpha",serverId:"884",allianceTag:"ALL
 }
 
 const api=read("api/alliance-role.js"),app=read("app.js"),html=read("index.html");
-for(const token of ["link_self_identity","previewSelfIdentityLink","expected_updated_at:ctx.alliance.updated_at","player_id:user.id","identity_basis:\"lastwar_nickname_server_alliance\""])assert.match(api,new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
+for(const token of ["link_self_identity","previewSelfIdentityLink","expected_updated_at:ctx.alliance.updated_at","player_id:user.id","resolveCanonicalIdentity","joinAlliance"])assert.match(api,new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
 const linkBranch=api.slice(api.indexOf('if(req.body?.action==="link_self_identity")'),api.indexOf("// Explicitly repair only"));
 assert.ok(linkBranch);
 assert.doesNotMatch(linkBranch,/req\.body\??\.player_id/);

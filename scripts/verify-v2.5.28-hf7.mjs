@@ -48,7 +48,7 @@ const state=(name='les gladiateurs81',server='884',tag='ALL4',role='R4',members=
 {
   const old=[{...roster[2],activity_events:[{event_type:'vs',event_date:'2026-09-07',participation_status:'participated',updated_at:'2026-09-07T20:00:00Z',source:'player_self_report'}],email:'private@example.com'}];
   const fresh=[{...roster[2],power_m:55,activity_events:[{event_type:'desert_storm',event_date:'2026-09-09',participation_status:'excused',updated_at:'2026-09-09T20:00:00Z',source:'r5_r4_import'}]}];
-  const merged=mergeCanonicalRoster(old,fresh,{serverId:'884',allianceTag:'ALL4'});assert.equal(merged.length,1);assert.equal(merged[0].power_m,55);assert.equal(merged[0].activity_events.length,2);assert.equal(Object.hasOwn(merged[0],'email'),false);assert.equal(Object.hasOwn(merged[0],'player_id'),false);
+  const merged=mergeCanonicalRoster(old,fresh,{serverId:'884',allianceTag:'ALL4'});assert.equal(merged.length,1);assert.equal(merged[0].power_m,55);assert.equal(merged[0].activity_events.length,2);assert.equal(Object.hasOwn(merged[0],'email'),false);assert.equal(merged[0].player_id,null);
   log('canonical roster refresh preserves participation evidence and never stores e-mail/private account ids');
 }
 
@@ -70,7 +70,7 @@ const state=(name='les gladiateurs81',server='884',tag='ALL4',role='R4',members=
   assert.match(app,/management_verified=j\.scope_verified===true&&\["R4","R5"\]/);
   assert.match(invite,/managerProofFromState/);assert.match(invite,/findAllianceByScope/);assert.match(invite,/alliance_space_exists_invitation_required/);assert.match(invite,/fresh\.roster\.length>=existingCount/);assert.match(invite,/mergeCanonicalRoster/);assert.match(invite,/alliance_scope_ambiguous_admin_required/);
   assert.match(join,/joinProofForAlliance/);assert.match(join,/The invite code is not authorization by itself/);assert.match(join,/role:proof\.roster_role/);assert.match(join,/findAllianceByScope/);assert.match(join,/alliance_scope_ambiguous_admin_required/);
-  assert.match(sync,/managementVerified=Boolean/);assert.match(sync,/updateAllianceScopeRoster/);assert.match(sync,/mergeCanonicalRoster/);assert.match(sync,/ctx\.cloud_roster/);
+  assert.match(sync,/managementVerified=authorization\.allowed/);assert.match(sync,/updateAllianceScopeRoster/);assert.match(sync,/mergeCanonicalRoster/);assert.match(sync,/ctx\.cloud_roster/);
   assert.match(supabase,/findAllianceByScope/);assert.match(supabase,/roster_updated_at/);assert.match(supabase,/canonicalRoster/);
   log('browser/API/cloud flow saves identity first, scopes manager sharing, gates joins, preserves roster roles and avoids partial-roster overwrite');
 }
