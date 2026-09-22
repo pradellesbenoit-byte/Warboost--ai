@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {availabilityCapacityRoster} from "../lib/alliance-availability-planner.js";
 import {buildDesertStormPlan} from "../lib/desert-storm-plan.js";
 
@@ -35,5 +36,11 @@ const plan=buildDesertStormPlan(members,presentKeys,{nowMs:Date.parse("2026-09-2
 assert.equal(plan.starters.length,20);
 assert.equal(plan.substitutes.length,10);
 assert.ok([...plan.starters,...plan.substitutes].every(member=>presentKeys.includes(member.canonical_member_key)));
+
+const app=readFileSync(new URL("../app.js",import.meta.url),"utf8");
+assert.match(app,/availabilityAssignmentBadge participant/);
+assert.match(app,/availabilityAssignmentBadge substitute/);
+assert.match(app,/canyonAvailabilityAssignments\(canyon,active\)/);
+assert.match(app,/desertStormAvailabilityCapacity\(activeMembers\)/);
 
 console.log("Availability capacity verification: PASS");
