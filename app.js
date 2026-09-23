@@ -351,6 +351,7 @@ function renderPlayerProgression(){
 }
 if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.progression_snapshots=appendProgressionSnapshot([],state,{source:"baseline",at:state.updated_at||new Date().toISOString()});
 let desertStormSearchTerm="",desertStormSearchRenderGeneration=0,canyonSearchTerm="",canyonSearchRenderGeneration=0,canyonActiveTab="preparation",allianceEventActive="desert_storm";
+let alliancePlayerModalScrollTop=0,alliancePlayerModalHistory=false,alliancePlayerModalLastFocus=null,alliancePlayerModalBodyStyles=null;
 let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
 let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0,sharedRosterLinkPromise=null;
 function searchInputIsContentEditable(input){return Boolean(input?.isContentEditable||input?.getAttribute?.("contenteditable")==="plaintext-only")}
@@ -1558,12 +1559,42 @@ function saveAllianceEventStatus(member,eventType,status){
 function allianceEventPlayerProfile(member,eventType){
   const row=allianceEventAvailability(eventType,member),insight=playerParticipationInsight(member,{nowMs:serverNow.getTime(),days:30}),recent=(insight.records||[]).slice(0,5);
   const squadPower=Number(member.squad_power_m)>0?fmtPower(member.squad_power_m):"—",accountPower=Number(member.power_m)>0?fmtPower(member.power_m):"—",dronePower=Number(member.drone_power_m)>0?fmtPower(member.drone_power_m):"—";
-  return `<div class="alliancePlayerModalBackdrop" data-alliance-player-close></div><div class="alliancePlayerModalCard" role="dialog" aria-modal="true" aria-labelledby="alliancePlayerModalTitle"><div class="sectionTitle"><h3 id="alliancePlayerModalTitle">${esc(member.name||t("player"))}</h3><button class="closeBtn" type="button" data-alliance-player-close aria-label="${esc(t("alliance_event_close"))}">×</button></div><div class="alliancePlayerFacts"><span>${esc(t("alliance_event_grade"))}<b>${esc(normalizeAllianceRole(member.role))}</b></span><span>${esc(t("alliance_event_power"))}<b>${esc(accountPower)}</b></span><span>${esc(t("alliance_event_squad"))}<b>${esc(squadPower)}</b></span><span>${esc(t("alliance_event_drone"))}<b>${esc(dronePower)}</b></span><span>${member.warboost_linked===true?"🟢 "+esc(t("alliance_event_linked")):"⚪ "+esc(t("alliance_event_unlinked"))}</span><span>${esc(t("alliance_event_updated"))}<b>${esc(member.updated_at?fmtAgo(member.updated_at):"—")}</b></span></div><div class="alliancePlayerCurrentEvent"><b>${esc(allianceEventDefinition(eventType).label)}</b><span>${esc(availabilityStatusLabel(row.status))}${row.source?` · ${esc(availabilitySourceLabel(row.source))}`:""}</span></div><div class="alliancePlayerHistory"><b>${esc(t("alliance_event_recent_confirmed"))}</b>${recent.length?recent.map(item=>`<div><span>${esc(participationDateLabel(item.event_date))} · ${esc(activityEventLabel(item.event_type))}</span><strong>${esc(participationStatusLabel(item.participation_status))}</strong></div>`).join(""):`<small>${esc(t("alliance_event_no_recent"))}</small>`}</div></div>`;
+  return `<div class="alliancePlayerModalBackdrop" data-alliance-player-close aria-hidden="true"></div><div class="alliancePlayerModalCard" role="dialog" aria-modal="true" aria-labelledby="alliancePlayerModalTitle"><div class="sectionTitle alliancePlayerModalHeader"><h3 id="alliancePlayerModalTitle">${esc(member.name||t("player"))}</h3><button class="closeBtn alliancePlayerModalClose" type="button" data-alliance-player-close aria-label="${esc(t("alliance_event_close"))}">×</button></div><div class="alliancePlayerFacts"><span>${esc(t("alliance_event_grade"))}<b>${esc(normalizeAllianceRole(member.role))}</b></span><span>${esc(t("alliance_event_power"))}<b>${esc(accountPower)}</b></span><span>${esc(t("alliance_event_squad"))}<b>${esc(squadPower)}</b></span><span>${esc(t("alliance_event_drone"))}<b>${esc(dronePower)}</b></span><span>${member.warboost_linked===true?"🟢 "+esc(t("alliance_event_linked")):"⚪ "+esc(t("alliance_event_unlinked"))}</span><span>${esc(t("alliance_event_updated"))}<b>${esc(member.updated_at?fmtAgo(member.updated_at):"—")}</b></span></div><div class="alliancePlayerCurrentEvent"><b>${esc(allianceEventDefinition(eventType).label)}</b><span>${esc(availabilityStatusLabel(row.status))}${row.source?` · ${esc(availabilitySourceLabel(row.source))}`:""}</span></div><div class="alliancePlayerHistory"><b>${esc(t("alliance_event_recent_confirmed"))}</b>${recent.length?recent.map(item=>`<div><span>${esc(participationDateLabel(item.event_date))} · ${esc(activityEventLabel(item.event_type))}</span><strong>${esc(participationStatusLabel(item.participation_status))}</strong></div>`).join(""):`<small>${esc(t("alliance_event_no_recent"))}</small>`}</div><button class="secondaryBtn wideBtn alliancePlayerModalCloseButton" type="button" data-alliance-player-close>${esc(t("alliance_event_close"))}</button></div>`;
 }
-function closeAlliancePlayerProfile(){const modal=$("#alliancePlayerModal");if(modal){modal.classList.add("hidden");modal.innerHTML=""}}
+function alliancePlayerProfileIsOpen(){const modal=$("#alliancePlayerModal");return Boolean(modal&&!modal.classList.contains("hidden"))}
+function lockAlliancePlayerProfileScroll(){
+  if(alliancePlayerModalBodyStyles)return;
+  alliancePlayerModalBodyStyles={overflow:document.body.style.overflow};
+  document.body.style.overflow="hidden";
+}
+function restoreAlliancePlayerProfileScroll(){
+  if(alliancePlayerModalBodyStyles){document.body.style.overflow=alliancePlayerModalBodyStyles.overflow;alliancePlayerModalBodyStyles=null}
+  const drawer=$("#allianceDrawer"),top=alliancePlayerModalScrollTop;
+  if(drawer){drawer.scrollTop=top;requestAnimationFrame(()=>{drawer.scrollTop=top})}
+}
+function closeAlliancePlayerProfile({fromHistory=false}={}){
+  const modal=$("#alliancePlayerModal");if(!modal||modal.classList.contains("hidden"))return false;
+  modal.classList.add("hidden");modal.setAttribute("aria-hidden","true");modal.innerHTML="";
+  restoreAlliancePlayerProfileScroll();
+  const focusTarget=alliancePlayerModalLastFocus;alliancePlayerModalLastFocus=null;
+  if(focusTarget&&document.contains(focusTarget)){try{focusTarget.focus({preventScroll:true})}catch{focusTarget.focus()}}
+  const shouldRestoreHistory=alliancePlayerModalHistory&&!fromHistory;
+  alliancePlayerModalHistory=false;
+  if(shouldRestoreHistory&&history.state?.warboostAlliancePlayerModal){
+    const cleanState={...history.state};delete cleanState.warboostAlliancePlayerModal;
+    try{history.replaceState(cleanState,"",location.href)}catch{}
+  }
+  return true;
+}
 function openAlliancePlayerProfile(memberKey,eventType){
   const member=activeAllianceRosterMembers().find(x=>allianceEventMemberKey(x)===String(memberKey));if(!member)return;
-  const modal=$("#alliancePlayerModal");if(!modal)return;modal.innerHTML=allianceEventPlayerProfile(member,eventType);modal.classList.remove("hidden");modal.querySelector("[data-alliance-player-close]")?.focus();
+  const modal=$("#alliancePlayerModal");if(!modal)return;
+  if(alliancePlayerProfileIsOpen())closeAlliancePlayerProfile();
+  const drawer=$("#allianceDrawer");alliancePlayerModalScrollTop=drawer?.scrollTop||0;alliancePlayerModalLastFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  modal.innerHTML=allianceEventPlayerProfile(member,eventType);modal.classList.remove("hidden");modal.setAttribute("aria-hidden","false");lockAlliancePlayerProfileScroll();
+  alliancePlayerModalHistory=true;
+  try{history.pushState({...history.state,warboostAlliancePlayerModal:true},"",location.href)}catch{}
+  modal.querySelector(".alliancePlayerModalClose")?.focus();
 }
 function allianceEventPlanSummary(eventType,groups){
   const saved=state.alliance?.event_plans?.[eventType],def=allianceEventDefinition(eventType);
@@ -2280,8 +2311,9 @@ $("#playerAvailabilitySaveBtn")?.addEventListener("click",savePlayerAvailability
 $("#managerAvailabilityEvent")?.addEventListener("change",renderAllianceAvailability);
 $("#managerAvailabilityDate")?.addEventListener("change",renderAllianceAvailability);
 $("#managerAvailabilitySearch")?.addEventListener("input",renderAllianceAvailability);
-$("#alliancePlayerModal")?.addEventListener("click",event=>{if(event.target?.closest?.("[data-alliance-player-close]"))closeAlliancePlayerProfile()});
-document.addEventListener("keydown",event=>{if(event.key==="Escape")closeAlliancePlayerProfile()});
+$("#alliancePlayerModal")?.addEventListener("click",event=>{if(event.target?.closest?.("[data-alliance-player-close]")){event.preventDefault();closeAlliancePlayerProfile()}});
+window.addEventListener("popstate",()=>{if(alliancePlayerProfileIsOpen())closeAlliancePlayerProfile({fromHistory:true})});
+document.addEventListener("keydown",event=>{if(event.key==="Escape"&&alliancePlayerProfileIsOpen()){event.preventDefault();closeAlliancePlayerProfile()}});
 $("#playerAdviceBtn").addEventListener("click",()=>runPlayerAdvice(false));$("#shopAdviceBtn")?.addEventListener("click",()=>runPlayerAdvice(true));
 $("#warPlanBtn").addEventListener("click",async()=>{if(!requirePro())return;if(!hasDeclaredAllianceCommandRole()){$("#warPlanText").textContent=managerOnlyMessage();return}const j=await requestAdvice("alliance");$("#warPlanText").textContent=structuredAdviceText("alliance",j);renderAllianceStructured(j)});
 $("#rankManagerSearch")?.addEventListener("input",e=>{rankManagerSearchTerm=searchInputValue(e.target);scheduleAllianceRankSearchRender()});

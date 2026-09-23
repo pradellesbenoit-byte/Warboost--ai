@@ -25,6 +25,12 @@ assert.doesNotMatch(html,/Suivi détaillé par joueur · 30 jours|id="alliancePa
 for(const group of ["alliance_event_participants","alliance_event_substitutes","alliance_event_confirming","alliance_event_absent"])assert.match(app,new RegExp(group));
 assert.match(app,/data-alliance-player-key/);
 assert.match(app,/data-alliance-player-close/);
+assert.match(app,/alliancePlayerModalCloseButton/);
+assert.match(app,/history\.pushState[\s\S]*warboostAlliancePlayerModal/);
+assert.match(app,/addEventListener\("popstate"/);
+assert.match(app,/document\.body\.style\.overflow="hidden"/);
+assert.match(app,/alliancePlayerModalScrollTop/);
 assert.match(css,/allianceEventCards[\s\S]*@media\(max-width:560px\)/);
+assert.match(css,/alliancePlayerModalClose[\s\S]*min-width:48px/);
 
 console.log("Alliance event-first workspace verification: PASS");

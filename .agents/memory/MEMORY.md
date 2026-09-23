@@ -20,3 +20,4 @@
 - [Hybrid event availability](event-availability-hybrid.md) — player declarations sync only to their exact linked roster row; alliance views aggregate sources without replacing unlinked members.
 - [Shared roster view](shared-roster-view.md) — hydrate alliance screens from the canonical cloud roster; local player state may enrich but never replace or truncate it.
 - [Behavior-oriented UI checks](behavior-oriented-ui-checks.md) — render tests should assert the intended ordering helper/behavior, not brittle exact loop syntax.
+- [Alliance player modal lifecycle](mobile-player-modal-close.md) — use delegated close actions, a temporary history entry for Android back, and replace-state cleanup for rapid reopen cycles.
