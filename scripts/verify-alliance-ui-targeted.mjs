@@ -16,6 +16,7 @@ assert.doesNotMatch(html,/id="allianceParticipationTable"/,"long permanent playe
 assert.match(app,/function canonicalSelfRosterMember/,"linked-account display must resolve through the canonical roster");
 assert.match(app,/canonicalSelfRosterMember\(\),displayName=canonical\?\.name/,"the profile field must display the linked canonical name");
 assert.match(app,/selfNameKeys=new Set/,"stale pending aliases must be filtered for an already-linked account");
-assert.match(publisher,/selfLinked=members\.filter/,"stored stale pending aliases must be repaired for the linked account");
+assert.match(publisher,/normalizeUnlinkedAccounts/,"stored stale pending aliases must use the shared canonical pending-state repair");
+assert.match(app,/normalizeUnlinkedAccounts/,"runtime Alliance rendering must use the same canonical pending-state repair");
 
 console.log("Targeted Alliance UI verification: PASS");

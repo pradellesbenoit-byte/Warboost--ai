@@ -2,7 +2,7 @@
 // HF8.6.28 reliability patch: also repairs stale contradictory identity-pending state
 // without changing canonical roster names, ranks or valid links.
 import {heroKey,heroPresentation} from './lib/heroes.js';
-import {normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from './lib/alliance-identity.js';
+import {normalizeUnlinkedAccounts} from './lib/alliance-identity.js';
 
 const CORE_STATE_KEY='warboost_v1_core_state';
 const BACKUP_STATE_KEY='warboost_last_good_state';
@@ -34,30 +34,12 @@ function decorateSquads(){
   })
 }
 
-function strictScope(account,member,state){
-  const serverA=normalizeServerId(account?.server_id||state?.player?.server_id||state?.alliance?.server_id);
-  const serverM=normalizeServerId(member?.server_id||state?.alliance?.server_id||state?.player?.server_id);
-  const tagA=normalizeAllianceTag(account?.alliance_tag||state?.alliance?.tag);
-  const tagM=normalizeAllianceTag(member?.alliance_tag||state?.alliance?.tag);
-  // Never infer an association when either mandatory scope value is missing.
-  return Boolean(serverA&&serverM&&tagA&&tagM&&serverA===serverM&&tagA===tagM);
-}
 function repairContradictoryPendingState(state){
   if(!state||typeof state!=='object'||!state.alliance||typeof state.alliance!=='object')return {state,changed:false};
   const members=Array.isArray(state.alliance.members)?state.alliance.members:[];
   const pending=Array.isArray(state.alliance.unlinked_accounts)?state.alliance.unlinked_accounts:[];
   if(!pending.length||!members.length)return {state,changed:false};
-  const tag=normalizeAllianceTag(state.alliance.tag);
-  const next=pending.filter(account=>{
-    const key=normalizeLastWarNickname(account?.name,account?.alliance_tag||tag);
-    if(!key)return true;
-    const matches=members.filter(member=>member?.warboost_linked===true&&normalizeLastWarNickname(member?.name,member?.alliance_tag||tag)===key&&strictScope(account,member,state));
-    const selfLinked=members.filter(member=>member?.warboost_linked===true&&String(member?.player_id||"")===String(state?.player_id||"")&&strictScope(account,member,state));
-    if(selfLinked.length===1&&normalizeLastWarNickname(account?.name,account?.alliance_tag||tag)===normalizeLastWarNickname(state?.player?.name,state?.alliance?.tag||tag))return false;
-    // Remove only the exact contradictory pending record when ONE already-linked roster member
-    // proves the same normalized Last War identity in the same server + alliance scope.
-    return matches.length!==1;
-  });
+  const next=normalizeUnlinkedAccounts(pending,members,{serverId:state.alliance.server_id||state.player?.server_id,allianceTag:state.alliance.tag,currentPlayerId:state.player_id,currentPlayerName:state.player?.name,identityLinkStatus:state.alliance.identity_link_status});
   if(next.length===pending.length)return {state,changed:false};
   return {state:{...state,alliance:{...state.alliance,unlinked_accounts:next}},changed:true};
 }
