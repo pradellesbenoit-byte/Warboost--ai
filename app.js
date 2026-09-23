@@ -351,6 +351,30 @@ function renderPlayerProgression(){
 }
 if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.progression_snapshots=appendProgressionSnapshot([],state,{source:"baseline",at:state.updated_at||new Date().toISOString()});
 let desertStormSearchTerm="",desertStormSearchRenderGeneration=0,canyonSearchTerm="",canyonSearchRenderGeneration=0,canyonActiveTab="preparation",allianceEventActive="desert_storm",allianceEventDetailOpen=false,allianceEventDetailHistory=false,allianceEventDetailScrollTop=0,allianceEventDetailLastFocus=null;
+function resetAllianceAccordions(){
+  const drawer=$("#allianceDrawer");if(!drawer)return;
+  drawer.querySelectorAll("details[data-alliance-accordion]").forEach(detail=>{detail.open=false;detail.classList.remove("is-open")});
+  drawer.querySelectorAll(".allianceAccordionChevron").forEach(chevron=>{chevron.textContent="▾"});
+}
+function handleAllianceAccordionToggle(detail){
+  if(!detail?.matches?.("details[data-alliance-accordion]"))return;
+  const drawer=$("#allianceDrawer"),top=drawer?.scrollTop||0;
+  detail.classList.toggle("is-open",detail.open);
+  const chevron=detail.querySelector(":scope > .allianceAccordionSummary .allianceAccordionChevron");
+  if(chevron)chevron.textContent=detail.open?"▴":"▾";
+  if(detail.open){
+    drawer?.querySelectorAll("details[data-alliance-accordion]").forEach(other=>{if(other!==detail){other.open=false;other.classList.remove("is-open");const otherChevron=other.querySelector(":scope > .allianceAccordionSummary .allianceAccordionChevron");if(otherChevron)otherChevron.textContent="▾"}});
+  }
+  requestAnimationFrame(()=>{if(drawer)drawer.scrollTop=top});
+}
+function bindAllianceAccordions(){
+  const drawer=$("#allianceDrawer");if(!drawer)return;
+  drawer.querySelectorAll("details[data-alliance-accordion]").forEach(detail=>{
+    if(detail.dataset.accordionBound==="true")return;
+    detail.dataset.accordionBound="true";
+    detail.addEventListener("toggle",()=>handleAllianceAccordionToggle(detail));
+  });
+}
 let alliancePlayerModalScrollTop=0,alliancePlayerModalHistory=false,alliancePlayerModalLastFocus=null,alliancePlayerModalBodyStyles=null;
 let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
 let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0,sharedRosterLinkPromise=null;
@@ -1667,12 +1691,17 @@ function renderAllianceEventWorkspace(){
   const cards=$("#allianceEventCards"),detail=$("#allianceEventDetail");if(!cards||!detail)return;
   const access=runtimeAccessState();if(!access.privateVisible){cards.innerHTML="";detail.classList.add("hidden");return}
   const groupsByType=new Map(ALLIANCE_EVENT_DEFS.map(def=>[def.type,allianceEventGroups(def.type)]));
-  cards.innerHTML=ALLIANCE_EVENT_DEFS.map(rawDef=>{const def=allianceEventDefinition(rawDef.type),groups=groupsByType.get(def.type),active=def.type===allianceEventActive,openRoster=Boolean(def.openRoster),denominator=openRoster?groups.totalMembers:def.limit,summary=openRoster?`🟢 ${groups.participants.length}/${denominator}`:`🟢 ${groups.participants.length}/${denominator} · 🟠 ${groups.substitutes.length}/${def.subLimit}`;return `<button type="button" class="allianceEventCard${active&&allianceEventDetailOpen?" active":""}" data-alliance-event="${def.type}"><span class="allianceEventCardIcon">${def.icon}</span><span><b>${esc(def.label)}</b><small>${summary}</small><small>❓ ${groups.confirming.length} · 🔴 ${groups.absent.length}</small></span><strong>${esc(t("alliance_event_open"))}</strong></button>`}).join("");
+  cards.innerHTML=ALLIANCE_EVENT_DEFS.map(rawDef=>{const def=allianceEventDefinition(rawDef.type),groups=groupsByType.get(def.type),active=def.type===allianceEventActive,openRoster=Boolean(def.openRoster),denominator=openRoster?groups.totalMembers:def.limit,summary=openRoster?`🟢 ${groups.participants.length}/${denominator}`:`🟢 ${groups.participants.length}/${denominator} · 🟠 ${groups.substitutes.length}/${def.subLimit}`;return `<button type="button" class="allianceEventCard${active&&allianceEventDetailOpen?" active":""}" data-alliance-event="${def.type}"><span class="allianceEventCardIcon">${def.icon}</span><span><b>${esc(def.label)}</b><small>${summary}</small><small>❓ ${groups.confirming.length} · 🔴 ${groups.absent.length}</small></span><span class="allianceEventChevron" aria-hidden="true">${active&&allianceEventDetailOpen?"▴":"▾"}</span></button>`}).join("");
+  const workspace=cards.closest("#allianceEventWorkspace");
+  if(allianceEventDetailOpen){
+    const activeCard=[...cards.querySelectorAll("[data-alliance-event]")].find(button=>button.dataset.allianceEvent===allianceEventActive);
+    if(activeCard)activeCard.insertAdjacentElement("afterend",detail);else workspace?.appendChild(detail);
+  }else workspace?.appendChild(detail);
   if(!allianceEventDetailOpen){detail.classList.add("hidden");detail.setAttribute("aria-hidden","true");detail.innerHTML="";return}
   const def=allianceEventDefinition(allianceEventActive),groups=groupsByType.get(def.type),openRoster=Boolean(def.openRoster),all=openRoster?[["participants","🟢 "+t("alliance_event_participants"),groups.participants],["confirming","❓ "+t("alliance_event_confirming"),groups.confirming],["absent","🔴 "+t("alliance_event_absent"),groups.absent]]:[["participants","🟢 "+t("alliance_event_participants"),groups.participants],["substitutes","🟠 "+t("alliance_event_substitutes"),groups.substitutes],["confirming","❓ "+t("alliance_event_confirming"),groups.confirming],["absent","🔴 "+t("alliance_event_absent"),groups.absent]];
   const groupHtml=all.map(([kind,label,items])=>`<details class="allianceEventGroup" open><summary><span>${label}</span><b>${items.length}</b></summary><div class="allianceEventGroupList">${items.length?items.map(member=>{const linked=member.warboost_linked===true,status=allianceEventStatus(member,def.type),key=allianceEventMemberKey(member);return `<div class="allianceEventMember"><button type="button" class="allianceEventMemberButton" data-alliance-player-key="${esc(key)}"><b>${esc(member.name||t("player"))}</b><small>${esc(normalizeAllianceRole(member.role))}${Number(member.power_m)>0?` · ${esc(fmtPower(member.power_m))}`:""}${linked?" · 🟢 "+esc(t("alliance_event_linked")):" · ⚪ "+esc(t("alliance_event_unlinked"))}</small></button>${linked?`<span class="allianceEventSource">${esc(availabilitySourceLabel(allianceEventAvailability(def.type,member).source))}</span>`:`<select class="allianceEventManualStatus" data-alliance-event-status="${esc(key)}" aria-label="${esc(t("alliance_event_selected"))} ${esc(member.name||t("player"))}"><option value="unknown"${status==="unknown"?" selected":""}>${esc(t("alliance_event_confirming"))}</option><option value="present"${status==="present"?" selected":""}>${esc(t("alliance_event_present"))}</option><option value="absent"${status==="absent"?" selected":""}>${esc(t("alliance_event_absent"))}</option><option value="uncertain"${status==="uncertain"?" selected":""}>${esc(t("alliance_event_confirming"))}</option></select>`}</div>`}).join(""):`<div class="allianceEventEmpty">${esc(t("alliance_event_empty"))}</div>`}</div></details>`).join("");
   const denominator=openRoster?groups.totalMembers:def.limit;
-  detail.classList.remove("hidden");detail.setAttribute("aria-hidden","false");detail.innerHTML=`<div class="allianceEventDetailHead"><div><span class="eyebrow">${def.icon} ${esc(t("alliance_event_selected"))}</span><h3>${esc(def.label)}</h3><p>${esc(t("alliance_event_participants"))} ${groups.participants.length}/${denominator}${openRoster?"":` · ${esc(t("alliance_event_substitutes"))} ${groups.substitutes.length}/${def.subLimit}`} · ${esc(t("alliance_event_confirming"))} ${groups.confirming.length} · ${esc(t("alliance_event_absent"))} ${groups.absent.length}</p></div><div class="allianceEventDetailActions"><button type="button" class="closeBtn allianceEventDetailClose" data-alliance-event-close aria-label="${esc(t("alliance_event_close"))}">×</button><button type="button" class="primaryAction" data-alliance-event-plan>🧠 ${esc(t("alliance_event_generate_plan"))}</button></div></div><div class="allianceEventGroups">${groupHtml}</div><div id="allianceEventPlan">${allianceEventPlanSummary(def.type,groups)}</div><button type="button" class="secondaryBtn wideBtn allianceEventDetailCloseButton" data-alliance-event-close>${esc(t("alliance_event_close"))}</button>`;
+  detail.classList.remove("hidden");detail.setAttribute("aria-hidden","false");detail.innerHTML=`<div class="allianceEventDetailHead"><div><span class="eyebrow">${def.icon} ${esc(t("alliance_event_selected"))}</span><h3>${esc(def.label)}</h3><p>${esc(t("alliance_event_participants"))} ${groups.participants.length}/${denominator}${openRoster?"":` · ${esc(t("alliance_event_substitutes"))} ${groups.substitutes.length}/${def.subLimit}`} · ${esc(t("alliance_event_confirming"))} ${groups.confirming.length} · ${esc(t("alliance_event_absent"))} ${groups.absent.length}</p></div><button type="button" class="primaryAction" data-alliance-event-plan>🧠 ${esc(t("alliance_event_generate_plan"))}</button></div><div class="allianceEventGroups">${groupHtml}</div><div id="allianceEventPlan">${allianceEventPlanSummary(def.type,groups)}</div>`;
 }
 function renderAllianceIdentityLinks(members){
   const box=$("#allianceIdentitySummary"),pendingBox=$("#unlinkedWarBoostAccounts"),pendingDetails=$("#unlinkedWarBoostDetails");
@@ -1883,6 +1912,7 @@ function renderMemberRow(m){
 function renderMembers(){
   renderAllianceRankManager();
   const box=$("#memberList"),members=state.alliance.members||[],review=state.alliance.roster_review||[];if(!box)return;
+  const membersCount=$("#membersAccordionCount");if(membersCount)membersCount.textContent=`${members.length}`;
   const summary=renderAllianceActivity(),roles=["R5","R4","R3","R2","R1"];
   if(!members.length&&!review.length){box.innerHTML=`<div class="notice">${t("no_members")}</div>`;return}
   const chips=roles.map(role=>`<span class="roleCountChip"><b>${role}</b><small>${summary.roleCounts[role]||0}</small></span>`).join("");
@@ -2270,7 +2300,7 @@ function openDrawer(name){
   $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false")}
   if(name==="account"){safeRenderStep("ACCOUNT_OPEN_FIELDS",renderAccountFields);safeRenderStep("ACCOUNT_OPEN_AUTH",renderAuth);safeRenderStep("ACCOUNT_OPEN_BETA",renderBeta);safeRenderStep("ACCOUNT_OPEN_PRO",renderPro)}
   if(betaPrivateDataVisible()&&name==="player")safeRenderStep("PLAYER_OPEN_CORE",()=>renderPlayerCoreSummary(state.player,state.drone||{}));
-  if(betaPrivateDataVisible()&&name==="alliance"){safeRenderStep("ALLIANCE_OPEN_CORE",()=>renderAllianceCoreSummary(state.player,state.alliance));safeRenderStep("ALLIANCE_OPEN_MEMBERS",renderMembers);safeRenderStep("ALLIANCE_OPEN_ACCESS",renderAllianceAccess);safeRenderStep("ALLIANCE_OPEN_DESERT_STORM",renderDesertStormPlanner);safeRenderStep("ALLIANCE_OPEN_CANYON",renderCanyonPlanner)}
+  if(betaPrivateDataVisible()&&name==="alliance"){safeRenderStep("ALLIANCE_OPEN_CORE",()=>renderAllianceCoreSummary(state.player,state.alliance));safeRenderStep("ALLIANCE_OPEN_MEMBERS",renderMembers);safeRenderStep("ALLIANCE_OPEN_ACCESS",renderAllianceAccess);safeRenderStep("ALLIANCE_OPEN_DESERT_STORM",renderDesertStormPlanner);safeRenderStep("ALLIANCE_OPEN_CANYON",renderCanyonPlanner);bindAllianceAccordions();resetAllianceAccordions()}
   if(betaPrivateDataVisible()&&name==="vs")safeRenderStep("VS_OPEN_CORE",renderVsLive);
   if(betaPrivateDataVisible()&&name==="season"){safeRenderStep("SEASON_OPEN_ACCESS",renderSeasonAccess);safeRenderStep("SEASON_OPEN_CORE",()=>renderSeasonCoreSummary(state.season));}
   if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)
@@ -2358,8 +2388,6 @@ $("#alliancePlayerModal")?.addEventListener("click",event=>{if(event.target?.clo
 $("#allianceEventWorkspace")?.addEventListener("click",event=>{
   const card=event.target?.closest?.("[data-alliance-event]");
   if(card){event.preventDefault();toggleAllianceEventDetail(card.dataset.allianceEvent||"desert_storm");return}
-  const close=event.target?.closest?.("[data-alliance-event-close]");
-  if(close){event.preventDefault();closeAllianceEventDetail();return}
   const player=event.target?.closest?.("[data-alliance-player-key]");
   if(player){event.preventDefault();openAlliancePlayerProfile(player.dataset.alliancePlayerKey,allianceEventActive);return}
   const plan=event.target?.closest?.("[data-alliance-event-plan]");
@@ -2370,6 +2398,7 @@ $("#allianceEventWorkspace")?.addEventListener("change",event=>{
   const member=activeAllianceRosterMembers().find(x=>allianceEventMemberKey(x)===select.dataset.allianceEventStatus);
   saveAllianceEventStatus(member,allianceEventActive,select.value);renderAllianceEventWorkspace();
 });
+bindAllianceAccordions();
 window.addEventListener("popstate",()=>{
   if(alliancePlayerProfileIsOpen()){closeAlliancePlayerProfile({fromHistory:true});return}
   if(allianceEventDetailIsOpen())closeAllianceEventDetail({fromHistory:true});
