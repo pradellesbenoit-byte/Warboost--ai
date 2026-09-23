@@ -1453,7 +1453,18 @@ function renderPlayerActivity(){
 }
 const availabilityEventLabels={desert_storm:"Tempête du Désert",canyon_storm:"Tempête du Canyon",vs:"Guerre VS",season:"Saison",other:"Autre événement"};
 function availabilityEventLabel(type){return availabilityEventLabels[type]||type||"Événement"}
-function availabilityStatusLabel(status){return ({present:"Présent",absent:"Absent",uncertain:"Incertain",unknown:"À confirmer"})[status]||"À confirmer"}
+function availabilityStatusLabel(status){return ({present:"Présent",absent:"Absent",substitute:"Remplaçant",uncertain:"À confirmer",unknown:"À confirmer"})[status]||"À confirmer"}
+function stormAvailabilityEvent(eventType){return eventType==="desert_storm"||eventType==="canyon_storm"}
+function availabilityStatusOptions(eventType,status){
+  const normalized=status==="uncertain"?"unknown":status||"unknown";
+  const options=[
+    ["unknown","À confirmer"],
+    ["present","Présent"],
+    ["absent","Absent"],
+    ...(stormAvailabilityEvent(eventType)?[["substitute","Remplaçant"]]:[])
+  ];
+  return options.map(([value,label])=>`<option value="${value}"${normalized===value?" selected":""}>${label}</option>`).join("");
+}
 function availabilitySourceLabel(source){return source==="player_self_report"?"Joueur":source==="alliance_manager_manual"?"R4/R5":source==="import"?"Import":"Historique"}
 function playerAvailabilityFor(eventType,eventInstance){
   const rows=mergeEventAvailabilities(state.player_availability),key=eventInstance||"current";
@@ -1465,7 +1476,7 @@ function renderPlayerAvailability(){
   if(!betaPrivateDataVisible()){section.classList.add("hidden");return}
   section.classList.remove("hidden");
   const eventType=eventInput.value||"desert_storm",instance=dateInput?.value||"current",row=playerAvailabilityFor(eventType,instance);
-  if(statusInput)statusInput.value=row.status||"unknown";
+  if(statusInput){statusInput.innerHTML=availabilityStatusOptions(eventType,row.status);statusInput.value=row.status==="uncertain"?"unknown":row.status||"unknown"}
   if(dateInput&&document.activeElement!==dateInput)dateInput.value=row.event_date||"";
   if(slotInput&&document.activeElement!==slotInput)slotInput.value=row.time_slot||"";
   if(noteInput&&document.activeElement!==noteInput)noteInput.value=row.note||"";
@@ -1482,7 +1493,7 @@ function renderAllianceAvailability(){
   const box=$("#managerAvailabilityList"),section=$("#eventAvailabilityManagerSection"),eventSelect=$("#managerAvailabilityEvent"),search=$("#managerAvailabilitySearch");if(!box||!section||!eventSelect)return;
   const manager=hasDeclaredAllianceCommandRole(),access=runtimeAccessState();section.classList.toggle("hidden",!access.privateVisible||!manager);if(!access.privateVisible||!manager){box.innerHTML="";return}
   const eventType=eventSelect.value||"desert_storm",eventInstance=$("#managerAvailabilityDate")?.value||"current",q=rosterNameKey(search?.value||""),members=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members).filter(m=>!q||rosterNameKey(m.name).includes(q)),allRows=mergeEventAvailabilities(state.alliance.event_availability,...(state.alliance.members||[]).map(m=>m.event_availability||[]));
-  box.innerHTML=members.length?members.map(member=>{const row=availabilityForMember(allRows,member,eventType,eventInstance),key=member.canonical_member_key||rosterLifecycleKey(member),source=row.source?availabilitySourceLabel(row.source):"—",linked=member.warboost_linked===true;return `<div class="managerAvailabilityRow${linked?"":" availabilityUnlinked"}"><div><b>${esc(member.name||t("player"))}</b><small>${esc(normalizeAllianceRole(member.role))} · ${linked?"Lié":"Non lié"} · <span class="availabilitySource">${esc(source)}</span></small></div><select data-manager-availability-key="${esc(key)}" data-manager-availability-name="${esc(member.name||"")}" data-manager-availability-event="${esc(eventType)}" data-manager-availability-instance="${esc(eventInstance)}"><option value="unknown"${row.status==="unknown"?" selected":""}>À confirmer</option><option value="present"${row.status==="present"?" selected":""}>Présent</option><option value="absent"${row.status==="absent"?" selected":""}>Absent</option><option value="uncertain"${row.status==="uncertain"?" selected":""}>Incertain</option></select><input type="time" data-manager-availability-slot="${esc(key)}" value="${esc(row.time_slot||"")}" aria-label="Créneau de ${esc(member.name||"joueur")}"/></div>`}).join(""):`<div class="notice">Aucun membre correspondant.</div>`;
+  box.innerHTML=members.length?members.map(member=>{const row=availabilityForMember(allRows,member,eventType,eventInstance),key=member.canonical_member_key||rosterLifecycleKey(member),source=row.source?availabilitySourceLabel(row.source):"—",linked=member.warboost_linked===true;return `<div class="managerAvailabilityRow${linked?"":" availabilityUnlinked"}"><div><b>${esc(member.name||t("player"))}</b><small>${esc(normalizeAllianceRole(member.role))} · ${linked?"Lié":"Non lié"} · <span class="availabilitySource">${esc(source)}</span></small></div><select data-manager-availability-key="${esc(key)}" data-manager-availability-name="${esc(member.name||"")}" data-manager-availability-event="${esc(eventType)}" data-manager-availability-instance="${esc(eventInstance)}">${availabilityStatusOptions(eventType,row.status)}</select><input type="time" data-manager-availability-slot="${esc(key)}" value="${esc(row.time_slot||"")}" aria-label="Créneau de ${esc(member.name||"joueur")}"/></div>`}).join(""):`<div class="notice">Aucun membre correspondant.</div>`;
   const byKey=new Map(members.map(m=>[m.canonical_member_key||rosterLifecycleKey(m),m]));
   box.querySelectorAll("[data-manager-availability-key]").forEach(select=>select.addEventListener("change",()=>{const member=byKey.get(select.dataset.managerAvailabilityKey);if(!member)return;const slot=[...box.querySelectorAll("[data-manager-availability-slot]")].find(input=>input.dataset.managerAvailabilitySlot===select.dataset.managerAvailabilityKey)?.value||null,now=new Date().toISOString(),row=normalizeEventAvailability({event_type:eventType,event_instance:eventInstance,event_date:eventInstance==="current"?null:eventInstance,status:select.value,time_slot:slot,source:"alliance_manager_manual",canonical_member_key:member.canonical_member_key,lifecycle_key:rosterLifecycleKey(member),member_key:member.canonical_member_key||rosterLifecycleKey(member),member_name:member.name,player_id:member.player_id,updated_at:now});const merged=upsertEventAvailability(state.alliance.event_availability,state.alliance.availability_history,row);state.alliance.event_availability=merged.current;state.alliance.availability_history=merged.history;member.event_availability=mergeEventAvailabilities(member.event_availability,[row]);member.availability_history=mergeAvailabilityHistory(member.availability_history,[row]);state.alliance.updated_at=now;saveState();renderAllianceAvailability();renderCanyonPlanner();renderDesertStormPlanner()}));
 }
@@ -1551,6 +1562,7 @@ function allianceEventGroups(eventType){
   const def=allianceEventDefinition(eventType),rows=allianceEventRows(eventType),members=activeAllianceRosterMembers();
   const classified=members.map(member=>({member,row:allianceEventAvailability(eventType,member,rows)}));
   const present=classified.filter(x=>x.row.status==="present");
+  const explicitSubstitutes=classified.filter(x=>x.row.status==="substitute");
   const saved=state.alliance?.event_plans?.[eventType];
   const byKey=new Map(members.map(member=>[allianceEventMemberKey(member),member]));
   const resolvePlanMembers=list=>(Array.isArray(list)?list:[]).map(item=>byKey.get(allianceEventMemberKey(item)||String(item||""))||members.find(member=>rosterNameKey(member.name)===rosterNameKey(typeof item==="string"?item:item?.name))).filter(Boolean);
@@ -1576,9 +1588,12 @@ function allianceEventGroups(eventType){
       rows
     };
   }
+  const substitutes=explicitSubstitutes.length
+    ? explicitSubstitutes.slice(0,def.subLimit).map(x=>x.member)
+    : present.slice(def.limit,def.limit+def.subLimit).map(x=>x.member);
   return {
     participants:present.slice(0,def.limit).map(x=>x.member),
-    substitutes:present.slice(def.limit).map(x=>x.member),
+    substitutes,
     confirming:classified.filter(x=>x.row.status==="unknown"||x.row.status==="uncertain").map(x=>x.member),
     absent:classified.filter(x=>x.row.status==="absent").map(x=>x.member),
     totalMembers:members.length,
@@ -1683,8 +1698,8 @@ function generateAllianceEventPlan(eventType){
   if(!participants.length){const detail=$("#allianceEventDetail");if(detail)detail.insertAdjacentHTML("afterbegin",`<div class="notice warn">${esc(t("alliance_event_no_present"))}</div>`);return}
   state.alliance.event_plans={...(state.alliance.event_plans||{}),[eventType]:{event_type:eventType,generated_at:new Date().toISOString(),participants:groups.participants,substitutes:groups.substitutes,confirmation:groups.confirming.map(x=>x.name),absent:groups.absent.map(x=>x.name)}};
   if(eventType==="desert_storm"){
-    const ds=ensureDesertStormState(),keys=participants.flatMap(desertStormMemberKeys).filter(Boolean);
-    ds.plan=buildDesertStormPlan(activeAllianceRosterMembers(),keys,{nowMs:serverNow.getTime(),team:ds.team,battleTime:ds.battle_time});ds.updated_at=new Date().toISOString();
+    const ds=ensureDesertStormState(),keys=participants.flatMap(desertStormMemberKeys).filter(Boolean),substituteKeys=groups.substitutes.flatMap(desertStormMemberKeys).filter(Boolean);
+     ds.plan=buildDesertStormPlan(activeAllianceRosterMembers(),keys,{nowMs:serverNow.getTime(),team:ds.team,battleTime:ds.battle_time,substituteKeys});ds.updated_at=new Date().toISOString();
     state.alliance.event_plans[eventType]={...state.alliance.event_plans[eventType],participants:ds.plan.starters||groups.participants,substitutes:ds.plan.substitutes||groups.substitutes};
   }else if(eventType==="canyon_storm"){
     const canyon=ensureCanyonState();canyon.plan=canyonPlanForRoster(canyon,activeAllianceRosterMembers());canyon.updated_at=new Date().toISOString();
@@ -1706,8 +1721,12 @@ function renderAllianceEventWorkspace(){
   if(!allianceEventDetailOpen){detail.classList.add("hidden");detail.setAttribute("aria-hidden","true");detail.innerHTML="";return}
   const def=allianceEventDefinition(allianceEventActive),groups=groupsByType.get(def.type),openRoster=Boolean(def.openRoster),all=openRoster?[["participants","🟢 "+t("alliance_event_participants"),groups.participants],["confirming","❓ "+t("alliance_event_confirming"),groups.confirming],["absent","🔴 "+t("alliance_event_absent"),groups.absent]]:[["participants","🟢 "+t("alliance_event_participants"),groups.participants],["substitutes","🟠 "+t("alliance_event_substitutes"),groups.substitutes],["confirming","❓ "+t("alliance_event_confirming"),groups.confirming],["absent","🔴 "+t("alliance_event_absent"),groups.absent]];
   const groupHtml=all.map(([kind,label,items])=>`<details class="allianceEventGroup" open><summary><span>${label}</span><b>${items.length}</b></summary><div class="allianceEventGroupList">${items.length?items.map(member=>{const linked=member.warboost_linked===true,status=allianceEventStatus(member,def.type),key=allianceEventMemberKey(member);return `<div class="allianceEventMember"><button type="button" class="allianceEventMemberButton" data-alliance-player-key="${esc(key)}"><b>${esc(member.name||t("player"))}</b><small>${esc(normalizeAllianceRole(member.role))}${Number(member.power_m)>0?` · ${esc(fmtPower(member.power_m))}`:""}${linked?" · 🟢 "+esc(t("alliance_event_linked")):" · ⚪ "+esc(t("alliance_event_unlinked"))}</small></button>${linked?`<span class="allianceEventSource">${esc(availabilitySourceLabel(allianceEventAvailability(def.type,member).source))}</span>`:`<select class="allianceEventManualStatus" data-alliance-event-status="${esc(key)}" aria-label="${esc(t("alliance_event_selected"))} ${esc(member.name||t("player"))}"><option value="unknown"${status==="unknown"?" selected":""}>${esc(t("alliance_event_confirming"))}</option><option value="present"${status==="present"?" selected":""}>${esc(t("alliance_event_present"))}</option><option value="absent"${status==="absent"?" selected":""}>${esc(t("alliance_event_absent"))}</option><option value="uncertain"${status==="uncertain"?" selected":""}>${esc(t("alliance_event_confirming"))}</option></select>`}</div>`}).join(""):`<div class="allianceEventEmpty">${esc(t("alliance_event_empty"))}</div>`}</div></details>`).join("");
-  const denominator=openRoster?groups.totalMembers:def.limit;
-  detail.classList.remove("hidden");detail.setAttribute("aria-hidden","false");detail.innerHTML=`<div class="allianceEventDetailHead"><div><span class="eyebrow">${def.icon} ${esc(t("alliance_event_selected"))}</span><h3>${esc(def.label)}</h3><p>${esc(t("alliance_event_participants"))} ${groups.participants.length}/${denominator}${openRoster?"":` · ${esc(t("alliance_event_substitutes"))} ${groups.substitutes.length}/${def.subLimit}`} · ${esc(t("alliance_event_confirming"))} ${groups.confirming.length} · ${esc(t("alliance_event_absent"))} ${groups.absent.length}</p></div><button type="button" class="primaryAction" data-alliance-event-plan>🧠 ${esc(t("alliance_event_generate_plan"))}</button></div><div class="allianceEventGroups">${groupHtml}</div><div id="allianceEventPlan">${allianceEventPlanSummary(def.type,groups)}</div>`;
+   const renderedGroupHtml=stormAvailabilityEvent(def.type)?groupHtml.replace(/(<select[^>]*data-alliance-event-status="([^"]+)"[^>]*>)[\s\S]*?(<\/select>)/g,(_,open,key,close)=>{
+     const member=activeAllianceRosterMembers().find(x=>allianceEventMemberKey(x)===key);
+     return `${open}${availabilityStatusOptions(def.type,member?allianceEventStatus(member,def.type):"unknown")}${close}`;
+   }):groupHtml;
+   const denominator=openRoster?groups.totalMembers:def.limit;
+   detail.classList.remove("hidden");detail.setAttribute("aria-hidden","false");detail.innerHTML=`<div class="allianceEventDetailHead"><div><span class="eyebrow">${def.icon} ${esc(t("alliance_event_selected"))}</span><h3>${esc(def.label)}</h3><p>${esc(t("alliance_event_participants"))} ${groups.participants.length}/${denominator}${openRoster?"":` · ${esc(t("alliance_event_substitutes"))} ${groups.substitutes.length}/${def.subLimit}`} · ${esc(t("alliance_event_confirming"))} ${groups.confirming.length} · ${esc(t("alliance_event_absent"))} ${groups.absent.length}</p></div><button type="button" class="primaryAction" data-alliance-event-plan>🧠 ${esc(t("alliance_event_generate_plan"))}</button></div><div class="allianceEventGroups">${renderedGroupHtml}</div><div id="allianceEventPlan">${allianceEventPlanSummary(def.type,groups)}</div>`;
 }
 function renderAllianceIdentityLinks(members){
   const box=$("#allianceIdentitySummary"),pendingBox=$("#unlinkedWarBoostAccounts"),pendingDetails=$("#unlinkedWarBoostDetails");
@@ -2050,6 +2069,14 @@ function desertStormPresentKeys(members=activeAllianceRosterMembers()){
   const capacity=desertStormAvailabilityCapacity(members);
   return [...capacity.participants,...capacity.substitutes].map(member=>desertStormMemberKeys(member)[0]||member.lifecycle_key||rosterLifecycleKey(member)).filter(Boolean);
 }
+function desertStormPlanSelection(members=activeAllianceRosterMembers()){
+  const capacity=desertStormAvailabilityCapacity(members);
+  const keyFor=member=>desertStormMemberKeys(member)[0]||member.lifecycle_key||rosterLifecycleKey(member);
+  return {
+    registeredKeys:[...capacity.participants,...capacity.substitutes].map(keyFor).filter(Boolean),
+    substituteKeys:capacity.substitutes.map(keyFor).filter(Boolean)
+  };
+}
 function sortAvailabilityAssignmentRows(rows,participantKeys,substituteKeys,keyFn){
   return rows.map((row,index)=>({row,index,rank:keyFn(row).some(key=>participantKeys.has(key))?0:keyFn(row).some(key=>substituteKeys.has(key))?1:2}))
     .sort((a,b)=>a.rank-b.rank||a.index-b.index).map(entry=>entry.row);
@@ -2105,8 +2132,12 @@ function canyonAvailabilityFor(canyon,member){
   return (canyon.availability||[]).find(x=>keys.has(String(x.canonical_member_key||x.lifecycle_key||x.member_key||"")))||normalizeAvailabilityRecord({...member,event_type:"canyon_storm",status:"unknown"});
 }
 function canyonAvailabilityAssignments(canyon,active){
-  const present=active.filter(member=>canyonAvailabilityFor(canyon,member).status==="present");
-  return {present,participants:present.slice(0,CANYON_STORM_RULESET.max_starters),substitutes:present.slice(CANYON_STORM_RULESET.max_starters,CANYON_STORM_RULESET.max_starters+CANYON_STORM_RULESET.max_substitutes)};
+  const capacity=availabilityCapacityRoster(active,canyon.availability||[],{
+    event_type:"canyon_storm",
+    max_starters:CANYON_STORM_RULESET.max_starters,
+    max_substitutes:CANYON_STORM_RULESET.max_substitutes
+  });
+  return {present:capacity.participants,participants:capacity.participants,substitutes:capacity.substitutes};
 }
 function upsertCanyonAvailability(member,patch={}){
   const canyon=ensureCanyonState(),keys=new Set(canyonMemberKeys(member)),at=new Date().toISOString(),existingIndex=canyon.availability.findIndex(x=>keys.has(String(x.canonical_member_key||x.lifecycle_key||x.member_key||""))),existing=existingIndex>=0?canyon.availability[existingIndex]:{};
@@ -2129,10 +2160,10 @@ function renderCanyonAvailability(){
   const box=$("#canyonAvailabilityList"),slotBox=$("#canyonSlotSummary");if(!box)return;
   const canyon=ensureCanyonState(),active=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members),assignments=canyonAvailabilityAssignments(canyon,active),participantKeys=new Set(assignments.participants.flatMap(canyonMemberKeys)),substituteKeys=new Set(assignments.substitutes.flatMap(canyonMemberKeys)),q=rosterNameKey(canyonSearchTerm),rows=sortAvailabilityAssignmentRows(active,participantKeys,substituteKeys,canyonMemberKeys).filter(m=>!q||rosterNameKey(m.name).includes(q)),counts=countAvailabilitySlots(canyon.availability,{event_type:"canyon_storm"}),best=recommendBestSlot(canyon.availability,{event_type:"canyon_storm"}),access=desertStormSelectionAccess(),disabled=access.allowed?"":" disabled";
   const slots=Object.values(counts).filter(x=>x.slot!=="to_confirm");
-  if(slotBox)slotBox.innerHTML=slots.length?slots.map(x=>`<div class="canyonSlotChip"><b>${esc(x.slot)}${x.slot===best.slot?" · proposé":""}</b><span>Présents ${x.present} · Incertains ${x.uncertain}</span></div>`).join(""):`<div class="notice">Créneaux à confirmer${best.slot&&best.slot!=="to_confirm"?` · proposition ${esc(best.slot)}`:""}</div>`;
+   if(slotBox)slotBox.innerHTML=slots.length?slots.map(x=>`<div class="canyonSlotChip"><b>${esc(x.slot)}${x.slot===best.slot?" · proposé":""}</b><span>Présents ${x.present} · Remplaçants ${x.substitute} · À confirmer ${x.to_confirm}</span></div>`).join(""):`<div class="notice">Créneaux à confirmer${best.slot&&best.slot!=="to_confirm"?` · proposition ${esc(best.slot)}`:""}</div>`;
   box.innerHTML=rows.length?rows.map(member=>{
      const row=canyonAvailabilityFor(canyon,member),key=canyonMemberKeys(member)[0],power=Number(member.squad_power_m)>0?`Escouade ${fmtPower(member.squad_power_m)}`:Number(member.power_m)>0?`Compte ${fmtPower(member.power_m)}`:"Puissance à confirmer",source=row.source?` · source ${row.source}${row.reliability!==null?` · fiabilité ${Math.round(row.reliability*100)}%`:""}`:"",badge=participantKeys.has(key)?`<span class="availabilityAssignmentBadge participant" role="img" aria-label="Participant" title="Participant">✓ Participant</span>`:substituteKeys.has(key)?`<span class="availabilityAssignmentBadge substitute" role="img" aria-label="Remplaçant" title="Remplaçant">Remplaçant</span>`:"";
-     return `<div class="canyonAvailabilityRow" data-canyon-member="${esc(key)}"><div><b>${esc(member.name||t("player"))}${badge}</b><small>${esc(normalizeAllianceRole(member.role))} · ${esc(power)}${esc(source)}</small></div><select data-canyon-status="${esc(key)}"${disabled}><option value="unknown"${row.status==="unknown"?" selected":""}>À confirmer</option><option value="present"${row.status==="present"?" selected":""}>Présent</option><option value="absent"${row.status==="absent"?" selected":""}>Absent</option><option value="uncertain"${row.status==="uncertain"?" selected":""}>Incertain</option></select><input type="time" data-canyon-slot="${esc(key)}" value="${esc(row.time_slot||"")}" aria-label="Créneau de ${esc(member.name||t("player"))}"${disabled}/></div>`;
+      return `<div class="canyonAvailabilityRow" data-canyon-member="${esc(key)}"><div><b>${esc(member.name||t("player"))}${badge}</b><small>${esc(normalizeAllianceRole(member.role))} · ${esc(power)}${esc(source)}</small></div><select data-canyon-status="${esc(key)}"${disabled}>${availabilityStatusOptions("canyon_storm",row.status)}</select><input type="time" data-canyon-slot="${esc(key)}" value="${esc(row.time_slot||"")}" aria-label="Créneau de ${esc(member.name||t("player"))}"${disabled}/></div>`;
   }).join(""):`<div class="notice">Aucun joueur du roster correspondant.</div>`;
   const byKey=new Map(active.flatMap(m=>canyonMemberKeys(m).map(k=>[k,m])));
   box.querySelectorAll("[data-canyon-status]").forEach(input=>input.addEventListener("change",()=>{const member=byKey.get(input.dataset.canyonStatus);if(!member)return;const slot=[...box.querySelectorAll("[data-canyon-slot]")].find(x=>x.dataset.canyonSlot===input.dataset.canyonStatus)?.value||canyonAvailabilityFor(canyon,member).time_slot||canyonScheduledTime(canyon);upsertCanyonAvailability(member,{status:input.value,time_slot:slot||null});renderCanyonPlanner()}));
@@ -2433,7 +2464,7 @@ desertStormSearchInput?.addEventListener("input",e=>{desertStormSearchTerm=searc
 $("#desertStormTeam")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.team=String(e.target.value||"A").toUpperCase()==="B"?"B":"A";ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
 $("#desertStormTime")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.battle_time=String(e.target.value||"");ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
  $("#desertStormClearBtn")?.addEventListener("click",()=>{const clearPrompt=lang.startsWith("fr")?"Effacer toute la sélection Tempête du Désert ?":t("ds_clear_confirm")==="ds_clear_confirm"?"Clear all selected Desert Storm players?":t("ds_clear_confirm");if(!hasDeclaredAllianceCommandRole()||!window.confirm(clearPrompt))return;const ds=ensureDesertStormState(),now=new Date().toISOString();ds.registered_keys=[];ds.plan=null;ds.availability_reset_at=now;ds.updated_at=now;saveState();renderDesertStormPlanner();const st=$("#desertStormStatus");if(st){st.className="notice";st.textContent=t("ds_cleared");st.classList.remove("hidden")}});
- $("#desertStormGenerateBtn")?.addEventListener("click",()=>{const st=$("#desertStormStatus");if(!hasDeclaredAllianceCommandRole()){if(st){st.className="notice warn";st.textContent=managerOnlyMessage();st.classList.remove("hidden")}return}if(!desertStormFeatureAccess())return;const ds=ensureDesertStormState(),members=activeAllianceRosterMembers(),presentKeys=desertStormPresentKeys(members);if(!presentKeys.length){if(st){st.className="notice warn";st.textContent=t("ds_no_registered");st.classList.remove("hidden")}return}ds.plan=buildDesertStormPlan(members,presentKeys,{nowMs:serverNow.getTime(),team:ds.team,battleTime:ds.battle_time});ds.updated_at=new Date().toISOString();state.alliance.updated_at=ds.updated_at;saveState();if(st){st.className="notice";st.textContent=t("ds_plan_ready");st.classList.remove("hidden")}});
+ $("#desertStormGenerateBtn")?.addEventListener("click",()=>{const st=$("#desertStormStatus");if(!hasDeclaredAllianceCommandRole()){if(st){st.className="notice warn";st.textContent=managerOnlyMessage();st.classList.remove("hidden")}return}if(!desertStormFeatureAccess())return;const ds=ensureDesertStormState(),members=activeAllianceRosterMembers(),selection=desertStormPlanSelection(members);if(!selection.registeredKeys.length){if(st){st.className="notice warn";st.textContent=t("ds_no_registered");st.classList.remove("hidden")}return}ds.plan=buildDesertStormPlan(members,selection.registeredKeys,{nowMs:serverNow.getTime(),team:ds.team,battleTime:ds.battle_time,substituteKeys:selection.substituteKeys});ds.updated_at=new Date().toISOString();state.alliance.updated_at=ds.updated_at;saveState();if(st){st.className="notice";st.textContent=t("ds_plan_ready");st.classList.remove("hidden")}});
 $("#canyonPlanner")?.querySelectorAll("[data-canyon-tab]").forEach(btn=>btn.addEventListener("click",()=>{canyonActiveTab=btn.dataset.canyonTab||"preparation";renderCanyonPlanner()}));
 $("#canyonSearch")?.addEventListener("input",e=>{canyonSearchTerm=String(e.target.value||"");scheduleCanyonSearchRender()});
  $("#canyonStatus")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.status=e.target.value;canyon.plan=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});

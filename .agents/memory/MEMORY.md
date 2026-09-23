@@ -22,4 +22,5 @@
 - [Behavior-oriented UI checks](behavior-oriented-ui-checks.md) — render tests should assert the intended ordering helper/behavior, not brittle exact loop syntax.
 - [Alliance player modal lifecycle](mobile-player-modal-close.md) — use delegated close actions, a temporary history entry for Android back, and replace-state cleanup for rapid reopen cycles.
 - [Event workspace capacities](event-workspace-capacities.md) — only Desert/Canyon use 20 participants plus 10 substitutes; VS, Season, and generic alliance events use the active roster total.
+- [Explicit storm substitutes](explicit-storm-substitutes.md) — only Desert/Canyon expose substitute status; explicit replacements override legacy present-overflow fallback.
 - [Canonical pending identity](unlinked-pending-identity.md) — pending association rows are derived; purge only by linked player identity plus strict server/alliance scope.
