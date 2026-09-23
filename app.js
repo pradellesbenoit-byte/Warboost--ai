@@ -350,7 +350,7 @@ function renderPlayerProgression(){
   const cls=x=>x?.change_m>0?"deltaUp":"deltaFlat";box.innerHTML=`<div class="progressionMetric"><small>${esc(t("progression_account"))} · ${esc(cmp.account.elapsed_days??"—")}j</small><b>${esc(fmtPower(cmp.account.current))}</b><span class="${cls(cmp.account)}">${cmp.account.change_m===null?"—":esc(`${cmp.account.change_m>=0?"+":""}${cmp.account.change_m} M · ${cmp.account.pct??"—"}%`)}</span></div><div class="progressionMetric"><small>${esc(t("progression_squad"))} · ${esc(cmp.main_squad.elapsed_days??"—")}j</small><b>${esc(fmtPower(cmp.main_squad.current))}</b><span class="${cls(cmp.main_squad)}">${cmp.main_squad.change_m===null?"—":esc(`${cmp.main_squad.change_m>=0?"+":""}${cmp.main_squad.change_m} M · ${cmp.main_squad.pct??"—"}%`)}</span></div>`;
 }
 if(!(state.progression_snapshots||[]).length&&hasMeaningfulCore(state))state.progression_snapshots=appendProgressionSnapshot([],state,{source:"baseline",at:state.updated_at||new Date().toISOString()});
-let desertStormSearchTerm="",desertStormSearchRenderGeneration=0,canyonSearchTerm="",canyonSearchRenderGeneration=0,canyonActiveTab="preparation",allianceEventActive="desert_storm";
+let desertStormSearchTerm="",desertStormSearchRenderGeneration=0,canyonSearchTerm="",canyonSearchRenderGeneration=0,canyonActiveTab="preparation",allianceEventActive="desert_storm",allianceEventDetailOpen=false,allianceEventDetailHistory=false,allianceEventDetailScrollTop=0,allianceEventDetailLastFocus=null;
 let alliancePlayerModalScrollTop=0,alliancePlayerModalHistory=false,alliancePlayerModalLastFocus=null,alliancePlayerModalBodyStyles=null;
 let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
 let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0,sharedRosterLinkPromise=null;
@@ -1495,11 +1495,12 @@ function renderAllianceParticipationTable(members){
 const ALLIANCE_EVENT_DEFS=[
   {type:"desert_storm",icon:"🌪️",labelKey:"alliance_event_desert_storm",limit:20,subLimit:10},
   {type:"canyon_storm",icon:"⛰️",labelKey:"alliance_event_canyon_storm",limit:20,subLimit:10},
-  {type:"vs",icon:"⚔️",labelKey:"event_vs",limit:20,subLimit:10},
-  {type:"season",icon:"🏆",labelKey:"event_season",limit:20,subLimit:10},
-  {type:"other",icon:"🛡️",labelKey:"event_alliance_event",limit:20,subLimit:10}
+  {type:"vs",icon:"⚔️",labelKey:"event_vs",openRoster:true},
+  {type:"season",icon:"🏆",labelKey:"event_season",openRoster:true},
+  {type:"other",icon:"🛡️",labelKey:"event_alliance_event",openRoster:true}
 ];
 function allianceEventDefinition(type){const def=ALLIANCE_EVENT_DEFS.find(x=>x.type===type)||ALLIANCE_EVENT_DEFS[0];return {...def,label:t(def.labelKey)}}
+function allianceEventIsOpenRoster(eventType){return Boolean(allianceEventDefinition(eventType).openRoster)}
 function allianceEventMemberKey(member={}){
   return String(member.canonical_member_key||member.lifecycle_key||member.member_key||member.player_id||member.name||"").trim();
 }
@@ -1524,13 +1525,24 @@ function allianceEventGroups(eventType){
   const byKey=new Map(members.map(member=>[allianceEventMemberKey(member),member]));
   const resolvePlanMembers=list=>(Array.isArray(list)?list:[]).map(item=>byKey.get(allianceEventMemberKey(item)||String(item||""))||members.find(member=>rosterNameKey(member.name)===rosterNameKey(typeof item==="string"?item:item?.name))).filter(Boolean);
   const plannedParticipants=resolvePlanMembers(saved?.participants),plannedSubstitutes=resolvePlanMembers(saved?.substitutes);
-  if(saved&&(plannedParticipants.length||plannedSubstitutes.length)){
+  if(!def.openRoster&&saved&&(plannedParticipants.length||plannedSubstitutes.length)){
     const plannedKeys=new Set([...plannedParticipants,...plannedSubstitutes].map(allianceEventMemberKey));
     return {
       participants:plannedParticipants,
       substitutes:plannedSubstitutes,
       confirming:classified.filter(x=>(x.row.status==="unknown"||x.row.status==="uncertain")&&!plannedKeys.has(allianceEventMemberKey(x.member))).map(x=>x.member),
       absent:classified.filter(x=>x.row.status==="absent").map(x=>x.member),
+      totalMembers:members.length,
+      rows
+    };
+  }
+  if(def.openRoster){
+    return {
+      participants:present.map(x=>x.member),
+      substitutes:[],
+      confirming:classified.filter(x=>x.row.status==="unknown"||x.row.status==="uncertain").map(x=>x.member),
+      absent:classified.filter(x=>x.row.status==="absent").map(x=>x.member),
+      totalMembers:members.length,
       rows
     };
   }
@@ -1539,6 +1551,7 @@ function allianceEventGroups(eventType){
     substitutes:present.slice(def.limit).map(x=>x.member),
     confirming:classified.filter(x=>x.row.status==="unknown"||x.row.status==="uncertain").map(x=>x.member),
     absent:classified.filter(x=>x.row.status==="absent").map(x=>x.member),
+    totalMembers:members.length,
     rows
   };
 }
@@ -1596,11 +1609,43 @@ function openAlliancePlayerProfile(memberKey,eventType){
   try{history.pushState({...history.state,warboostAlliancePlayerModal:true},"",location.href)}catch{}
   modal.querySelector(".alliancePlayerModalClose")?.focus();
 }
+function allianceEventDetailIsOpen(){return allianceEventDetailOpen}
+function lockAllianceEventDetailHistory(){
+  allianceEventDetailHistory=true;
+  try{history.pushState({...history.state,warboostAllianceEventDetail:true},"",location.href)}catch{}
+}
+function openAllianceEventDetail(eventType){
+  const drawer=$("#allianceDrawer");allianceEventDetailScrollTop=drawer?.scrollTop||0;allianceEventDetailLastFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  allianceEventActive=eventType||"desert_storm";allianceEventDetailOpen=true;
+  if(!allianceEventDetailHistory)lockAllianceEventDetailHistory();
+  renderAllianceEventWorkspace();
+  $("#allianceEventDetail")?.scrollIntoView?.({behavior:"smooth",block:"nearest"});
+}
+function closeAllianceEventDetail({fromHistory=false}={}){
+  const detail=$("#allianceEventDetail");if(!detail||!allianceEventDetailOpen)return false;
+  allianceEventDetailOpen=false;detail.classList.add("hidden");detail.setAttribute("aria-hidden","true");detail.innerHTML="";
+  const drawer=$("#allianceDrawer"),top=allianceEventDetailScrollTop;
+  if(drawer){drawer.scrollTop=top;requestAnimationFrame(()=>{drawer.scrollTop=top})}
+  const focusTarget=document.querySelector(`[data-alliance-event="${CSS.escape?.(allianceEventActive)||allianceEventActive}"]`)||allianceEventDetailLastFocus;
+  allianceEventDetailLastFocus=null;
+  if(focusTarget&&document.contains(focusTarget)){try{focusTarget.focus({preventScroll:true})}catch{focusTarget.focus()}}
+  const shouldRestoreHistory=allianceEventDetailHistory&&!fromHistory;allianceEventDetailHistory=false;
+  if(shouldRestoreHistory&&history.state?.warboostAllianceEventDetail){
+    const cleanState={...history.state};delete cleanState.warboostAllianceEventDetail;
+    try{history.replaceState(cleanState,"",location.href)}catch{}
+  }
+  return true;
+}
+function toggleAllianceEventDetail(eventType){
+  if(allianceEventDetailOpen&&allianceEventActive===eventType){closeAllianceEventDetail();return}
+  if(allianceEventDetailOpen){allianceEventActive=eventType;renderAllianceEventWorkspace();return}
+  openAllianceEventDetail(eventType);
+}
 function allianceEventPlanSummary(eventType,groups){
   const saved=state.alliance?.event_plans?.[eventType],def=allianceEventDefinition(eventType);
   if(!saved)return "";
-  const participants=(saved.participants||groups.participants).map(x=>typeof x==="string"?x:x.name).filter(Boolean),subs=(saved.substitutes||groups.substitutes).map(x=>typeof x==="string"?x:x.name).filter(Boolean);
-  return `<div class="allianceEventPlan"><div class="allianceEventPlanHead"><b>🧠 ${esc(t("alliance_event_generate_plan"))} · ${esc(def.label)}</b><span class="pill">${esc(participants.length)}/${def.limit}</span></div><div><b>${esc(t("alliance_event_participants"))}</b><span>${esc(participants.join(" · ")||"—")}</span></div><div><b>${esc(t("alliance_event_substitutes"))}</b><span>${esc(subs.join(" · ")||"—")}</span></div><small>${esc(t("alliance_event_plan_uses"))}</small></div>`;
+  const openRoster=Boolean(def.openRoster),participants=(openRoster?groups.participants:(saved.participants||groups.participants)).map(x=>typeof x==="string"?x:x.name).filter(Boolean),subs=openRoster?[]:(saved.substitutes||groups.substitutes).map(x=>typeof x==="string"?x:x.name).filter(Boolean),denominator=openRoster?groups.totalMembers:def.limit;
+  return `<div class="allianceEventPlan"><div class="allianceEventPlanHead"><b>🧠 ${esc(t("alliance_event_generate_plan"))} · ${esc(def.label)}</b><span class="pill">${esc(participants.length)}/${esc(denominator)}</span></div><div><b>${esc(t("alliance_event_participants"))}</b><span>${esc(participants.join(" · ")||"—")}</span></div>${openRoster?"":`<div><b>${esc(t("alliance_event_substitutes"))}</b><span>${esc(subs.join(" · ")||"—")}</span></div>`}<small>${esc(t("alliance_event_plan_uses"))}</small></div>`;
 }
 function generateAllianceEventPlan(eventType){
   if(!hasDeclaredAllianceCommandRole()){const detail=$("#allianceEventDetail");if(detail)detail.insertAdjacentHTML("afterbegin",`<div class="notice warn">${esc(managerOnlyMessage())}</div>`);return}
@@ -1622,14 +1667,12 @@ function renderAllianceEventWorkspace(){
   const cards=$("#allianceEventCards"),detail=$("#allianceEventDetail");if(!cards||!detail)return;
   const access=runtimeAccessState();if(!access.privateVisible){cards.innerHTML="";detail.classList.add("hidden");return}
   const groupsByType=new Map(ALLIANCE_EVENT_DEFS.map(def=>[def.type,allianceEventGroups(def.type)]));
-  cards.innerHTML=ALLIANCE_EVENT_DEFS.map(rawDef=>{const def=allianceEventDefinition(rawDef.type),groups=groupsByType.get(def.type),active=def.type===allianceEventActive;return `<button type="button" class="allianceEventCard${active?" active":""}" data-alliance-event="${def.type}"><span class="allianceEventCardIcon">${def.icon}</span><span><b>${esc(def.label)}</b><small>🟢 ${groups.participants.length}/${def.limit} · 🟠 ${groups.substitutes.length}/${def.subLimit}</small><small>❓ ${groups.confirming.length} · 🔴 ${groups.absent.length}</small></span><strong>${esc(t("alliance_event_open"))}</strong></button>`}).join("");
-  cards.querySelectorAll("[data-alliance-event]").forEach(button=>button.addEventListener("click",()=>{allianceEventActive=button.dataset.allianceEvent||"desert_storm";renderAllianceEventWorkspace()}));
-  const def=allianceEventDefinition(allianceEventActive),groups=groupsByType.get(def.type),all=[["participants","🟢 "+t("alliance_event_participants"),groups.participants],["substitutes","🟠 "+t("alliance_event_substitutes"),groups.substitutes],["confirming","❓ "+t("alliance_event_confirming"),groups.confirming],["absent","🔴 "+t("alliance_event_absent"),groups.absent]];
+  cards.innerHTML=ALLIANCE_EVENT_DEFS.map(rawDef=>{const def=allianceEventDefinition(rawDef.type),groups=groupsByType.get(def.type),active=def.type===allianceEventActive,openRoster=Boolean(def.openRoster),denominator=openRoster?groups.totalMembers:def.limit,summary=openRoster?`🟢 ${groups.participants.length}/${denominator}`:`🟢 ${groups.participants.length}/${denominator} · 🟠 ${groups.substitutes.length}/${def.subLimit}`;return `<button type="button" class="allianceEventCard${active&&allianceEventDetailOpen?" active":""}" data-alliance-event="${def.type}"><span class="allianceEventCardIcon">${def.icon}</span><span><b>${esc(def.label)}</b><small>${summary}</small><small>❓ ${groups.confirming.length} · 🔴 ${groups.absent.length}</small></span><strong>${esc(t("alliance_event_open"))}</strong></button>`}).join("");
+  if(!allianceEventDetailOpen){detail.classList.add("hidden");detail.setAttribute("aria-hidden","true");detail.innerHTML="";return}
+  const def=allianceEventDefinition(allianceEventActive),groups=groupsByType.get(def.type),openRoster=Boolean(def.openRoster),all=openRoster?[["participants","🟢 "+t("alliance_event_participants"),groups.participants],["confirming","❓ "+t("alliance_event_confirming"),groups.confirming],["absent","🔴 "+t("alliance_event_absent"),groups.absent]]:[["participants","🟢 "+t("alliance_event_participants"),groups.participants],["substitutes","🟠 "+t("alliance_event_substitutes"),groups.substitutes],["confirming","❓ "+t("alliance_event_confirming"),groups.confirming],["absent","🔴 "+t("alliance_event_absent"),groups.absent]];
   const groupHtml=all.map(([kind,label,items])=>`<details class="allianceEventGroup" open><summary><span>${label}</span><b>${items.length}</b></summary><div class="allianceEventGroupList">${items.length?items.map(member=>{const linked=member.warboost_linked===true,status=allianceEventStatus(member,def.type),key=allianceEventMemberKey(member);return `<div class="allianceEventMember"><button type="button" class="allianceEventMemberButton" data-alliance-player-key="${esc(key)}"><b>${esc(member.name||t("player"))}</b><small>${esc(normalizeAllianceRole(member.role))}${Number(member.power_m)>0?` · ${esc(fmtPower(member.power_m))}`:""}${linked?" · 🟢 "+esc(t("alliance_event_linked")):" · ⚪ "+esc(t("alliance_event_unlinked"))}</small></button>${linked?`<span class="allianceEventSource">${esc(availabilitySourceLabel(allianceEventAvailability(def.type,member).source))}</span>`:`<select class="allianceEventManualStatus" data-alliance-event-status="${esc(key)}" aria-label="${esc(t("alliance_event_selected"))} ${esc(member.name||t("player"))}"><option value="unknown"${status==="unknown"?" selected":""}>${esc(t("alliance_event_confirming"))}</option><option value="present"${status==="present"?" selected":""}>${esc(t("alliance_event_present"))}</option><option value="absent"${status==="absent"?" selected":""}>${esc(t("alliance_event_absent"))}</option><option value="uncertain"${status==="uncertain"?" selected":""}>${esc(t("alliance_event_confirming"))}</option></select>`}</div>`}).join(""):`<div class="allianceEventEmpty">${esc(t("alliance_event_empty"))}</div>`}</div></details>`).join("");
-  detail.classList.remove("hidden");detail.innerHTML=`<div class="allianceEventDetailHead"><div><span class="eyebrow">${def.icon} ${esc(t("alliance_event_selected"))}</span><h3>${esc(def.label)}</h3><p>${esc(t("alliance_event_participants"))} ${groups.participants.length}/${def.limit} · ${esc(t("alliance_event_substitutes"))} ${groups.substitutes.length}/${def.subLimit} · ${esc(t("alliance_event_confirming"))} ${groups.confirming.length} · ${esc(t("alliance_event_absent"))} ${groups.absent.length}</p></div><button type="button" class="primaryAction" data-alliance-event-plan>🧠 ${esc(t("alliance_event_generate_plan"))}</button></div><div class="allianceEventGroups">${groupHtml}</div><div id="allianceEventPlan">${allianceEventPlanSummary(def.type,groups)}</div>`;
-  detail.querySelectorAll("[data-alliance-player-key]").forEach(button=>button.addEventListener("click",()=>openAlliancePlayerProfile(button.dataset.alliancePlayerKey,def.type)));
-  detail.querySelectorAll("[data-alliance-event-status]").forEach(select=>select.addEventListener("change",()=>{const member=activeAllianceRosterMembers().find(x=>allianceEventMemberKey(x)===select.dataset.allianceEventStatus);saveAllianceEventStatus(member,def.type,select.value);renderAllianceEventWorkspace();}));
-  detail.querySelector("[data-alliance-event-plan]")?.addEventListener("click",()=>generateAllianceEventPlan(def.type));
+  const denominator=openRoster?groups.totalMembers:def.limit;
+  detail.classList.remove("hidden");detail.setAttribute("aria-hidden","false");detail.innerHTML=`<div class="allianceEventDetailHead"><div><span class="eyebrow">${def.icon} ${esc(t("alliance_event_selected"))}</span><h3>${esc(def.label)}</h3><p>${esc(t("alliance_event_participants"))} ${groups.participants.length}/${denominator}${openRoster?"":` · ${esc(t("alliance_event_substitutes"))} ${groups.substitutes.length}/${def.subLimit}`} · ${esc(t("alliance_event_confirming"))} ${groups.confirming.length} · ${esc(t("alliance_event_absent"))} ${groups.absent.length}</p></div><div class="allianceEventDetailActions"><button type="button" class="closeBtn allianceEventDetailClose" data-alliance-event-close aria-label="${esc(t("alliance_event_close"))}">×</button><button type="button" class="primaryAction" data-alliance-event-plan>🧠 ${esc(t("alliance_event_generate_plan"))}</button></div></div><div class="allianceEventGroups">${groupHtml}</div><div id="allianceEventPlan">${allianceEventPlanSummary(def.type,groups)}</div><button type="button" class="secondaryBtn wideBtn allianceEventDetailCloseButton" data-alliance-event-close>${esc(t("alliance_event_close"))}</button>`;
 }
 function renderAllianceIdentityLinks(members){
   const box=$("#allianceIdentitySummary"),pendingBox=$("#unlinkedWarBoostAccounts"),pendingDetails=$("#unlinkedWarBoostDetails");
@@ -2232,7 +2275,7 @@ function openDrawer(name){
   if(betaPrivateDataVisible()&&name==="season"){safeRenderStep("SEASON_OPEN_ACCESS",renderSeasonAccess);safeRenderStep("SEASON_OPEN_CORE",()=>renderSeasonCoreSummary(state.season));}
   if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)
 }
-function closeDrawers(){unmountAuthControls();closeAlliancePlayerProfile();$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")})}
+function closeDrawers(){unmountAuthControls();closeAlliancePlayerProfile();closeAllianceEventDetail();$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")})}
 
 $$('[data-open]').forEach(b=>b.addEventListener("click",()=>{if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer(b.dataset.open)}));$("#homeProBtn")?.addEventListener("click",()=>{openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"start"}),140)});$$('[data-close]').forEach(b=>b.addEventListener("click",closeDrawers));$("#backdrop").addEventListener("click",closeDrawers);$("#accountBtn").addEventListener("click",()=>openDrawer("account"));$("#adviceAction").addEventListener("click",()=>{if(state.player.name&&(!requireBetaAccess()||!requireBetaConsent()))return;if(playerNeedsOnboarding()&&betaPrivateDataVisible()){const next=playerOnboardingStatus().next_type||"profile";return openQuickScan(next)}openDrawer(state.player.name?"player":"account")});$("#languageSelect").addEventListener("change",e=>{languageChoice=e.target.value;safeLocalSet(LANG_KEY,languageChoice);applyLanguage()});
 $("#saveProfileBtn").addEventListener("click",async()=>{
@@ -2312,8 +2355,30 @@ $("#managerAvailabilityEvent")?.addEventListener("change",renderAllianceAvailabi
 $("#managerAvailabilityDate")?.addEventListener("change",renderAllianceAvailability);
 $("#managerAvailabilitySearch")?.addEventListener("input",renderAllianceAvailability);
 $("#alliancePlayerModal")?.addEventListener("click",event=>{if(event.target?.closest?.("[data-alliance-player-close]")){event.preventDefault();closeAlliancePlayerProfile()}});
-window.addEventListener("popstate",()=>{if(alliancePlayerProfileIsOpen())closeAlliancePlayerProfile({fromHistory:true})});
-document.addEventListener("keydown",event=>{if(event.key==="Escape"&&alliancePlayerProfileIsOpen()){event.preventDefault();closeAlliancePlayerProfile()}});
+$("#allianceEventWorkspace")?.addEventListener("click",event=>{
+  const card=event.target?.closest?.("[data-alliance-event]");
+  if(card){event.preventDefault();toggleAllianceEventDetail(card.dataset.allianceEvent||"desert_storm");return}
+  const close=event.target?.closest?.("[data-alliance-event-close]");
+  if(close){event.preventDefault();closeAllianceEventDetail();return}
+  const player=event.target?.closest?.("[data-alliance-player-key]");
+  if(player){event.preventDefault();openAlliancePlayerProfile(player.dataset.alliancePlayerKey,allianceEventActive);return}
+  const plan=event.target?.closest?.("[data-alliance-event-plan]");
+  if(plan){event.preventDefault();generateAllianceEventPlan(allianceEventActive)}
+});
+$("#allianceEventWorkspace")?.addEventListener("change",event=>{
+  const select=event.target?.closest?.("[data-alliance-event-status]");if(!select)return;
+  const member=activeAllianceRosterMembers().find(x=>allianceEventMemberKey(x)===select.dataset.allianceEventStatus);
+  saveAllianceEventStatus(member,allianceEventActive,select.value);renderAllianceEventWorkspace();
+});
+window.addEventListener("popstate",()=>{
+  if(alliancePlayerProfileIsOpen()){closeAlliancePlayerProfile({fromHistory:true});return}
+  if(allianceEventDetailIsOpen())closeAllianceEventDetail({fromHistory:true});
+});
+document.addEventListener("keydown",event=>{
+  if(event.key!=="Escape")return;
+  if(alliancePlayerProfileIsOpen()){event.preventDefault();closeAlliancePlayerProfile();return}
+  if(allianceEventDetailIsOpen()){event.preventDefault();closeAllianceEventDetail()}
+});
 $("#playerAdviceBtn").addEventListener("click",()=>runPlayerAdvice(false));$("#shopAdviceBtn")?.addEventListener("click",()=>runPlayerAdvice(true));
 $("#warPlanBtn").addEventListener("click",async()=>{if(!requirePro())return;if(!hasDeclaredAllianceCommandRole()){$("#warPlanText").textContent=managerOnlyMessage();return}const j=await requestAdvice("alliance");$("#warPlanText").textContent=structuredAdviceText("alliance",j);renderAllianceStructured(j)});
 $("#rankManagerSearch")?.addEventListener("input",e=>{rankManagerSearchTerm=searchInputValue(e.target);scheduleAllianceRankSearchRender()});
