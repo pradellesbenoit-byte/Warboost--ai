@@ -17,6 +17,7 @@
     "test:roster-diagnostic": "node scripts/verify-roster-diagnostic.mjs",
     "test:identity-linking": "node scripts/verify-identity-linking.mjs",
     "test:alliance-ui-targeted": "node scripts/verify-alliance-ui-targeted.mjs",
+    "test:alliance-event-workspace": "node scripts/verify-alliance-event-workspace.mjs",
     "test:tolerant-identity": "node scripts/verify-tolerant-r4-r5-identity.mjs",
     "test:rank-canonical-resolution": "node scripts/verify-rank-canonical-resolution.mjs",
     "test:roster-rank-persistence": "node scripts/verify-roster-rank-persistence.mjs",

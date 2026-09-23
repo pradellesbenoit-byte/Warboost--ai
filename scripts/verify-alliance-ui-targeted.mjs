@@ -7,8 +7,12 @@ const app=read("app.js"),html=read("index.html"),css=read("styles.css"),publishe
 assert.doesNotMatch(html,/allianceEventSummary/,"global event summary must be removed from Alliance HTML");
 assert.doesNotMatch(app,/allianceEventSummary/,"global event summary must have no Alliance render path");
 assert.doesNotMatch(css,/allianceEventSummary|eventCountChip/,"global event summary styles must be removed");
-assert.match(html,/participation_player_history/,"detailed per-player participation must remain");
+assert.doesNotMatch(html,/participation_player_history|Suivi détaillé par joueur/,"permanent player follow-up must be absent from the main Alliance page");
 assert.match(html,/unlinkedWarBoostAccounts/,"WarBoost account linking panel must remain");
+for(const type of ["desert_storm","canyon_storm","vs","season","other"])assert.match(app,new RegExp(`type:"${type}"`),`${type} event card must exist`);
+for(const token of ["allianceEventGroups","allianceEventManualStatus","allianceEventPlan","alliancePlayerModal","data-alliance-player-key"])assert.match(app,new RegExp(token),`${token} event-first behavior must exist`);
+assert.match(html,/allianceEventWorkspace/,"event-first Alliance workspace must remain visible");
+assert.doesNotMatch(html,/id="allianceParticipationTable"/,"long permanent player table must be absent from Alliance HTML");
 assert.match(app,/function canonicalSelfRosterMember/,"linked-account display must resolve through the canonical roster");
 assert.match(app,/canonicalSelfRosterMember\(\),displayName=canonical\?\.name/,"the profile field must display the linked canonical name");
 assert.match(app,/selfNameKeys=new Set/,"stale pending aliases must be filtered for an already-linked account");
