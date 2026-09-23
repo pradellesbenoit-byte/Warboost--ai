@@ -26,11 +26,19 @@ for(const group of ["alliance_event_participants","alliance_event_substitutes","
 assert.match(app,/data-alliance-player-key/);
 assert.match(app,/data-alliance-player-close/);
 assert.match(app,/alliancePlayerModalCloseButton/);
+assert.match(app,/openRoster:true/);
+assert.match(app,/groups\.totalMembers/);
+assert.match(app,/allianceEventDetailCloseButton/);
+assert.match(app,/data-alliance-event-close/);
+assert.match(app,/allianceEventDetailOpen/);
+assert.match(app,/toggleAllianceEventDetail/);
+assert.match(app,/warboostAllianceEventDetail/);
 assert.match(app,/history\.pushState[\s\S]*warboostAlliancePlayerModal/);
 assert.match(app,/addEventListener\("popstate"/);
 assert.match(app,/document\.body\.style\.overflow="hidden"/);
 assert.match(app,/alliancePlayerModalScrollTop/);
 assert.match(css,/allianceEventCards[\s\S]*@media\(max-width:560px\)/);
 assert.match(css,/alliancePlayerModalClose[\s\S]*min-width:48px/);
+assert.match(css,/allianceEventDetailClose[\s\S]*min-width:48px/);
 
 console.log("Alliance event-first workspace verification: PASS");

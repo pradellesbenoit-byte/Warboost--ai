@@ -1626,7 +1626,7 @@ function closeAllianceEventDetail({fromHistory=false}={}){
   allianceEventDetailOpen=false;detail.classList.add("hidden");detail.setAttribute("aria-hidden","true");detail.innerHTML="";
   const drawer=$("#allianceDrawer"),top=allianceEventDetailScrollTop;
   if(drawer){drawer.scrollTop=top;requestAnimationFrame(()=>{drawer.scrollTop=top})}
-  const focusTarget=document.querySelector(`[data-alliance-event="${CSS.escape?.(allianceEventActive)||allianceEventActive}"]`)||allianceEventDetailLastFocus;
+  const focusTarget=[...document.querySelectorAll("[data-alliance-event]")].find(button=>button.dataset.allianceEvent===allianceEventActive)||allianceEventDetailLastFocus;
   allianceEventDetailLastFocus=null;
   if(focusTarget&&document.contains(focusTarget)){try{focusTarget.focus({preventScroll:true})}catch{focusTarget.focus()}}
   const shouldRestoreHistory=allianceEventDetailHistory&&!fromHistory;allianceEventDetailHistory=false;
