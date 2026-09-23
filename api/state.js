@@ -45,11 +45,14 @@ async function canonicalizeAllianceState(input,playerId){
     const row={...raw,server_id:normalizeServerId(raw?.server_id)||authoritativeServer,alliance_tag:normalizeAllianceTag(raw?.alliance_tag)||authoritativeTag};
     return {...row,canonical_member_key:canonicalRosterMemberKey(row,context)};
   });
-  const identityLink=resolveCanonicalIdentity(canonicalWithKeys,{
+   const identityLink=resolveCanonicalIdentity(canonicalWithKeys,{
     playerId,
     name:identity.name,
     serverId:authoritativeServer,
     allianceTag:authoritativeTag,
+     role:state.player?.role,
+     rank_confirmed_source:state.player?.rank_confirmed_source,
+     rank_confirmed_at:state.player?.rank_confirmed_at,
     activityEvents:state.activity_events,
     updatedAt:state.updated_at||state.alliance?.updated_at||new Date().toISOString()
   });

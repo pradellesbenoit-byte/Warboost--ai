@@ -24,7 +24,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
           if(ctx){
           const targetServer=normalizeServerId(ctx.alliance?.server_id),targetTag=normalizeAllianceTag(ctx.alliance?.tag);
           let canonical=markCanonicalRosterPresence(Array.isArray(ctx.roster)?ctx.roster:[],ctx.alliance?.roster_updated_at).map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:targetServer,allianceTag:targetTag})}));
-          const identityLink=resolveCanonicalIdentity(canonical,{playerId,name:merged.player?.name,serverId:targetServer,allianceTag:targetTag,activityEvents:merged.activity_events,updatedAt:now});
+           const identityLink=resolveCanonicalIdentity(canonical,{playerId,name:merged.player?.name,serverId:targetServer,allianceTag:targetTag,role:merged.player?.role,rank_confirmed_source:merged.player?.rank_confirmed_source,rank_confirmed_at:merged.player?.rank_confirmed_at,activityEvents:merged.activity_events,updatedAt:now});
           let membership=ctx.membership,linkPersisted=false;
           if(identityLink.persist_link){
             try{

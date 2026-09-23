@@ -26,3 +26,9 @@ Confirmed rank changes are versioned by `rank_confirmed_at` and `rank_confirmed_
 **Why:** Generic profile saves, restore retries, and roster syncs can complete out of order. Generic timestamps describe the profile write, not the business event that confirmed the rank, so using them alone reintroduced R3 after R3→R4.
 
 **How to apply:** Preserve the confirmation fields through normalization, client hydration, canonical roster merges, and profile saves. A manager-authorized state save may CAS-repair the canonical roster when it carries a strictly newer manual confirmation; stale or unmarked rows remain non-authoritative.
+
+When exact normalized nickname + server + alliance matching fails, a tolerant R4/R5 link is safe only for a uniquely close canonical row with the same manager rank, no existing account link, sufficient nickname length, and a confirmed `lastwar_scan` rank; ambiguous close matches stay unlinked.
+
+**Why:** OCR can change one nickname character, but using a fuzzy match without scan-backed rank and one-to-one checks could grant management access to the wrong account.
+
+**How to apply:** Keep exact matching first. Treat server forms such as `#884`/`884` and matching alliance display prefixes such as `[ALL4]`/`ALL4` as the same normalized scope, and persist membership only after the guarded link resolves.

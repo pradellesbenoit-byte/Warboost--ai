@@ -16,6 +16,7 @@
     "test:desert-storm-selection": "node scripts/verify-desert-storm-selection.mjs",
     "test:roster-diagnostic": "node scripts/verify-roster-diagnostic.mjs",
     "test:identity-linking": "node scripts/verify-identity-linking.mjs",
+    "test:tolerant-identity": "node scripts/verify-tolerant-r4-r5-identity.mjs",
     "test:rank-canonical-resolution": "node scripts/verify-rank-canonical-resolution.mjs",
     "test:roster-rank-persistence": "node scripts/verify-roster-rank-persistence.mjs",
     "test:roster-anti-rollback": "node scripts/verify-roster-anti-rollback.mjs",
