@@ -1737,8 +1737,11 @@ function renderAllianceIdentityLinks(members){
   if(canonicalSelf?.name&&state.player?.name!==canonicalSelf.name){state.player={...state.player,name:canonicalSelf.name};safeLocalSet(STORE_KEY,JSON.stringify(state));}
   const selfNameKeys=new Set([state.player?.name,canonicalSelf?.name].map(rosterNameKey).filter(Boolean)),pending=normalizedPending.filter(x=>!reviewNames.has(rosterNameKey(x?.name))&&!formerNames.has(rosterNameKey(x?.name))&&!(canonicalSelf&&selfNameKeys.has(rosterNameKey(x?.name))&&normalizeServerId(x?.server_id)===normalizeServerId(canonicalSelf.server_id||state.player?.server_id)&&normalizeAllianceTag(x?.alliance_tag)===normalizeAllianceTag(canonicalSelf.alliance_tag||state.alliance?.tag)));
   const pendingStatuses=new Set(['no_match','ambiguous','missing_nickname','missing_server','missing_alliance','context_conflict','ambiguous_rename']);
-  const currentStatus=String(state.alliance?.identity_link_status||"unknown"),currentLinked=(members||[]).some(m=>m?.warboost_linked===true&&String(m?.player_id||"")===String(state.player_id||""));
-  if(!currentLinked&&pendingStatuses.has(currentStatus)&&state.player?.name){const currentKey=rosterNameKey(state.player.name);if(currentKey&&!pending.some(x=>rosterNameKey(x?.name)===currentKey))pending.push({name:state.player.name,server_id:state.player?.server_id||state.alliance?.server_id||"",alliance_tag:state.alliance?.tag||"",reason:currentStatus,updated_at:state.updated_at||null,current_account:true})}
+  const currentStatus=String(state.alliance?.identity_link_status||"unknown"),currentLinked=(members||[]).some(m=>m?.warboost_linked===true&&String(m?.player_id||"").trim()===String(state.player_id||"").trim());
+  // A linked_existing result is authoritative even if a stale local roster
+  // briefly made the identity status look pending. Never manufacture a
+  // "current account" row after the canonical cloud roster confirms ownership.
+  if(!currentLinked&&currentStatus!=="linked_existing"&&pendingStatuses.has(currentStatus)&&state.player?.name){const currentKey=rosterNameKey(state.player.name);if(currentKey&&!pending.some(x=>rosterNameKey(x?.name)===currentKey))pending.push({name:state.player.name,server_id:state.player?.server_id||state.alliance?.server_id||"",alliance_tag:state.alliance?.tag||"",reason:currentStatus,updated_at:state.updated_at||null,current_account:true})}
   if(box){
     const currentText=currentLinked?t("identity_current_linked"):(pendingStatuses.has(currentStatus)?t("identity_current_pending"):"");
     box.textContent=[t("identity_roster_summary",{linked:summary.linked,unlinked:summary.unlinked}),pending.length?t("identity_pending_cloud",{count:pending.length}):null,currentText].filter(Boolean).join(" · ");

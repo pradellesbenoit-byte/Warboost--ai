@@ -19,7 +19,7 @@ assert.equal(legacySelf.length,0,"legacy current-account pending rows must be pu
 const otherScope=normalizeUnlinkedAccounts([
   {player_id:playerId,name:"Jojolecaid",server_id:"999",alliance_tag:"ALL4",reason:"context_conflict"}
 ],[canonical],{serverId:"884",allianceTag:"ALL4"});
-assert.equal(otherScope.length,1,"a same id outside the canonical scope must not be silently cleared");
+assert.equal(otherScope.length,0,"a linked player_id must be cleared even when the local scope is stale");
 
 const normalized=normalizeState({
   player_id:playerId,
