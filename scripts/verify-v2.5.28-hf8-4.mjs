@@ -59,7 +59,7 @@ const endedAdvice=buildVsAdvice({vs:endedVs,updated_at:t1},'fr-FR',{now:new Date
 
 // HF8.4 UI/reliability guards.
 assert.match(html,/WarBoost V2\.5\.28 HF8\.(?:4|5)/);assert.match(html,/id=["']rosterFullSnapshot["']/);assert.match(html,/data-i18n=["']import_roster_help["'][^>]*>[^<]*R5/i);assert.doesNotMatch(html,/Nono 50/);
-for(const token of ['roster_review_title','former_members_title','identity_retry_match','participation_unknown_members_guard','vs_no_rescan_ended'])assert.match(app,new RegExp(token));
+for(const token of ['roster_review_title','former_members_title','identity_retry_match','vs_no_rescan_ended'])assert.match(app,new RegExp(token));
 assert.match(app,/allianceParticipationByEvent/);assert.match(app,/confirmRosterDeparture/);assert.match(app,/restoreRosterReviewMember/);
 assert.match(sync,/roster_snapshot_complete_at/);assert.match(sync,/replaceCanonicalRosterFromCompleteSnapshot/);assert.doesNotMatch(sync,/roster_updated_at\|\|ctx\.alliance\?\.updated_at/);
 

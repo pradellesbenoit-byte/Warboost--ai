@@ -52,6 +52,8 @@ function repairContradictoryPendingState(state){
     const key=normalizeLastWarNickname(account?.name,account?.alliance_tag||tag);
     if(!key)return true;
     const matches=members.filter(member=>member?.warboost_linked===true&&normalizeLastWarNickname(member?.name,member?.alliance_tag||tag)===key&&strictScope(account,member,state));
+    const selfLinked=members.filter(member=>member?.warboost_linked===true&&String(member?.player_id||"")===String(state?.player_id||"")&&strictScope(account,member,state));
+    if(selfLinked.length===1&&normalizeLastWarNickname(account?.name,account?.alliance_tag||tag)===normalizeLastWarNickname(state?.player?.name,state?.alliance?.tag||tag))return false;
     // Remove only the exact contradictory pending record when ONE already-linked roster member
     // proves the same normalized Last War identity in the same server + alliance scope.
     return matches.length!==1;

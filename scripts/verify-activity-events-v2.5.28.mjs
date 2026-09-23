@@ -156,7 +156,7 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
 // UI contract and all explicit languages include the new labels.
 {
   const html=read('index.html'),app=read('app.js'),css=read('styles.css'),health=read('api/health.js'),sw=read('sw.js');
-  assert.match(html,/id="activityEventGrid"/);assert.match(html,/id="allianceEventSummary"/);
+   assert.match(html,/id="activityEventGrid"/);assert.doesNotMatch(html,/id="allianceEventSummary"/);assert.doesNotMatch(app,/allianceEventSummary/);assert.doesNotMatch(css,/\.allianceEventSummary/);
   assert.match(app,/ACTIVITY_EVENT_TYPES\.map/);assert.match(app,/source:"player_self_report"/);
   assert.match(css,/\.activityEventBtn\.confirmed/);assert.match(css,/\.decisionDetails\[open\] \.detailsOpen/);
   assert.match(health,/activity_missing_confirmation_never_inactive/);assert.match(health,/declared_rank_never_unlocks_management/);
