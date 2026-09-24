@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import {linkCurrentPlayerIdentityIntoRoster} from "../lib/alliance-identity.js";
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
+import {resolveRosterScanIdentity} from "../lib/roster-identity-resolution.js";
 
 const scan={role:"R4",rank_confirmed_source:"lastwar_scan",rank_confirmed_at:"2026-09-23T10:00:00.000Z"};
 const row=(name,role="R4",extra={})=>({name,role,server_id:"884",alliance_tag:"ALL4",...extra});
@@ -16,6 +17,14 @@ const link=(name,roster,extra={})=>linkCurrentPlayerIdentityIntoRoster(roster,{p
   assert.equal(resolution.persist_link,false);
   assert.equal(resolution.canonical_role,null);
   assert.equal(canonicalMembershipNeedsRepair(null,"alliance-884","wb-jojoJecaid","R4"),true);
+}
+
+{
+  const result=resolveRosterScanIdentity({name:"jojoJecaid",role:"R4",hq_level:32},{members:[row("jojolecaid","R4",{hq_level:32})]},{server_id:"884",alliance_tag:"ALL4"});
+  assert.equal(result.identity_status,"possible");
+  assert.equal(result.identity_needs_confirmation,true);
+  assert.equal(result.possible_match.name,"jojolecaid");
+  assert.equal(result.detected_name,"jojoJecaid");
 }
 
 {
@@ -50,7 +59,13 @@ for(const name of ["[ALL4]ToyN","gladiateurs81"]){
 
 const sync=fs.readFileSync("api/sync.js","utf8");
 const state=fs.readFileSync("api/state.js","utf8");
+const roleApi=fs.readFileSync("api/alliance-role.js","utf8");
+const canonicalAccess=fs.readFileSync("lib/canonical-alliance-access.js","utf8");
 assert.match(sync,/rank_confirmed_source:merged\.player\?\.rank_confirmed_source/);
 assert.match(state,/rank_confirmed_source:state\.player\?\.rank_confirmed_source/);
+assert.doesNotMatch(roleApi,/confirmedManagerScan/);
+assert.match(roleApi,/if\(!requestedExact\|\|requested\.server_id!==identity\.server_id\|\|requested\.alliance_tag!==identity\.alliance_tag\)/);
+assert.doesNotMatch(roleApi,/linked_tolerant/);
+assert.doesNotMatch(canonicalAccess,/linked_tolerant/);
 
 console.log("Strict exact R4/R5 identity linking verification: PASS");
