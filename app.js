@@ -188,13 +188,19 @@ function mergeSquadPayload(baseSquad={},incomingSquad,id,{preferBase=false}={}){
   };
   return normalizeSquadSlots(merged,id,{inferLegacy:false});
 }
-function normalizeAlliancePendingState(input){
-  const alliance=input?.alliance||{},next=normalizeUnlinkedAccounts(alliance.unlinked_accounts,alliance.members,{serverId:alliance.server_id||input?.player?.server_id,allianceTag:alliance.tag,currentPlayerId:input?.player_id,currentPlayerName:input?.player?.name,identityLinkStatus:alliance.identity_link_status});
+let pendingIdentityAliasesOwner="",pendingIdentityAliases=[];
+function pendingIdentityAliasesFor(userId){return String(userId||"")===pendingIdentityAliasesOwner?pendingIdentityAliases:[]}
+function collectPendingIdentityAliases(userId,...candidates){
+  const owner=String(userId||"");
+  return [...new Set(candidates.filter(candidate=>candidate&&String(candidate.player_id||"")===owner).map(candidate=>String(candidate.player?.name||"").trim()).filter(Boolean))];
+}
+function normalizeAlliancePendingState(input,currentPlayerAliases=[]){
+  const alliance=input?.alliance||{},aliases=[...new Set([...(Array.isArray(currentPlayerAliases)?currentPlayerAliases:[]),...pendingIdentityAliasesFor(input?.player_id)].map(name=>String(name||"").trim()).filter(Boolean))],next=normalizeUnlinkedAccounts(alliance.unlinked_accounts,alliance.members,{serverId:alliance.server_id||input?.player?.server_id,allianceTag:alliance.tag,currentPlayerId:input?.player_id,currentPlayerName:input?.player?.name,currentPlayerAliases:aliases,identityLinkStatus:alliance.identity_link_status});
   const currentId=String(input?.player_id||"").trim(),scopeServer=normalizeServerId(alliance.server_id||input?.player?.server_id),scopeTag=normalizeAllianceTag(alliance.tag),canonicalSelf=currentId&&scopeServer&&scopeTag?(alliance.members||[]).find(member=>member?.warboost_linked===true&&String(member?.player_id||"").trim()===currentId&&normalizeServerId(member?.server_id)===scopeServer&&normalizeAllianceTag(member?.alliance_tag)===scopeTag):null;
   const old=Array.isArray(alliance.unlinked_accounts)?alliance.unlinked_accounts:[],nextPlayer=canonicalSelf?.name&&input?.player?.name!==canonicalSelf.name?{...input.player,name:canonicalSelf.name}:input?.player,changed=JSON.stringify(old)!==JSON.stringify(next)||nextPlayer!==input?.player;
   return changed?{state:{...input,player:nextPlayer,alliance:{...alliance,unlinked_accounts:next}},changed:true}:{state:input,changed:false};
 }
-function mergeState(base,incoming){if(!incoming||typeof incoming!=="object")return base;const out={...base,...incoming};out.player={...base.player,...incoming.player};out.player.power_m=canonicalPowerMillions(out.player.power_m);out.player_context={...(base.player_context||{}),...(incoming.player_context||{})};out.activity_events=mergeActivityEvents(base.activity_events,incoming.activity_events);out.player_availability=mergeEventAvailabilities(base.player_availability,incoming.player_availability);out.availability_history=mergeAvailabilityHistory(base.availability_history,incoming.availability_history);out.drone={...base.drone,...incoming.drone};out.drone.power_m=canonicalPowerMillions(out.drone.power_m);out.shop=mergeShopState(base.shop,incoming.shop);out.alliance={...base.alliance,...incoming.alliance};out.alliance.members=mergeAllianceMembersProtected(base.alliance?.members,incoming.alliance?.members,false);out.alliance.unlinked_accounts=normalizeUnlinkedAccounts(out.alliance.unlinked_accounts,out.alliance.members,{serverId:out.alliance.server_id||out.player?.server_id,allianceTag:out.alliance.tag,currentPlayerId:out.player_id,currentPlayerName:out.player?.name,identityLinkStatus:out.alliance.identity_link_status});out.alliance.former_members=[];out.alliance.roster_removal_tombstones=normalizeRosterRemovalTombstones([...(base.alliance?.roster_removal_tombstones||[]),...(incoming.alliance?.roster_removal_tombstones||[]),...(base.alliance?.former_members||[]),...(incoming.alliance?.former_members||[])]);out.alliance.event_availability=mergeEventAvailabilities(base.alliance?.event_availability,incoming.alliance?.event_availability,...out.alliance.members.map(x=>x.event_availability||[]));out.alliance.availability_history=mergeAvailabilityHistory(base.alliance?.availability_history,incoming.alliance?.availability_history,...out.alliance.members.map(x=>x.availability_history||[]));out.alliance.desert_storm=mergeDesertStormState(base.alliance?.desert_storm,incoming.alliance?.desert_storm);out.alliance.canyon=mergeCanyonState(base.alliance?.canyon,incoming.alliance?.canyon);out.vs=mergeVsState(base.vs,incoming.vs);out.season=repairSeasonState({...base.season,...incoming.season});out.technology={...(base.technology||{}),...(incoming.technology||{})};out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);out.sync={...base.sync,...incoming.sync,sources:{...base.sync.sources,...incoming.sync?.sources}};out.squads=Array.from({length:4},(_,i)=>mergeSquadPayload(base.squads?.[i]||emptySquad(i+1),incoming.squads?.[i],i+1));out.version=APP_VERSION;return out}
+function mergeState(base,incoming){if(!incoming||typeof incoming!=="object")return base;const out={...base,...incoming};out.player={...base.player,...incoming.player};out.player.power_m=canonicalPowerMillions(out.player.power_m);out.player_context={...(base.player_context||{}),...(incoming.player_context||{})};out.activity_events=mergeActivityEvents(base.activity_events,incoming.activity_events);out.player_availability=mergeEventAvailabilities(base.player_availability,incoming.player_availability);out.availability_history=mergeAvailabilityHistory(base.availability_history,incoming.availability_history);out.drone={...base.drone,...incoming.drone};out.drone.power_m=canonicalPowerMillions(out.drone.power_m);out.shop=mergeShopState(base.shop,incoming.shop);out.alliance={...base.alliance,...incoming.alliance};out.alliance.members=mergeAllianceMembersProtected(base.alliance?.members,incoming.alliance?.members,false);out.alliance.unlinked_accounts=normalizeUnlinkedAccounts(out.alliance.unlinked_accounts,out.alliance.members,{serverId:out.alliance.server_id||out.player?.server_id,allianceTag:out.alliance.tag,currentPlayerId:out.player_id,currentPlayerName:out.player?.name,currentPlayerAliases:String(base.player_id||"")===String(out.player_id||"")?[base.player?.name]:[],identityLinkStatus:out.alliance.identity_link_status});out.alliance.former_members=[];out.alliance.roster_removal_tombstones=normalizeRosterRemovalTombstones([...(base.alliance?.roster_removal_tombstones||[]),...(incoming.alliance?.roster_removal_tombstones||[]),...(base.alliance?.former_members||[]),...(incoming.alliance?.former_members||[])]);out.alliance.event_availability=mergeEventAvailabilities(base.alliance?.event_availability,incoming.alliance?.event_availability,...out.alliance.members.map(x=>x.event_availability||[]));out.alliance.availability_history=mergeAvailabilityHistory(base.alliance?.availability_history,incoming.alliance?.availability_history,...out.alliance.members.map(x=>x.availability_history||[]));out.alliance.desert_storm=mergeDesertStormState(base.alliance?.desert_storm,incoming.alliance?.desert_storm);out.alliance.canyon=mergeCanyonState(base.alliance?.canyon,incoming.alliance?.canyon);out.vs=mergeVsState(base.vs,incoming.vs);out.season=repairSeasonState({...base.season,...incoming.season});out.technology={...(base.technology||{}),...(incoming.technology||{})};out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);out.sync={...base.sync,...incoming.sync,sources:{...base.sync.sources,...incoming.sync?.sources}};out.squads=Array.from({length:4},(_,i)=>mergeSquadPayload(base.squads?.[i]||emptySquad(i+1),incoming.squads?.[i],i+1));out.version=APP_VERSION;return out}
 function hasValue(v){return !(v===null||v===undefined||v===""||(Array.isArray(v)&&v.length===0))}
 function safeFields(base={},incoming={},preferBase=false){const out={...base};for(const [k,v] of Object.entries(incoming||{})){if(!hasValue(v))continue;if(preferBase&&hasValue(out[k]))continue;out[k]=v}return out}
 function allianceMemberKey(m){const id=String(m?.player_id||"").trim();if(id)return `id:${id}`;const name=String(m?.name||"").trim().toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");return name?`name:${name}`:""}
@@ -210,7 +216,7 @@ function mergeStateProtected(base,incoming,{preferBase=false}={}){
   out.activity_events=mergeActivityEvents(base.activity_events,incoming.activity_events);
   out.drone=safeFields(base.drone,incoming.drone,preferBase);
   out.shop=mergeShopState(base.shop,incoming.shop);if(preferBase){out.shop={...out.shop,...base.shop,offers:base.shop?.offers||[],snapshots:out.shop.snapshots||base.shop?.snapshots||[]};}
-  out.alliance=safeFields(base.alliance,incoming.alliance,preferBase);out.alliance.event_availability=mergeEventAvailabilities(base.alliance?.event_availability,incoming.alliance?.event_availability,...(out.alliance.members||[]).map(x=>x.event_availability||[]));out.alliance.availability_history=mergeAvailabilityHistory(base.alliance?.availability_history,incoming.alliance?.availability_history,...(out.alliance.members||[]).map(x=>x.availability_history||[]));out.alliance.desert_storm=mergeDesertStormState(base.alliance?.desert_storm,incoming.alliance?.desert_storm);out.alliance.canyon=mergeCanyonState(base.alliance?.canyon,incoming.alliance?.canyon);out.alliance.members=mergeAllianceMembersProtected(base.alliance?.members,incoming.alliance?.members,preferBase);out.alliance.unlinked_accounts=normalizeUnlinkedAccounts(out.alliance.unlinked_accounts,out.alliance.members,{serverId:out.alliance.server_id||out.player?.server_id,allianceTag:out.alliance.tag,currentPlayerId:out.player_id,currentPlayerName:out.player?.name,identityLinkStatus:out.alliance.identity_link_status});
+   out.alliance=safeFields(base.alliance,incoming.alliance,preferBase);out.alliance.event_availability=mergeEventAvailabilities(base.alliance?.event_availability,incoming.alliance?.event_availability,...(out.alliance.members||[]).map(x=>x.event_availability||[]));out.alliance.availability_history=mergeAvailabilityHistory(base.alliance?.availability_history,incoming.alliance?.availability_history,...(out.alliance.members||[]).map(x=>x.availability_history||[]));out.alliance.desert_storm=mergeDesertStormState(base.alliance?.desert_storm,incoming.alliance?.desert_storm);out.alliance.canyon=mergeCanyonState(base.alliance?.canyon,incoming.alliance?.canyon);out.alliance.members=mergeAllianceMembersProtected(base.alliance?.members,incoming.alliance?.members,preferBase);out.alliance.unlinked_accounts=normalizeUnlinkedAccounts(out.alliance.unlinked_accounts,out.alliance.members,{serverId:out.alliance.server_id||out.player?.server_id,allianceTag:out.alliance.tag,currentPlayerId:out.player_id,currentPlayerName:out.player?.name,currentPlayerAliases:String(base.player_id||"")===String(out.player_id||"")?[base.player?.name]:[],identityLinkStatus:out.alliance.identity_link_status});
   out.vs=mergeVsState(base.vs,incoming.vs);if(preferBase)out.vs={...out.vs,...safeFields(incoming.vs,base.vs,false),snapshots:out.vs.snapshots||base.vs?.snapshots||[]};out.season=safeFields(base.season,incoming.season,preferBase);out.technology=safeFields(base.technology||{},incoming.technology||{},preferBase);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);
   out.sync={...base.sync,...safeFields(base.sync,incoming.sync,preferBase),sources:{...base.sync?.sources,...incoming.sync?.sources}};
   out.squads=Array.from({length:4},(_,i)=>{
@@ -975,6 +981,8 @@ async function pushServerState({keepalive=false}={}){
 async function pullDirectOwnProfile(loginSeed=null){
   if(!cloudSession?.access_token||!cloudSession?.user?.id||betaState.allowed!==true||!betaConsentAccepted())return {ok:false,error:"direct_profile_not_authorized"};
   const userId=String(cloudSession.user.id),localFallback=hasMeaningfulCore(loginSeed)?safeClone(loginSeed):(hasMeaningfulCore(state)?safeClone(state):null);
+  pendingIdentityAliasesOwner=userId;pendingIdentityAliases=collectPendingIdentityAliases(userId,localFallback,loginSeed,state,readAccountState(userId));
+  let pendingCleanupChanged=false;
   const out=await readOwnProfileDirect({url:cloudDataConfig.url,key:cloudDataConfig.key,accessToken:cloudSession.access_token,userId,timeoutMs:10000});
   if(!out?.ok)return out||{ok:false,error:"direct_profile_failed"};
   cloudProfileVerified=true;canonicalRosterReady=false;cloudRevision=out.updated_at||null;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
@@ -986,6 +994,8 @@ async function pullDirectOwnProfile(loginSeed=null){
   if(!hasMeaningfulCore(state)&&hasMeaningfulCore(remote))merged=remote;
   else{try{merged=mergeStateProtected(state,remote,{preferBase:preferLocal})}catch{merged=remote}}
   merged=preservePendingRoster(localFallback||state,merged);
+  const pendingBefore=JSON.stringify(merged.alliance?.unlinked_accounts||[]),pendingRepair=normalizeAlliancePendingState(merged,pendingIdentityAliasesFor(userId));
+  merged=pendingRepair.state;pendingCleanupChanged=pendingBefore!==JSON.stringify(merged.alliance?.unlinked_accounts||[]);
   if(hasMeaningfulCore(localFallback)&&!hasMeaningfulCore(merged))merged=hydrateCloudState(localFallback,initialState(),userId);
   let heroPowerBackfillChanged=false;
   try{const recovered=recoverLocalHeroHistory(merged);state=repairLegacySquadIdentity(recovered.state).state;const restored=backfillConfirmedHeroPowers(state,{now:new Date().toISOString()});state=restored.state;heroPowerBackfillChanged=restored.changed}catch{state=remote}
@@ -995,13 +1005,15 @@ async function pullDirectOwnProfile(loginSeed=null){
   safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-direct-rls-pull");rememberAccountState(userId,state);
   suppressPush=false;render();renderBeta();renderProvider();
   if(preferLocal&&hasMeaningfulCore(state)){cloudDirty=true;scheduleCloudRetry(750)}
-  else if(heroPowerBackfillChanged&&hasMeaningfulCore(state))scheduleServerSave(350);
+  else if((heroPowerBackfillChanged||pendingCleanupChanged)&&hasMeaningfulCore(state))scheduleServerSave(350);
   return {ok:true,cloud_empty:false,direct:true};
 }
 
 async function pullServerState(loginSeed=null,{fastRestore=false}={}){
   if(!cloudSession?.access_token)return {skipped:true};
   const userId=String(cloudSession.user?.id||""),localFallback=hasMeaningfulCore(loginSeed)?safeClone(loginSeed):(hasMeaningfulCore(state)?safeClone(state):null);
+  pendingIdentityAliasesOwner=userId;pendingIdentityAliases=collectPendingIdentityAliases(userId,localFallback,loginSeed,state,readAccountState(userId));
+  let pendingCleanupChanged=false;
   cloudHydrationPending=true;renderBeta();
   try{
     const stateUrl=fastRestore?"/api/state?restore=1":"/api/state",stateTimeout=fastRestore?20000:25000;
@@ -1038,6 +1050,8 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
       }catch{merged.alliance=remote.alliance}
     }
     merged=preservePendingRoster(localFallback||state,merged);
+    const pendingBefore=JSON.stringify(merged.alliance?.unlinked_accounts||[]),pendingRepair=normalizeAlliancePendingState(merged,pendingIdentityAliasesFor(userId));
+    merged=pendingRepair.state;pendingCleanupChanged=pendingBefore!==JSON.stringify(merged.alliance?.unlinked_accounts||[]);
     if(hasMeaningfulCore(localFallback)&&!hasMeaningfulCore(merged))merged=hydrateCloudState(localFallback,initialState(),userId);
     let heroPowerBackfillChanged=false;
     try{
@@ -1054,7 +1068,7 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     // If an unsent local state is newer (for example because an oversized keepalive write was
     // deferred), push it normally in the foreground after the authoritative pull/merge.
     if(preferLocal&&hasMeaningfulCore(state)){cloudDirty=true;scheduleCloudRetry(750)}
-    else if(heroPowerBackfillChanged&&hasMeaningfulCore(state))scheduleServerSave(350);
+    else if((heroPowerBackfillChanged||pendingCleanupChanged)&&hasMeaningfulCore(state))scheduleServerSave(350);
     return {ok:true,cloud_empty:false,canonical_alliance:canonicalRosterReady}
   }catch(e){
     suppressPush=false;
@@ -1728,11 +1742,18 @@ function renderAllianceEventWorkspace(){
    const denominator=openRoster?groups.totalMembers:def.limit;
    detail.classList.remove("hidden");detail.setAttribute("aria-hidden","false");detail.innerHTML=`<div class="allianceEventDetailHead"><div><span class="eyebrow">${def.icon} ${esc(t("alliance_event_selected"))}</span><h3>${esc(def.label)}</h3><p>${esc(t("alliance_event_participants"))} ${groups.participants.length}/${denominator}${openRoster?"":` · ${esc(t("alliance_event_substitutes"))} ${groups.substitutes.length}/${def.subLimit}`} · ${esc(t("alliance_event_confirming"))} ${groups.confirming.length} · ${esc(t("alliance_event_absent"))} ${groups.absent.length}</p></div><button type="button" class="primaryAction" data-alliance-event-plan>🧠 ${esc(t("alliance_event_generate_plan"))}</button></div><div class="allianceEventGroups">${renderedGroupHtml}</div><div id="allianceEventPlan">${allianceEventPlanSummary(def.type,groups)}</div>`;
 }
+function normalizeAndPersistPendingAccounts(members){
+  const alliance=state.alliance||{},raw=Array.isArray(alliance.unlinked_accounts)?alliance.unlinked_accounts:[],normalized=normalizeUnlinkedAccounts(raw,members,{serverId:alliance.server_id||state.player?.server_id,allianceTag:alliance.tag,currentPlayerId:state.player_id,currentPlayerName:state.player?.name,currentPlayerAliases:pendingIdentityAliasesFor(state.player_id),identityLinkStatus:alliance.identity_link_status});
+  if(JSON.stringify(raw)!==JSON.stringify(normalized)){
+    state.alliance={...alliance,unlinked_accounts:normalized};
+    saveState({renderUi:false});
+  }
+  return normalized;
+}
 function renderAllianceIdentityLinks(members){
   const box=$("#allianceIdentitySummary"),pendingBox=$("#unlinkedWarBoostAccounts"),pendingDetails=$("#unlinkedWarBoostDetails");
   const summary=rosterLinkSummary(members),reviewNames=new Set((state.alliance?.roster_review||[]).map(x=>rosterNameKey(x?.name))),formerNames=new Set((state.alliance?.former_members||[]).map(x=>rosterNameKey(x?.name)));
-  const rawPending=Array.isArray(state.alliance?.unlinked_accounts)?state.alliance.unlinked_accounts:[],normalizedPending=normalizeUnlinkedAccounts(rawPending,members,{serverId:state.alliance?.server_id||state.player?.server_id,allianceTag:state.alliance?.tag,currentPlayerId:state.player_id,currentPlayerName:state.player?.name,identityLinkStatus:state.alliance?.identity_link_status});
-  if(JSON.stringify(rawPending)!==JSON.stringify(normalizedPending)){state.alliance={...state.alliance,unlinked_accounts:normalizedPending};safeLocalSet(STORE_KEY,JSON.stringify(state));}
+  const normalizedPending=normalizeAndPersistPendingAccounts(members);
   const canonicalSelf=canonicalSelfRosterMember(members);
   if(canonicalSelf?.name&&state.player?.name!==canonicalSelf.name){state.player={...state.player,name:canonicalSelf.name};safeLocalSet(STORE_KEY,JSON.stringify(state));}
   const selfNameKeys=new Set([state.player?.name,canonicalSelf?.name].map(rosterNameKey).filter(Boolean)),pending=normalizedPending.filter(x=>!reviewNames.has(rosterNameKey(x?.name))&&!formerNames.has(rosterNameKey(x?.name))&&!(canonicalSelf&&selfNameKeys.has(rosterNameKey(x?.name))&&normalizeServerId(x?.server_id)===normalizeServerId(canonicalSelf.server_id||state.player?.server_id)&&normalizeAllianceTag(x?.alliance_tag)===normalizeAllianceTag(canonicalSelf.alliance_tag||state.alliance?.tag)));
@@ -1840,7 +1861,7 @@ function renderRankManagerAssociationSummary(members=[]){
   const box=$("#rankManagerAssociationSummary");if(!box)return;
   const rows=dedupeRosterAccountLinks(members),summary=rosterLinkSummary(rows);
   const linked=rows.filter(m=>m?.warboost_linked===true&&String(m?.player_id||"").trim());
-  const pending=normalizeUnlinkedAccounts(state.alliance?.unlinked_accounts||[],rows,{serverId:state.alliance?.server_id||state.player?.server_id,allianceTag:state.alliance?.tag,currentPlayerId:state.player_id,currentPlayerName:state.player?.name,identityLinkStatus:state.alliance?.identity_link_status});
+  const pending=normalizeAndPersistPendingAccounts(rows);
   const reasonLabel=reason=>{
     const map={no_match:"Pseudo non trouvé dans le roster canonique",ambiguous:"Plusieurs membres correspondent",ambiguous_roster_match:"Plusieurs membres correspondent",roster_member_already_linked:"Membre déjà lié à un autre compte",account_already_linked:"Compte déjà lié à un autre membre",identity_incomplete:"Pseudo, serveur ou alliance incomplet",context_conflict:"Serveur ou alliance différent"};
     return map[String(reason||"")]||"Correspondance exacte requise";
