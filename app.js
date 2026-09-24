@@ -2503,7 +2503,28 @@ desertStormSearchInput?.addEventListener("input",e=>{desertStormSearchTerm=searc
 $("#desertStormTeam")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.team=String(e.target.value||"A").toUpperCase()==="B"?"B":"A";ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
 $("#desertStormTime")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.battle_time=String(e.target.value||"");ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
  $("#desertStormClearBtn")?.addEventListener("click",()=>{const clearPrompt=lang.startsWith("fr")?"Effacer toute la sélection Tempête du Désert ?":t("ds_clear_confirm")==="ds_clear_confirm"?"Clear all selected Desert Storm players?":t("ds_clear_confirm");if(!hasDeclaredAllianceCommandRole()||!window.confirm(clearPrompt))return;const ds=ensureDesertStormState(),now=new Date().toISOString();ds.registered_keys=[];ds.substitute_keys=[];ds.selection_initialized=true;ds.plan=null;ds.availability_reset_at=now;ds.updated_at=now;saveState();renderDesertStormPlanner();const st=$("#desertStormStatus");if(st){st.className="notice";st.textContent=t("ds_cleared");st.classList.remove("hidden")}});
- $("#desertStormGenerateBtn")?.addEventListener("click",()=>{const st=$("#desertStormStatus");if(!hasDeclaredAllianceCommandRole()){if(st){st.className="notice warn";st.textContent=managerOnlyMessage();st.classList.remove("hidden")}return}if(!desertStormFeatureAccess())return;const ds=ensureDesertStormState(),members=activeAllianceRosterMembers(),selection=desertStormPlanSelection(members);if(!selection.registeredKeys.length){if(st){st.className="notice warn";st.textContent=t("ds_no_registered");st.classList.remove("hidden")}return}ds.plan=buildDesertStormPlan(members,selection.registeredKeys,{nowMs:serverNow.getTime(),team:ds.team,battleTime:ds.battle_time,substituteKeys:selection.substituteKeys});ds.updated_at=new Date().toISOString();state.alliance.updated_at=ds.updated_at;saveState();if(st){st.className="notice";st.textContent=t("ds_plan_ready");st.classList.remove("hidden")}});
+ function desertStormPlanGenerationError(){
+   const st=$("#desertStormStatus");if(!st)return;
+   st.className="notice warn";
+   st.textContent=lang.startsWith("fr")?"Impossible d’afficher le plan tactique. Vérifie la sélection puis réessaie.":"The tactical plan could not be displayed. Check the selection and try again.";
+   st.classList.remove("hidden");
+ }
+ function generateDesertStormPlan(){
+   const st=$("#desertStormStatus");
+   if(!hasDeclaredAllianceCommandRole()){if(st){st.className="notice warn";st.textContent=managerOnlyMessage();st.classList.remove("hidden")}return}
+   if(!desertStormFeatureAccess())return;
+   try{
+     const ds=ensureDesertStormState(),members=activeAllianceRosterMembers(),selection=desertStormPlanSelection(members);
+     if(!selection.registeredKeys.length){if(st){st.className="notice warn";st.textContent=t("ds_no_registered");st.classList.remove("hidden")}return}
+     const plan=buildDesertStormPlan(members,selection.registeredKeys,{nowMs:serverNow.getTime(),team:ds.team,battleTime:ds.battle_time,substituteKeys:selection.substituteKeys});
+     if(!plan||!Array.isArray(plan.groups))throw new Error("desert_storm_plan_invalid");
+     ds.plan=plan;ds.updated_at=new Date().toISOString();state.alliance.updated_at=ds.updated_at;
+     const saved=saveState({renderUi:false});
+     renderDesertStormPlan();
+     if(st){st.className=`notice${saved?"":" warn"}`;st.textContent=saved?t("ds_plan_ready"):(lang.startsWith("fr")?"Plan affiché, mais sa sauvegarde locale a échoué.":"Plan displayed, but local saving failed.");st.classList.remove("hidden")}
+   }catch{desertStormPlanGenerationError()}
+ }
+ $("#desertStormGenerateBtn")?.addEventListener("click",generateDesertStormPlan);
 $("#canyonPlanner")?.querySelectorAll("[data-canyon-tab]").forEach(btn=>btn.addEventListener("click",()=>{canyonActiveTab=btn.dataset.canyonTab||"preparation";renderCanyonPlanner()}));
 $("#canyonSearch")?.addEventListener("input",e=>{canyonSearchTerm=String(e.target.value||"");scheduleCanyonSearchRender()});
  $("#canyonStatus")?.addEventListener("change",e=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState(),now=new Date().toISOString();canyon.status=e.target.value;canyon.plan=null;canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;saveState()});
