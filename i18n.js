@@ -1787,7 +1787,7 @@ Object.assign(EN,{manager_role_unverified:"Your profile declares {role}, but you
 Object.assign(FR,{manager_role_unverified:"Ton profil déclare {role}, mais ton identité Last War liée ou ton adhésion canonique à l’alliance n’est pas encore confirmée. Actualise ou corrige-la avant toute modification cloud.",manager_role_canonical_not_manager:"Le rang Last War confirmé est {role} ; cette action nécessite un accès R4/R5.",manager_role_refresh:"Actualiser l’identité Last War"});
 Object.assign(EN,{hero_power_rescan:"Power to rescan"});
 Object.assign(FR,{hero_power_rescan:"Puissance à rescanner"});
-for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V2\.5\.28\s+HF8\.6(?:\.\d+)?/g,'').replace(/^\s*[·-]\s*/,'').trim();target.tagline=`V2.5.28 HF8.6.28${tail?` · ${tail}`:''}`}}
+for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V\d+(?:\.\d+){1,2}(?:\s+HF\d+(?:\.\d+){1,2})?/gi,'').replace(/HF\d+(?:\.\d+){1,2}/gi,'').replace(/(?:\s*[·-]\s*){2,}/g,' · ').replace(/^\s*[·-]\s*/,'').replace(/\s*[·-]\s*$/,'').trim();target.tagline=`V2.5.29 HF8.6.29${tail?` · ${tail}`:''}`}}
 // Legacy HF8.6.23 verification marker: target.tagline=`V2.5.28 HF8.6.23${tail?` · ${tail}`:''}`
 
 // Legacy HF8.6.20 verification marker: target.tagline=`V2.5.28 HF8.6.20${tail?` · ${tail}`:''}`

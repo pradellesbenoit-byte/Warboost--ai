@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import {normalizeUnlinkedAccounts} from "../lib/alliance-identity.js";
+import {normalizeUnlinkedAccounts,rebuildCanonicalPendingAccounts} from "../lib/alliance-identity.js";
+import {invalidatePendingAccountCacheState} from "../lib/pending-account-cache.js";
 import {normalizeState} from "../lib/normalize.js";
 import {hydrateCloudState} from "../lib/cloud-state-recovery.js";
 import {mergeCloudRosterWithIdentity} from "../lib/alliance-roster-merge.js";
@@ -93,5 +94,35 @@ const cloudWithoutQueue=hydrateCloudState({
   alliance:{server_id:"884",tag:"ALL4",members:[canonical]}
 },{player_id:playerId,player:{name:"Jojolecaid",server_id:"884"},alliance:{server_id:"884",tag:"ALL4",unlinked_accounts:[{name:"OldCachedPending",server_id:"884",alliance_tag:"ALL4"}]}},playerId);
 assert.equal(cloudWithoutQueue.alliance.unlinked_accounts.length,0,"an omitted cloud queue must not fall back to an older browser cache");
+
+const canonicalQueue=rebuildCanonicalPendingAccounts({
+  player_id:playerId,
+  player:{name:"Jojolecaid",server_id:"884"},
+  alliance:{
+    server_id:"884",tag:"ALL4",members:[canonical],
+    unlinked_accounts:[
+      {player_id:playerId,name:"jojoJecaid",server_id:"884",alliance_tag:"ALL4",reason:"no_match"},
+      {player_id:"another-player",name:"OtherPending",server_id:"884",alliance_tag:"ALL4",reason:"no_match"}
+    ]
+  }
+},{currentPlayerAliases:["jojoJecaid"]});
+assert.deepEqual(canonicalQueue.map(account=>account.name),["OtherPending"],"canonical reconstruction drops linked stale rows but keeps genuinely unlinked accounts");
+
+const preservedData={
+  player:{name:"Jojolecaid",server_id:"884"},
+  scans:[{id:"scan-1"}],
+  squads:[{id:1,heroes:["Kimberly"]}],
+  activity_events:[{id:"event-1"}],
+  settings:{voice_enabled:true},
+  alliance:{members:[canonical],unlinked_accounts:[{name:"jojoJecaid",server_id:"884",alliance_tag:"ALL4"}],desert_storm:{team:"A"}}
+};
+const invalidatedCache=invalidatePendingAccountCacheState(preservedData);
+assert.equal(invalidatedCache.changed,true,"a stale pending cache is invalidated");
+assert.deepEqual(invalidatedCache.value.alliance.unlinked_accounts,[]);
+for(const key of ["player","scans","squads","activity_events","settings"])assert.deepEqual(invalidatedCache.value[key],preservedData[key],`${key} data survives pending-cache invalidation`);
+assert.deepEqual(invalidatePendingAccountCacheState(invalidatedCache.value).changed,false,"cache invalidation is idempotent");
+const invalidatedBackup=invalidatePendingAccountCacheState({saved_at:"now",state:preservedData},{nestedState:true});
+assert.deepEqual(invalidatedBackup.value.state.alliance.unlinked_accounts,[],"nested last-good state cache is invalidated");
+assert.deepEqual(invalidatedBackup.value.saved_at,"now","backup metadata is preserved");
 
 console.log("Linked WarBoost account pending-state verification: PASS");

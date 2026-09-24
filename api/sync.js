@@ -13,7 +13,7 @@ void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remai
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   try{
-    const {user}=await requireBetaUser(req,{consent:true}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,rosterPersisted=false;
+    const {user}=await requireBetaUser(req,{consent:true}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,rosterPersisted=false,alliancePendingCanonical=false;
     if(configured()||userMode){saved=userMode?await getProfileForUser(playerId,access):await getProfile(playerId);const baseUpdatedAt=req.body?.base_updated_at===null?null:String(req.body?.base_updated_at||"").trim()||null;if(saved?.updated_at&&baseUpdatedAt!==String(saved.updated_at))return res.status(409).json({error:"profile_write_conflict",message:"Le profil a été modifié sur un autre appareil.",state:saved.state,updated_at:saved.updated_at});if(saved?.state){const requestedRosterSync=current.alliance?.roster_sync_status==="pending";base=mergeNewest(base,saved.state);if(requestedRosterSync){base.alliance={...base.alliance,members:current.alliance.members,roster_review:current.alliance.roster_review,former_members:current.alliance.former_members,roster_snapshot_complete_at:current.alliance.roster_snapshot_complete_at,roster_sync_status:"pending",roster_sync_error:null}}}}
     let merged=base,provider="warboost-cloud",providerKind="warboost",capabilities=["player-consented-cloud","scan-derived-data","alliance-roster"];
     const now=new Date().toISOString();
@@ -21,6 +21,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
     if(configured()||userMode){
       if(configured()){
         let ctx=await getAllianceRoster(playerId,{serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag}).catch(()=>null);
+        alliancePendingCanonical=Boolean(ctx?.alliance&&Array.isArray(ctx.cloud_roster));
           if(ctx){
           const targetServer=normalizeServerId(ctx.alliance?.server_id),targetTag=normalizeAllianceTag(ctx.alliance?.tag);
           let canonical=markCanonicalRosterPresence(Array.isArray(ctx.roster)?ctx.roster:[],ctx.alliance?.roster_updated_at).map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:targetServer,allianceTag:targetTag})}));
@@ -98,6 +99,6 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
       }
     }
     const cfg={official:false,approved:false,legacy:false,authorization_status:"safe-launch-disabled",safe_launch_lock:true};
-    return res.status(200).json({ok:true,provider,provider_kind:providerKind,capabilities,sources:merged.sync.sources,provider_config:cfg,public_config:cfg,safe_launch:true,synced_at:merged.sync.last_sync,state:merged,updated_at:saved?.updated_at||null,access_mode:userMode?"user-rls":"service"});
+    return res.status(200).json({ok:true,provider,provider_kind:providerKind,capabilities,sources:merged.sync.sources,alliance_pending_source:alliancePendingCanonical?"canonical":"unavailable",provider_config:cfg,public_config:cfg,safe_launch:true,synced_at:merged.sync.last_sync,state:merged,updated_at:saved?.updated_at||null,access_mode:userMode?"user-rls":"service"});
   }catch(e){return res.status(e.status||500).json({error:e.code||"sync_failed",message:e.name==="AbortError"?"Source timeout":e.message})}
 }
