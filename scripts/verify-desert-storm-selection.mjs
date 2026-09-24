@@ -57,7 +57,7 @@ assert.match(app,/ds_selection_requires_verified_access/);
 assert.match(app,/ds_selection_syncing/);
 assert.match(app,/desertStormRoleResyncAttempted=true/);
 assert.match(app,/if\(rosterDiagnosticPromise\|\|!cloudSession\?\.access_token\)return false/);
-const picker=app.slice(app.indexOf("function renderDesertStormPicker()"),app.indexOf("function renderDesertStormPlan()"));
+const picker=app.slice(app.indexOf("function renderDesertStormPicker()"),app.indexOf("function renderDesertStormPlan("));
 assert.match(picker,/if\(!desertStormSelectionAccess\(\)\.allowed\)\{ch\.checked=!ch\.checked;return\}/);
 assert.match(app,/toggleDesertStormSelection\(current\.registered_keys,key,ch\.checked\)/);
 assert.doesNotMatch(picker,/saveState\(\);\s*render\(\)/);

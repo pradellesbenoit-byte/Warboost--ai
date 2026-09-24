@@ -25,3 +25,4 @@
 - [Explicit storm substitutes](explicit-storm-substitutes.md) — only Desert/Canyon expose substitute status; explicit replacements override legacy present-overflow fallback.
 - [Canonical pending identity](unlinked-pending-identity.md) — rebuild from the current canonical roster; never merge local or snapshot pending queues back into the UI.
 - [Exact roster association reconciliation](exact-roster-association-reconciliation.md) — active links require exact nickname/server/alliance; stale or duplicate links are deactivated without deleting roster history.
+- [Node VM cross-realm tests](node-vm-cross-realm-tests.md) — VM-created objects can fail strict deep equality across realms; assert scalar fields or normalize before comparing.

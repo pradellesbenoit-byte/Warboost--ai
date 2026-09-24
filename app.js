@@ -17,6 +17,7 @@ import {mergeSharedAllianceRoster} from "./lib/shared-alliance-roster.js";
 import {playerParticipationInsight,allianceParticipationOverview,allianceParticipationByEvent} from "./lib/alliance-participation-insights.js";
 import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine,vsSnapshotFreshness} from "./lib/vs-live.js";
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan.js";
+import {renderDesertStormPlanInto} from "./lib/desert-storm-plan-ui.js";
 import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
 import {unlockDesertStormSearchInput} from "./lib/desert-storm-search.js";
 import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
@@ -36,8 +37,8 @@ import {parseHeroPower,confirmedHeroPower,heroPowerIsConfirmed} from "./lib/hero
 import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.5.29";
-const RELEASE_LABEL="HF8.6.29"; // Canonical Alliance pending queue + local/SW cache invalidation
+const APP_VERSION="2.5.30";
+const RELEASE_LABEL="HF8.6.30"; // Desert Storm plan rendering is confirmed before success.
 // Legacy HF8.6.27 verification marker: const RELEASE_LABEL="HF8.6.27"
 // Legacy HF8.6.26 verification marker: const RELEASE_LABEL="HF8.6.26"
 // Legacy HF8.6.26 render-contract verification markers (non-executable):
@@ -2108,12 +2109,11 @@ async function tryDesertStormRoleResync(){
     current.selection_initialized=true;current.plan=null;current.updated_at=new Date().toISOString();saveState({renderUi:false});renderDesertStormPicker();
   }));
 }
-function renderDesertStormPlan(){
-  const box=$("#desertStormPlan"),copyBtn=$("#desertStormCopyBtn");if(!box)return;const ds=ensureDesertStormState(),plan=ds.plan;if(!plan){box.classList.add("hidden");box.innerHTML="";if(copyBtn)copyBtn.classList.add("hidden");return}
-  const warnings=(plan.warnings||[]).map(w=>desertStormWarningText(w)).filter(Boolean),subs=(plan.substitutes||[]).map(x=>x.name).filter(Boolean);
-   const groupHtml=(plan.groups||[]).map((g,groupIndex)=>{const missionContext={groupIndex};return `<div class="dsPlanGroup"><div class="dsGroupHead"><b>G${g.id} · ${esc(g.captain||t("ds_captain"))}</b><span>${esc(String(g.members?.length||0))}</span></div><small class="dsGroupNames">${esc((g.members||[]).map(x=>x.name).filter(Boolean).join(" · ")||"—")}</small><div class="dsMission"><span><b>${esc(t("ds_opening"))}</b>${esc(dsMissionLabel(g.mission?.opening,missionContext))}</span><span><b>${esc(t("ds_center"))}</b>${esc(dsMissionLabel(g.mission?.center,missionContext))}</span><span><b>${esc(t("ds_late"))}</b>${esc(dsMissionLabel(g.mission?.late,missionContext))}</span></div></div>`}).join("");
-  box.classList.remove("hidden");box.innerHTML=`<div class="dsPlanTop"><div><b>${esc(t("ds_plan_ready"))}</b><small>${esc(t("ds_starters"))} ${plan.starters?.length||0}/20 · ${esc(t("ds_substitutes"))} ${subs.length}/10 · ${esc(t("ds_confidence"))} ${plan.confidence}%</small></div><span class="pill">${esc(t("ds_team"))} ${esc(plan.team)}</span></div>${warnings.length?`<div class="notice warn dsWarnings">${warnings.map(x=>`<div>⚠️ ${esc(x)}</div>`).join("")}</div>`:""}<div class="dsPlanGroups">${groupHtml}</div>${subs.length?`<div class="dsSubs"><b>${esc(t("ds_substitutes"))}</b><small>${esc(subs.join(" · "))}</small></div>`:""}<div class="dsShortOrders"><b>📣 ${esc(t("ds_short_orders"))}</b><pre>${esc(desertStormCopyText(plan))}</pre></div><p class="activityNote">${esc(t("ds_ruleset_note",{date:DESERT_STORM_RULESET.observed_at}))}</p>`;
-  if(copyBtn){copyBtn.classList.remove("hidden");copyBtn.onclick=async()=>{try{await navigator.clipboard.writeText(desertStormCopyText(plan));const old=copyBtn.textContent;copyBtn.textContent=t("copy");setTimeout(()=>copyBtn.textContent=old,1200)}catch{}}}
+function renderDesertStormPlan(planOverride=null,{scrollIntoView=Boolean(planOverride)}={}){
+  const box=$("#desertStormPlan"),copyBtn=$("#desertStormCopyBtn");if(!box)return {ok:false,error:"desert_storm_plan_container_missing"};
+  const plan=planOverride||ensureDesertStormState().plan,rendered=renderDesertStormPlanInto(box,copyBtn,plan,{translate:t,escapeHtml:esc,missionLabel:dsMissionLabel,warningText:desertStormWarningText,copyText:desertStormCopyText,rulesetDate:DESERT_STORM_RULESET.observed_at,scrollIntoView});
+  if(rendered.ok&&copyBtn)copyBtn.onclick=async()=>{try{await navigator.clipboard.writeText(desertStormCopyText(plan));const old=copyBtn.textContent;copyBtn.textContent=t("copy");setTimeout(()=>copyBtn.textContent=old,1200)}catch{}};
+  return rendered;
 }
 function renderDesertStormPlanner(){
   const section=$("#desertStormPlanner");if(!section)return;const ds=ensureDesertStormState(),manager=hasDeclaredAllianceCommandRole(),access=runtimeAccessState(),box=$("#desertStormRosterPicker"),counter=$("#desertStormCount");section.classList.toggle("managerLocked",!manager);
@@ -2584,26 +2584,35 @@ desertStormSearchInput?.addEventListener("input",e=>{desertStormSearchTerm=searc
 $("#desertStormTeam")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.team=String(e.target.value||"A").toUpperCase()==="B"?"B":"A";ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
 $("#desertStormTime")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.battle_time=String(e.target.value||"");ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
  $("#desertStormClearBtn")?.addEventListener("click",()=>{const clearPrompt=lang.startsWith("fr")?"Effacer toute la sélection Tempête du Désert ?":t("ds_clear_confirm")==="ds_clear_confirm"?"Clear all selected Desert Storm players?":t("ds_clear_confirm");if(!hasDeclaredAllianceCommandRole()||!window.confirm(clearPrompt))return;const ds=ensureDesertStormState(),now=new Date().toISOString();ds.registered_keys=[];ds.substitute_keys=[];ds.selection_initialized=true;ds.plan=null;ds.availability_reset_at=now;ds.updated_at=now;saveState();renderDesertStormPlanner();const st=$("#desertStormStatus");if(st){st.className="notice";st.textContent=t("ds_cleared");st.classList.remove("hidden")}});
- function desertStormPlanGenerationError(){
+  function desertStormPlanGenerationError(error){
    const st=$("#desertStormStatus");if(!st)return;
+    const code=String(error?.code||error?.message||""),detailByCode={
+      desert_storm_plan_invalid:"Le moteur n’a fourni aucun groupe de participants exploitable.",
+      desert_storm_plan_container_missing:"La zone d’affichage du plan est introuvable.",
+      desert_storm_plan_render_failed:"Le plan a été généré, mais son contenu n’a pas pu être affiché.",
+      desert_storm_battle_time_required:"Choisis l’heure de bataille."
+    };
+    const detail=detailByCode[code]||String(error?.message||error?.code||error||"Erreur inconnue").replace(/[_-]+/g," ").replace(/\s+/g," ").trim().slice(0,220);
    st.className="notice warn";
-   st.textContent=lang.startsWith("fr")?"Impossible d’afficher le plan tactique. Vérifie la sélection puis réessaie.":"The tactical plan could not be displayed. Check the selection and try again.";
+    st.textContent=lang.startsWith("fr")?`La création du plan a échoué : ${detail||"erreur inconnue"}.`:`Plan generation failed: ${detail||"unknown error"}.`;
    st.classList.remove("hidden");
  }
  function generateDesertStormPlan(){
    const st=$("#desertStormStatus");
+    if(st){st.classList.add("hidden");st.textContent=""}
    if(!hasDeclaredAllianceCommandRole()){if(st){st.className="notice warn";st.textContent=managerOnlyMessage();st.classList.remove("hidden")}return}
-   if(!desertStormFeatureAccess())return;
+    if(!desertStormFeatureAccess()){if(st){st.className="notice warn";st.textContent=lang.startsWith("fr")?"Le roster canonique ou l’accès R4/R5 n’est pas confirmé. Actualise puis réessaie.":"Canonical roster or R4/R5 access is not confirmed. Refresh and try again.";st.classList.remove("hidden")}return}
    try{
      const ds=ensureDesertStormState(),members=activeAllianceRosterMembers(),selection=desertStormPlanSelection(members);
      if(!selection.registeredKeys.length){if(st){st.className="notice warn";st.textContent=t("ds_no_registered");st.classList.remove("hidden")}return}
      const plan=buildDesertStormPlan(members,selection.registeredKeys,{nowMs:serverNow.getTime(),team:ds.team,battleTime:ds.battle_time,substituteKeys:selection.substituteKeys});
-     if(!plan||!Array.isArray(plan.groups))throw new Error("desert_storm_plan_invalid");
+      if(!plan||!Array.isArray(plan.groups))throw Object.assign(new Error("desert_storm_plan_invalid"),{code:"desert_storm_plan_invalid"});
      ds.plan=plan;ds.updated_at=new Date().toISOString();state.alliance.updated_at=ds.updated_at;
      const saved=saveState({renderUi:false});
-     renderDesertStormPlan();
+      const rendered=renderDesertStormPlan(plan,{scrollIntoView:true});
+      if(!rendered.ok)throw Object.assign(new Error(rendered.error||"desert_storm_plan_render_failed"),{code:rendered.error||"desert_storm_plan_render_failed"});
      if(st){st.className=`notice${saved?"":" warn"}`;st.textContent=saved?t("ds_plan_ready"):(lang.startsWith("fr")?"Plan affiché, mais sa sauvegarde locale a échoué.":"Plan displayed, but local saving failed.");st.classList.remove("hidden")}
-   }catch{desertStormPlanGenerationError()}
+    }catch(error){desertStormPlanGenerationError(error)}
  }
  $("#desertStormGenerateBtn")?.addEventListener("click",generateDesertStormPlan);
 $("#canyonPlanner")?.querySelectorAll("[data-canyon-tab]").forEach(btn=>btn.addEventListener("click",()=>{canyonActiveTab=btn.dataset.canyonTab||"preparation";renderCanyonPlanner()}));
@@ -2879,6 +2888,6 @@ window.addEventListener("focus",()=>{queueCriticalUiRepaint();void reconcileAuth
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){queueCriticalUiRepaint();void reconcileAuthenticatedRuntime("visible")}else if(document.visibilityState==="hidden"&&cloudDirty)void pushServerState({keepalive:true})});
 window.addEventListener("pageshow",e=>{queueCriticalUiRepaint();void reconcileAuthenticatedRuntime(e?.persisted?"pageshow-bfcache":"pageshow")});
 window.addEventListener("pagehide",()=>{if(cloudDirty)void pushServerState({keepalive:true})});
-if("serviceWorker" in navigator)window.addEventListener("load",async()=>{try{const generation="warboost-v2-5-29-hf8-6-29-canonical-pending-r1",reloadKey=`${generation}:reloaded`,reg=await navigator.serviceWorker.register(`/sw.js?rev=${generation}`,{updateViaCache:"none"});let refreshing=sessionStorage.getItem(reloadKey)==="1";const activateWaiting=()=>{if(reg.waiting&&sessionStorage.getItem(reloadKey)!=="1")reg.waiting.postMessage({type:"WARBOOST_ACTIVATE"})};navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing||sessionStorage.getItem(reloadKey)==="1")return;refreshing=true;sessionStorage.setItem(reloadKey,"1");location.reload()});activateWaiting();reg.addEventListener("updatefound",()=>{const worker=reg.installing;if(worker)worker.addEventListener("statechange",()=>{if(worker.state==="installed")activateWaiting()})});await reg.update();activateWaiting()}catch{}});
+if("serviceWorker" in navigator)window.addEventListener("load",async()=>{try{const generation="warboost-v2-5-30-hf8-6-30-desert-storm-plan-r1",reloadKey=`${generation}:reloaded`,reg=await navigator.serviceWorker.register(`/sw.js?rev=${generation}`,{updateViaCache:"none"});let refreshing=sessionStorage.getItem(reloadKey)==="1";const activateWaiting=()=>{if(reg.waiting&&sessionStorage.getItem(reloadKey)!=="1")reg.waiting.postMessage({type:"WARBOOST_ACTIVATE"})};navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing||sessionStorage.getItem(reloadKey)==="1")return;refreshing=true;sessionStorage.setItem(reloadKey,"1");location.reload()});activateWaiting();reg.addEventListener("updatefound",()=>{const worker=reg.installing;if(worker)worker.addEventListener("statechange",()=>{if(worker.state==="installed")activateWaiting()})});await reg.update();activateWaiting()}catch{}});
 handleJoinLink();applyLanguage();refreshServerTime();initCloudAuth();render();renderAuth();renderBeta();restorePendingScans();
 // Legacy HF8.6.19 returning-player verification marker: function betaPrivateDataVisible(){const userId=String(cloudSession?.user?.id||"");const trustedLocal=Boolean(userId&&hasMeaningfulCore(readAccountState(userId))),checking=betaState?.access_status==="checking";return Boolean(cloudSession?.user)&&!checking&&betaAccessAllowed()&&betaConsentAccepted()&&(cloudProfileVerified||trustedLocal)}

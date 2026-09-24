@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.29 HF8.6.29 — Canonical Alliance Associations</title>
+  <title>WarBoost V2.5.30 HF8.6.30 — Desert Storm plan rendering</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
   <link rel="stylesheet" href="/styles.css?v=hf8628-squad-native-checkbox-r1" />
@@ -45,7 +45,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-  <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.29 HF8.6.29 · associations Alliance canoniques · paiements désactivés</small></div>
+  <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.30 HF8.6.30 · associations Alliance canoniques · paiements désactivés</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -53,7 +53,7 @@
 
 
     <section class="publisherStrip" aria-label="Safe Launch beta status">
-      <div><b>WarBoost V2.5.29 HF8.6.29</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
+      <div><b>WarBoost V2.5.30 HF8.6.30</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
       <span class="publisherPill" data-i18n="safe_external_disabled">External game access disabled</span>
     </section>
 
@@ -182,7 +182,7 @@
       </div>
     </details>
     <details id="desertStormPlannerShell" class="eventPlannerLegacy allianceAccordion allianceManagerOnly" data-alliance-accordion="desert"><summary class="allianceAccordionSummary"><span><span class="allianceAccordionIcon">🌪️</span><b>Réglages avancés · Tempête du Désert</b></span><span class="allianceAccordionChevron" aria-hidden="true">▾</span></summary>
-    <div id="desertStormPlanner" class="section allianceAccordionBody desertStormPlanner"><div class="sectionTitle"><h3><span data-i18n="ds_title">Tempête du Désert IA</span></h3><span id="desertStormCount" class="pill">0</span></div><p class="privacyText" data-i18n="ds_intro">Le R5/R4 sélectionne uniquement les joueurs inscrits. WarBoost équilibre les titulaires, remplaçants et groupes puis produit des consignes courtes à copier.</p><div class="notice dsRegistrationGuard" data-i18n="ds_registration_guard">Inscrit ≠ participé : sélectionner un joueur ici ne confirme jamais sa présence au combat. La participation reste une donnée séparée, à confirmer après l’événement.</div><div class="dsSetupGrid"><label class="field"><span data-i18n="ds_team">Équipe</span><select id="desertStormTeam" class="fieldSelect"><option value="A">A</option><option value="B">B</option></select></label><label class="field"><span data-i18n="ds_battle_time">Heure de bataille</span><input id="desertStormTime" type="time" /></label></div><div class="field"><label for="desertStormSearch" data-i18n="ds_registered">Joueurs inscrits</label><div id="desertStormSearch" class="dsSearchBox" role="searchbox" aria-autocomplete="list" aria-controls="desertStormRosterPicker" contenteditable="plaintext-only" spellcheck="false" data-i18n-placeholder="ds_search" data-placeholder="Rechercher un joueur du roster"></div></div><div id="desertStormRosterPicker" class="dsRosterPicker"></div><div class="buttonRow dsButtons"><button id="desertStormClearBtn" class="secondaryBtn" type="button" data-i18n="ds_clear">Effacer la sélection</button><button id="desertStormGenerateBtn" class="primaryAction" type="button">🧠 <span data-i18n="ds_generate">Créer le plan</span></button></div><div id="desertStormStatus" class="notice hidden"></div><div class="dsCopyRow"><button id="desertStormCopyBtn" class="smallBtn hidden" type="button" data-i18n="ds_copy">Copier les consignes</button></div><div id="desertStormPlan" class="desertStormPlan hidden"></div></div>
+    <div id="desertStormPlanner" class="section allianceAccordionBody desertStormPlanner"><div class="sectionTitle"><h3><span data-i18n="ds_title">Tempête du Désert IA</span></h3><span id="desertStormCount" class="pill">0</span></div><p class="privacyText" data-i18n="ds_intro">Le R5/R4 sélectionne uniquement les joueurs inscrits. WarBoost équilibre les titulaires, remplaçants et groupes puis produit des consignes courtes à copier.</p><div class="notice dsRegistrationGuard" data-i18n="ds_registration_guard">Inscrit ≠ participé : sélectionner un joueur ici ne confirme jamais sa présence au combat. La participation reste une donnée séparée, à confirmer après l’événement.</div><div class="dsSetupGrid"><label class="field"><span data-i18n="ds_team">Équipe</span><select id="desertStormTeam" class="fieldSelect"><option value="A">A</option><option value="B">B</option></select></label><label class="field"><span data-i18n="ds_battle_time">Heure de bataille</span><input id="desertStormTime" type="time" /></label></div><div class="field"><label for="desertStormSearch" data-i18n="ds_registered">Joueurs inscrits</label><div id="desertStormSearch" class="dsSearchBox" role="searchbox" aria-autocomplete="list" aria-controls="desertStormRosterPicker" contenteditable="plaintext-only" spellcheck="false" data-i18n-placeholder="ds_search" data-placeholder="Rechercher un joueur du roster"></div></div><div id="desertStormRosterPicker" class="dsRosterPicker"></div><div class="buttonRow dsButtons"><button id="desertStormClearBtn" class="secondaryBtn" type="button" data-i18n="ds_clear">Effacer la sélection</button><button id="desertStormGenerateBtn" class="primaryAction" type="button">🧠 <span data-i18n="ds_generate">Créer le plan</span></button></div><div id="desertStormPlan" class="desertStormPlan hidden" aria-live="polite" aria-atomic="true"></div><div id="desertStormStatus" class="notice hidden"></div><div class="dsCopyRow"><button id="desertStormCopyBtn" class="smallBtn hidden" type="button" data-i18n="ds_copy">Copier les consignes</button></div></div>
     </details>
     <details id="canyonPlannerShell" class="eventPlannerLegacy allianceAccordion allianceManagerOnly" data-alliance-accordion="canyon"><summary class="allianceAccordionSummary"><span><span class="allianceAccordionIcon">⛰️</span><b>Réglages avancés · Tempête du Canyon</b></span><span class="allianceAccordionChevron" aria-hidden="true">▾</span></summary>
     <div id="canyonPlanner" class="section allianceAccordionBody canyonPlanner">
@@ -338,7 +338,7 @@
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>🛟 <span data-i18n="support_title">Service client WarBoost</span></h2><button class="closeBtn" data-close>×</button></div>
     <div id="supportAuthNotice" class="notice warn hidden" data-i18n="support_login_required">Connecte-toi à ton compte WarBoost pour créer et suivre tes demandes.</div>
     <div id="supportCreateSection" class="section">
-        <div class="sectionTitle"><h3 data-i18n="support_new_ticket">Nouvelle demande</h3><span id="supportBuildPill" class="pill">V2.5.29 · HF8.6.29</span></div>
+        <div class="sectionTitle"><h3 data-i18n="support_new_ticket">Nouvelle demande</h3><span id="supportBuildPill" class="pill">V2.5.30 · HF8.6.30</span></div>
       <div class="settingsForm">
         <div class="field"><label data-i18n="support_category">Catégorie</label><select id="supportCategory" class="fieldSelect"><option value="login" data-i18n="support_cat_login">Connexion / compte</option><option value="scan" data-i18n="support_cat_scan">Scan / capture</option><option value="data" data-i18n="support_cat_data">Données / escouades</option><option value="ai" data-i18n="support_cat_ai">IA / Diagnostic PRO</option><option value="alliance" data-i18n="support_cat_alliance">Alliance R5/R4</option><option value="bug" data-i18n="support_cat_bug">Bug</option><option value="suggestion" data-i18n="support_cat_suggestion">Suggestion</option><option value="other" data-i18n="support_cat_other">Autre</option></select></div>
         <div class="field"><label data-i18n="support_subject">Sujet</label><input id="supportSubject" maxlength="140" data-i18n-placeholder="support_subject_placeholder" placeholder="Résume le problème en une phrase" /></div>
@@ -357,7 +357,7 @@
     </div>
   </section>
 
-  <script type="module" src="/app.js?v=hf8629-canonical-pending-r1"></script>
-  <script type="module" src="/publisher-ui.js?v=hf8629-canonical-pending-r1"></script>
+  <script type="module" src="/app.js?v=hf8630-desert-storm-plan-r1"></script>
+  <script type="module" src="/publisher-ui.js?v=hf8630-desert-storm-plan-r1"></script>
 </body>
 </html>
