@@ -7,6 +7,8 @@ import {buildDesertStormPlan,DESERT_STORM_RULESET} from "../lib/desert-storm-pla
 import {renderDesertStormPlanInto} from "../lib/desert-storm-plan-ui.js";
 import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections} from "../lib/desert-storm-selection.js";
 import {desertStormMissionLabel} from "../lib/desert-storm-labels.js";
+import {mergeDesertStormState,desertStormSelectionSignature} from "../lib/cloud-state-recovery.js";
+import {mergeNewest} from "../lib/normalize.js";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const read=file=>fs.readFileSync(path.join(root,file),"utf8");
@@ -44,7 +46,7 @@ function extractFunction(name){
 function element(classes=[]){
   const values=new Set(classes);
   return {
-    hidden:values.has("hidden"),innerHTML:"",textContent:"",textContentBefore:"",
+    hidden:values.has("hidden"),innerHTML:"",textContent:"",textContentBefore:"",dataset:{},
     className:"",textContentAfter:"",onclick:null,scrollCalls:0,lastScroll:null,
     classList:{
       add(name){values.add(name)},
@@ -87,7 +89,10 @@ function runHandler({throwDuringBuild=false}={}){
   const status=element(["hidden"]),planBox=element(["hidden"]),copyButton=element(["hidden"]);
   const ds={team:"B",battle_time:"",registered_keys:allKeys,substitute_keys:substituteKeys,selection_initialized:true,plan:null,updated_at:null};
   const state={player_id:"leader",alliance:{members,roster_review:[],former_members:[],desert_storm:ds,updated_at:null}};
-  const els={"#desertStormStatus":status,"#desertStormPlan":planBox,"#desertStormCopyBtn":copyButton};
+  const els={"#desertStormStatus":status,"#desertStormPlan":planBox,"#desertStormCopyBtn":copyButton,
+    "#desertStormPlanner":element(),"#desertStormRosterPicker":element(),"#desertStormCount":element(),
+    "#desertStormTeam":element(),"#desertStormTime":element(),"#desertStormClearBtn":element(),"#desertStormGenerateBtn":element()};
+  let savedSnapshot=null;
   const sandbox={
     $:selector=>els[selector]||null,
     state,lang:"fr",t:translate,esc:escapeHtml,
@@ -100,22 +105,32 @@ function runHandler({throwDuringBuild=false}={}){
     renderDesertStormPlanInto,DESERT_STORM_RULESET,
     hasDeclaredAllianceCommandRole:()=>true,managerOnlyMessage:()=>"Accès réservé R4/R5.",
     desertStormFeatureAccess:()=>true,serverNow:new Date("2026-09-24T12:00:00.000Z"),
-    saveState:options=>{assert.equal(options?.renderUi,false);return true},
+    desertStormSelectionSignature,desertStormSearchTerm:"",
+    runtimeAccessState:()=>({privateVisible:true}),desertStormSelectionAccess:()=>({allowed:true,syncing:false,canResync:false}),
+    searchSelection:()=>null,preserveSearchInput(){},restoreSearchSelection(){},renderDesertStormPicker(){},
+    activeAllianceRosterMembers:()=>members,
+    betaPrivateDataVisible:()=>true,document:{querySelector:selector=>selector==="#allianceDrawer.open"?{}:null},
+    safeRenderStep:(stage,fn)=>fn(),renderAdvice(){},renderProvider(){},renderPlayerActivity(){},renderSeasonAccess(){},renderCanyonPlanner(){},
+    tryDesertStormRoleResync(){},
+    saveState:options=>{assert.equal(options?.renderUi,false);savedSnapshot=JSON.parse(JSON.stringify(state));return true},
     navigator:{clipboard:{writeText:async()=>{}}}
   };
   const names=[
     "dsLabel","dsMissionLabel","desertStormWarningText","desertStormCopyText",
-    "desertStormPlanSelection","renderDesertStormPlan","desertStormPlanGenerationError",
-    "generateDesertStormPlan"
+    "desertStormPlanSelection","desertStormCurrentSelectionSignature","clearDesertStormPlanReadyStatus",
+    "renderDesertStormPlan","renderDesertStormPlanner","criticalUiRepaintPass",
+    "desertStormPlanGenerationError","generateDesertStormPlan"
   ];
-  vm.runInNewContext(`${names.map(extractFunction).join("\n")}\nglobalThis.run=generateDesertStormPlan;`,sandbox,{timeout:1000});
+  vm.runInNewContext(`let recentlyGeneratedDesertStormPlan=null;let desertStormSearchTerm="";${names.map(extractFunction).join("\n")}\nglobalThis.run=generateDesertStormPlan;globalThis.repaint=()=>criticalUiRepaintPass("TEST");`,sandbox,{timeout:1000});
   sandbox.run();
-  return {status,planBox,copyButton,state};
+  return {status,planBox,copyButton,state,sandbox,getSavedSnapshot:()=>savedSnapshot};
 }
 
-const {status,planBox,copyButton,state}=runHandler();
+const {status,planBox,copyButton,state,sandbox,getSavedSnapshot}=runHandler();
 const plan=state.alliance.desert_storm.plan;
 assert.ok(plan,"the click handler stores the generated plan");
+assert.ok(getSavedSnapshot()?.alliance?.desert_storm?.plan,"the generated plan is included in the local save snapshot");
+state.alliance.desert_storm=getSavedSnapshot().alliance.desert_storm;
 assert.equal(plan.battle_time,"","battle time is optional for plan generation");
 assert.equal(plan.registered_count,16);
 assert.equal(plan.starters.length,12,"all selected Participants stay in the starter roster");
@@ -133,9 +148,45 @@ assert.match(planBox.innerHTML,/dsPlanGroups/);
 assert.match(planBox.innerHTML,/Participants/);
 assert.match(planBox.innerHTML,/Remplaçants/);
 assert.match(planBox.innerHTML,/Consignes courtes à partager/);
+assert.match(planBox.innerHTML,/refinery|silo|hospital/i,"the rendered plan includes mission details");
+assert.ok(planBox.innerHTML.includes(labels.ds_order_objectives)&&planBox.innerHTML.includes(labels.ds_order_center)&&planBox.innerHTML.includes(labels.ds_order_help),"all shareable orders are visible");
 for(const member of members)assert.ok(planBox.innerHTML.includes(escapeHtml(member.name)),`${member.name} is visible in the plan`);
 assert.equal(status.textContent,"Plan tactique prêt","success is announced only after visible rendering succeeds");
 assert.equal(status.classList.contains("hidden"),false);
+assert.equal(status.dataset.desertStormPlanSuccess,"true");
+
+const signature=desertStormSelectionSignature(state.alliance.desert_storm);
+const delayedCloudState={...state.alliance.desert_storm,plan:null,updated_at:"2026-09-24T12:10:00.000Z"};
+state.alliance.desert_storm=mergeDesertStormState(state.alliance.desert_storm,delayedCloudState);
+assert.ok(state.alliance.desert_storm.plan,"a later cloud snapshot without a plan cannot erase a matching saved plan");
+assert.equal(state.alliance.desert_storm.plan.selection_signature,signature);
+sandbox.repaint();
+assert.equal(planBox.hidden,false,"the plan stays visible after a critical repaint following cloud merge");
+assert.match(planBox.innerHTML,/dsPlanGroups/);
+assert.equal(status.textContent,"Plan tactique prêt","success stays aligned with the visible plan after repaint");
+state.alliance.desert_storm.plan=null;
+sandbox.repaint();
+assert.ok(state.alliance.desert_storm.plan,"the last matching generated plan is restored if a repaint sees a transiently empty state");
+assert.equal(planBox.hidden,false,"a transient plan-less repaint does not hide the generated plan");
+
+const serverBase={player_id:"leader",alliance:{members,roster_review:[],former_members:[],desert_storm:state.alliance.desert_storm}};
+const serverIncoming=JSON.parse(JSON.stringify(serverBase));
+serverIncoming.alliance.desert_storm={...serverIncoming.alliance.desert_storm,plan:null,updated_at:"2026-09-24T12:20:00.000Z"};
+const serverMerged=mergeNewest(serverBase,serverIncoming);
+assert.ok(serverMerged.alliance.desert_storm.plan,"server mergeNewest also retains the plan for the same selection");
+state.alliance.desert_storm=serverMerged.alliance.desert_storm;
+sandbox.repaint();
+assert.equal(planBox.hidden,false,"the plan remains visible after the server-side merge path and critical repaint");
+const changedSelection=mergeDesertStormState(serverMerged.alliance.desert_storm,{...serverMerged.alliance.desert_storm,team:"A",updated_at:"2026-09-24T12:30:00.000Z"});
+assert.equal(changedSelection.plan,null,"changing the team invalidates the plan");
+const changedTime=mergeDesertStormState(serverMerged.alliance.desert_storm,{...serverMerged.alliance.desert_storm,battle_time:"20:00",updated_at:"2026-09-24T12:31:00.000Z"});
+assert.equal(changedTime.plan,null,"changing the battle time invalidates the plan");
+const explicitlyCleared=mergeDesertStormState(serverMerged.alliance.desert_storm,{...serverMerged.alliance.desert_storm,registered_keys:[],substitute_keys:[],updated_at:"2026-09-24T12:32:00.000Z"});
+assert.equal(explicitlyCleared.plan,null,"clearing the selection invalidates the plan");
+state.alliance.desert_storm.team="A";
+sandbox.repaint();
+assert.equal(planBox.classList.contains("hidden"),true,"a changed team never recovers the previous plan");
+assert.equal(status.classList.contains("hidden"),true,"the ready message is cleared when the selection no longer matches");
 
 const broken=runHandler({throwDuringBuild:true});
 assert.match(broken.status.textContent,/moteur de plan indisponible/,"the real generation error is shown");
