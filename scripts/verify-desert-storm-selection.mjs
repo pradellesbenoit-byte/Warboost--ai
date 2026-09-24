@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {cloudRankManagerAccess,confirmedCanonicalSelfRole} from "../lib/alliance-rank-management.js";
-import {desertStormMemberKeys,normalizeDesertStormSelections,toggleDesertStormSelection} from "../lib/desert-storm-selection.js";
+import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections,toggleDesertStormSelection} from "../lib/desert-storm-selection.js";
 import {buildDesertStormPlan} from "../lib/desert-storm-plan.js";
 import {mergeDesertStormState} from "../lib/cloud-state-recovery.js";
 import {preserveVerifiedR5} from "../lib/alliance-roster-lifecycle.js";
@@ -62,7 +62,10 @@ assert.match(picker,/if\(!desertStormSelectionAccess\(\)\.allowed\)\{ch\.checked
 assert.match(app,/toggleDesertStormSelection\(current\.registered_keys,key,ch\.checked\)/);
 assert.doesNotMatch(picker,/saveState\(\);\s*render\(\)/);
 assert.doesNotMatch(picker,/selected\.has\(b\._key\)/);
-assert.match(picker,/const rows=sortAvailabilityAssignmentRows\(members,participantKeys,substituteKeys/);
+assert.match(picker,/data-ds-status-key/);
+assert.match(picker,/current\.substitute_keys/);
+assert.match(picker,/selection_initialized=true/);
+assert.match(picker,/rank:participantKeys\.has\(row\._key\)\?0:substituteKeys\.has\(row\._key\)\?1:2/);
 
 const alice=member("Alice","R4",{canonical_member_key:"canonical:alice|884|ALL4",power_m:120});
 const bob=member("Bob","R3",{canonical_member_key:"canonical:bob|884|ALL4",power_m:110});
@@ -75,7 +78,14 @@ assert.deepEqual(normalizeDesertStormSelections(["canonical:alice|884|ALL4","can
 const plan=buildDesertStormPlan(active,["canonical:alice|884|ALL4",aliceLegacy],{nowMs:Date.parse("2026-09-19T12:00:00Z")});
 assert.equal(plan.registered_count,1);
 assert.equal(plan.starters[0].name,"Alice");
+const explicitStatusPlan=buildDesertStormPlan([...active,member("Cara","R2",{canonical_member_key:"canonical:cara|884|ALL4",power_m:105})],["canonical:alice|884|ALL4","canonical:bob|884|ALL4","canonical:cara|884|ALL4"],{nowMs:Date.parse("2026-09-19T12:00:00Z"),substituteKeys:["canonical:bob|884|ALL4"]});
+assert.ok(explicitStatusPlan.starters.every(row=>row.name!=="Bob"));
+assert.deepEqual(explicitStatusPlan.substitutes.map(row=>row.name),["Bob"]);
 assert.deepEqual(normalizeDesertStormSelections(["canonical:alice|884|ALL4"],[bob], [member("Alice","R3",{canonical_member_key:"canonical:alice|884|ALL4"})]),[]);
+assert.deepEqual(
+  normalizeDesertStormSubstituteSelections(["canonical:alice|884|ALL4",aliceLegacy,"unknown"],["canonical:alice|884|ALL4","canonical:bob|884|ALL4"],active),
+  ["canonical:alice|884|ALL4"]
+);
 let cumulative=[];
 for(const selected of [alice,bob,alice]){
   const key=desertStormMemberKeys(selected)[0];

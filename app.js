@@ -16,7 +16,7 @@ import {mergeSharedAllianceRoster} from "./lib/shared-alliance-roster.js";
 import {playerParticipationInsight,allianceParticipationOverview,allianceParticipationByEvent} from "./lib/alliance-participation-insights.js";
 import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine,vsSnapshotFreshness} from "./lib/vs-live.js";
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan.js";
-import {desertStormMemberKeys,normalizeDesertStormSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
+import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
 import {unlockDesertStormSearchInput} from "./lib/desert-storm-search.js";
 import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
 import {CANYON_STORM_RULESET,buildCanyonPlan,normalizeCanyonState,mergeCanyonState,clearCanyonPreparationSelection} from "./lib/canyon-storm-plan.js";
@@ -1984,8 +1984,8 @@ async function removeRosterEntry(row,key){
     const {response:r,json:j}=await fetchJsonBounded("/api/alliance-role",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action:"remove_roster_members",members:[{member_key:canonicalKey||key,canonical_member_key:canonicalKey,name:row.name,server_id:row.server_id||context.serverId,alliance_tag:row.alliance_tag||context.allianceTag,expected_role:row.role}]})},18000);
     if(!r.ok)throw Object.assign(new Error(j?.message||j?.error||"roster_remove_failed"),{code:j?.error});
     const now=new Date().toISOString(),rLocal=removeActiveRosterMember({members:state.alliance.members,review:state.alliance.roster_review,former:state.alliance.former_members,removal_tombstones:state.alliance.roster_removal_tombstones},key,{now});
-    if(rLocal.changed||String(row?.membership_status||"")==="review"){
-      state.alliance.members=rLocal.members;state.alliance.roster_review=actionReviewRemoval(state.alliance.roster_review,key);state.alliance.former_members=[];state.alliance.roster_removal_tombstones=normalizeRosterRemovalTombstones(j.removal_tombstones||rLocal.removal_tombstones);state.alliance.updated_at=now;state.alliance.roster_sync_status="synced";state.alliance.roster_sync_error=null;ensureDesertStormState().registered_keys=ensureDesertStormState().registered_keys.filter(x=>x!==key);saveState();render();
+     if(rLocal.changed||String(row?.membership_status||"")==="review"){
+       state.alliance.members=rLocal.members;state.alliance.roster_review=actionReviewRemoval(state.alliance.roster_review,key);state.alliance.former_members=[];state.alliance.roster_removal_tombstones=normalizeRosterRemovalTombstones(j.removal_tombstones||rLocal.removal_tombstones);state.alliance.updated_at=now;state.alliance.roster_sync_status="synced";state.alliance.roster_sync_error=null;const desert=ensureDesertStormState();desert.registered_keys=desert.registered_keys.filter(x=>x!==key);desert.substitute_keys=desert.substitute_keys.filter(x=>x!==key);saveState();render();
     }
   }catch(error){if(status){status.className="notice warn";status.textContent=`⚠️ ${error.message||t("roster_sync_failed")}`;status.classList.remove("hidden")}}
 }
@@ -1994,7 +1994,7 @@ function actionReviewRemoval(rows,key){return (Array.isArray(rows)?rows:[]).filt
 
 function ensureDesertStormState(){
   const a=state.alliance||(state.alliance={});const current=a.desert_storm&&typeof a.desert_storm==="object"?a.desert_storm:{};
-  a.desert_storm={team:String(current.team||"A").toUpperCase()==="B"?"B":"A",battle_time:String(current.battle_time||""),registered_keys:Array.isArray(current.registered_keys)?[...new Set(current.registered_keys.map(String).filter(Boolean))]:[],plan:current.plan&&typeof current.plan==="object"?current.plan:null,availability_reset_at:current.availability_reset_at||null,updated_at:current.updated_at||null};
+  a.desert_storm={team:String(current.team||"A").toUpperCase()==="B"?"B":"A",battle_time:String(current.battle_time||""),registered_keys:Array.isArray(current.registered_keys)?[...new Set(current.registered_keys.map(String).filter(Boolean))]:[],substitute_keys:Array.isArray(current.substitute_keys)?[...new Set(current.substitute_keys.map(String).filter(Boolean))]:[],selection_initialized:current.selection_initialized===true,plan:current.plan&&typeof current.plan==="object"?current.plan:null,availability_reset_at:current.availability_reset_at||null,updated_at:current.updated_at||null};
   return a.desert_storm;
 }
 function desertStormFeatureAccess(){if(!canonicalRosterReady)return false;if(proState.beta!==false)return requireBetaAccess()&&requireBetaConsent();return requirePro()}
@@ -2029,23 +2029,40 @@ async function tryDesertStormRoleResync(){
   })();
   return desertStormRoleResyncPromise;
 }
-function renderDesertStormPicker(){
+ function desertStormSelectionFeedback(message,warn=false){
+  const status=$("#desertStormStatus");if(!status)return;
+  status.className=`notice${warn?" warn":""}`;
+  status.textContent=message;
+  status.classList.remove("hidden");
+ }
+ function renderDesertStormPicker(){
   const box=$("#desertStormRosterPicker"),counter=$("#desertStormCount");if(!box)return;const ds=ensureDesertStormState(),activeMembers=currentActiveRosterMembers(state.alliance.members,state.alliance.roster_review,state.alliance.former_members),inactiveMembers=[...(state.alliance.roster_review||[]),...(state.alliance.former_members||[])];
   ds.registered_keys=normalizeDesertStormSelections(ds.registered_keys,activeMembers,inactiveMembers);
-  const members=activeMembers.map(m=>({...m,_key:desertStormMemberKeys(m)[0]})).filter(m=>m._key),capacity=desertStormAvailabilityCapacity(activeMembers),participantKeys=new Set(capacity.participants.flatMap(m=>desertStormMemberKeys(m))),substituteKeys=new Set(capacity.substitutes.flatMap(m=>desertStormMemberKeys(m))),selectionAccess=desertStormSelectionAccess(),selected=new Set(ds.registered_keys),q=rosterNameKey(desertStormSearchTerm);
-  // Keep the roster order stable while users tap on mobile. Moving selected rows
-  // after every click changes hit targets and can toggle a different checkbox.
-  const rows=sortAvailabilityAssignmentRows(members,participantKeys,substituteKeys,m=>[m._key,...desertStormMemberKeys(m)]).filter(m=>!q||rosterNameKey(m.name).includes(q));
-  if(counter)counter.textContent=`Participants ${capacity.participants.length}/20 · Remplaçants ${capacity.substitutes.length}/10`;
+  ds.substitute_keys=normalizeDesertStormSubstituteSelections(ds.substitute_keys,ds.registered_keys,activeMembers,inactiveMembers);
+  const members=activeMembers.map(m=>({...m,_key:desertStormMemberKeys(m)[0]})).filter(m=>m._key),selected=new Set(ds.registered_keys),substituteKeys=new Set(ds.substitute_keys),participantKeys=new Set(ds.registered_keys.filter(key=>!substituteKeys.has(key))),selectionAccess=desertStormSelectionAccess(),q=rosterNameKey(desertStormSearchTerm);
+  const rows=members.map((row,index)=>({row,index,rank:participantKeys.has(row._key)?0:substituteKeys.has(row._key)?1:2})).sort((a,b)=>a.rank-b.rank||a.index-b.index).map(entry=>entry.row).filter(m=>!q||rosterNameKey(m.name).includes(q));
+  if(counter)counter.textContent=`Participants ${participantKeys.size}/20 · Remplaçants ${substituteKeys.size}/10`;
   const notice=selectionAccess.syncing?t("ds_selection_syncing"):selectionAccess.allowed?"":t("ds_selection_requires_verified_access"),disabled=selectionAccess.allowed?"":" disabled aria-disabled=\"true\"";
-  box.innerHTML=`${notice?`<div class="notice warn dsSelectionGuard">${esc(notice)}</div>`:""}${rows.length?rows.map(m=>{const badge=participantKeys.has(m._key)?`<span class="availabilityAssignmentBadge participant" role="img" aria-label="Participant" title="Participant">✓ Participant</span>`:substituteKeys.has(m._key)?`<span class="availabilityAssignmentBadge substitute" role="img" aria-label="Remplaçant" title="Remplaçant">Remplaçant</span>`:"";return `<label class="dsPlayerPick${selected.has(m._key)?" selected":""}${selectionAccess.allowed?"":" locked"}"><input type="checkbox" data-ds-player-key="${esc(m._key)}"${selected.has(m._key)?" checked":""}${disabled}/><span><b>${esc(m.name||t("player"))}${badge}</b><small>${esc(normalizeAllianceRole(m.role))} · ${t("hq")} ${esc(m.hq_level??"—")} · ${m.squad_power_m?`${esc(t("combat_squad_short"))} ${esc(fmtPower(m.squad_power_m))} · `:""}${esc(t("combat_account_short"))} ${esc(fmtPower(m.power_m))}</small></span></label>`}).join(""):`<div class="notice">${esc(t("ds_no_match"))}</div>`}`;
+  const overCapacity=participantKeys.size>20||substituteKeys.size>10;
+  box.innerHTML=`${notice?`<div class="notice warn dsSelectionGuard">${esc(notice)}</div>`:""}${overCapacity?`<div class="notice warn dsSelectionGuard">Sélection existante au-delà de la limite. Désélectionne des joueurs pour revenir à 20 participants et 10 remplaçants.</div>`:""}${rows.length?rows.map(m=>{const status=substituteKeys.has(m._key)?"substitute":"participant",badge=status==="participant"?`<span class="availabilityAssignmentBadge participant" role="img" aria-label="Participant" title="Participant">✓ Participant</span>`:`<span class="availabilityAssignmentBadge substitute" role="img" aria-label="Remplaçant" title="Remplaçant">Remplaçant</span>`,statusControls=selected.has(m._key)?`<span class="dsStatusChoices" role="group" aria-label="Statut de ${esc(m.name||t("player"))}"><button type="button" class="dsStatusChoice${status==="participant"?" active":""}" data-ds-status-key="${esc(m._key)}" data-ds-status="participant" aria-pressed="${status==="participant"}">Participant</button><button type="button" class="dsStatusChoice${status==="substitute"?" active":""}" data-ds-status-key="${esc(m._key)}" data-ds-status="substitute" aria-pressed="${status==="substitute"}">Remplaçant</button></span>`:"";return `<label class="dsPlayerPick${selected.has(m._key)?" selected":""}${status==="substitute"?" substitute":""}${selectionAccess.allowed?"":" locked"}"><input type="checkbox" data-ds-player-key="${esc(m._key)}"${selected.has(m._key)?" checked":""}${disabled}/><span class="dsPlayerPickInfo"><b>${esc(m.name||t("player"))}${selected.has(m._key)?badge:""}</b><small>${esc(normalizeAllianceRole(m.role))} · ${t("hq")} ${esc(m.hq_level??"—")} · ${m.squad_power_m?`${esc(t("combat_squad_short"))} ${esc(fmtPower(m.squad_power_m))} · `:""}${esc(t("combat_account_short"))} ${esc(fmtPower(m.power_m))}</small>${statusControls}</span></label>`}).join(""):`<div class="notice">${esc(t("ds_no_match"))}</div>`}`;
   box.querySelectorAll("[data-ds-player-key]").forEach(ch=>ch.addEventListener("change",()=>{
      if(!desertStormSelectionAccess().allowed){ch.checked=!ch.checked;return}
-     const current=ensureDesertStormState(),key=ch.dataset.dsPlayerKey;
-      toggleDesertStormSelection(current.registered_keys,key,ch.checked);current.plan=null;current.updated_at=new Date().toISOString();
-    ch.closest(".dsPlayerPick")?.classList.toggle("selected",ch.checked);
-     if(counter)counter.textContent=`Participants ${desertStormAvailabilityCapacity(activeMembers).participants.length}/20 · Remplaçants ${desertStormAvailabilityCapacity(activeMembers).substitutes.length}/10`;
-    saveState({renderUi:false});
+      const current=ensureDesertStormState(),key=ch.dataset.dsPlayerKey,wasSelected=current.registered_keys.includes(key);
+      if(ch.checked&&!wasSelected&&current.registered_keys.filter(candidate=>!current.substitute_keys.includes(candidate)).length>=20){ch.checked=false;desertStormSelectionFeedback("Limite atteinte : 20 participants maximum.",true);return}
+      toggleDesertStormSelection(current.registered_keys,key,ch.checked);
+      if(!ch.checked)current.substitute_keys=current.substitute_keys.filter(candidate=>candidate!==key);
+      current.selection_initialized=true;current.plan=null;current.updated_at=new Date().toISOString();
+      saveState({renderUi:false});renderDesertStormPicker();
+  }));
+  box.querySelectorAll("[data-ds-status-key]").forEach(button=>button.addEventListener("click",event=>{
+    event.preventDefault();event.stopPropagation();
+    if(!desertStormSelectionAccess().allowed)return;
+    const current=ensureDesertStormState(),key=button.dataset.dsStatusKey,next=button.dataset.dsStatus,selectedNow=current.registered_keys.includes(key),isSub=current.substitute_keys.includes(key);
+    if(!selectedNow||((next==="substitute")===isSub))return;
+    if(next==="substitute"&&current.substitute_keys.length>=10){desertStormSelectionFeedback("Limite atteinte : 10 remplaçants maximum.",true);return}
+    if(next==="participant"&&current.registered_keys.filter(candidate=>!current.substitute_keys.includes(candidate)).length>=20){desertStormSelectionFeedback("Limite atteinte : 20 participants maximum.",true);return}
+    current.substitute_keys=next==="substitute"?[...new Set([...current.substitute_keys,key])]:current.substitute_keys.filter(candidate=>candidate!==key);
+    current.selection_initialized=true;current.plan=null;current.updated_at=new Date().toISOString();saveState({renderUi:false});renderDesertStormPicker();
   }));
 }
 function renderDesertStormPlan(){
@@ -2087,6 +2104,11 @@ function desertStormPresentKeys(members=activeAllianceRosterMembers()){
   return [...capacity.participants,...capacity.substitutes].map(member=>desertStormMemberKeys(member)[0]||member.lifecycle_key||rosterLifecycleKey(member)).filter(Boolean);
 }
 function desertStormPlanSelection(members=activeAllianceRosterMembers()){
+  const ds=ensureDesertStormState(),managedSelection=ds.selection_initialized===true||ds.registered_keys.length>0||ds.substitute_keys.length>0;
+  if(managedSelection){
+    const registeredKeys=normalizeDesertStormSelections(ds.registered_keys,members),substituteKeys=normalizeDesertStormSubstituteSelections(ds.substitute_keys,registeredKeys,members);
+    return {registeredKeys,substituteKeys};
+  }
   const capacity=desertStormAvailabilityCapacity(members);
   const keyFor=member=>desertStormMemberKeys(member)[0]||member.lifecycle_key||rosterLifecycleKey(member);
   return {
@@ -2480,7 +2502,7 @@ desertStormSearchInput?.addEventListener("focus",unlockDesertStormSearch);
 desertStormSearchInput?.addEventListener("input",e=>{desertStormSearchTerm=searchInputValue(e.target);scheduleDesertStormSearchRender()});
 $("#desertStormTeam")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.team=String(e.target.value||"A").toUpperCase()==="B"?"B":"A";ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
 $("#desertStormTime")?.addEventListener("change",e=>{if(!hasDeclaredAllianceCommandRole())return;const ds=ensureDesertStormState();ds.battle_time=String(e.target.value||"");ds.plan=null;ds.updated_at=new Date().toISOString();saveState()});
- $("#desertStormClearBtn")?.addEventListener("click",()=>{const clearPrompt=lang.startsWith("fr")?"Effacer toute la sélection Tempête du Désert ?":t("ds_clear_confirm")==="ds_clear_confirm"?"Clear all selected Desert Storm players?":t("ds_clear_confirm");if(!hasDeclaredAllianceCommandRole()||!window.confirm(clearPrompt))return;const ds=ensureDesertStormState(),now=new Date().toISOString();ds.registered_keys=[];ds.plan=null;ds.availability_reset_at=now;ds.updated_at=now;saveState();renderDesertStormPlanner();const st=$("#desertStormStatus");if(st){st.className="notice";st.textContent=t("ds_cleared");st.classList.remove("hidden")}});
+ $("#desertStormClearBtn")?.addEventListener("click",()=>{const clearPrompt=lang.startsWith("fr")?"Effacer toute la sélection Tempête du Désert ?":t("ds_clear_confirm")==="ds_clear_confirm"?"Clear all selected Desert Storm players?":t("ds_clear_confirm");if(!hasDeclaredAllianceCommandRole()||!window.confirm(clearPrompt))return;const ds=ensureDesertStormState(),now=new Date().toISOString();ds.registered_keys=[];ds.substitute_keys=[];ds.selection_initialized=true;ds.plan=null;ds.availability_reset_at=now;ds.updated_at=now;saveState();renderDesertStormPlanner();const st=$("#desertStormStatus");if(st){st.className="notice";st.textContent=t("ds_cleared");st.classList.remove("hidden")}});
  $("#desertStormGenerateBtn")?.addEventListener("click",()=>{const st=$("#desertStormStatus");if(!hasDeclaredAllianceCommandRole()){if(st){st.className="notice warn";st.textContent=managerOnlyMessage();st.classList.remove("hidden")}return}if(!desertStormFeatureAccess())return;const ds=ensureDesertStormState(),members=activeAllianceRosterMembers(),selection=desertStormPlanSelection(members);if(!selection.registeredKeys.length){if(st){st.className="notice warn";st.textContent=t("ds_no_registered");st.classList.remove("hidden")}return}ds.plan=buildDesertStormPlan(members,selection.registeredKeys,{nowMs:serverNow.getTime(),team:ds.team,battleTime:ds.battle_time,substituteKeys:selection.substituteKeys});ds.updated_at=new Date().toISOString();state.alliance.updated_at=ds.updated_at;saveState();if(st){st.className="notice";st.textContent=t("ds_plan_ready");st.classList.remove("hidden")}});
 $("#canyonPlanner")?.querySelectorAll("[data-canyon-tab]").forEach(btn=>btn.addEventListener("click",()=>{canyonActiveTab=btn.dataset.canyonTab||"preparation";renderCanyonPlanner()}));
 $("#canyonSearch")?.addEventListener("input",e=>{canyonSearchTerm=String(e.target.value||"");scheduleCanyonSearchRender()});

@@ -41,6 +41,7 @@ const app=readFileSync(new URL("../app.js",import.meta.url),"utf8");
 assert.match(app,/availabilityAssignmentBadge participant/);
 assert.match(app,/availabilityAssignmentBadge substitute/);
 assert.match(app,/canyonAvailabilityAssignments\(canyon,active\)/);
-assert.match(app,/desertStormAvailabilityCapacity\(activeMembers\)/);
+assert.match(app,/function desertStormAvailabilityCapacity\(members=activeAllianceRosterMembers\(\)\)/);
+assert.match(app,/Participants \$\{participantKeys\.size\}\/20 · Remplaçants \$\{substituteKeys\.size\}\/10/);
 
 console.log("Availability capacity verification: PASS");
