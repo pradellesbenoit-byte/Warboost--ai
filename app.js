@@ -11,7 +11,7 @@ import {createWarBoostSupabaseAuthClient} from "./lib/browser-auth.js";
 import {formatGearSummary} from "./lib/gear.js";
 import {ACTIVITY_EVENT_TYPES,PLAYER_ACTIVITY_EVENT_TYPES,activityEventId,mergeActivityEvents,confirmedActivityEvents,eventCountsByType,participationEventRecords,participationSummaryByType,parseParticipationImport} from "./lib/activity-events.js";
 import {AVAILABILITY_EVENT_TYPES,normalizeEventAvailability,mergeEventAvailabilities,mergeAvailabilityHistory,availabilityForMember,upsertEventAvailability} from "./lib/event-availability.js";
-import {backfillRosterIdentityContext,linkCurrentPlayerIdentityIntoRoster,rosterLinkSummary,normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag,normalizeUnlinkedAccounts} from "./lib/alliance-identity.js";
+import {backfillRosterIdentityContext,linkCurrentPlayerIdentityIntoRoster,rosterLinkSummary,dedupeRosterAccountLinks,normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag,normalizeUnlinkedAccounts} from "./lib/alliance-identity.js";
 import {mergeSharedAllianceRoster} from "./lib/shared-alliance-roster.js";
 import {playerParticipationInsight,allianceParticipationOverview,allianceParticipationByEvent} from "./lib/alliance-participation-insights.js";
 import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine,vsSnapshotFreshness} from "./lib/vs-live.js";
@@ -1209,7 +1209,7 @@ function render(){
     safeRenderStep("MASK_ALLIANCE",maskAlliancePrivateSummary);
     $("#rosterFresh").textContent=t("sync_needed");
     const members=$("#memberList");if(members)members.innerHTML=`<div class="notice">${esc(betaAccessMessage())}</div>`;
-    const activity=$("#activitySummary");if(activity)activity.innerHTML=`<div><b>🟢 0</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>🟠 0</b><small>${esc(t("activity_refresh"))}</small></div><div><b>⚪ —</b><small>${esc(t("activity_inactivity_not_evaluated"))}</small></div>`;
+    const activity=$("#activitySummary");if(activity)activity.innerHTML=`<div><b>🟢 0</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>⚪ 0</b><small>${esc(t("activity_insufficient_data"))}</small></div><div><b>🔴 0</b><small>${esc(t("activity_inactive_confirmed"))}</small></div>`;
     if($("#activityNote"))$("#activityNote").textContent=betaAccessMessage();
      if($("#activityEventGrid"))$("#activityEventGrid").innerHTML="";if($("#playerActivityStatus"))$("#playerActivityStatus").textContent=betaAccessMessage();if($("#playerActivityPill"))$("#playerActivityPill").textContent="—";$("#playerAvailabilitySection")?.classList.add("hidden");$("#eventAvailabilityManagerSection")?.classList.add("hidden");if($("#allianceIdentitySummary"))$("#allianceIdentitySummary").textContent=betaAccessMessage();if($("#allianceParticipationTable"))$("#allianceParticipationTable").innerHTML="";if($("#unlinkedWarBoostAccounts"))$("#unlinkedWarBoostAccounts").innerHTML="";$("#unlinkedWarBoostDetails")?.classList.add("hidden");
     $("#vsWeekTitle").textContent=t("vs_week",{week:currentVsWeek()});
@@ -1417,7 +1417,7 @@ function renderProPriority(analysis){
 }
 
 function activityLabel(a){
-  return a.key==="active"?t("activity_active_confirmed"):a.key==="inactive"?t("activity_inactive_probable"):a.key==="unknown"?t("activity_indeterminate"):t("activity_refresh");
+  return a.key==="active"?t("activity_active_confirmed"):a.key==="inactive"?t("activity_inactive_probable"):t("activity_insufficient_data");
 }
 function activityIcon(a){return a.key==="active"?"🟢":a.key==="inactive"?"🔴":a.key==="unknown"?"⚪":"🟠"}
 function activityReason(a){
@@ -1737,7 +1737,7 @@ function renderAllianceIdentityLinks(members){
   if(canonicalSelf?.name&&state.player?.name!==canonicalSelf.name){state.player={...state.player,name:canonicalSelf.name};safeLocalSet(STORE_KEY,JSON.stringify(state));}
   const selfNameKeys=new Set([state.player?.name,canonicalSelf?.name].map(rosterNameKey).filter(Boolean)),pending=normalizedPending.filter(x=>!reviewNames.has(rosterNameKey(x?.name))&&!formerNames.has(rosterNameKey(x?.name))&&!(canonicalSelf&&selfNameKeys.has(rosterNameKey(x?.name))&&normalizeServerId(x?.server_id)===normalizeServerId(canonicalSelf.server_id||state.player?.server_id)&&normalizeAllianceTag(x?.alliance_tag)===normalizeAllianceTag(canonicalSelf.alliance_tag||state.alliance?.tag)));
   const pendingStatuses=new Set(['no_match','ambiguous','missing_nickname','missing_server','missing_alliance','context_conflict','ambiguous_rename']);
-  const currentStatus=String(state.alliance?.identity_link_status||"unknown"),currentLinked=(members||[]).some(m=>m?.warboost_linked===true&&String(m?.player_id||"").trim()===String(state.player_id||"").trim());
+   const currentStatus=String(state.alliance?.identity_link_status||"unknown"),currentLinked=(members||[]).some(m=>m?.warboost_linked===true&&String(m?.player_id||"").trim()===String(state.player_id||"").trim());
   // A linked_existing result is authoritative even if a stale local roster
   // briefly made the identity status look pending. Never manufacture a
   // "current account" row after the canonical cloud roster confirms ownership.
@@ -1755,18 +1755,18 @@ function renderAllianceIdentityLinks(members){
 
 function renderAllianceActivity(){
   const members=state.alliance.members||[],box=$("#activitySummary"),summary=summarizeAllianceActivity(members),c=summary.counts;
-  const inactivityPending=(Number(c.inactive)||0)===0&&(Number(c.refresh)||0)>0;
-  const inactiveValue=inactivityPending?"—":String(c.inactive??0),inactiveLabel=inactivityPending?t("activity_inactivity_not_evaluated"):t("activity_inactive_probable"),inactiveIcon=inactivityPending?"⚪":"🔴";
-  if(box)box.innerHTML=`<div><b>🟢 ${c.active}</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>🟠 ${c.refresh}</b><small>${esc(t("activity_refresh"))}</small></div><div><b>${inactiveIcon} ${esc(inactiveValue)}</b><small>${esc(inactiveLabel)}</small></div>`;
+  const insufficient=Number(c.insufficient??c.refresh??0);
+  if(box)box.innerHTML=`<div><b>🟢 ${c.active}</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>⚪ ${insufficient}</b><small>${esc(t("activity_insufficient_data"))}</small></div><div><b>🔴 ${c.inactive}</b><small>${esc(t("activity_inactive_confirmed"))}</small></div>`;
   const note=$("#activityNote");if(note)note.textContent=members.length?t("activity_reliability_note"):t("activity_no_data");
   renderAllianceIdentityLinks(members);
   const overview=allianceParticipationOverview(members,{nowMs:serverNow.getTime(),days:30});
   const managementBox=$("#allianceParticipationManagementSummary");if(managementBox){
     const linkedText=t("participation_management_linked",{linked:overview.linked,total:overview.total_members});
     const evidenceText=t("participation_management_evidence",{known:overview.known_members,total:overview.total_members});
-    const missingText=!overview.linked?t("participation_management_no_linked"):overview.linked_without_evidence?t("participation_management_missing",{count:overview.linked_without_evidence}):t("participation_management_all_linked_known");
+     const insufficientText=t("participation_management_insufficient",{count:overview.insufficient_members,total:overview.total_members});
+     const pendingText=t("participation_management_pending",{count:(state.alliance?.unlinked_accounts||[]).length});
     const absenceText=t("participation_management_absences",{count:overview.confirmed_absences});
-    managementBox.innerHTML=`<div class="managementSummaryHead"><b>🧠 ${esc(t("participation_management_title"))}</b><span class="pill">30 j</span></div><div class="managementSummaryGrid"><span>${esc(linkedText)}</span><span>${esc(evidenceText)}</span><span>${esc(absenceText)}</span><span>${esc(missingText)}</span></div><p>${esc(t("participation_management_guard"))}</p>`;
+     managementBox.innerHTML=`<div class="managementSummaryHead"><b>🧠 ${esc(t("participation_management_title"))}</b><span class="pill">30 j</span></div><div class="managementSummaryGrid"><span>${esc(linkedText)}</span><span>${esc(evidenceText)}</span><span>${esc(insufficientText)}</span><span>${esc(pendingText)}</span><span>${esc(absenceText)}</span></div><p>${esc(t("participation_management_guard"))}</p>`;
   }
   renderAllianceParticipationTable(members);
   return summary;
@@ -1836,6 +1836,19 @@ function rankManagerIdentityLinkText(){
   if(status==="self_identity_context_conflict")return t("rank_manager_link_context_conflict");
   return t("rank_manager_link_help");
 }
+function renderRankManagerAssociationSummary(members=[]){
+  const box=$("#rankManagerAssociationSummary");if(!box)return;
+  const rows=dedupeRosterAccountLinks(members),summary=rosterLinkSummary(rows);
+  const linked=rows.filter(m=>m?.warboost_linked===true&&String(m?.player_id||"").trim());
+  const pending=normalizeUnlinkedAccounts(state.alliance?.unlinked_accounts||[],rows,{serverId:state.alliance?.server_id||state.player?.server_id,allianceTag:state.alliance?.tag,currentPlayerId:state.player_id,currentPlayerName:state.player?.name,identityLinkStatus:state.alliance?.identity_link_status});
+  const reasonLabel=reason=>{
+    const map={no_match:"Pseudo non trouvé dans le roster canonique",ambiguous:"Plusieurs membres correspondent",ambiguous_roster_match:"Plusieurs membres correspondent",roster_member_already_linked:"Membre déjà lié à un autre compte",account_already_linked:"Compte déjà lié à un autre membre",identity_incomplete:"Pseudo, serveur ou alliance incomplet",context_conflict:"Serveur ou alliance différent"};
+    return map[String(reason||"")]||"Correspondance exacte requise";
+  };
+  const linkedHtml=linked.length?linked.map(member=>`<div class="identityAssociationRow"><div><b>🟢 ${esc(member.name||t("player"))}</b><small>Membre : ${esc(member.name||"—")} · Pseudo : ${esc(member.name||"—")}</small><small>${esc(t("server"))} ${esc(member.server_id||"—")} · ${esc(t("alliance"))} ${esc(member.alliance_tag||"—")} · Grade ${esc(normalizeAllianceRole(member.role))}</small></div><span>${esc(t("identity_linked_short"))}</span></div>`).join(""):`<p class="privacyText">Aucune liaison active.</p>`;
+  const pendingHtml=pending.length?pending.map(account=>`<div class="identityAssociationRow pending"><div><b>⚪ ${esc(account.name||t("player"))}</b><small>Membre : — · Pseudo : ${esc(account.name||"—")}</small><small>${esc(t("server"))} ${esc(account.server_id||"—")} · ${esc(t("alliance"))} ${esc(account.alliance_tag||"—")} · Grade —</small></div><span>${esc(reasonLabel(account.reason))}</span></div>`).join(""):`<p class="privacyText">Aucun compte en attente.</p>`;
+  box.innerHTML=`<div class="identityAssociationHead"><b>Associations WarBoost</b><span class="pill">${summary.linked}/${summary.total} liés · ${pending.length} en attente</span></div><p class="privacyText">La liaison exige le pseudo Last War exact, le serveur et l’alliance. Le grade reste indépendant et peut changer sans casser la liaison.</p><div class="identityAssociationGroup"><b>Comptes liés</b>${linkedHtml}</div><div class="identityAssociationGroup"><b>Comptes en attente / blocage</b>${pendingHtml}</div>`;
+}
 async function linkOwnCanonicalIdentity(){
   const candidate=rosterDiagnostic.link_candidates?.length===1?rosterDiagnostic.link_candidates[0]:null;
   if(!candidate)return rankManagerStatus("rank_manager_link_no_match",{},true);
@@ -1888,6 +1901,7 @@ function renderAllianceRankManager(){
     else if(syncState.needsSync&&rosterDiagnostic.status==="ready"&&rosterDiagnostic.link_status!=="ready"){linkBox.innerHTML=`<b>${esc(t("rank_manager_link_title"))}</b><p>${esc(rankManagerIdentityLinkText())}</p>`}
     else linkBox.innerHTML="";
   }
+  renderRankManagerAssociationSummary(members);
   const selection=searchSelection(search);
   section.classList.toggle("managerLocked",!manager);preserveSearchInput(search,rankManagerSearchTerm);
   const rows=members.filter(m=>!q||rosterNameKey(m.name).includes(q)).sort((a,b)=>({R5:5,R4:4,R3:3,R2:2,R1:1}[confirmedMemberRank(b)]||0)-({R5:5,R4:4,R3:3,R2:2,R1:1}[confirmedMemberRank(a)]||0)||(Number(b.power_m)||0)-(Number(a.power_m)||0)||String(a.name||"").localeCompare(String(b.name||"")));

@@ -24,3 +24,4 @@
 - [Event workspace capacities](event-workspace-capacities.md) — only Desert/Canyon use 20 participants plus 10 substitutes; VS, Season, and generic alliance events use the active roster total.
 - [Explicit storm substitutes](explicit-storm-substitutes.md) — only Desert/Canyon expose substitute status; explicit replacements override legacy present-overflow fallback.
 - [Canonical pending identity](unlinked-pending-identity.md) — pending association rows are derived; purge only by linked player identity plus strict server/alliance scope.
+- [Exact roster association reconciliation](exact-roster-association-reconciliation.md) — active links require exact nickname/server/alliance; stale or duplicate links are deactivated without deleting roster history.

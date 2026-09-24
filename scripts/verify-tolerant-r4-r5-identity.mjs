@@ -9,12 +9,12 @@ const link=(name,roster,extra={})=>linkCurrentPlayerIdentityIntoRoster(roster,{p
 
 {
   const result=link("jojoJecaid",[row("jojolecaid","R4")],scan);
-  assert.equal(result.status,"linked_tolerant");
+  assert.equal(result.status,"no_match");
   assert.equal(result.members[0].name,"jojolecaid");
-  assert.equal(result.members[0].player_id,"wb-jojoJecaid");
+  assert.equal(result.members[0].player_id,undefined);
   const resolution=resolveCanonicalIdentity([row("jojolecaid","R4")],{playerId:"wb-jojoJecaid",name:"jojoJecaid",serverId:"884",allianceTag:"ALL4",...scan});
-  assert.equal(resolution.persist_link,true);
-  assert.equal(resolution.canonical_role,"R4");
+  assert.equal(resolution.persist_link,false);
+  assert.equal(resolution.canonical_role,null);
   assert.equal(canonicalMembershipNeedsRepair(null,"alliance-884","wb-jojoJecaid","R4"),true);
 }
 
@@ -38,7 +38,7 @@ for(const name of ["[ALL4]ToyN","gladiateurs81"]){
 
 {
   const result=link("jojoJecaid",[row("jojolecaid","R4"),row("jojolecaid","R4")],scan);
-  assert.equal(result.status,"ambiguous");
+  assert.equal(result.status,"no_match");
   assert.equal(result.members.every(member=>!member.player_id),true);
 }
 
@@ -53,4 +53,4 @@ const state=fs.readFileSync("api/state.js","utf8");
 assert.match(sync,/rank_confirmed_source:merged\.player\?\.rank_confirmed_source/);
 assert.match(state,/rank_confirmed_source:state\.player\?\.rank_confirmed_source/);
 
-console.log("Tolerant confirmed R4/R5 identity linking verification: PASS");
+console.log("Strict exact R4/R5 identity linking verification: PASS");
