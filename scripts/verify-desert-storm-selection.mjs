@@ -66,6 +66,10 @@ assert.match(picker,/data-ds-status-key/);
 assert.match(picker,/current\.substitute_keys/);
 assert.match(picker,/selection_initialized=true/);
 assert.match(picker,/rank:participantKeys\.has\(row\._key\)\?0:substituteKeys\.has\(row\._key\)\?1:2/);
+assert.match(app,/function generateDesertStormPlan\(\)/);
+assert.match(app,/const plan=buildDesertStormPlan\(/);
+assert.match(app,/renderDesertStormPlan\(\)/);
+assert.match(app,/desertStormPlanGenerationError/);
 
 const alice=member("Alice","R4",{canonical_member_key:"canonical:alice|884|ALL4",power_m:120});
 const bob=member("Bob","R3",{canonical_member_key:"canonical:bob|884|ALL4",power_m:110});
@@ -81,6 +85,14 @@ assert.equal(plan.starters[0].name,"Alice");
 const explicitStatusPlan=buildDesertStormPlan([...active,member("Cara","R2",{canonical_member_key:"canonical:cara|884|ALL4",power_m:105})],["canonical:alice|884|ALL4","canonical:bob|884|ALL4","canonical:cara|884|ALL4"],{nowMs:Date.parse("2026-09-19T12:00:00Z"),substituteKeys:["canonical:bob|884|ALL4"]});
 assert.ok(explicitStatusPlan.starters.every(row=>row.name!=="Bob"));
 assert.deepEqual(explicitStatusPlan.substitutes.map(row=>row.name),["Bob"]);
+const visibleTwentyFive=Array.from({length:25},(_,i)=>member(`Visible ${i+1}`,i===0?"R5":i<5?"R4":"R3",{canonical_member_key:`canonical:visible-${i+1}|884|ALL4`,power_m:220-i}));
+const visibleKeys=visibleTwentyFive.map(row=>row.canonical_member_key);
+const visiblePlan=buildDesertStormPlan(visibleTwentyFive,visibleKeys,{nowMs:Date.parse("2026-09-19T12:00:00Z"),team:"B",substituteKeys:visibleKeys.slice(20)});
+assert.equal(visiblePlan.registered_count,25);
+assert.equal(visiblePlan.starters.length,20,"20 selected participants must become starters");
+assert.equal(visiblePlan.substitutes.length,5,"5 selected substitutes must remain substitutes");
+assert.deepEqual(visiblePlan.substitutes.map(row=>row.name),visibleTwentyFive.slice(20).map(row=>row.name));
+assert.ok(visiblePlan.groups.length>0&&visiblePlan.groups.every(group=>group.members.length>0),"a visible tactical group must be generated");
 assert.deepEqual(normalizeDesertStormSelections(["canonical:alice|884|ALL4"],[bob], [member("Alice","R3",{canonical_member_key:"canonical:alice|884|ALL4"})]),[]);
 assert.deepEqual(
   normalizeDesertStormSubstituteSelections(["canonical:alice|884|ALL4",aliceLegacy,"unknown"],["canonical:alice|884|ALL4","canonical:bob|884|ALL4"],active),
