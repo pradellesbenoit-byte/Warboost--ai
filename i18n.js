@@ -1788,7 +1788,10 @@ Object.assign(FR,{manager_role_unverified:"Ton profil déclare {role}, mais ton 
 Object.assign(EN,{hero_power_rescan:"Power to rescan"});
 const QG35_EN={
   qg35_title:"🏆 HQ35+ · AI Coach",qg35_home_desc:"Three priorities based only on confirmed player data.",
-  qg35_unknown_prompt:"Complete your profile or scan your HQ to check whether the HQ35+ Coach applies.",
+  qg35_analyze_button:"🧠 Analyze my HQ35",qg35_locked_status:"Available from HQ35",
+  qg35_locked_desc:"This Coach unlocks when your saved HQ reaches level 35. No diagnosis is run yet.",
+  qg35_unknown_status:"HQ not entered",qg35_unknown_card_desc:"Enter or scan your HQ to check access to the HQ35+ Coach.",
+  qg35_unknown_prompt:"HQ not entered. Complete your profile or scan your HQ to check whether the HQ35+ Coach applies.",
   qg35_scan_profile:"Scan profile / HQ",qg35_scan_now:"Scan now",qg35_hq_eligible:"Eligible · HQ {hq}",
   qg35_not_eligible:"The HQ35+ Coach is available only when the saved HQ level is at least 35.",
   qg35_summary_title:"Your three priorities",qg35_summary_intro:"Recommendations use known values only. Missing costs, effects, stocks and milestones are left unknown.",
@@ -1894,7 +1897,10 @@ const QG35_EN={
 };
 const QG35_FR={
   qg35_title:"🏆 QG35+ · Coach IA",qg35_home_desc:"Trois priorités fondées uniquement sur les données confirmées du joueur.",
-  qg35_unknown_prompt:"Complète ton profil ou scanne ton QG pour vérifier si le Coach QG35+ s’applique.",
+  qg35_analyze_button:"🧠 Analyser mon QG35",qg35_locked_status:"Disponible à partir du QG35",
+  qg35_locked_desc:"Le Coach se débloque lorsque ton QG enregistré atteint le niveau 35. Aucun diagnostic n’est lancé pour le moment.",
+  qg35_unknown_status:"QG non renseigné",qg35_unknown_card_desc:"Renseigne ou scanne ton QG pour vérifier l’accès au Coach QG35+.",
+  qg35_unknown_prompt:"QG non renseigné. Complète ton profil ou scanne ton QG pour vérifier si le Coach QG35+ s’applique.",
   qg35_scan_profile:"Scanner le profil / QG",qg35_scan_now:"Scanner maintenant",qg35_hq_eligible:"Éligible · QG {hq}",
   qg35_not_eligible:"Le Coach QG35+ est disponible uniquement si le QG enregistré est au moins 35.",
   qg35_summary_title:"Tes trois priorités",qg35_summary_intro:"Les conseils utilisent seulement les valeurs connues. Les stocks, coûts, effets et paliers absents restent inconnus.",
@@ -2000,7 +2006,7 @@ const QG35_FR={
 };
 Object.assign(EN,QG35_EN);Object.assign(EN_GB,QG35_EN);Object.assign(EN_US,QG35_EN);Object.assign(packs.fr,QG35_FR);
 Object.assign(FR,{hero_power_rescan:"Puissance à rescanner"});
-for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V\d+(?:\.\d+){1,2}(?:\s+HF\d+(?:\.\d+){1,2})?/gi,'').replace(/HF\d+(?:\.\d+){1,2}/gi,'').replace(/(?:\s*[·-]\s*){2,}/g,' · ').replace(/^\s*[·-]\s*/,'').replace(/\s*[·-]\s*$/,'').trim();target.tagline=`V2.5.31 HF8.6.31${tail?` · ${tail}`:''}`}}
+for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V\d+(?:\.\d+){1,2}(?:\s+HF\d+(?:\.\d+){1,2})?/gi,'').replace(/HF\d+(?:\.\d+){1,2}/gi,'').replace(/(?:\s*[·-]\s*){2,}/g,' · ').replace(/^\s*[·-]\s*/,'').replace(/\s*[·-]\s*$/,'').trim();target.tagline=`V2.5.32 HF8.6.32${tail?` · ${tail}`:''}`}}
 // Legacy HF8.6.23 verification marker: target.tagline=`V2.5.28 HF8.6.23${tail?` · ${tail}`:''}`
 
 // Legacy HF8.6.20 verification marker: target.tagline=`V2.5.28 HF8.6.20${tail?` · ${tail}`:''}`

@@ -64,4 +64,4 @@ const server=http.createServer(async(req,res)=>{
   if(url.pathname.startsWith("/api/")){if(!await api(req,res,url)){res.statusCode=404;res.end("Not found")}return}
   await staticFile(req,res,url);
 });
-server.listen(PORT,"0.0.0.0",()=>console.log(`WarBoost V2.5.31 HF8.6.31 listening on ${PORT}`));
+server.listen(PORT,"0.0.0.0",()=>console.log(`WarBoost V2.5.32 HF8.6.32 listening on ${PORT}`));

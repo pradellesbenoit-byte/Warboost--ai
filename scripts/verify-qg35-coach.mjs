@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
-import {createEndgameCoachReport,hasEndgameCoachProAccess} from "../lib/endgame-coach.js";
+import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "../lib/endgame-coach.js";
 import {translator} from "../i18n.js";
 
 const namesByType={
@@ -17,7 +17,7 @@ function makeState(type="aircraft",{complete=false,levels=[180,180,180,180,120]}
     combat_role:index<2?"frontline":"dps"
   }));
   const state={
-    version:"2.5.31",
+    version:"2.5.32",
     player:{name:"Test",hq_level:35},
     squads:[{id:1,composition_confirmed_at:"2026-09-25T10:00:00.000Z",confirmed_composition:[...names],heroes}],
     hero_profiles:[],
@@ -51,16 +51,20 @@ const unknown=createEndgameCoachReport({player:{hq_level:null}});
 assert.equal(unknown.eligibility.status,"unknown");
 assert.equal(unknown.eligibility.eligible,false);
 assert.deepEqual(unknown.top_priorities,[]);
+assert.deepEqual(deriveEndgameCoachHomeState(unknown,{privateVisible:true}),{visible:true,state:"unknown",active:false,showProfileScan:true});
+assert.equal(deriveEndgameCoachHomeState(unknown,{privateVisible:false}).visible,false);
 
 const below=createEndgameCoachReport({player:{hq_level:34},exclusive_weapons:[{hero_name:"DVA",level:9}]});
 assert.equal(below.eligibility.status,"below_threshold");
 assert.equal(below.eligibility.eligible,false);
 assert.deepEqual(below.top_priorities,[]);
+assert.deepEqual(deriveEndgameCoachHomeState(below,{privateVisible:true}),{visible:true,state:"locked",active:false,showProfileScan:false});
 
 const threshold=createEndgameCoachReport({player:{hq_level:35}});
 assert.equal(threshold.eligibility.eligible,true);
 assert.equal(threshold.top_priorities.length,3);
 assert.equal(new Set(threshold.top_priorities.map(item=>item.action_key)).size,3);
+assert.deepEqual(deriveEndgameCoachHomeState(threshold,{privateVisible:true}),{visible:true,state:"eligible",active:true,showProfileScan:false});
 
 for(const type of Object.keys(namesByType)){
   const typed=createEndgameCoachReport(makeState(type));
@@ -132,6 +136,9 @@ assert.equal(hasEndgameCoachProAccess({betaMode:true,betaAllowed:false,betaConse
 const fr=translator("fr"),en=translator("en-GB"),es=translator("es");
 assert.equal(fr("qg35_title"),"🏆 QG35+ · Coach IA");
 assert.equal(en("qg35_title"),"🏆 HQ35+ · AI Coach");
+assert.equal(fr("qg35_analyze_button"),"🧠 Analyser mon QG35");
+assert.equal(fr("qg35_locked_status"),"Disponible à partir du QG35");
+assert.equal(fr("qg35_unknown_status"),"QG non renseigné");
 assert.equal(es("qg35_title"),en("qg35_title"),"Other locales should fall back to English.");
 for(const [path,source] of [
   ["app.js",await readFile(new URL("../app.js",import.meta.url),"utf8")],
@@ -146,9 +153,21 @@ for(const [path,source] of [
 const appSource=await readFile(new URL("../app.js",import.meta.url),"utf8");
 assert.match(appSource,/if\(requirePro\(\)\)\{renderEndgameCoachDrawer\(\)/,"Advanced details must pass through requirePro().");
 assert.match(appSource,/if\(!betaPrivateDataVisible\(\)\)\{hideEndgameCoach\(\);return\}/,"Private-data masking must also hide the QG35 module.");
+assert.match(appSource,/card\.classList\.remove\("hidden"\)/,"Authorized users should see the home card for every HQ state.");
+assert.match(appSource,/card\.disabled=!homeState\.active/,"The home card should only open the diagnosis for eligible HQ.");
+assert.match(appSource,/unknown\.classList\.toggle\("hidden",!homeState\.showProfileScan\)/,"Unknown HQ should reveal the profile-scan action.");
+assert.match(appSource,/const priorities=report\.top_priorities\.map/,"The drawer must render the report's three priorities.");
+assert.match(appSource,/if\(betaPrivateDataVisible\(\)&&name==="qg35Coach"\)safeRenderStep\("QG35_COACH_OPEN",renderEndgameCoachDrawer\)/,"Opening QG35+ should render the drawer after refreshing the current state.");
+assert.match(appSource,/openDrawer\("qg35Coach"\)/,"The active home card must open the QG35+ drawer.");
+assert.match(appSource,/qg35-home-visibility-v2-5-32-hf8-6-32-r1/,"The Coach module import must use the current cache-busting release.");
 const packageJson=JSON.parse(await readFile(new URL("../package.json",import.meta.url),"utf8"));
-assert.equal(packageJson.version,"2.5.31");
+assert.equal(packageJson.version,"2.5.32");
 const indexHtml=await readFile(new URL("../index.html",import.meta.url),"utf8");
 assert.match(indexHtml,/id="qg35CoachCard"[^>]*class="moduleCard qg35HomeCard hidden"/);
+assert.match(indexHtml,/styles\.css\?v=qg35-home-visibility-v2-5-32-hf8-6-32-r1/);
+assert.match(indexHtml,/app\.js\?v=qg35-home-visibility-v2-5-32-hf8-6-32-r1/);
+assert.match(indexHtml,/warboost-build" content="2\.5\.32-HF8\.6\.32-qg35-home-visibility-r1"/);
+const swSource=await readFile(new URL("../sw.js",import.meta.url),"utf8");
+assert.match(swSource,/warboost-v2-5-32-hf8-6-32-qg35-home-visibility-r1/);
 
 console.log("QG35+ Coach eligibility, report completeness, privacy, access gating, translations, and read-only stability verified.");

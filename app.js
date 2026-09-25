@@ -1,6 +1,6 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
-import {createEndgameCoachReport,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=qg35-coach-r1";
+import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=qg35-home-visibility-v2-5-32-hf8-6-32-r1";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
 import {canonicalShopStore} from "./lib/shop-catalog.js";
 import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad} from "./lib/squad-identity.js";
@@ -40,8 +40,8 @@ import {parseHeroPower,confirmedHeroPower,heroPowerIsConfirmed} from "./lib/hero
 import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.5.31";
-const RELEASE_LABEL="HF8.6.31"; // QG35+ Coach reads saved state without writing player data.
+const APP_VERSION="2.5.32";
+const RELEASE_LABEL="HF8.6.32"; // QG35+ home visibility and status-gated entry.
 // Legacy HF8.6.27 verification marker: const RELEASE_LABEL="HF8.6.27"
 // Legacy HF8.6.26 verification marker: const RELEASE_LABEL="HF8.6.26"
 // Legacy HF8.6.26 render-contract verification markers (non-executable):
@@ -1323,10 +1323,22 @@ function renderEndgameCoachHome(){
   if(!card||!unknown)return;
   if(!betaPrivateDataVisible()){hideEndgameCoach();return}
   const report=createEndgameCoachReport(state);
-  const eligible=report.eligibility.eligible;
-  card.classList.toggle("hidden",!eligible);
-  unknown.classList.toggle("hidden",report.eligibility.status!=="unknown");
-  if(meta&&eligible)meta.textContent=t("qg35_hq_eligible",{hq:report.eligibility.hq_level});
+  const homeState=deriveEndgameCoachHomeState(report,{privateVisible:true});
+  card.classList.remove("hidden");
+  card.disabled=!homeState.active;
+  card.setAttribute("aria-disabled",String(!homeState.active));
+  card.dataset.qg35State=homeState.state;
+  card.classList.toggle("qg35HomeLocked",homeState.state==="locked");
+  card.classList.toggle("qg35HomeUnknown",homeState.state==="unknown");
+  const titleKey=homeState.active?"qg35_analyze_button":"qg35_title";
+  const descriptionKey=homeState.active?"qg35_home_desc":homeState.state==="locked"?"qg35_locked_desc":"qg35_unknown_card_desc";
+  const title=card.querySelector("h2"),description=$("#qg35HomeDesc");
+  if(title){title.dataset.i18n=titleKey;title.textContent=t(titleKey)}
+  if(description){description.dataset.i18n=descriptionKey;description.textContent=t(descriptionKey)}
+  const statusKey=homeState.active?"qg35_hq_eligible":homeState.state==="locked"?"qg35_locked_status":"qg35_unknown_status";
+  if(meta)meta.textContent=t(statusKey,homeState.active?{hq:report.eligibility.hq_level}:{});
+  card.setAttribute("aria-label",t(homeState.active?"qg35_analyze_button":statusKey,homeState.active?{hq:report.eligibility.hq_level}:{}));
+  unknown.classList.toggle("hidden",!homeState.showProfileScan);
 }
 function qg35ScanType(actionKey){
   return ({
@@ -2670,7 +2682,7 @@ function openDrawer(name){
 function closeDrawers(){unmountAuthControls();closeAlliancePlayerProfile();closeAllianceEventDetail();$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")})}
 
 $$('[data-open]').forEach(b=>b.addEventListener("click",()=>{if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer(b.dataset.open)}));$("#homeProBtn")?.addEventListener("click",()=>{openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"start"}),140)});$$('[data-close]').forEach(b=>b.addEventListener("click",closeDrawers));$("#backdrop").addEventListener("click",closeDrawers);$("#accountBtn").addEventListener("click",()=>openDrawer("account"));$("#adviceAction").addEventListener("click",()=>{if(state.player.name&&(!requireBetaAccess()||!requireBetaConsent()))return;if(playerNeedsOnboarding()&&betaPrivateDataVisible()){const next=playerOnboardingStatus().next_type||"profile";return openQuickScan(next)}openDrawer(state.player.name?"player":"account")});$("#languageSelect").addEventListener("change",e=>{languageChoice=e.target.value;safeLocalSet(LANG_KEY,languageChoice);applyLanguage()});
-$("#qg35CoachCard")?.addEventListener("click",()=>{if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("qg35Coach")});
+$("#qg35CoachCard")?.addEventListener("click",event=>{const card=event.currentTarget;if(card?.disabled||!betaPrivateDataVisible())return;if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("qg35Coach")});
 $("#qg35UnknownScanBtn")?.addEventListener("click",()=>openQuickScan("profile"));
 $("#qg35CoachDrawer")?.addEventListener("click",event=>{
   const target=event.target instanceof Element?event.target:null;if(!target)return;

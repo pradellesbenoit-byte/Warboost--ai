@@ -1,4 +1,7 @@
 .qg35HomeCard{border-color:rgba(142,112,255,.5);background:linear-gradient(145deg,rgba(89,64,177,.16),rgba(10,16,29,.92))}
+.qg35HomeCard:disabled{cursor:not-allowed;filter:saturate(.72)}
+.qg35HomeCard.qg35HomeLocked{border-color:rgba(255,191,107,.4);background:linear-gradient(145deg,rgba(142,91,34,.15),rgba(10,16,29,.94))}
+.qg35HomeCard.qg35HomeUnknown{border-color:rgba(117,184,255,.45)}
 .qg35UnknownPrompt{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;padding:14px}
 .qg35UnknownPrompt p{margin:0;line-height:1.45}
 .qg35UnknownPrompt .secondaryBtn{flex:0 0 auto}

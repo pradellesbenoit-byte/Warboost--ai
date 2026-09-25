@@ -4,11 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#070b14" />
-  <title>WarBoost V2.5.31 HF8.6.31 — QG35+ Coach</title>
+  <title>WarBoost V2.5.32 HF8.6.32 — QG35+ Coach</title>
+  <meta name="warboost-build" content="2.5.32-HF8.6.32-qg35-home-visibility-r1" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" type="image/png" href="/warboost-icon-192.png" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
-  <link rel="stylesheet" href="/styles.css?v=qg35-coach-r1" />
+  <link rel="stylesheet" href="/styles.css?v=qg35-home-visibility-v2-5-32-hf8-6-32-r1" />
   <link rel="stylesheet" href="/hero-layout-fix.css" />
   <link rel="stylesheet" href="/publisher-ui.css" />
   <!-- Legacy verification marker: WarBoost V2.5.28 HF8.6.12 -->
@@ -47,7 +48,7 @@
     <header class="topbar">
       <div class="brand">
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
-  <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.31 HF8.6.31 · Coach IA QG35+ · diagnostic sans écriture</small></div>
+  <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.32 HF8.6.32 · Coach IA QG35+ · diagnostic sans écriture</small></div>
       </div>
       <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
@@ -55,7 +56,7 @@
 
 
     <section class="publisherStrip" aria-label="Safe Launch beta status">
-      <div><b>WarBoost V2.5.31 HF8.6.31</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
+      <div><b>WarBoost V2.5.32 HF8.6.32</b><span data-i18n="beta_release_label">Public Beta · Invite</span></div>
       <span class="publisherPill" data-i18n="safe_external_disabled">External game access disabled</span>
     </section>
 
@@ -108,8 +109,8 @@
       <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p id="seasonDesc" data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
       <button id="homeProBtn" class="moduleCard proHomeCard" type="button"><span class="moduleMeta" data-i18n="beta_pro_short">PRO BÊTA</span><span class="moduleIcon">💎</span><h2 data-i18n="pro">WarBoost PRO</h2><p data-i18n="pro_feature1">Priorités IA détaillées pour tes escouades</p></button>
       <button id="qg35CoachCard" class="moduleCard qg35HomeCard hidden" type="button" aria-controls="qg35CoachDrawer">
-        <span id="qg35HomeMeta" class="moduleMeta"></span><span class="moduleIcon">🏆</span>
-        <h2 data-i18n="qg35_title">🏆 QG35+ · Coach IA</h2><p data-i18n="qg35_home_desc">Trois priorités fondées sur les données déjà confirmées.</p>
+        <span id="qg35HomeMeta" class="moduleMeta" aria-live="polite"></span><span class="moduleIcon">🏆</span>
+        <h2 data-i18n="qg35_title">🏆 QG35+ · Coach IA</h2><p id="qg35HomeDesc" data-i18n="qg35_home_desc">Trois priorités fondées sur les données déjà confirmées.</p>
       </button>
     </section>
     <section id="qg35UnknownPrompt" class="qg35UnknownPrompt notice hidden" role="status" aria-live="polite">
@@ -354,7 +355,7 @@
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>🛟 <span data-i18n="support_title">Service client WarBoost</span></h2><button class="closeBtn" data-close>×</button></div>
     <div id="supportAuthNotice" class="notice warn hidden" data-i18n="support_login_required">Connecte-toi à ton compte WarBoost pour créer et suivre tes demandes.</div>
     <div id="supportCreateSection" class="section">
-        <div class="sectionTitle"><h3 data-i18n="support_new_ticket">Nouvelle demande</h3><span id="supportBuildPill" class="pill">V2.5.31 · HF8.6.31</span></div>
+        <div class="sectionTitle"><h3 data-i18n="support_new_ticket">Nouvelle demande</h3><span id="supportBuildPill" class="pill">V2.5.32 · HF8.6.32</span></div>
       <div class="settingsForm">
         <div class="field"><label data-i18n="support_category">Catégorie</label><select id="supportCategory" class="fieldSelect"><option value="login" data-i18n="support_cat_login">Connexion / compte</option><option value="scan" data-i18n="support_cat_scan">Scan / capture</option><option value="data" data-i18n="support_cat_data">Données / escouades</option><option value="ai" data-i18n="support_cat_ai">IA / Diagnostic PRO</option><option value="alliance" data-i18n="support_cat_alliance">Alliance R5/R4</option><option value="bug" data-i18n="support_cat_bug">Bug</option><option value="suggestion" data-i18n="support_cat_suggestion">Suggestion</option><option value="other" data-i18n="support_cat_other">Autre</option></select></div>
         <div class="field"><label data-i18n="support_subject">Sujet</label><input id="supportSubject" maxlength="140" data-i18n-placeholder="support_subject_placeholder" placeholder="Résume le problème en une phrase" /></div>
@@ -373,7 +374,7 @@
     </div>
   </section>
 
-  <script type="module" src="/app.js?v=qg35-coach-r1"></script>
+  <script type="module" src="/app.js?v=qg35-home-visibility-v2-5-32-hf8-6-32-r1"></script>
   <script type="module" src="/publisher-ui.js?v=hf8630-desert-storm-plan-r2"></script>
 </body>
 </html>
