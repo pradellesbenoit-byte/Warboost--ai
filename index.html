@@ -7,7 +7,7 @@
   <title>WarBoost V2.5.30 HF8.6.30 — Desert Storm plan rendering</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/warboost-apple-touch-icon.png" />
-  <link rel="stylesheet" href="/styles.css?v=hf8628-squad-native-checkbox-r1" />
+  <link rel="stylesheet" href="/styles.css?v=hf8630-idle-resume-r1" />
   <link rel="stylesheet" href="/hero-layout-fix.css" />
   <link rel="stylesheet" href="/publisher-ui.css" />
   <!-- Legacy verification marker: WarBoost V2.5.28 HF8.6.12 -->
@@ -15,6 +15,7 @@
   <!-- Legacy HF8.6.19: WarBoost V2.5.28 HF8.6.19 · /app.js?v=hf8619 · /publisher-ui.js?v=hf8619 -->
 </head>
 <body>
+  <div id="idleResumeStatus" class="idleResumeToast hidden" role="status" aria-live="polite"></div>
   <!-- Legacy cache-bust verification markers: /app.js?v=hf8618 · /publisher-ui.js?v=hf8618 -->
   <!-- Legacy HF8.6.23 verification markers: WarBoost V2.5.28 HF8.6.23 · /app.js?v=hf8623 · /publisher-ui.js?v=hf8623 -->
   <!-- HF8.6.28: repeated access-sensitive repaint after hydration/resume; Coach/Sync/Activity cannot remain stale. -->
@@ -357,7 +358,7 @@
     </div>
   </section>
 
-  <script type="module" src="/app.js?v=hf8630-desert-storm-plan-r2"></script>
+  <script type="module" src="/app.js?v=hf8630-idle-resume-r1"></script>
   <script type="module" src="/publisher-ui.js?v=hf8630-desert-storm-plan-r2"></script>
 </body>
 </html>

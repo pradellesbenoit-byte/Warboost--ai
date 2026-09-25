@@ -19,6 +19,8 @@ import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisio
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan.js";
 import {renderDesertStormPlanInto} from "./lib/desert-storm-plan-ui.js?v=hf8630-desert-storm-plan-r2";
 import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
+import {createIdleLifecycle} from "./lib/idle-lifecycle.js?v=hf8630-idle-resume-r1";
+import {runAuthenticatedIdleResume} from "./lib/session-resume.js?v=hf8630-idle-resume-r1";
 import {unlockDesertStormSearchInput} from "./lib/desert-storm-search.js";
 import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
 import {CANYON_STORM_RULESET,buildCanyonPlan,normalizeCanyonState,mergeCanyonState,clearCanyonPreparationSelection} from "./lib/canyon-storm-plan.js";
@@ -323,6 +325,8 @@ invalidateStoredPendingAccountCaches();
 function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.28-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state),restored=backfillConfirmedHeroPowers(finalRepair.state),pendingRepair=normalizeAlliancePendingState(restored.state);let next=pendingRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||restored.changed||pendingRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.28-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,cloudRetryTimer=null,cloudPullRetryTimer=null,cloudDirty=false,cloudRevision=null,suppressPush=false,cloudHydrationPending=false,cloudProfileVerified=false,canonicalRosterReady=false,cloud=null,cloudSession=null,cloudRecoveryRedirect="",cloudDataConfig={url:"",key:""},sessionApplyInFlight=null,lastAppliedSessionKey="",runtimeReconcileInFlight=null,lastRuntimeReconcileAt=0,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false,payments_enabled:false,commercial_preview:false,subscription:null},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null,scanImageName="capture.jpg",supportTicketsState=[],supportBusy=false;
+let foregroundClockInterval=null,foregroundServerTimeInterval=null,foregroundPausedAt=null,idleResumeInFlight=null,idleResumeStatusTimer=null,idleLifecycle=null;
+let runtimeReconcileInFlightForce=false;
 let bootstrapDiagnostics={run_id:"",started_at:null,finished_at:null,status:"idle",stages:[]};
 function bootstrapNow(){return typeof performance!=="undefined"&&performance.now?performance.now():Date.now()}
 function resetBootstrapDiagnostics(reason="session"){bootstrapDiagnostics={run_id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,started_at:new Date().toISOString(),finished_at:null,status:reason,stages:[]};return bootstrapDiagnostics}
@@ -731,7 +735,13 @@ async function initCloudAuth(){
     if(error)throw error;
     cloudInit={status:"ready",configured:true,transport:cloud.diagnostics?.transport||"direct-supabase-auth-api",error:null};
     await applySession(data?.session||null);
-    cloud.auth.onAuthStateChange((_event,session)=>{void applySession(session||null)});
+    cloud.auth.onAuthStateChange((event,session)=>{
+      const currentUserId=String(cloudSession?.user?.id||""),nextUserId=String(session?.user?.id||"");
+      if(event==="TOKEN_REFRESHED"&&session&&currentUserId&&currentUserId===nextUserId){
+        cloudSession=session;lastAppliedSessionKey=sessionApplyKey(session);renderAuth();return;
+      }
+      void applySession(session||null);
+    });
   }catch(error){cloudInit={status:"auth-unreachable",configured:true,transport:"direct-supabase-auth-api",error:error?.code||"auth_unreachable"};renderAuth();renderBeta()}
 }
 async function refreshBeta(){if(!cloudSession?.access_token){betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};renderBeta();render();return betaState}const previouslyVerified=betaState?.allowed===true;try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok&&j.beta){betaState={...betaState,release:j.release!==false,enforced:Boolean(j.enforced??j.beta_enforced),configured:Boolean(j.beta_configured??j.enforced??j.beta_enforced),allowed:Boolean(j.allowed??j.active),access_status:j.access_status||j.beta_access||(j.active?"invited":"invite-required"),consent_version:j.consent_version||BETA_CONSENT_VERSION,payments_enabled:false,pro_included:Boolean(j.pro_included)}}else{const code=String(j?.error||"").toUpperCase(),definitive=r.status===403||["BETA_INVITE_REQUIRED","BETA_INVITE_REVOKED","BETA_INVITE_EXPIRED"].includes(code);betaState={...betaState,allowed:definitive?false:preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true}),access_status:definitive?(code==="BETA_INVITE_REVOKED"?"revoked":code==="BETA_INVITE_EXPIRED"?"expired":"invite-required"):(preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true})?((betaState.access_status&&betaState.access_status!=="checking")?betaState.access_status:"accepted"):(j.access_status||j.beta_access||j.error||"beta-status-error"))}}}catch{const keep=preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true});betaState={...betaState,allowed:keep,access_status:keep?((betaState.access_status&&betaState.access_status!=="checking")?betaState.access_status:"accepted"):"beta-status-error"}}renderBeta();render();return betaState}
@@ -1111,7 +1121,17 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
 
 async function refreshServerTime(){try{const {response:r,json:j}=await fetchJsonBounded("/api/health?clock=1",{cache:"no-store"},5000);if(!r.ok)throw new Error();serverNow=new Date(j.now);state.vs.week=j.iso_week;state.vs.day=j.vs_day;$("#syncPill").className="syncState good";$("#syncPill").textContent=t("server_ok")}catch{serverNow=new Date();state.vs.week=isoWeek(serverNow);state.vs.day=vsDayFromServer(serverNow);$("#syncPill").className="syncState";$("#syncPill").textContent=t("local_time")}renderClock();render()}
 function renderClock(){const d=serverNow;const clock=$("#serverClock"),day=$("#serverDay");if(clock)clock.textContent=d.toLocaleTimeString(locale,{hour:"2-digit",minute:"2-digit",second:"2-digit"});if(day)day.textContent=`${d.toLocaleDateString(locale,{weekday:"long",day:"2-digit",month:"short"})} · ${t("week")} ${currentVsWeek()}`}
-setInterval(()=>{serverNow=new Date(serverNow.getTime()+1000);renderClock()},1000);setInterval(refreshServerTime,5*60*1000);
+function startForegroundRefreshes({refreshTime=false}={}){
+  if(foregroundPausedAt){serverNow=new Date(serverNow.getTime()+Math.max(0,Date.now()-foregroundPausedAt));foregroundPausedAt=null;renderClock()}
+  if(foregroundClockInterval===null)foregroundClockInterval=setInterval(()=>{serverNow=new Date(serverNow.getTime()+1000);renderClock()},1000);
+  if(foregroundServerTimeInterval===null)foregroundServerTimeInterval=setInterval(refreshServerTime,5*60*1000);
+  if(refreshTime)void refreshServerTime();
+}
+function stopForegroundRefreshes(){
+  if(foregroundClockInterval!==null){clearInterval(foregroundClockInterval);foregroundClockInterval=null}
+  if(foregroundServerTimeInterval!==null){clearInterval(foregroundServerTimeInterval);foregroundServerTimeInterval=null}
+  if(foregroundPausedAt===null)foregroundPausedAt=Date.now();
+}
 
 async function restoreAuthenticatedProfile(loginSeed=null,{reason="session"}={}){
   if(!cloudSession?.access_token||!betaConsentAccepted())return {ok:false,skipped:true,error:"restore_not_ready"};
@@ -1144,7 +1164,15 @@ async function retryCloudProfileRestore(){if(!cloudSession?.access_token||!betaC
 // HF8.6.25: one runtime reconciliation path for login, resume, reconnect and retry.
 // It prevents different lifecycle events from running different partial cloud workflows.
 async function reconcileAuthenticatedRuntime(reason="runtime",{force=false}={}){
-  if(runtimeReconcileInFlight)return runtimeReconcileInFlight;
+  if(runtimeReconcileInFlight){
+    const current=runtimeReconcileInFlight;
+    if(force&&!runtimeReconcileInFlightForce){
+      await current.catch(()=>{});
+      if(runtimeReconcileInFlight===current)return current;
+      return reconcileAuthenticatedRuntime(reason,{force:true});
+    }
+    return current;
+  }
   const task=(async()=>{
     const userId=String(cloudSession?.user?.id||"");
     if(!userId||!cloudSession?.access_token){render();renderAuth();renderBeta();return {ok:false,skipped:true,reason:"signed-out"}}
@@ -1164,7 +1192,49 @@ async function reconcileAuthenticatedRuntime(reason="runtime",{force=false}={}){
     return result;
   })();
   runtimeReconcileInFlight=task;
-  try{return await task}finally{if(runtimeReconcileInFlight===task)runtimeReconcileInFlight=null}
+  runtimeReconcileInFlightForce=Boolean(force);
+  try{return await task}finally{if(runtimeReconcileInFlight===task){runtimeReconcileInFlight=null;runtimeReconcileInFlightForce=false}}
+}
+function showIdleResumeStatus(kind){
+  const node=$("#idleResumeStatus");if(!node)return;
+  clearTimeout(idleResumeStatusTimer);
+  const french=String(document.documentElement.lang||"fr").toLowerCase().startsWith("fr");
+  const messages={
+    working:french?"Mise à jour WarBoost…":"Updating WarBoost…",
+    done:french?"À jour":"Up to date",
+    reconnect:french?"Session expirée — reconnecte-toi pour continuer.":"Session expired — sign in again to continue.",
+    failed:french?"Mise à jour impossible pour le moment. Tes données sont conservées.":"Update unavailable right now. Your data is preserved."
+  };
+  node.textContent=messages[kind]||messages.working;node.classList.remove("hidden");
+  if(kind!=="working")idleResumeStatusTimer=setTimeout(()=>node.classList.add("hidden"),kind==="done"?1800:4500);
+}
+async function performIdleResume(reason="idle-return"){
+  if(idleResumeInFlight)return idleResumeInFlight;
+  const task=(async()=>{
+    showIdleResumeStatus("working");
+    try{
+      const result=await runAuthenticatedIdleResume({
+        auth:cloud?.auth,currentSession:cloudSession,
+        setSession:session=>{cloudSession=session;renderAuth()},
+        applySession,reconcile:reconcileAuthenticatedRuntime
+      });
+      if(result?.reauthRequired){
+        startForegroundRefreshes();
+        showIdleResumeStatus("reconnect");
+        return result;
+      }
+      if(result?.skipped){startForegroundRefreshes();$("#idleResumeStatus")?.classList.add("hidden");return result}
+      startForegroundRefreshes({refreshTime:true});
+      showIdleResumeStatus(result?.ok===false?"failed":"done");
+      return result;
+    }catch(error){
+      startForegroundRefreshes();
+      showIdleResumeStatus("failed");
+      return {ok:false,error:error?.name||"idle_resume_failed"};
+    }
+  })();
+  idleResumeInFlight=task;
+  try{return await task}finally{if(idleResumeInFlight===task)idleResumeInFlight=null}
 }
 
 /* Legacy HF8.6.17 verification-only source marker (non-executable):
@@ -2918,11 +2988,19 @@ $("#logoutBtn")?.addEventListener("click",async()=>{const signedOutUserId=String
 document.addEventListener("click",e=>{const btn=e.target.closest?.("[data-inline-hero-save]");if(!btn)return;e.preventDefault();e.stopPropagation();const container=btn.closest?.("[data-inline-confirm]");saveInlineHeroNames(btn.dataset.inlineHeroSave,container,btn)});
 document.addEventListener("click",e=>{const btn=e.target.closest?.(".heroConfirmAction[data-hero-confirm]");if(!btn)return;e.preventDefault();e.stopPropagation();startHeroConfirmation(btn.dataset.heroConfirm)});
 $("#saveHeroNamesBtn")?.addEventListener("click",saveHeroConfirmation);$("#skipHeroNamesBtn")?.addEventListener("click",skipHeroConfirmation);
-window.addEventListener("online",()=>{queueCriticalUiRepaint();void reconcileAuthenticatedRuntime("online",{force:true})});
-window.addEventListener("focus",()=>{queueCriticalUiRepaint();void reconcileAuthenticatedRuntime("focus")});
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){queueCriticalUiRepaint();void reconcileAuthenticatedRuntime("visible")}else if(document.visibilityState==="hidden"&&cloudDirty)void pushServerState({keepalive:true})});
-window.addEventListener("pageshow",e=>{queueCriticalUiRepaint();void reconcileAuthenticatedRuntime(e?.persisted?"pageshow-bfcache":"pageshow")});
+idleLifecycle=createIdleLifecycle({
+  onSuspend:()=>{stopForegroundRefreshes();try{closeDrawers()}catch{}},
+  onBackground:()=>stopForegroundRefreshes(),
+  onResume:({reason})=>performIdleResume(reason),
+  onRecentReturn:({reason})=>{startForegroundRefreshes();queueCriticalUiRepaint();void reconcileAuthenticatedRuntime(reason)}
+});
+window.addEventListener("online",()=>{
+  queueCriticalUiRepaint();
+  if(idleLifecycle?.isIdleDue())void idleLifecycle.returnFrom("online",{bypassRetryThrottle:true});
+  else void reconcileAuthenticatedRuntime("online",{force:true});
+});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&cloudDirty)void pushServerState({keepalive:true})});
 window.addEventListener("pagehide",()=>{if(cloudDirty)void pushServerState({keepalive:true})});
-if("serviceWorker" in navigator)window.addEventListener("load",async()=>{try{const generation="warboost-v2-5-30-hf8-6-30-desert-storm-plan-r2",reloadKey=`${generation}:reloaded`,reg=await navigator.serviceWorker.register(`/sw.js?rev=${generation}`,{updateViaCache:"none"});let refreshing=sessionStorage.getItem(reloadKey)==="1";const activateWaiting=()=>{if(reg.waiting&&sessionStorage.getItem(reloadKey)!=="1")reg.waiting.postMessage({type:"WARBOOST_ACTIVATE"})};navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing||sessionStorage.getItem(reloadKey)==="1")return;refreshing=true;sessionStorage.setItem(reloadKey,"1");location.reload()});activateWaiting();reg.addEventListener("updatefound",()=>{const worker=reg.installing;if(worker)worker.addEventListener("statechange",()=>{if(worker.state==="installed")activateWaiting()})});await reg.update();activateWaiting()}catch{}});
-handleJoinLink();applyLanguage();refreshServerTime();initCloudAuth();render();renderAuth();renderBeta();restorePendingScans();
+if("serviceWorker" in navigator)window.addEventListener("load",async()=>{try{const generation="warboost-v2-5-30-hf8-6-30-idle-resume-r1",reloadKey=`${generation}:reloaded`,reg=await navigator.serviceWorker.register(`/sw.js?rev=${generation}`,{updateViaCache:"none"});let refreshing=sessionStorage.getItem(reloadKey)==="1";const activateWaiting=()=>{if(reg.waiting&&sessionStorage.getItem(reloadKey)!=="1")reg.waiting.postMessage({type:"WARBOOST_ACTIVATE"})};navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing||sessionStorage.getItem(reloadKey)==="1")return;refreshing=true;sessionStorage.setItem(reloadKey,"1");location.reload()});activateWaiting();reg.addEventListener("updatefound",()=>{const worker=reg.installing;if(worker)worker.addEventListener("statechange",()=>{if(worker.state==="installed")activateWaiting()})});await reg.update();activateWaiting()}catch{}});
+handleJoinLink();applyLanguage();startForegroundRefreshes({refreshTime:true});void initCloudAuth().then(()=>idleLifecycle?.start(),()=>idleLifecycle?.start());render();renderAuth();renderBeta();restorePendingScans();
 // Legacy HF8.6.19 returning-player verification marker: function betaPrivateDataVisible(){const userId=String(cloudSession?.user?.id||"");const trustedLocal=Boolean(userId&&hasMeaningfulCore(readAccountState(userId))),checking=betaState?.access_status==="checking";return Boolean(cloudSession?.user)&&!checking&&betaAccessAllowed()&&betaConsentAccepted()&&(cloudProfileVerified||trustedLocal)}
