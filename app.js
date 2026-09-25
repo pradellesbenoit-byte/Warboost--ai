@@ -1,5 +1,6 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
+import {createEndgameCoachReport,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=qg35-coach-r1";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
 import {canonicalShopStore} from "./lib/shop-catalog.js";
 import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad} from "./lib/squad-identity.js";
@@ -39,8 +40,8 @@ import {parseHeroPower,confirmedHeroPower,heroPowerIsConfirmed} from "./lib/hero
 import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const APP_VERSION="2.5.30";
-const RELEASE_LABEL="HF8.6.30"; // Desert Storm plan rendering is confirmed before success.
+const APP_VERSION="2.5.31";
+const RELEASE_LABEL="HF8.6.31"; // QG35+ Coach reads saved state without writing player data.
 // Legacy HF8.6.27 verification marker: const RELEASE_LABEL="HF8.6.27"
 // Legacy HF8.6.26 verification marker: const RELEASE_LABEL="HF8.6.26"
 // Legacy HF8.6.26 render-contract verification markers (non-executable):
@@ -1291,6 +1292,140 @@ function renderSeasonAccess(){
 }
 function openQuickScan(type){if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("scan");renderScanTypeOptions();if($("#scanType"))$("#scanType").value=type;updateSquadCaptureHelp(type)}
 
+function qg35Text(key,params={}){
+  const translated={...params};
+  for(const [name,value] of Object.entries(translated))if(name.endsWith("_key")&&typeof value==="string")translated[name]=t(value);
+  return esc(t(key,translated));
+}
+function qg35Value(value){
+  if(value===null||value===undefined||value==="")return qg35Text("qg35_unknown_value");
+  if(typeof value==="number")return esc(new Intl.NumberFormat(lang==="fr"?"fr-FR":"en-US",{maximumFractionDigits:2}).format(value));
+  return esc(String(value));
+}
+function qg35Facts(facts){
+  if(!Array.isArray(facts)||!facts.length)return `<p class="qg35NoData">${qg35Text("qg35_not_tracked")}</p>`;
+  return `<ul class="qg35FactList">${facts.map(fact=>`<li><b>${esc(String(fact.label||""))}</b>${fact.label?": ":""}${qg35Value(fact.value)}</li>`).join("")}</ul>`;
+}
+function qg35DetailSection(titleKey,content){return `<details class="qg35DetailSection"><summary>${qg35Text(titleKey)}</summary><div class="qg35DetailBody">${content}</div></details>`}
+function qg35AdvancedAccess(){
+  return hasEndgameCoachProAccess({
+    betaMode:safeLaunchBetaMode(),betaAllowed:betaAccessAllowed(),
+    betaConsentAccepted:betaConsentAccepted(),proActive:Boolean(proState?.active)
+  });
+}
+function hideEndgameCoach(){
+  $("#qg35CoachCard")?.classList.add("hidden");
+  $("#qg35UnknownPrompt")?.classList.add("hidden");
+  const content=$("#qg35CoachContent");if(content)content.innerHTML="";
+}
+function renderEndgameCoachHome(){
+  const card=$("#qg35CoachCard"),unknown=$("#qg35UnknownPrompt"),meta=$("#qg35HomeMeta");
+  if(!card||!unknown)return;
+  if(!betaPrivateDataVisible()){hideEndgameCoach();return}
+  const report=createEndgameCoachReport(state);
+  const eligible=report.eligibility.eligible;
+  card.classList.toggle("hidden",!eligible);
+  unknown.classList.toggle("hidden",report.eligibility.status!=="unknown");
+  if(meta&&eligible)meta.textContent=t("qg35_hq_eligible",{hq:report.eligibility.hq_level});
+}
+function qg35ScanType(actionKey){
+  return ({
+    qg35_action_scan_squad:"squad1",
+    qg35_action_review_composition:"squad1",
+    qg35_action_scan_drone:"drone",
+    qg35_action_scan_exclusive:"exclusive",
+    qg35_action_scan_gear:"squad1"
+  })[actionKey]||null;
+}
+function renderEndgameCoachDrawer(){
+  const content=$("#qg35CoachContent");if(!content)return;
+  if(!betaPrivateDataVisible()){content.innerHTML=`<div class="notice">${esc(betaAccessMessage())}</div>`;return}
+  const report=createEndgameCoachReport(state);
+  if(!report.eligibility.eligible){content.innerHTML=`<div class="notice">${qg35Text("qg35_not_eligible")}</div>`;return}
+  const confidenceLabel=t(`qg35_confidence_${report.confidence.band}`);
+  const priorities=report.top_priorities.map((item,index)=>{
+    const scanType=qg35ScanType(item.action_key);
+    return `<article class="qg35Priority">
+      <div class="qg35PriorityHead"><span>${qg35Text(`qg35_priority_${index+1}`)}</span><span>${qg35Text(item.system_key,item.params)}</span></div>
+      <h3>${qg35Text(item.action_key,item.params)}</h3>
+      <p><b>${qg35Text("qg35_gain_label")}:</b> ${qg35Text(item.gain_key,item.params)}</p>
+      <button class="smallBtn qg35WhyToggle" type="button" data-qg35-why="${index}" aria-expanded="false">${qg35Text("qg35_why")}</button>
+      <p id="qg35Why${index}" class="qg35WhyText hidden">${qg35Text(item.why_key,item.params)}</p>
+      ${scanType?`<button class="secondaryBtn qg35WhyToggle" type="button" data-qg35-scan-type="${esc(scanType)}">${qg35Text("qg35_scan_now")}</button>`:""}
+    </article>`;
+  }).join("");
+  const missing=report.missing_data.length
+    ?`<ul class="qg35MissingList">${report.missing_data.map(item=>`<li>${qg35Text(item.message_key)}</li>`).join("")}</ul>`
+    :`<p>${qg35Text("qg35_no_missing_data")}</p>`;
+  const summary=`<section class="qg35Intro"><strong>${qg35Text("qg35_summary_title")}</strong>
+    <p>${qg35Text("qg35_summary_intro")}</p>
+    <div class="qg35Confidence">${qg35Text("qg35_confidence_label")}: <b>${esc(confidenceLabel)}</b> · ${qg35Text("qg35_confidence_detail",{score:report.confidence.score})}</div>
+  </section><div class="qg35Priorities">${priorities}</div>`;
+  const bottleneck=qg35DetailSection("qg35_section_bottleneck",
+    `<p><b>${qg35Text(report.bottleneck.system_key,report.bottleneck.params)}</b></p><p>${qg35Text(report.bottleneck.diagnosis_key,report.bottleneck.params)}</p>
+    <p>${qg35Text(report.bottleneck.is_data_limited?"qg35_data_limited":"qg35_bottleneck_relative_note")}</p>`);
+  const plan=report.seven_day_plan.map(item=>{
+    const action=item.action
+      ?`${qg35Text(item.action.system_key,item.action.params)} — ${qg35Text(item.action.action_key,item.action.params)}`
+      :qg35Text(item.action_key);
+    const use=item.use_now.length?item.use_now.map(name=>esc(name)).join(", "):qg35Text("qg35_no_spend_scheduled");
+    const conserve=item.conserve.length?item.conserve.map(name=>esc(name)).join(", "):qg35Text("qg35_none_known");
+    return `<li><b>${qg35Text("qg35_day_label",{day:item.day})}</b> ${action}<br><span>${qg35Text("qg35_use_now")}: ${use} · ${qg35Text("qg35_conserve")}: ${conserve}</span><br><span>${qg35Text(item.wait_for_event_key)}</span></li>`;
+  }).join("");
+  const resources=report.resources.length?report.resources.map(item=>{
+    const statusKey=item.recommendation==="UTILISER"?"qg35_resource_use_label":item.recommendation==="PRIORITÉ FAIBLE"?"qg35_resource_low_label":"qg35_resource_keep_label";
+    return `<div class="qg35Resource"><strong>${esc(item.name)}</strong><span class="qg35StatusPill">${qg35Text(statusKey)}</span>
+      <p>${qg35Text("qg35_stock_label")}: ${qg35Value(item.stock)} · ${qg35Text(item.reason_key)}</p>
+      ${item.next_use?`<p>${qg35Text("qg35_next_use_cost",{cost:item.next_use.cost})} · ${qg35Text("qg35_expected_gain_label")}: ${qg35Value(item.next_use.expected_gain)}</p>`:""}
+    </div>`;
+  }).join(""):`<p class="qg35NoData">${qg35Text("qg35_resources_unknown")}</p>`;
+  const heroRows=report.squad1.heroes.length?report.squad1.heroes.map(hero=>`<div class="qg35HeroRow">
+    <b>${esc(hero.name)}</b> · ${qg35Text(hero.type_label_key)}
+    <p>${qg35Text("qg35_level_label")}: ${qg35Value(hero.level)} · ${qg35Text("qg35_stars_label")}: ${qg35Value(hero.stars)} · ${qg35Text("qg35_weapon_level_label")}: ${qg35Value(hero.weapon_level)}</p>
+    <p>${qg35Text("qg35_skills_label")}: ${qg35Text(hero.skills_known?"qg35_known":"qg35_unknown_value")} · ${qg35Text("qg35_gear_label")}: ${qg35Text(hero.gear_known?"qg35_known":"qg35_unknown_value")}</p>
+  </div>`).join(""):`<p class="qg35NoData">${qg35Text("qg35_missing_squad_composition")}</p>`;
+  const roles=`<p>${qg35Text("qg35_frontline_label")}: ${qg35Text(report.squad1.frontline==="known"?"qg35_known":"qg35_unknown_value")} · ${qg35Text("qg35_dps_label")}: ${qg35Text(report.squad1.dps==="known"?"qg35_known":"qg35_unknown_value")}</p>`;
+  const technology=`<p>${qg35Text("qg35_squad_main_type",{type_key:report.technology_route.main_type_label_key})}</p>
+    <p>${report.technology_route.mastery_pct===null?qg35Text("qg35_mastery_unknown"):qg35Text(report.technology_route.mastery_type_confirmed?"qg35_mastery_known":"qg35_mastery_untyped",{value:report.technology_route.mastery_pct})}</p>
+    ${report.technology_route.next_research
+      ?`<p>${qg35Text("qg35_next_technology")}: <b>${esc(report.technology_route.next_research.name)}</b> · ${qg35Text("qg35_source_label")}: ${esc(report.technology_route.next_research.source)}</p>`
+      :`<p>${qg35Text("qg35_next_tech_unknown")}</p>`}
+    ${report.technology_route.known_fields.length?`<ul class="qg35FactList">${report.technology_route.known_fields.map(item=>`<li>${qg35Text(`qg35_tech_${item.key}`)}: ${qg35Value(item.value)}%</li>`).join("")}</ul>`:`<p class="qg35NoData">${qg35Text("qg35_missing_technology")}</p>`}`;
+  const heroWeaponDetail=`${heroRows}<p>${qg35Text(report.heroes_weapons.status_key)}</p>`;
+  const droneDetail=`<p>${qg35Text("qg35_drone_level_label")}: ${qg35Value(report.drone.level)} · ${qg35Text("qg35_drone_power_label")}: ${report.drone.power_m===null?qg35Text("qg35_unknown_value"):esc(fmtPower(report.drone.power_m))}</p>
+    <div><b>${qg35Text("qg35_drone_components")}</b>${qg35Facts(report.drone.components)}</div>
+    <div><b>${qg35Text("qg35_drone_chips")}</b>${qg35Facts(report.drone.chips)}</div><p>${qg35Text(report.drone.status_key)}</p>`;
+  const bonusDetail=`<h4>${qg35Text("qg35_decorations_label")}</h4>${qg35Facts(report.decorations_overlord_season.decorations)}
+    <h4>${qg35Text("qg35_overlord_label")}</h4>${qg35Facts(report.decorations_overlord_season.overlord)}
+    <h4>${qg35Text("qg35_t11_label")}</h4>${qg35Facts(report.decorations_overlord_season.t11)}
+    <h4>${qg35Text("qg35_season_label")}</h4>${qg35Facts(report.decorations_overlord_season.season)}
+    <h4>${qg35Text("qg35_awakening_label")}</h4>${report.decorations_overlord_season.awakening.length?report.decorations_overlord_season.awakening.map(item=>`<p><b>${esc(item.hero)}</b>${qg35Facts(item.facts)}</p>`).join(""):qg35Facts([])}`;
+  const antiWaste=report.anti_waste.length
+    ?report.anti_waste.map(item=>`<p>${qg35Text(item.message_key,item.params||{})}</p><p>${qg35Text("qg35_source_label")}: ${(item.sources||[]).map(value=>esc(value)).join(" · ")}</p>`).join("")
+    :`<p>${qg35Text("qg35_anti_waste_unavailable")}</p>`;
+  const beforeAfter=report.before_after.available
+    ?`<p>${qg35Text("qg35_metric_label")}: ${esc(report.before_after.metric)} (${esc(report.before_after.unit)})</p><p>${qg35Text("qg35_before_value")}: ${qg35Value(report.before_after.before)} · ${qg35Text("qg35_after_value")}: ${qg35Value(report.before_after.after)}</p><p>${qg35Text("qg35_source_label")}: ${esc(report.before_after.source)}</p>`
+    :`<p>${qg35Text(report.before_after.message_key)}</p>`;
+  const advanced=`<div class="qg35AdvancedSections">
+    ${bottleneck}
+    ${qg35DetailSection("qg35_section_seven_days",`<ol class="qg35PlanList">${plan}</ol>`)}
+    ${qg35DetailSection("qg35_section_resources",resources)}
+    ${qg35DetailSection("qg35_section_squad1",`${roles}${heroRows}`)}
+    ${qg35DetailSection("qg35_section_technology",technology)}
+    ${qg35DetailSection("qg35_section_heroes_weapons",heroWeaponDetail)}
+    ${qg35DetailSection("qg35_section_drone",droneDetail)}
+    ${qg35DetailSection("qg35_section_bonuses",bonusDetail)}
+    ${qg35DetailSection("qg35_section_anti_waste",antiWaste)}
+    ${qg35DetailSection("qg35_section_before_after",beforeAfter)}
+    ${qg35DetailSection("qg35_missing_title",missing)}
+  </div>`;
+  const advancedPanel=qg35AdvancedAccess()?advanced:`<section class="qg35LockedPanel">
+    <strong>${qg35Text("qg35_pro_locked_title")}</strong><p>${qg35Text("qg35_pro_locked_text")}</p>
+    <button class="primaryAction qg35ProButton" type="button" data-qg35-pro>${qg35Text("qg35_pro_details_button")}</button>
+  </section>`;
+  content.innerHTML=summary+advancedPanel;
+}
+
 // HF8.6.22: each visible surface has its own render boundary. No optional module may
 // leave another surface stale simply because one formatting/render step throws.
 function renderHomePlayerMeta(p){const el=$("#playerMeta");if(el)el.textContent=p?.name?(p?.hq_level?`${t("hq")} ${p.hq_level}`:t("connected")):t("to_connect")}
@@ -1335,6 +1470,7 @@ function render(){
     if($("#seasonProgressLabel"))$("#seasonProgressLabel").textContent="—";
     if($("#seasonLifecycleSelect"))$("#seasonLifecycleSelect").value="unknown";
     if($("#seasonStatus"))$("#seasonStatus").textContent=betaAccessMessage();
+    safeRenderStep("MASK_QG35_COACH",hideEndgameCoach);
     $("#proPriorityPanel")?.classList.add("hidden");
     if($("#allianceImmediate")){ $("#allianceImmediate").classList.add("hidden"); $("#allianceImmediate").innerHTML=""; }
     if($("#alliancePlanB")){ $("#alliancePlanB").classList.add("hidden"); $("#alliancePlanB").innerHTML=""; }
@@ -1349,6 +1485,7 @@ function render(){
   safeRenderStep("HOME_ALLIANCE",()=>renderHomeAllianceMeta(p,a));
   safeRenderStep("HOME_VS",()=>renderHomeVsMeta(v));
   safeRenderStep("PLAYER_SUMMARY",()=>renderPlayerCoreSummary(p,d));
+  safeRenderStep("QG35_COACH_HOME",renderEndgameCoachHome);
   // HF8.6.22 keeps Account independent and isolates every remaining surface.
   safeRenderStep("ACCOUNT_FIELDS",renderAccountFields);
   safeRenderStep("PLAYER_ONBOARDING",renderPlayerOnboarding);
@@ -2519,7 +2656,7 @@ function renderProvider(){
 function openDrawer(name){
   // Re-render immediately before a user opens any data drawer. Because render() now has complete
   // per-surface boundaries, a failure in one module cannot stop this drawer from refreshing.
-  if(["account","player","alliance","vs","season"].includes(String(name||"")))safeRenderStep(`DRAWER_REFRESH_${String(name||"").toUpperCase()}`,render);
+  if(["account","player","alliance","vs","season","qg35Coach"].includes(String(name||"")))safeRenderStep(`DRAWER_REFRESH_${String(name||"").toUpperCase()}`,render);
   closeDrawers();
   $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false")}
   if(name==="account"){safeRenderStep("ACCOUNT_OPEN_FIELDS",renderAccountFields);safeRenderStep("ACCOUNT_OPEN_AUTH",renderAuth);safeRenderStep("ACCOUNT_OPEN_BETA",renderBeta);safeRenderStep("ACCOUNT_OPEN_PRO",renderPro)}
@@ -2527,11 +2664,22 @@ function openDrawer(name){
   if(betaPrivateDataVisible()&&name==="alliance"){safeRenderStep("ALLIANCE_OPEN_CORE",()=>renderAllianceCoreSummary(state.player,state.alliance));safeRenderStep("ALLIANCE_OPEN_MEMBERS",renderMembers);safeRenderStep("ALLIANCE_OPEN_ACCESS",renderAllianceAccess);safeRenderStep("ALLIANCE_OPEN_DESERT_STORM",renderDesertStormPlanner);safeRenderStep("ALLIANCE_OPEN_CANYON",renderCanyonPlanner);bindAllianceAccordions();resetAllianceAccordions()}
   if(betaPrivateDataVisible()&&name==="vs")safeRenderStep("VS_OPEN_CORE",renderVsLive);
   if(betaPrivateDataVisible()&&name==="season"){safeRenderStep("SEASON_OPEN_ACCESS",renderSeasonAccess);safeRenderStep("SEASON_OPEN_CORE",()=>renderSeasonCoreSummary(state.season));}
+  if(betaPrivateDataVisible()&&name==="qg35Coach")safeRenderStep("QG35_COACH_OPEN",renderEndgameCoachDrawer);
   if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)
 }
 function closeDrawers(){unmountAuthControls();closeAlliancePlayerProfile();closeAllianceEventDetail();$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")})}
 
 $$('[data-open]').forEach(b=>b.addEventListener("click",()=>{if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer(b.dataset.open)}));$("#homeProBtn")?.addEventListener("click",()=>{openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"start"}),140)});$$('[data-close]').forEach(b=>b.addEventListener("click",closeDrawers));$("#backdrop").addEventListener("click",closeDrawers);$("#accountBtn").addEventListener("click",()=>openDrawer("account"));$("#adviceAction").addEventListener("click",()=>{if(state.player.name&&(!requireBetaAccess()||!requireBetaConsent()))return;if(playerNeedsOnboarding()&&betaPrivateDataVisible()){const next=playerOnboardingStatus().next_type||"profile";return openQuickScan(next)}openDrawer(state.player.name?"player":"account")});$("#languageSelect").addEventListener("change",e=>{languageChoice=e.target.value;safeLocalSet(LANG_KEY,languageChoice);applyLanguage()});
+$("#qg35CoachCard")?.addEventListener("click",()=>{if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("qg35Coach")});
+$("#qg35UnknownScanBtn")?.addEventListener("click",()=>openQuickScan("profile"));
+$("#qg35CoachDrawer")?.addEventListener("click",event=>{
+  const target=event.target instanceof Element?event.target:null;if(!target)return;
+  const scan=target.closest("[data-qg35-scan-type]");
+  if(scan){openQuickScan(scan.dataset.qg35ScanType);return}
+  const why=target.closest("[data-qg35-why]");
+  if(why){const index=why.dataset.qg35Why,body=$(`#qg35Why${index}`),expanded=why.getAttribute("aria-expanded")==="true";if(body)body.classList.toggle("hidden",expanded);why.setAttribute("aria-expanded",String(!expanded));return}
+  if(target.closest("[data-qg35-pro]")){if(requirePro()){renderEndgameCoachDrawer();$("#qg35AdvancedSections")?.scrollIntoView({behavior:"smooth",block:"start"})}}
+});
 $("#saveProfileBtn").addEventListener("click",async()=>{
    const status=$("#profileSaveStatus"),btn=$("#saveProfileBtn"),name=canonicalSelfRosterMember()?.name||$("#fName").value.trim(),server=$("#fServer").value.trim(),hq=Number($("#fHq").value),requestedRole=$("#fRole").value.trim().toUpperCase()||"R1";
   const show=(text,warn=false)=>{if(status){status.className=`notice${warn?" warn":""}`;status.textContent=text;status.classList.remove("hidden")}};

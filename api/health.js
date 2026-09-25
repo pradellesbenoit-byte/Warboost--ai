@@ -25,7 +25,7 @@ export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
   const now=new Date(),serverClock=lastWarServerClock(now),dow=lastWarVsDay(now);
   const clockOnly=String(req.query?.clock||"")==="1"||(()=>{try{return new URL(req.url||"/","http://localhost").searchParams.get("clock")==="1"}catch{return false}})();
-  if(clockOnly)return res.status(200).json({ok:true,app:"WarBoost",version:"2.5.28",release:"HF8.6.28",clock_only:true,now:now.toISOString(),unix_ms:now.getTime(),timezone:"UTC",lastwar_server_timezone:"UTC-02:00",lastwar_server_time:serverClock.toISOString().replace("Z","-02:00"),iso_week:isoWeek(serverClock),vs_day:dow,vs_phase:dow===0?"prep":"scoring",weekday_utc:now.getUTCDay(),weekday_lastwar_server:dow});
+  if(clockOnly)return res.status(200).json({ok:true,app:"WarBoost",version:"2.5.31",release:"HF8.6.31",clock_only:true,now:now.toISOString(),unix_ms:now.getTime(),timezone:"UTC",lastwar_server_timezone:"UTC-02:00",lastwar_server_time:serverClock.toISOString().replace("Z","-02:00"),iso_week:isoWeek(serverClock),vs_day:dow,vs_phase:dow===0?"prep":"scoring",weekday_utc:now.getUTCDay(),weekday_lastwar_server:dow});
   const serviceDb=configured(),userDb=userConfigured(),shopRef=shopReferenceStats(),beta=await betaConfigAsync(),commerce=commercialConfig();
   const serviceProbe=serviceDb?await probeServiceAccess():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
   const allianceScopeProbe=serviceDb?await probeAllianceScopeSchema():{ok:false,code:"SUPABASE_NOT_CONFIGURED"};
@@ -33,10 +33,10 @@ export default async function handler(req,res){
   res.status(200).json({
     ok:true,
     app:"WarBoost",
-    version:"2.5.28",
-    release:"HF8.6.28",
-    build:"hf8-commercial-readiness",
-    ui_revision:"hf8.5-vs-freshness-guard",
+    version:"2.5.31",
+    release:"HF8.6.31",
+    build:"hf8-6-31-qg35-coach",
+    ui_revision:"qg35-coach-r1",
     ui_revision_final:"hf8.6.12-cloud-restore-guard",
     ui_revision_verified_access_restore:"hf8.6.13-verified-cloud-access-restore",
     ui_revision_session_apply_unblock:"hf8.6.14-session-apply-unblock",
