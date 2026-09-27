@@ -7,4 +7,4 @@ Current Last War rules used by WarBoost recommendations must retain an explicit 
 
 **Why:** update facts can be region-dependent or community-sourced, while the app must avoid inventing access or silently treating a public guide as official.
 
-**How to apply:** extend the centralized rule set and preserve prior local/cloud fields during merges; never replace a known eligibility or confirmed shop content with `null` from a partial scan.
+**How to apply:** extend the centralized rule set and preserve prior local/cloud fields during merges; never replace a known eligibility or confirmed shop content with `null` from a partial scan. For acquisition advice, distinguish catalog-backed offers from demo/community observations; label the latter as dated examples, not official offers, even when purchases must remain inside the game's own store.

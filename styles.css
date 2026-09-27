@@ -423,3 +423,28 @@ a.metaSourceRow{color:inherit;text-decoration:none}a.metaSourceRow:focus-visible
 .dsStatusChoice[data-ds-status="substitute"].active{border-color:#d3984a;background:#4b3218;color:#ffe5b5}
 @media(max-width:420px){.dsStatusChoices{gap:4px}.dsStatusChoice{font-size:8px;padding:4px 7px}}
 .idleResumeToast{position:fixed;z-index:12000;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:min(92vw,420px);padding:10px 15px;border:1px solid rgba(83,231,255,.32);border-radius:999px;background:rgba(8,18,32,.96);color:#eaf8ff;box-shadow:0 10px 32px rgba(0,0,0,.42);font-size:13px;font-weight:750;text-align:center;pointer-events:none;backdrop-filter:blur(10px)}
+.priorityAcquisition{width:100%;min-width:0;margin-top:8px}
+.acqToggleButton{width:100%;min-height:44px;white-space:normal;line-height:1.25;font-size:11px;font-weight:850}
+.acqPanel{min-width:0;margin-top:8px;padding:10px;border:1px solid #2d4764;border-radius:12px;background:linear-gradient(145deg,#101c2a,#0b1420);overflow:hidden}
+.acqPanel[hidden]{display:none}
+.acqPanel h4{margin:0 0 8px;color:#e9f4ff;font-size:12px}
+.acqInventoryNote,.acqCaveat,.acqOfficialNotice,.acqUnknownNotice{margin:6px 0;color:#b6c4d8;font-size:10px;line-height:1.45}
+.acqCaveat,.acqUnknownNotice{padding:8px;border:1px solid #695626;border-radius:9px;background:#211b0d;color:#ffe5a6}
+.acqOfficialNotice{padding:8px;border:1px solid #315c4a;border-radius:9px;background:#0c2019;color:#b9f4d5}
+.acqOptions{display:grid;gap:7px;margin:8px 0}
+.acqOption{min-width:0;padding:9px;border:1px solid #293c55;border-radius:10px;background:#0a1420}
+.acqOption.acqBest{border-color:#4b875f;background:#0c1a17}
+.acqOption.acqPaid{border-color:#665638;background:#1a170f}
+.acqOptionHead{display:flex;align-items:flex-start;justify-content:space-between;gap:7px}
+.acqOptionHead>b{min-width:0;color:#f0f6ff;font-size:11px;line-height:1.35;overflow-wrap:anywhere}
+.acqTypeBadge,.acqBestBadge,.acqObservedBadge{display:inline-flex;align-items:center;width:max-content;max-width:100%;padding:3px 6px;border-radius:999px;border:1px solid #365173;background:#13243a;color:#c3d8f2;font-size:8px;font-weight:850;line-height:1.3}
+.acqBestBadge{margin-top:5px;border-color:#39714e;background:#10281a;color:#c7f5d3}
+.acqObservedBadge{margin-top:5px;border-color:#7d6330;background:#30240d;color:#ffe4a0}
+.acqSource{display:block;margin-top:5px;color:#9dadc2;font-size:9px;line-height:1.35;overflow-wrap:anywhere}
+.acqCost{display:block;margin-top:5px;color:#fff;font-size:11px;line-height:1.35;overflow-wrap:anywhere}
+.acqWhy{margin:5px 0 0;color:#c7d3e3;font-size:9px;line-height:1.4;overflow-wrap:anywhere}
+.acqAvailability{display:block;margin-top:5px;color:#8999af;font-size:9px;line-height:1.4}
+.acqShopButton{min-height:44px;margin-top:5px;white-space:normal;line-height:1.3}
+.acqShopContext{display:grid;gap:7px}
+html[dir="rtl"] .acqOptionHead{direction:rtl}
+@media(max-width:420px){.acqPanel{padding:8px}.acqOption{padding:8px}.acqOptionHead{display:grid;grid-template-columns:minmax(0,1fr);gap:5px}.acqTypeBadge{white-space:normal}.acqToggleButton{min-height:46px}}

@@ -3,6 +3,7 @@ import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGeneri
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=qg35-home-visibility-v2-5-32-hf8-6-32-r1";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
 import {canonicalShopStore} from "./lib/shop-catalog.js";
+import {resourceAcquisitionForPriority,formatAcquisitionCost} from "./lib/resource-acquisition.js";
 import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad} from "./lib/squad-identity.js";
 import {recoverHeroData} from "./lib/hero-history.js";
 import {parseRosterImport,rosterNameKey} from "./lib/roster-import.js";
@@ -326,6 +327,7 @@ invalidateStoredPendingAccountCaches();
 function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.28-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state),restored=backfillConfirmedHeroPowers(finalRepair.state),pendingRepair=normalizeAlliancePendingState(restored.state);let next=pendingRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||restored.changed||pendingRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.28-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,cloudRetryTimer=null,cloudPullRetryTimer=null,cloudDirty=false,cloudRevision=null,suppressPush=false,cloudHydrationPending=false,cloudProfileVerified=false,canonicalRosterReady=false,cloud=null,cloudSession=null,cloudRecoveryRedirect="",cloudDataConfig={url:"",key:""},sessionApplyInFlight=null,lastAppliedSessionKey="",runtimeReconcileInFlight=null,lastRuntimeReconcileAt=0,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false,payments_enabled:false,commercial_preview:false,subscription:null},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null,scanImageName="capture.jpg",supportTicketsState=[],supportBusy=false;
+let currentPlayerAdviceAnalysis=null,currentAcquisitionViews=[],activeAcquisitionShopView=null;
 let foregroundClockInterval=null,foregroundServerTimeInterval=null,foregroundPausedAt=null,idleResumeInFlight=null,idleResumeStatusTimer=null,idleLifecycle=null;
 let runtimeReconcileInFlightForce=false;
 let bootstrapDiagnostics={run_id:"",started_at:null,finished_at:null,status:"idle",stages:[]};
@@ -1649,9 +1651,55 @@ function renderShopRecommendationCard(x,groupRank,native,ui){
   return `<article class="shopCard ${esc(x.verdict_key||"")} ${paymentType==="real_money"?"shopPaidCard":""}${historicalPaid?" shopHistoricalPaidCard":""}"><div class="shopHead"><span class="shopRank">${esc(displayRank)}</span><div><div class="shopItemLine"><b>${esc(native?(x.item||""):structuredShopItemLabel(x))}</b><span class="shopPaymentBadge">${esc(paymentLabel)}</span></div><small>${native?`${esc(x.store||"")}${x.price_label?` · ${esc(x.price_label)}`:""}`:(["scan","official","reference"].includes(String(x.source||""))&&x.price_label?esc(x.price_label):"")}</small>${x.relevance_score!=null||x.score!=null?`<div class="shopMetrics"><span class="shopScore">${esc(t("shop_relevance"))} ${esc(String(Math.round(Number(x.relevance_score??x.score))))}/100</span>${x.evidence_confidence!=null?`<span class="shopEvidence">${esc(t("shop_data_confidence"))} ${esc(String(Math.round(Number(x.evidence_confidence))))}%</span>`:""}</div>`:""}</div><span class="shopVerdict">${esc(native?(x.verdict||""):shopVerdictLabel(x))}</span></div>${historicalPaid?`<div class="shopPaidGuard shopHistoryGuard">🕘 ${esc(t("shop_history_guard"))}</div>`:""}${paidGuard?`<div class="shopPaidGuard">🛡️ ${esc(paidGuard)}</div>`:""}<details class="decisionDetails"><summary><span class="detailsClosed">${esc(t("shop_details"))}</span><span class="detailsOpen">${esc(t("shop_hide_details"))}</span></summary><p>${esc(native?(x.reason||""):t("condition_neutral"))}</p><span class="shopAvailability">${esc(t("shop_availability"))}: ${esc(x.availability_status==="official_current"?t("shop_availability_official"):x.availability_status==="observed_scan"?t("shop_availability_observed"):t("shop_availability_unverified"))}</span>${native&&x.target?`<strong>${esc(x.target)}</strong>`:""}${paidGuard?`<small class="shopPaidGuardDetail">${esc(t("shop_paid_guard"))}</small>`:""}</details></article>`;
 }
 
+function renderAcquisitionOption(option,view){
+  const paid=option.type==="paid",badge=paid?t("acq_paid_in_last_war"):t("acq_game_currency");
+  const best=option.bestInternal?`<span class="acqBestBadge">${esc(t("acq_best_internal"))}</span>`:"";
+  const observed=paid&&option.observed?`<span class="acqObservedBadge">${esc(t("acq_observed"))}</span>`:"";
+  const why=t("acq_why_text",{focus:view.focus||""});
+  return `<article class="acqOption${paid?" acqPaid":""}${option.bestInternal?" acqBest":""}"><div class="acqOptionHead"><b>${esc(option.item||"")}</b><span class="acqTypeBadge">${esc(badge)}</span></div>${best}<small class="acqSource">${esc(option.store||"")}</small><strong class="acqCost">${esc(formatAcquisitionCost(option,t,locale))}</strong>${observed}<p class="acqWhy"><b>${esc(t("acq_why"))}:</b> ${esc(why)}</p><small class="acqAvailability">${esc(t("acq_availability_note"))}</small></article>`;
+}
+
+function renderAcquisitionOptions(view,{showShopButton=true}={}){
+  if(!view?.known)return `<p class="acqUnknownNotice">${esc(t(view?.noteKey||"acq_availability_unknown"))}</p>`;
+  const note=view.noteKey?`<p class="acqCaveat">${esc(t(view.noteKey))}</p>`:"";
+  const rows=view.options.map(option=>renderAcquisitionOption(option,view)).join("");
+  const paidNotice=view.options.some(option=>option.type==="paid")?`<p class="acqOfficialNotice">${esc(t("acq_purchase_stays_official"))}</p>`:"";
+  const shopButton=showShopButton&&view.options.length?`<button type="button" class="secondaryBtn wideBtn acqShopButton" data-acquisition-shop-index="${currentAcquisitionViews.indexOf(view)}">${esc(t("acq_open_ai_shop"))}</button>`:"";
+  return `<p class="acqInventoryNote">${esc(t("acq_inventory_first"))}</p>${note}<div class="acqOptions">${rows}</div>${paidNotice}${shopButton}`;
+}
+
+function renderPriorityAcquisition(view,index){
+  if(!view)return "";
+  const id=`priorityAcquisitionPanel${index+1}`,label=t("acq_view");
+  return `<section class="priorityAcquisition"><button type="button" class="secondaryBtn acqToggleButton" data-acquisition-toggle aria-controls="${id}" aria-expanded="false" aria-label="${esc(label)}" title="${esc(label)}">${esc(label)}</button><div id="${id}" class="acqPanel" hidden><h4>${esc(t("acq_heading"))}</h4>${renderAcquisitionOptions(view)}</div></section>`;
+}
+
+function renderAcquisitionAiShop(analysis){
+  const native=aiUsesNativeCopy(),ui=aiUiText(),shop=analysis?.shop||{},shopSummary=$("#proShopSummary"),shopList=$("#proShopList");
+  if(shopSummary)shopSummary.textContent=activeAcquisitionShopView?t("acq_shop_filtered"):(native?(shop.summary||t("shop_summary_default")):t("shop_summary_default"));
+  if(!shopList)return;
+  if(activeAcquisitionShopView){
+    const family=String(activeAcquisitionShopView.resourceFamily||"");
+    const matchingGroups=shopGroupRows(shop)
+      .filter(group=>["game_currency","diamonds","real_money"].includes(group.type))
+      .map(group=>({...group,rows:group.rows.filter(row=>String(row?.diagnostic_alignment?.resource_family||"")===family)}))
+      .filter(group=>group.rows.length);
+    const matchingRows=matchingGroups.flatMap(group=>group.rows).slice(0,3);
+    const filteredContent=matchingRows.length
+      ?matchingGroups.map(group=>{const rows=group.rows.filter(row=>matchingRows.includes(row));return rows.length?`<section class="shopGroup" data-shop-group="${esc(group.type)}"><div class="shopGroupTitle"><span>${esc(shopGroupLabel(group.type))}</span><small>${esc(String(rows.length))}</small></div>${rows.map((row,index)=>renderShopRecommendationCard(row,index+1,native,ui)).join("")}</section>`:""}).join("")
+      :renderAcquisitionOptions(activeAcquisitionShopView,{showShopButton:false});
+    shopList.innerHTML=`<div class="acqShopContext"><button type="button" class="secondaryBtn wideBtn" data-acquisition-shop-reset>${esc(t("acq_shop_show_all"))}</button>${filteredContent}</div>`;
+    return;
+  }
+  const groups=shopGroupRows(shop);
+  shopList.innerHTML=groups.length?groups.map(g=>`<section class="shopGroup" data-shop-group="${esc(g.type)}"><div class="shopGroupTitle"><span>${esc(shopGroupLabel(g.type))}</span><small>${esc(String(g.rows.length))}</small></div>${g.rows.map((x,i)=>renderShopRecommendationCard(x,i+1,native,ui)).join("")}</section>`).join(""):`<div class="notice">${esc(t("shop_no_recommendations"))}</div>`;
+}
+
 function renderProPriority(analysis){
-  const native=aiUsesNativeCopy(),ui=aiUiText(),panel=$("#proPriorityPanel"),summary=$("#proPrioritySummary"),contextBox=$("#proAdaptiveContext"),list=$("#proPriorityList"),compare=$("#proSquadCompare"),exCompare=$("#proExclusiveCompare"),metaSources=$("#proMetaSources"),confidence=$("#proConfidence"),note=$("#playerSyncInfo"),shopList=$("#proShopList"),shopSummary=$("#proShopSummary"),shopConfidence=$("#shopConfidence"),shopCatalogPill=$("#shopCatalogPill"),avoid=$("#proAvoidList");
+  const native=aiUsesNativeCopy(),ui=aiUiText(),panel=$("#proPriorityPanel"),summary=$("#proPrioritySummary"),contextBox=$("#proAdaptiveContext"),list=$("#proPriorityList"),compare=$("#proSquadCompare"),exCompare=$("#proExclusiveCompare"),metaSources=$("#proMetaSources"),confidence=$("#proConfidence"),note=$("#playerSyncInfo"),shopConfidence=$("#shopConfidence"),shopCatalogPill=$("#shopCatalogPill"),avoid=$("#proAvoidList");
   if(!panel||!analysis)return;
+  if(currentPlayerAdviceAnalysis!==analysis)activeAcquisitionShopView=null;
+  currentPlayerAdviceAnalysis=analysis;
   if(note)note.classList.add("hidden");panel.classList.remove("hidden");
   const top=Array.isArray(analysis.priorities)?analysis.priorities[0]:null;
   const vsObjective=String(state?.player_context?.objective||"").toLowerCase()==="vs",vsFresh=vsSnapshotFreshness(state?.vs||{},{now:serverNow}),vsContextWarning=vsObjective&&!vsFresh.current?`⚠️ ${t("vs_stale_notice")} · `:"";
@@ -1663,17 +1711,21 @@ function renderProPriority(analysis){
   if(confidence)confidence.textContent=`${t("diagnostic_confidence")} · ${analysis.confidence||0}%`;
   if(list){
     const items=(Array.isArray(analysis.priorities)?analysis.priorities:[]).slice(0,3);
+    currentAcquisitionViews=items.map(priority=>resourceAcquisitionForPriority(priority,analysis,state));
     list.innerHTML=items.length?items.map((x,i)=>{const hero=proHeroAttr(x),heroVisual=proHeroVisual(hero,i===0),progress=native?proProgressLabel(x):"",marginal=Number(x.marginal_value_score),certainty=adaptiveCertaintyLabel(x.certainty),condition=adaptiveConditionLabel(x.condition_key),calculated=adaptiveDateLabel(x.calculated_at||analysis.generated_at),title=native?`${x.title||""}${x.target?` · ${x.target}`:""}`:structuredPriorityTitle(x),action=native?(x.action||""):structuredPriorityAction(x),reason=native?(x.reason||""):t("condition_neutral"),impact=native?(x.impact_label||"—"):(Number.isFinite(Number(x.impact_score))?`${Math.round(Number(x.impact_score))}/100`:"—"),roi=native?(x.resource_efficiency_label||x.roi_label||"—"):(Number.isFinite(Number(x.roi_score))?`${Math.round(Number(x.roi_score))}/100`:"—");return `<article class="priorityCard compactDecision${heroVisual?"":" noHeroDecision"}"${hero?` data-hero="${esc(hero)}"`:""}><span class="priorityRank">${esc(x.rank||"•")}</span>${heroVisual}<div class="priorityMain"><div class="decisionHead"><div class="decisionTitle"><b>${esc(title)}</b>${progress?`<span class="priorityProgress">${esc(progress)}</span>`:""}</div><span class="decisionMetric">${esc(native?ui.impact:"⚡")} : ${esc(impact)} · ${esc(t("resource_efficiency"))} : ${esc(roi)}</span></div>${Number.isFinite(marginal)?`<small>📈 ${esc(t("marginal_return"))} ${marginal}/100 · ${esc(t("certainty_label"))}: ${esc(certainty)}</small>`:""}<strong>${esc(action)}</strong><details class="decisionDetails"><summary>${esc(native?ui.why:"ℹ️")}</summary><p>${esc(reason)}</p>${native&&x.comparison_note?`<small>⚖️ ${esc(x.comparison_note)}</small>`:""}${progress?`<small>🎯 ${esc(progress)}</small>`:""}${x.progress_needed_levels>0?`<small>📈 ${esc(String(x.progress_needed_levels))} ${esc(t("levels_to_breakpoint"))}</small>`:""}${x.condition_key?`<small>🔀 ${esc(t("conditional_recommendation"))}: ${esc(condition)}</small>`:""}${native&&x.data_freshness?.label?`<small>🕒 ${esc(x.data_freshness.label)}</small>`:""}<small>📅 ${esc(t("recommendation_date"))}: ${esc(calculated)}</small>${native?`<small>🆓 ${esc(x.buy_free||"")}</small><small>💎 ${esc(x.buy_paid||"")}</small>`:`<small>🛡️ ${esc(t("condition_refresh"))}</small>`}</details></div></article>`}).join(""):`<div class="notice">${esc(native?(analysis.summary||t("player_sync_note")):t("player_sync_note"))}</div>`;
+    list.querySelectorAll(".priorityCard").forEach((card,index)=>{
+      const view=currentAcquisitionViews[index];
+      if(view)card.querySelector(".priorityMain")?.insertAdjacentHTML("beforeend",renderPriorityAcquisition(view,index));
+    });
   }
   if(avoid){const rows=Array.isArray(analysis.avoid_now)?analysis.avoid_now:[];avoid.innerHTML=native&&rows.length?`<div class="avoidTitle">⛔ ${esc(ui.avoid)}</div>${rows.map(x=>`<div class="avoidRow">${esc(x)}</div>`).join("")}`:`<div class="avoidTitle">⛔ ${esc(t("plan7_hold"))}</div>`}
   if(exCompare){const ex=analysis.exclusive_comparison||{},rows=Array.isArray(ex.heroes)?ex.heroes:[];exCompare.innerHTML=rows.length?`${rows.map(x=>{const rank=x.exclusive_rank?`#${x.exclusive_rank}`:"—",progress=x.current_label?`${x.current_label}${x.next_target?` → ${x.next_target}`:""}`:t("ex_missing"),levels=x.progress_needed_levels>0?` · ${x.progress_needed_levels} ${t("levels_to_breakpoint")}`:"",score=x.marginal_value_score!=null?`${Math.round(Number(x.marginal_value_score))}/100`:"—",meta=Number(x.meta_adjustment||0);return `<div class="exCompareRow"><span class="compareNo">${esc(rank)}</span><div><b>${esc(x.hero||t("hero"))}</b><small>${esc(progress)}${esc(levels)} · ${esc(x.status_label||t("ex_not_ranked"))}${meta?` · ${esc(t("meta_adjustment"))} ${meta>0?"+":""}${meta}`:""}</small>${x.tie_with_previous?`<small>⚖️ ${esc(t("ex_tie_previous",{hero:x.tie_with_hero||"#"}))}</small>`:""}</div><strong>${esc(score)}</strong></div>`}).join("")}<div class="comparisonPolicy">${esc(t("ex_exact_cost_unknown"))}</div>`:`<div class="notice">${esc(t("ex_compare_unavailable"))}</div>`}
   if(metaSources){const mi=analysis.meta_intelligence||{},rows=Array.isArray(mi.evidence)?mi.evidence:[];const kindLabel=x=>t(x?.kind==="official"&&x?.verified===true?"meta_source_official":x?.kind==="guide"?"meta_source_guide":"meta_source_community");metaSources.innerHTML=`<div class="metaHeader"><b>${esc(t("meta_updated"))}: ${esc(mi.knowledge_date||"—")}</b><small>${esc(t("meta_source_count"))}: ${esc(mi.source_count??rows.length)} · ${esc(t("context_confidence"))}: ${esc(mi.confidence??0)}%</small><small>${esc(t("meta_secondary_policy"))}</small></div>${rows.map(x=>{const label=kindLabel(x),title=esc(x.title||x.topic||t("meta_source_community")),meta=`${esc(x.date||"—")} · ${esc(x.publisher||x.topic||"")}${x.observed_at?` · ✓ ${esc(x.observed_at)}`:""}`,body=`<span>${esc(label)}</span><div><b>${title}${x.url?" ↗":""}</b><small>${meta}</small></div>`;return x.url?`<a class="metaSourceRow" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${body}</a>`:`<div class="metaSourceRow">${body}</div>`}).join("")}` }
   if(compare){const rows=Array.isArray(analysis.squads)?analysis.squads:[];compare.innerHTML=rows.map(x=>`<div class="compareRow"><span class="compareNo">${esc(x.id)}</span><div><b>${esc(native?(x.name||`${t("squad")} ${x.id}`):`${t("squad")} ${x.id}`)}</b><small>${native&&x.status?`${esc(x.status)} · `:""}${native?`${esc(t("pro_data_quality"))} `:"📊 "}${esc(x.data_quality??0)}% · ${esc(x.heroes_detected??0)}/5</small></div><strong>${esc(x.power_label||"—")}</strong></div>`).join("")}
   const shop=analysis.shop||{};
-  if(shopSummary)shopSummary.textContent=native?(shop.summary||t("shop_summary_default")):t("shop_summary_default");
+  renderAcquisitionAiShop(analysis);
   if(shopConfidence)shopConfidence.textContent=`${t("shop_data_confidence")} ${Math.round(Number(shop.data_confidence??shop.confidence??0))}%`;
   if(shopCatalogPill){shopCatalogPill.textContent=native?(shop.catalog_label||"—"):t("adaptive");shopCatalogPill.className=`pill ${shop.catalog_status==="official"?"catalogOfficialPill":"catalogPartialPill"}`}
-  if(shopList){const groups=shopGroupRows(shop);shopList.innerHTML=groups.length?groups.map(g=>`<section class="shopGroup" data-shop-group="${esc(g.type)}"><div class="shopGroupTitle"><span>${esc(shopGroupLabel(g.type))}</span><small>${esc(String(g.rows.length))}</small></div>${g.rows.map((x,i)=>renderShopRecommendationCard(x,i+1,native,ui)).join("")}</section>`).join(""):`<div class="notice">${esc(t("shop_no_recommendations"))}</div>`}
   renderPlayer7DayPlan(analysis);
 }
 
@@ -2829,6 +2881,29 @@ document.addEventListener("keydown",event=>{
   if(event.key!=="Escape")return;
   if(alliancePlayerProfileIsOpen()){event.preventDefault();closeAlliancePlayerProfile();return}
   if(allianceEventDetailIsOpen()){event.preventDefault();closeAllianceEventDetail()}
+});
+$("#proPriorityList")?.addEventListener("click",event=>{
+  const toggle=event.target?.closest?.("[data-acquisition-toggle]");
+  if(toggle){
+    const panelId=toggle.getAttribute("aria-controls"),panel=panelId?document.getElementById(panelId):null;
+    if(!panel)return;
+    const expanded=toggle.getAttribute("aria-expanded")!=="true",label=t(expanded?"acq_hide":"acq_view");
+    panel.hidden=!expanded;toggle.setAttribute("aria-expanded",String(expanded));toggle.textContent=label;toggle.setAttribute("aria-label",label);toggle.title=label;
+    return;
+  }
+  const shopButton=event.target?.closest?.("[data-acquisition-shop-index]");
+  if(!shopButton)return;
+  const index=Number(shopButton.dataset.acquisitionShopIndex),view=currentAcquisitionViews[index];
+  if(!view?.known||!currentPlayerAdviceAnalysis)return;
+  activeAcquisitionShopView=view;
+  const details=$("#proShopDetails");if(details)details.open=true;
+  renderAcquisitionAiShop(currentPlayerAdviceAnalysis);
+  requestAnimationFrame(()=>details?.scrollIntoView({behavior:"smooth",block:"start"}));
+});
+$("#proShopList")?.addEventListener("click",event=>{
+  if(!event.target?.closest?.("[data-acquisition-shop-reset]"))return;
+  activeAcquisitionShopView=null;
+  if(currentPlayerAdviceAnalysis)renderAcquisitionAiShop(currentPlayerAdviceAnalysis);
 });
 $("#playerAdviceBtn").addEventListener("click",()=>runPlayerAdvice(false));$("#shopAdviceBtn")?.addEventListener("click",()=>runPlayerAdvice(true));
 $("#warPlanBtn").addEventListener("click",async()=>{if(!requirePro())return;if(!hasDeclaredAllianceCommandRole()){$("#warPlanText").textContent=managerOnlyMessage();return}const j=await requestAdvice("alliance");$("#warPlanText").textContent=structuredAdviceText("alliance",j);renderAllianceStructured(j)});
