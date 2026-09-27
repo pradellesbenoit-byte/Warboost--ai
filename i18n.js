@@ -1,4 +1,10 @@
 import {PUBLISHER_PRESENTATION_LABELS} from "./lib/publisher-presentation-labels.js";
+import {PUBLISHER_SCREEN_LOCALES_1} from "./lib/publisher-screen-locales-1.js";
+import {PUBLISHER_SCREEN_LOCALES_2} from "./lib/publisher-screen-locales-2.js";
+import {PUBLISHER_SCREEN_LOCALES_3} from "./lib/publisher-screen-locales-3.js";
+import {PUBLISHER_DYNAMIC_LOCALES_1} from "./lib/publisher-dynamic-locales-1.js";
+import {PUBLISHER_DYNAMIC_LOCALES_2} from "./lib/publisher-dynamic-locales-2.js";
+import {PUBLISHER_DYNAMIC_LOCALES_3} from "./lib/publisher-dynamic-locales-3.js";
 
 const EN={
   tagline:"V2.4.7 · Hybrid Sync · no player token",
@@ -925,4 +931,11 @@ for(const [code,values] of Object.entries(V2522_PUBLISHER_LABELS)){
 for(const [code,values] of Object.entries(PUBLISHER_PRESENTATION_LABELS)){
   const targets=code==="en-GB"?[EN_GB]:code==="en-US"?[EN_US]:[packs[code]].filter(Boolean);
   targets.forEach(target=>Object.assign(target,values));
+}
+
+for(const [code,values] of Object.entries({...PUBLISHER_SCREEN_LOCALES_1,...PUBLISHER_SCREEN_LOCALES_2,...PUBLISHER_SCREEN_LOCALES_3})){
+  Object.assign(packs[code],values);
+}
+for(const [code,values] of Object.entries({...PUBLISHER_DYNAMIC_LOCALES_1,...PUBLISHER_DYNAMIC_LOCALES_2,...PUBLISHER_DYNAMIC_LOCALES_3})){
+  Object.assign(packs[code],values);
 }
