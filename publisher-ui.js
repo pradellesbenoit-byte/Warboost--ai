@@ -2,13 +2,16 @@
 // Diagnostic PRO portraits are rendered directly by app.js from explicit AI hero identity.
 // This module only maintains the squad portrait rail and never mutates Diagnostic cards.
 import {heroKey,heroPresentation} from './lib/heroes.js';
+import {translator} from './i18n.js';
 
 function heroFromName(name=''){return heroPresentation(name)}
+function visualAlt(name){return translator(document.documentElement.lang)('publisher_visual_alt',{name})}
 function heroImg(hit){
   const img=document.createElement('img');
   img.className='wbHeroAvatar';
   img.src=hit.src;
-  img.alt=`${hit.name} — WarBoost demo visual`;
+  img.alt=visualAlt(hit.name);
+  img.dataset.heroName=hit.name;
   img.loading='lazy';
   return img;
 }
@@ -36,6 +39,9 @@ if(typeof document!=='undefined'&&typeof MutationObserver!=='undefined'){
     obs.observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['data-hero']});
   }
   if(typeof window!=='undefined')window.addEventListener('DOMContentLoaded',refresh);
+  if(typeof window!=='undefined')window.addEventListener('warboost:languagechange',()=>{
+    root?.querySelectorAll('img.wbHeroAvatar[data-hero-name]').forEach(img=>{img.alt=visualAlt(img.dataset.heroName)});
+  });
   setTimeout(refresh,300);
   setTimeout(refresh,1000);
 }

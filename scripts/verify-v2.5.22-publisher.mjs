@@ -18,6 +18,7 @@ import proHandler from '../api/pro.js';
 import cloudConfigHandler from '../api/cloud-config.js';
 import {HERO_CATALOG} from '../lib/heroes.js';
 import {LANGUAGES,translator} from '../i18n.js';
+import {PUBLISHER_PRESENTATION_LABELS} from '../lib/publisher-presentation-labels.js';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -77,8 +78,10 @@ log('Health endpoint performs no publisher cloud probe and clearly separates Pub
 log('All publisher server endpoints are read-only/simulated; no cloud writes, checkout or browser Supabase credentials are available');
 
 assert.equal(HERO_CATALOG.length,31);assert.equal(LANGUAGES.filter(([c])=>c!=='auto').length,23);
-const required=['tagline','publisher_release_label','publisher_demo_data','publisher_sample_desc','publisher_request_title','publisher_readonly_title','publisher_readonly_desc','publisher_noauto_title','publisher_noauto_desc','publisher_connector_title','publisher_connector_desc','publisher_local_only_note','publisher_scan_privacy','publisher_profession_engineer','publisher_sources_note','publisher_shop_note','publisher_no_payment_note','publisher_invite_note','publisher_import_note','publisher_scan_done','publisher_invite_status','publisher_import_done','publisher_reset_done','publisher_member_singular'];
-for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const t=translator(code);for(const key of required){assert.notEqual(t(key),key,`${code}:${key}`);assert.ok(String(t(key)).trim().length>=1,`${code}:${key}`)}assert.match(t('tagline'),/V2\.5\.22/);assert.doesNotMatch(t('tagline'),/private beta|bêta privée|プライベートベータ/i)}
+const presentationKeys=['publisher_page_title','publisher_badge','publisher_eyebrow','publisher_request_subject','publisher_language_label','publisher_status_label','publisher_brief_label','publisher_scan_preview_alt','publisher_close','publisher_visual_alt','publisher_pro_title','publisher_reset_label','publisher_sandbox_label','publisher_roster_placeholder','publisher_hero_confirm_title'];
+const required=['tagline','publisher_release_label','publisher_demo_data','publisher_sample_desc','publisher_request_title','publisher_readonly_title','publisher_readonly_desc','publisher_noauto_title','publisher_noauto_desc','publisher_connector_title','publisher_connector_desc','publisher_local_only_note','publisher_scan_privacy','publisher_profession_engineer','publisher_sources_note','publisher_shop_note','publisher_no_payment_note','publisher_invite_note','publisher_import_note','publisher_scan_done','publisher_invite_status','publisher_import_done','publisher_reset_done','publisher_member_singular',...presentationKeys];
+for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const t=translator(code),labels=PUBLISHER_PRESENTATION_LABELS[code];assert.ok(labels,`${code}: missing publisher presentation locale`);assert.deepEqual(Object.keys(labels).sort(),presentationKeys.slice().sort(),`${code}: publisher presentation keys differ`);for(const key of required){assert.notEqual(t(key),key,`${code}:${key}`);assert.ok(String(t(key)).trim().length>=1,`${code}:${key}`)}for(const key of presentationKeys)assert.equal(t(key),labels[key],`${code}:${key} not applied to translator`);assert.match(t('tagline'),/V2\.5\.22/);assert.doesNotMatch(t('tagline'),/private beta|bêta privée|プライベートベータ/i)}
+assert.equal(translator('ja')('publisher_visual_alt',{name:'DVA'}),'DVA — WarBoostデモ画像');
 assert.match(translator('ja')('publisher_release_label'),/パブリッシャー/);assert.match(translator('zh')('publisher_sample_desc'),/Last War/);assert.match(translator('fr')('publisher_profession_engineer'),/Ingénieur/);
 log('All 23 explicit languages + Auto have publisher-specific safety copy; Japanese no longer says Private Beta');
 
