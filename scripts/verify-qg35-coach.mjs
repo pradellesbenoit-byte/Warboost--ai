@@ -182,15 +182,16 @@ assert.match(appSource,/const priorities=report\.top_priorities\.map/,"The drawe
 assert.match(appSource,/data-qg35-scan-type="\$\{esc\(report\.next_capture\.scan_type\)\}"/,"Only the report's next useful capture should be offered as a QG35 scan CTA.");
 assert.match(appSource,/if\(betaPrivateDataVisible\(\)&&name==="qg35Coach"\)safeRenderStep\("QG35_COACH_OPEN",renderEndgameCoachDrawer\)/,"Opening QG35+ should render the drawer after refreshing the current state.");
 assert.match(appSource,/openDrawer\("qg35Coach"\)/,"The active home card must open the QG35+ drawer.");
-assert.match(appSource,/qg35-priority-acq-provenance-v2-5-32-hf8-6-33-r1/,"The Coach module import must use the current cache-busting release.");
+assert.match(appSource,/shop-observations-v2-5-32-hf8-6-34-r1/,"The Coach module import must use the current cache-busting release.");
 const packageJson=JSON.parse(await readFile(new URL("../package.json",import.meta.url),"utf8"));
 assert.equal(packageJson.version,"2.5.32");
 const indexHtml=await readFile(new URL("../index.html",import.meta.url),"utf8");
 assert.match(indexHtml,/id="qg35CoachCard"[^>]*class="moduleCard qg35HomeCard hidden"/);
-assert.match(indexHtml,/styles\.css\?v=qg35-priority-acq-provenance-v2-5-32-hf8-6-33-r1/);
-assert.match(indexHtml,/app\.js\?v=qg35-priority-acq-provenance-v2-5-32-hf8-6-33-r1/);
-assert.match(indexHtml,/warboost-build" content="2\.5\.32-HF8\.6\.33-qg35-priority-acq-provenance-r1"/);
+assert.match(indexHtml,/styles\.css\?v=shop-observations-v2-5-32-hf8-6-34-r1/);
+assert.match(indexHtml,/app\.js\?v=shop-observations-v2-5-32-hf8-6-34-r1/);
+assert.match(indexHtml,/warboost-build" content="2\.5\.32-HF8\.6\.34-shop-observations-r1"/);
 const swSource=await readFile(new URL("../sw.js",import.meta.url),"utf8");
-assert.match(swSource,/warboost-v2-5-32-hf8-6-33-qg35-priority-acq-provenance-r1/);
+assert.match(swSource,/warboost-v2-5-32-hf8-6-34-shop-observations-r1/);
+assert.match(swSource,/shop-observations-2026-09-28\.js\?v=shop-observations-v2-5-32-hf8-6-34-r1/);
 
 console.log("QG35+ Coach eligibility, report completeness, privacy, access gating, translations, and read-only stability verified.");

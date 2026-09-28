@@ -1,9 +1,9 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
-import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=qg35-priority-acq-provenance-v2-5-32-hf8-6-33-r1";
+import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
-import {canonicalShopStore} from "./lib/shop-catalog.js";
-import {resourceAcquisitionForPriority,formatAcquisitionCost} from "./lib/resource-acquisition.js";
+import {canonicalShopStore} from "./lib/shop-catalog.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
+import {resourceAcquisitionForPriority,formatAcquisitionCost} from "./lib/resource-acquisition.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
 import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad} from "./lib/squad-identity.js";
 import {recoverHeroData} from "./lib/hero-history.js";
 import {parseRosterImport,rosterNameKey} from "./lib/roster-import.js";
@@ -42,7 +42,7 @@ import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.32";
-const RELEASE_LABEL="HF8.6.33"; // Confirmed-data QG35+ priorities and dated acquisition references.
+const RELEASE_LABEL="HF8.6.34"; // Dated in-game shop observations and currency-aware acquisition guidance.
 // Legacy HF8.6.27 verification marker: const RELEASE_LABEL="HF8.6.27"
 // Legacy HF8.6.26 verification marker: const RELEASE_LABEL="HF8.6.26"
 // Legacy HF8.6.26 render-contract verification markers (non-executable):
@@ -1413,7 +1413,10 @@ function renderEndgameCoachDrawer(){
   const heroWeaponDetail=`${heroRows}<p>${qg35Text(report.heroes_weapons.status_key)}</p>`;
   const droneDetail=`<p>${qg35Text("qg35_drone_level_label")}: ${qg35Value(report.drone.level)} · ${qg35Text("qg35_drone_power_label")}: ${report.drone.power_m===null?qg35Text("qg35_unknown_value"):esc(fmtPower(report.drone.power_m))}</p>
     <div><b>${qg35Text("qg35_drone_components")}</b>${qg35Facts(report.drone.components)}</div>
-    <div><b>${qg35Text("qg35_drone_chips")}</b>${qg35Facts(report.drone.chips)}</div><p>${qg35Text(report.drone.status_key)}</p>`;
+    ${renderQG35ResourceAcquisition("drone_components","qg35_drone_components")}
+    <div><b>${qg35Text("qg35_drone_chips")}</b>${qg35Facts(report.drone.chips)}</div>
+    ${renderQG35ResourceAcquisition("drone_chips","qg35_drone_chips")}
+    <p>${qg35Text(report.drone.status_key)}</p>`;
   const bonusDetail=`<h4>${qg35Text("qg35_decorations_label")}</h4>${qg35Facts(report.decorations_overlord_season.decorations)}
     <h4>${qg35Text("qg35_overlord_label")}</h4>${qg35Facts(report.decorations_overlord_season.overlord)}
     <h4>${qg35Text("qg35_t11_label")}</h4>${qg35Facts(report.decorations_overlord_season.t11)}
@@ -1660,8 +1663,11 @@ function renderAcquisitionOption(option,view){
   const paid=option.type==="paid",badge=paid?t("acq_paid_in_last_war"):t("acq_game_currency");
   const best=option.bestInternal?`<span class="acqBestBadge">${esc(t("acq_best_internal"))}</span>`:"";
   const observed=option.observed?`<span class="acqObservedBadge">${esc(t("acq_observed"))}${option.referenceDate?` · ${esc(option.referenceDate)}`:""}</span>`:"";
+  const limit=option.limit?`<small class="acqAvailability">${esc(t("acq_limit_observed",{limit:option.limit}))}</small>`:"";
+  const restockKey=option.restock==="chaque lundi"?"acq_restock_weekly":option.restock==="1er de chaque mois"?"acq_restock_monthly":null;
+  const restock=restockKey?`<small class="acqAvailability">${esc(t(restockKey))}</small>`:"";
   const why=t("acq_why_text",{focus:view.focus||""});
-  return `<article class="acqOption${paid?" acqPaid":""}${option.bestInternal?" acqBest":""}"><div class="acqOptionHead"><b>${esc(option.item||"")}</b><span class="acqTypeBadge">${esc(badge)}</span></div>${best}<small class="acqSource">${esc(option.store||"")}</small><strong class="acqCost">${esc(formatAcquisitionCost(option,t,locale))}</strong>${observed}<p class="acqWhy"><b>${esc(t("acq_why"))}:</b> ${esc(why)}</p><small class="acqAvailability">${esc(t("acq_availability_note"))}</small></article>`;
+  return `<article class="acqOption${paid?" acqPaid":""}${option.bestInternal?" acqBest":""}"><div class="acqOptionHead"><b>${esc(option.item||"")}</b><span class="acqTypeBadge">${esc(badge)}</span></div>${best}<small class="acqSource">${esc(option.store||"")}</small><strong class="acqCost">${esc(formatAcquisitionCost(option,t,locale))}</strong>${observed}${limit}${restock}<p class="acqWhy"><b>${esc(t("acq_why"))}:</b> ${esc(why)}</p><small class="acqAvailability">${esc(t("acq_availability_note"))}</small></article>`;
 }
 
 function renderAcquisitionOptions(view,{showShopButton=true}={}){
@@ -1671,6 +1677,13 @@ function renderAcquisitionOptions(view,{showShopButton=true}={}){
   const paidNotice=view.options.some(option=>option.type==="paid")?`<p class="acqOfficialNotice">${esc(t("acq_purchase_stays_official"))}</p>`:"";
   const shopButton=showShopButton&&view.options.length?`<button type="button" class="secondaryBtn wideBtn acqShopButton" data-acquisition-shop-index="${currentAcquisitionViews.indexOf(view)}">${esc(t("acq_open_ai_shop"))}</button>`:"";
   return `<p class="acqInventoryNote">${esc(t("acq_inventory_first"))}</p>${note}<div class="acqOptions">${rows}</div>${paidNotice}${shopButton}`;
+}
+
+function renderQG35ResourceAcquisition(family,labelKey){
+  const target=qg35Text(labelKey),priority={kind:"drone",resource_family:family,target,rank:1};
+  const view=resourceAcquisitionForPriority(priority,{priorities:[priority],bottleneck:priority},state);
+  if(!view?.known)return "";
+  return `<details class="qg35AcquisitionDetails"><summary class="secondaryBtn">${esc(t("acq_view"))}: ${esc(target)}</summary><div class="acqPanel"><h4>${esc(t("acq_heading"))}</h4>${renderAcquisitionOptions(view,{showShopButton:false})}</div></details>`;
 }
 
 function renderPriorityAcquisition(view,index){
