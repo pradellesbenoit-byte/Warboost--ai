@@ -50,7 +50,7 @@
         <img class="logo" src="/warboost-icon-192.png" alt="WarBoost" />
       <div class="brandText"><div class="brandTitleRow"><h1>WarBoost</h1><span id="betaHeaderBadge" class="betaBadge" data-i18n="beta_badge">BÊTA PUBLIQUE</span></div><small data-i18n="tagline">V2.5.32 HF8.6.34 · Coach IA QG35+ · diagnostic sans écriture</small></div>
       </div>
-      <select id="languageSelect" class="languageSelect" aria-label="Language"></select>
+      <select id="languageSelect" class="languageSelect" data-i18n-aria="language" aria-label="Language"></select>
       <button id="accountBtn" class="avatarBtn" data-i18n-aria="account" aria-label="Compte">👤</button>
     </header>
 
@@ -123,7 +123,7 @@
   <div id="backdrop" class="drawerBackdrop"></div>
 
   <section id="playerDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div><div class="drawerHeader"><h2>👤 <span data-i18n="player">Joueur</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>👤 <span data-i18n="player">Joueur</span></h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>
     <div class="summaryBar four">
       <div class="stat"><span data-i18n="nickname">Pseudo dans le jeu</span><b id="pName">—</b></div>
       <div class="stat"><span data-i18n="hq">QG</span><b id="pHq">—</b></div>
@@ -153,12 +153,12 @@
       <div id="playerActivityStatus" class="notice" style="margin-top:8px" data-i18n="activity_no_confirmations">Aucune participation confirmée récemment.</div>
     </div>
      <div id="playerAvailabilitySection" class="section availabilitySection" style="margin-top:10px">
-       <div class="sectionTitle"><h3>📅 Disponibilités alliance</h3><span id="playerAvailabilityPill" class="pill">À confirmer</span></div>
-       <p class="privacyText">Déclare ta disponibilité directement. Ta réponse est transmise aux R4/R5 sans modifier les autres membres.</p>
-       <div class="availabilityFormGrid"><label class="field"><span>Événement</span><select id="playerAvailabilityEvent"><option value="desert_storm">Tempête du Désert</option><option value="canyon_storm">Tempête du Canyon</option><option value="vs">Guerre VS</option><option value="season">Saison</option><option value="other">Autre événement</option></select></label><label class="field"><span>Statut</span><select id="playerAvailabilityStatus"><option value="unknown">À confirmer</option><option value="present">Présent</option><option value="absent">Absent</option><option value="substitute">Remplaçant</option></select></label><label class="field"><span>Date / instance</span><input id="playerAvailabilityDate" type="date" /></label><label class="field"><span>Créneau</span><input id="playerAvailabilitySlot" type="time" /></label></div>
-       <label class="field"><span>Note (facultative)</span><input id="playerAvailabilityNote" type="text" maxlength="240" placeholder="Ex. disponible après 20 h" /></label>
-       <button id="playerAvailabilitySaveBtn" class="primaryAction wideBtn" type="button">Enregistrer ma disponibilité</button>
-       <div id="playerAvailabilityStatusMessage" class="notice hidden" style="margin-top:8px"></div>
+       <div class="sectionTitle"><h3 data-i18n="availability_title">Disponibilités alliance</h3><span id="playerAvailabilityPill" class="pill" data-i18n="availability_unknown">À confirmer</span></div>
+       <p class="privacyText" data-i18n="availability_intro">Déclare ta disponibilité directement. Ta réponse est transmise aux R4/R5 sans modifier les autres membres.</p>
+       <div class="availabilityFormGrid"><label class="field"><span data-i18n="availability_event">Événement</span><select id="playerAvailabilityEvent"><option value="desert_storm" data-i18n="event_desert">Tempête du Désert</option><option value="canyon_storm" data-i18n="event_canyon">Tempête du Canyon</option><option value="vs" data-i18n="event_vs">Guerre VS</option><option value="season" data-i18n="event_season">Saison</option><option value="other" data-i18n="event_other">Autre événement</option></select></label><label class="field"><span data-i18n="availability_status">Statut</span><select id="playerAvailabilityStatus"><option value="unknown" data-i18n="availability_unknown">À confirmer</option><option value="present" data-i18n="availability_present">Présent</option><option value="absent" data-i18n="availability_absent">Absent</option><option value="substitute" data-i18n="availability_substitute">Remplaçant</option></select></label><label class="field"><span data-i18n="availability_date">Date / instance</span><input id="playerAvailabilityDate" type="date" /></label><label class="field"><span data-i18n="availability_slot">Créneau</span><input id="playerAvailabilitySlot" type="time" /></label></div>
+       <label class="field"><span data-i18n="availability_note">Note (facultative)</span><input id="playerAvailabilityNote" type="text" maxlength="240" data-i18n-placeholder="availability_note_placeholder" placeholder="Ex. disponible après 20 h" /></label>
+       <button id="playerAvailabilitySaveBtn" class="primaryAction wideBtn" type="button" data-i18n="availability_save">Enregistrer ma disponibilité</button>
+       <div id="playerAvailabilityStatusMessage" class="notice hidden" role="status" aria-live="polite" style="margin-top:8px"></div>
      </div>
     <button id="playerAdviceBtn" class="secondaryBtn wideBtn" data-i18n="ai_priority">Priorité IA PRO</button>
     <div id="playerSyncInfo" class="notice" style="margin-top:10px" data-i18n="player_sync_note">Tes valeurs manuelles restent protégées. Un scan plus récent remplace uniquement les champs qu'il peut lire avec confiance.</div>
@@ -179,7 +179,7 @@
   </section>
 
   <section id="allianceDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div><div class="drawerHeader"><h2>🛡️ <span data-i18n="alliance_r5r4">Alliance R5/R4</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>🛡️ <span data-i18n="alliance_r5r4">Alliance R5/R4</span></h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>
     <div class="summaryBar"><div class="stat"><span data-i18n="alliance">Alliance</span><b id="aTag">—</b></div><div class="stat"><span data-i18n="members">Membres</span><b id="aCount">0</b></div><div class="stat"><span data-i18n="role">Rôle</span><b id="aRole">R1</b></div></div>
     <div id="allianceAccessNotice" class="notice warn allianceAccessNotice hidden" style="margin-top:10px"></div>
     <div class="section allianceManagerOnly"><div class="sectionTitle"><h3 data-i18n="invite_members">Faire venir les membres</h3><span class="pill" data-i18n="one_tap">Accès rapide</span></div><div class="inviteBox"><div id="inviteCode" class="inviteCode">—</div><button id="shareInviteBtn" class="smallBtn" data-i18n="share">Partager</button></div><div id="inviteNote" class="notice" style="margin-top:9px" data-i18n="invite_note_scoped">R5/R4 uniquement : les invitations sont verrouillées sur le serveur et l’alliance. Un joueur ne peut rejoindre que si son pseudo Last War exact figure déjà dans ce roster.</div><div id="inviteStatus" class="notice hidden" style="margin-top:9px"></div></div>
@@ -192,37 +192,37 @@
         <div id="allianceEventDetail" class="allianceEventDetail hidden" aria-hidden="true"></div>
       </div>
     </details>
-    <details id="desertStormPlannerShell" class="eventPlannerLegacy allianceAccordion allianceManagerOnly" data-alliance-accordion="desert"><summary class="allianceAccordionSummary"><span><span class="allianceAccordionIcon">🌪️</span><b>Réglages avancés · Tempête du Désert</b></span><span class="allianceAccordionChevron" aria-hidden="true">▾</span></summary>
+    <details id="desertStormPlannerShell" class="eventPlannerLegacy allianceAccordion allianceManagerOnly" data-alliance-accordion="desert"><summary class="allianceAccordionSummary"><span><span class="allianceAccordionIcon">🌪️</span><b data-i18n="ds_advanced_title">Réglages avancés · Tempête du Désert</b></span><span class="allianceAccordionChevron" aria-hidden="true">▾</span></summary>
     <div id="desertStormPlanner" class="section allianceAccordionBody desertStormPlanner"><div class="sectionTitle"><h3><span data-i18n="ds_title">Tempête du Désert IA</span></h3><span id="desertStormCount" class="pill">0</span></div><p class="privacyText" data-i18n="ds_intro">Le R5/R4 sélectionne uniquement les joueurs inscrits. WarBoost équilibre les titulaires, remplaçants et groupes puis produit des consignes courtes à copier.</p><div class="notice dsRegistrationGuard" data-i18n="ds_registration_guard">Inscrit ≠ participé : sélectionner un joueur ici ne confirme jamais sa présence au combat. La participation reste une donnée séparée, à confirmer après l’événement.</div><div class="dsSetupGrid"><label class="field"><span data-i18n="ds_team">Équipe</span><select id="desertStormTeam" class="fieldSelect"><option value="A">A</option><option value="B">B</option></select></label><label class="field"><span data-i18n="ds_battle_time">Heure de bataille</span><input id="desertStormTime" type="time" /></label></div><div class="field"><label for="desertStormSearch" data-i18n="ds_registered">Joueurs inscrits</label><div id="desertStormSearch" class="dsSearchBox" role="searchbox" aria-autocomplete="list" aria-controls="desertStormRosterPicker" contenteditable="plaintext-only" spellcheck="false" data-i18n-placeholder="ds_search" data-placeholder="Rechercher un joueur du roster"></div></div><div id="desertStormRosterPicker" class="dsRosterPicker"></div><div class="buttonRow dsButtons"><button id="desertStormClearBtn" class="secondaryBtn" type="button" data-i18n="ds_clear">Effacer la sélection</button><button id="desertStormGenerateBtn" class="primaryAction" type="button">🧠 <span data-i18n="ds_generate">Créer le plan</span></button></div><div id="desertStormPlan" class="desertStormPlan hidden" aria-live="polite" aria-atomic="true"></div><div id="desertStormStatus" class="notice hidden"></div><div class="dsCopyRow"><button id="desertStormCopyBtn" class="smallBtn hidden" type="button" data-i18n="ds_copy">Copier les consignes</button></div></div>
     </details>
-    <details id="canyonPlannerShell" class="eventPlannerLegacy allianceAccordion allianceManagerOnly" data-alliance-accordion="canyon"><summary class="allianceAccordionSummary"><span><span class="allianceAccordionIcon">⛰️</span><b>Réglages avancés · Tempête du Canyon</b></span><span class="allianceAccordionChevron" aria-hidden="true">▾</span></summary>
+    <details id="canyonPlannerShell" class="eventPlannerLegacy allianceAccordion allianceManagerOnly" data-alliance-accordion="canyon"><summary class="allianceAccordionSummary"><span><span class="allianceAccordionIcon">⛰️</span><b data-i18n="canyon_advanced_title">Réglages avancés · Tempête du Canyon</b></span><span class="allianceAccordionChevron" aria-hidden="true">▾</span></summary>
     <div id="canyonPlanner" class="section allianceAccordionBody canyonPlanner">
-      <div class="sectionTitle"><h3>⛰️ Tempête du Canyon</h3><span class="pill">R5/R4</span></div>
+      <div class="sectionTitle"><h3 data-i18n="canyon_title">⛰️ Tempête du Canyon</h3><span class="pill">R5/R4</span></div>
       <div id="canyonSummary" class="canyonSummary"></div>
-      <div class="canyonTabs" role="tablist" aria-label="Tempête du Canyon">
-        <button type="button" class="canyonTab active" data-canyon-tab="preparation">Préparation</button>
-        <button type="button" class="canyonTab" data-canyon-tab="objectives">Objectifs</button>
-        <button type="button" class="canyonTab" data-canyon-tab="skills">Compétences</button>
-        <button type="button" class="canyonTab" data-canyon-tab="plan">Plan IA</button>
+        <div class="canyonTabs" role="tablist" data-i18n-aria="canyon_title" aria-label="Tempête du Canyon">
+          <button type="button" class="canyonTab active" data-canyon-tab="preparation" data-i18n="canyon_tab_preparation">Préparation</button>
+          <button type="button" class="canyonTab" data-canyon-tab="objectives" data-i18n="canyon_tab_objectives">Objectifs</button>
+          <button type="button" class="canyonTab" data-canyon-tab="skills" data-i18n="canyon_tab_skills">Compétences</button>
+          <button type="button" class="canyonTab" data-canyon-tab="plan" data-i18n="canyon_tab_plan">Plan IA</button>
       </div>
       <div class="canyonPanel" data-canyon-panel="preparation">
         <div class="canyonSetupGrid">
-          <label class="field"><span>Statut</span><select id="canyonStatus"><option value="preparation">Préparation</option><option value="battle">Bataille</option><option value="completed">Terminé</option></select></label>
-          <label class="field"><span>Date et heure</span><input id="canyonDateTime" type="datetime-local" /></label>
-          <label class="field"><span>Faction</span><select id="canyonFaction"><option value="unknown">Inconnue</option><option value="instigators">Instaurateurs</option><option value="scouts">Éclaireurs</option></select></label>
-          <label id="canyonAdjudicatorField" class="field hidden"><span>Judicateur</span><select id="canyonAdjudicator"><option value="">À confirmer</option></select></label>
+          <label class="field"><span data-i18n="availability_status">Statut</span><select id="canyonStatus"><option value="preparation" data-i18n="canyon_status_preparation">Préparation</option><option value="battle" data-i18n="canyon_status_battle">Bataille</option><option value="completed" data-i18n="canyon_status_completed">Terminé</option></select></label>
+          <label class="field"><span data-i18n="canyon_date_time">Date et heure</span><input id="canyonDateTime" type="datetime-local" /></label>
+          <label class="field"><span data-i18n="canyon_faction">Faction</span><select id="canyonFaction"><option value="unknown" data-i18n="canyon_unknown">Inconnue</option><option value="instigators" data-i18n="canyon_instigators">Instaurateurs</option><option value="scouts" data-i18n="canyon_scouts">Éclaireurs</option></select></label>
+          <label id="canyonAdjudicatorField" class="field hidden"><span data-i18n="canyon_adjudicator">Judicateur</span><select id="canyonAdjudicator"><option value="" data-i18n="availability_unknown">À confirmer</option></select></label>
         </div>
-        <div class="notice">Une absence n’est utilisée que si elle est explicitement renseignée. Toute donnée manquante reste « à confirmer ».</div>
+        <div class="notice" data-i18n="canyon_absence_guard">Une absence n’est utilisée que si elle est explicitement renseignée. Toute donnée manquante reste « à confirmer ».</div>
         <div id="canyonSlotSummary" class="canyonSlotSummary"></div>
-        <label class="field"><span>Disponibilités du roster</span><input id="canyonSearch" type="search" placeholder="Rechercher un joueur" /></label>
+        <label class="field"><span data-i18n="canyon_roster_availability">Disponibilités du roster</span><input id="canyonSearch" type="search" data-i18n-placeholder="canyon_search" placeholder="Rechercher un joueur" /></label>
         <div id="canyonAvailabilityList" class="canyonAvailabilityList"></div>
-          <div class="buttonRow canyonClearActions"><button id="canyonClearBtn" class="secondaryBtn" type="button">Effacer la sélection</button></div>
-          <div id="canyonStatusMessage" class="notice hidden"></div>
+          <div class="buttonRow canyonClearActions"><button id="canyonClearBtn" class="secondaryBtn" type="button" data-i18n="ds_clear">Effacer la sélection</button></div>
+          <div id="canyonStatusMessage" class="notice hidden" role="status" aria-live="polite"></div>
       </div>
       <div class="canyonPanel hidden" data-canyon-panel="objectives"><div id="canyonObjectives"></div></div>
       <div class="canyonPanel hidden" data-canyon-panel="skills"><div id="canyonSkills"></div></div>
       <div class="canyonPanel hidden" data-canyon-panel="plan">
-        <div class="buttonRow canyonActions"><button id="canyonGenerateBtn" class="primaryAction" type="button">Générer le plan Canyon</button><button id="canyonValidateBtn" class="secondaryBtn hidden" type="button">Valider le plan R4/R5</button></div>
+        <div class="buttonRow canyonActions"><button id="canyonGenerateBtn" class="primaryAction" type="button" data-i18n="canyon_generate">Générer le plan Canyon</button><button id="canyonValidateBtn" class="secondaryBtn hidden" type="button" data-i18n="canyon_validate">Valider le plan R4/R5</button></div>
         <div id="canyonPlan"></div>
       </div>
     </div>
@@ -242,7 +242,7 @@
   <div id="alliancePlayerModal" class="alliancePlayerModal hidden" aria-hidden="true"></div>
 
   <section id="vsDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div><div class="drawerHeader"><h2>⚔️ <span data-i18n="vs_live_coach">VS Live Coach</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>⚔️ <span data-i18n="vs_live_coach">VS Live Coach</span></h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>
     <div id="vsAccessNotice" class="notice warn" style="margin-top:10px"></div>
     <div class="section vsLiveScoreSection">
       <div class="sectionTitle"><h3 id="vsWeekTitle">VS</h3><span id="vsDayPill" class="pill">—</span></div>
@@ -279,7 +279,7 @@
   </section>
 
   <section id="seasonDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div><div class="drawerHeader"><h2>🌍 <span data-i18n="season">Saison</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>🌍 <span data-i18n="season">Saison</span></h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>
     <div class="summaryBar"><div class="stat"><span data-i18n="season">Saison</span><b id="sName">—</b></div><div class="stat"><span data-i18n="day_label">Jour</span><b id="sDay">—</b></div><div class="stat"><span id="seasonProfessionLabel" data-i18n="profession">Profession</span><b id="sProfession">—</b></div></div>
     <div id="seasonAccessNotice" class="notice warn" style="margin-top:10px"></div>
     <button id="scanSeasonBtn" class="secondaryBtn wideBtn" type="button" style="margin-top:8px">📸 <span data-i18n="season_scan_now">Actualiser la saison par capture</span></button>
@@ -289,12 +289,12 @@
 
   <section id="qg35CoachDrawer" class="drawer qg35Drawer" aria-hidden="true">
     <div class="drawerHandle"></div>
-    <div class="drawerHeader"><h2 data-i18n="qg35_title">🏆 QG35+ · Coach IA</h2><button class="closeBtn" data-close type="button" aria-label="Close">×</button></div>
+    <div class="drawerHeader"><h2 data-i18n="qg35_title">🏆 QG35+ · Coach IA</h2><button class="closeBtn" data-close type="button" data-i18n-aria="close" aria-label="Fermer">×</button></div>
     <div id="qg35CoachContent" class="qg35CoachContent"></div>
   </section>
 
   <section id="scanDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div><div class="drawerHeader"><h2>📷 <span data-i18n="scan_title">WarBoost Scan</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>📷 <span data-i18n="scan_title">WarBoost Scan</span></h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>
     <div class="section"><p class="heroText" data-i18n="scan_intro">Choisis une capture du jeu. WarBoost Vision lit uniquement les données utiles visibles dans l’image et les fusionne avec ton profil enregistré.</p>
        <div class="settingsForm">
          <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="drone">Drone</option><option value="exclusive">Arme exclusive</option><option value="shop">Boutique du jeu</option><option value="vs">VS</option><option value="season">Saison</option></select></div>
@@ -313,19 +313,29 @@
            </div>
          </div>
         <label class="captureButton" for="scanFile"><span>🖼️</span><b data-i18n="choose_capture">Prendre ou choisir une capture</b></label><input id="scanFile" class="hidden" type="file" accept="image/png,image/jpeg,image/webp" />
-        <img id="scanPreview" class="scanPreview hidden" alt="Screenshot preview" />
+        <img id="scanPreview" class="scanPreview hidden" data-i18n-alt="scan_preview_alt" alt="Aperçu de la capture" />
         <button id="clearScanCaptureBtn" class="secondaryBtn wideBtn hidden" type="button" data-i18n="clear_capture">Effacer la capture de cet appareil</button>
         <button id="analyzeScanBtn" class="primaryAction" data-i18n="analyze">Analyser la capture</button>
         <div id="scanStatus" class="notice" data-i18n="scan_wait">Choisis d'abord une capture.</div>
+        <section id="scanReviewPanel" class="scanReviewPanel hidden" aria-live="polite">
+          <div class="sectionTitle"><h3 data-i18n="scan_review_title">Vérifier les données du scan</h3><span class="pill" data-i18n="hero_confirm_badge">À confirmer</span></div>
+          <p class="privacyText" data-i18n="scan_review_help">Corrige ou vérifie chaque valeur Vision. Rien n’est enregistré avant ta confirmation.</p>
+          <div id="scanReviewMeta" class="scanReviewMeta"></div>
+          <div id="scanReviewError" class="notice warn hidden" role="alert"></div>
+          <div id="scanReviewRows" class="scanReviewRows"></div>
+          <div class="buttonRow"><button id="discardScanReviewBtn" class="secondaryBtn" type="button" data-i18n="scan_review_discard">Ignorer le résultat</button><button id="confirmScanReviewBtn" class="primaryAction" type="button" data-i18n="scan_review_confirm">Confirmer les valeurs</button></div>
+        </section>
         <div id="heroConfirmPanel" class="heroConfirmPanel hidden">
           <div class="sectionTitle"><h3 id="heroConfirmTitle">Identité des héros</h3><span class="pill" data-i18n="hero_confirm_badge">À confirmer</span></div>
           <p class="privacyText" data-i18n="hero_confirm_help">Les portraits seuls peuvent être ambigus. Vérifie les 5 noms avant que WarBoost les enregistre.</p>
+          <div id="heroScanMeta" class="scanReviewMeta"></div>
           <div id="heroConfirmRows" class="heroConfirmRows"></div>
           <div class="buttonRow"><button id="skipHeroNamesBtn" class="secondaryBtn" data-i18n="hero_skip">Garder sans noms</button><button id="saveHeroNamesBtn" class="primaryAction" data-i18n="hero_save">Enregistrer les noms</button></div>
         </div>
         <div id="exclusiveConfirmPanel" class="heroConfirmPanel hidden">
           <div class="sectionTitle"><h3 data-i18n="scan_exclusive_confirm_title">Arme exclusive détectée</h3><span class="pill" data-i18n="hero_confirm_badge">À confirmer</span></div>
           <p class="privacyText" data-i18n="scan_exclusive_confirm_help">Vérifie les données visibles avant de les enregistrer. Les champs illisibles restent vides.</p>
+          <div id="exclusiveReviewMeta" class="scanReviewMeta"></div>
           <div id="exclusiveConfirmRows" class="exclusiveConfirmRows"></div>
           <div class="buttonRow"><button id="cancelExclusiveConfirmBtn" class="secondaryBtn" type="button" data-i18n="scan_exclusive_cancel">Annuler</button><button id="saveExclusiveConfirmBtn" class="primaryAction" type="button" data-i18n="scan_exclusive_save">Confirmer et enregistrer</button></div>
         </div>
@@ -336,7 +346,7 @@
   </section>
 
   <section id="accountDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div><div class="drawerHeader"><h2 data-i18n="warboost_account">Compte WarBoost</h2><button class="closeBtn" data-close>×</button></div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2 data-i18n="warboost_account">Compte WarBoost</h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>
     <div class="section"><div class="sectionTitle"><h3 data-i18n="warboost_login">Connexion WarBoost</h3><span id="authPill" class="pill">Local</span></div>
       <div id="authLoggedOut" class="settingsForm hidden"></div>
       <template id="authLoggedOutTemplate"><div class="field"><label data-i18n="email">E-mail</label><input id="authEmail" type="email" autocomplete="email" /></div><div class="field"><label data-i18n="password">Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" /></div><div class="buttonRow"><button id="loginBtn" class="secondaryBtn" type="button" data-i18n="login">Se connecter</button><button id="signupBtn" class="secondaryBtn" type="button" data-i18n="create_account">Créer un compte</button></div><button id="forgotPasswordBtn" class="textActionBtn" type="button" data-i18n="forgot_password">Mot de passe oublié ?</button><div id="otpBox" class="hidden"><div class="privacyText authConfirmHelp" data-i18n="auth_confirm_help">Ton e-mail doit être confirmé. Entre le code reçu par e-mail. Si ton e-mail contient un lien de confirmation, ouvre ce lien puis reviens dans WarBoost.</div><div class="field" style="margin-top:9px"><label data-i18n="email_code">Code reçu par e-mail</label><input id="authOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" /></div><div class="buttonRow" style="margin-top:9px"><button id="verifyOtpBtn" class="primaryAction" type="button" data-i18n="validate_code">Valider le code</button><button id="resendOtpBtn" class="secondaryBtn" type="button" data-i18n="auth_resend_confirmation">Renvoyer l’e-mail</button></div></div><div id="authMessage" class="notice hidden"></div></template>
@@ -352,7 +362,7 @@
   <button id="supportBtn" class="betaFeedbackFab supportFab" type="button">🛟 <span data-i18n="support_button">Service client</span></button>
 
   <section id="supportDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div><div class="drawerHeader"><h2>🛟 <span data-i18n="support_title">Service client WarBoost</span></h2><button class="closeBtn" data-close>×</button></div>
+    <div class="drawerHandle"></div><div class="drawerHeader"><h2>🛟 <span data-i18n="support_title">Service client WarBoost</span></h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>
     <div id="supportAuthNotice" class="notice warn hidden" data-i18n="support_login_required">Connecte-toi à ton compte WarBoost pour créer et suivre tes demandes.</div>
     <div id="supportCreateSection" class="section">
         <div class="sectionTitle"><h3 data-i18n="support_new_ticket">Nouvelle demande</h3><span id="supportBuildPill" class="pill">V2.5.32 · HF8.6.34</span></div>
@@ -365,7 +375,7 @@
         <label class="betaConsentRow"><input id="supportConsent" type="checkbox" /> <span data-i18n="support_consent">J’accepte l’envoi des informations de ce ticket au service client WarBoost pour traiter ma demande.</span></label>
         <div class="privacyText" data-i18n="support_privacy">Le ticket contient l’e-mail du compte WarBoost et ton pseudo WarBoost/jeu si disponible, uniquement pour traiter ta demande.</div>
         <button id="supportSubmitBtn" class="primaryAction" type="button" data-i18n="support_send">Envoyer la demande</button>
-        <div id="supportStatus" class="notice hidden"></div>
+        <div id="supportStatus" class="notice hidden" role="status" aria-live="polite" aria-atomic="true"></div>
       </div>
     </div>
     <div class="section">

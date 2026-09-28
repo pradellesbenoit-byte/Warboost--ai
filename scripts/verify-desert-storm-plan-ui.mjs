@@ -183,6 +183,8 @@ const changedTime=mergeDesertStormState(serverMerged.alliance.desert_storm,{...s
 assert.equal(changedTime.plan,null,"changing the battle time invalidates the plan");
 const explicitlyCleared=mergeDesertStormState(serverMerged.alliance.desert_storm,{...serverMerged.alliance.desert_storm,registered_keys:[],substitute_keys:[],updated_at:"2026-09-24T12:32:00.000Z"});
 assert.equal(explicitlyCleared.plan,null,"clearing the selection invalidates the plan");
+const changedSubstitutes=mergeDesertStormState(serverMerged.alliance.desert_storm,{...serverMerged.alliance.desert_storm,substitute_keys:substituteKeys.slice(1),updated_at:"2026-09-24T12:33:00.000Z"});
+assert.equal(changedSubstitutes.plan,null,"changing substitute assignments invalidates the plan");
 state.alliance.desert_storm.team="A";
 sandbox.repaint();
 assert.equal(planBox.classList.contains("hidden"),true,"a changed team never recovers the previous plan");

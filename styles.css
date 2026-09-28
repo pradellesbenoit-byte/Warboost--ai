@@ -1,4 +1,15 @@
 .qg35HomeCard{border-color:rgba(142,112,255,.5);background:linear-gradient(145deg,rgba(89,64,177,.16),rgba(10,16,29,.92))}
+.scanReviewPanel{margin-top:10px;padding:12px;border:1px solid #315078;background:linear-gradient(145deg,#0a1424,#0b111e);border-radius:16px}
+.scanReviewPanel .sectionTitle{margin-bottom:7px}
+.scanReviewRows{display:grid;gap:8px;margin:10px 0 12px}
+.scanReviewRow{display:grid;grid-template-columns:minmax(92px,.75fr) minmax(0,1.25fr);gap:8px;align-items:center;padding:8px;border:1px solid #223650;border-radius:12px;background:#0b1422}
+.scanReviewRow>span{min-width:0;color:#cbd8ec;font-size:11px;line-height:1.35;overflow-wrap:anywhere}
+.scanReviewRow input{width:100%;min-width:0;padding:10px;border:1px solid #344765;border-radius:10px;background:#0c1421;color:#fff;font-size:14px}
+.scanReviewRow input:focus{outline:2px solid rgba(83,231,255,.4);border-color:var(--cyan)}
+.scanReviewPending{display:block;margin-top:4px;color:#ffd28a;font-size:9px}
+.scanReviewMeta{margin:7px 0;padding:8px 9px;border:1px solid #263e5d;border-radius:10px;background:#0b1524;color:#a9bdd3;font-size:10px;line-height:1.4}
+.scanReviewPanel .buttonRow{grid-template-columns:1fr 1fr}
+@media(max-width:420px){.scanReviewRow{grid-template-columns:1fr;gap:6px}.scanReviewPanel{padding:10px}.scanReviewPanel .buttonRow{grid-template-columns:1fr}}
 .qg35HomeCard:disabled{cursor:not-allowed;filter:saturate(.72)}
 .qg35HomeCard.qg35HomeLocked{border-color:rgba(255,191,107,.4);background:linear-gradient(145deg,rgba(142,91,34,.15),rgba(10,16,29,.94))}
 .qg35HomeCard.qg35HomeUnknown{border-color:rgba(117,184,255,.45)}
@@ -451,3 +462,28 @@ a.metaSourceRow{color:inherit;text-decoration:none}a.metaSourceRow:focus-visible
 .qg35AcquisitionDetails>summary::-webkit-details-marker{display:none}
 html[dir="rtl"] .acqOptionHead{direction:rtl}
 @media(max-width:420px){.acqPanel{padding:8px}.acqOption{padding:8px}.acqOptionHead{display:grid;grid-template-columns:minmax(0,1fr);gap:5px}.acqTypeBadge{white-space:normal}.acqToggleButton{min-height:46px}}
+
+/* Bounded mobile localization and accessible drawer controls. */
+@supports (height:100dvh){
+  .drawer{max-height:min(92dvh,calc(100dvh - env(safe-area-inset-top) - 8px));padding-bottom:calc(30px + env(safe-area-inset-bottom));overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+}
+.drawerHeader{position:sticky;top:-12px;z-index:5;margin:0 -1px 12px;padding:12px 1px 9px;background:rgba(8,13,23,.98);backdrop-filter:blur(14px)}
+.drawerHeader h2{min-width:0;overflow-wrap:anywhere}
+.closeBtn{flex:0 0 44px;width:44px;height:44px;min-width:44px;min-height:44px;cursor:pointer;touch-action:manipulation}
+.closeBtn:focus-visible,.drawer button:focus-visible,.drawer input:focus-visible,.drawer select:focus-visible{outline:3px solid rgba(83,231,255,.72);outline-offset:2px}
+.availabilityFormGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.availabilityFormGrid .field,.availabilityFormGrid input,.availabilityFormGrid select{min-width:0;width:100%}
+#playerAvailabilityNote{min-width:0;width:100%}
+.canyonTabs{min-width:0}
+.canyonTab{min-width:0;overflow-wrap:anywhere}
+.canyonPlanner .buttonRow,.canyonActions{min-width:0}
+@media(max-width:420px){
+  .drawer{left:0;width:100%;transform:translateY(105%);border-radius:22px 22px 0 0;padding-left:12px;padding-right:12px}
+  .drawer.open{transform:translateY(0)}
+  .drawerHeader{top:-12px}
+  .availabilityFormGrid{grid-template-columns:minmax(0,1fr)}
+  .canyonTabs{display:flex;overflow-x:auto;overscroll-behavior-x:contain}
+  .canyonTab{flex:1 0 auto;min-height:42px;padding:9px 7px}
+  .dsRosterPicker{max-height:none;overflow:visible}
+  .canyonAvailabilityList{max-height:none;overflow:visible}
+}

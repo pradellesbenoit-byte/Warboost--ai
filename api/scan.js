@@ -7,6 +7,7 @@ import {fetchWithTimeout} from "../lib/http-timeout.js";
 import {canonicalPowerMillions} from "../lib/power-units.js";
 import {parseHeroPower} from "../lib/hero-power.js";
 import {explicitLastWarManagerRank,LAST_WAR_SCAN_RANK_SOURCE} from "../lib/rank-provenance.js";
+import {scanAbuseGuard} from "../lib/scan-abuse-guard.js";
 
 // HF8.6.28 R2 — stable single-pass WarBoost Vision.
 // One screenshot = one bounded provider request. Optional portrait passes are deliberately
@@ -42,6 +43,15 @@ function textValue(raw,keys,max=160){
   const value=objectValue(raw,keys);
   if(value&&typeof value==="object")return str(value.name||value.label||value.title,max);
   return str(value,max);
+}
+function verifiedRosterContext(scanType,currentState,user){
+  if(scanType!=="alliance_roster"||!user?.id||String(currentState?.player_id||"")!==String(user.id))return null;
+  const rawTag=str(currentState?.alliance?.tag,16)?.toUpperCase().replace(/[^A-Z0-9]/g,"");
+  return rawTag?{alliance:{tag:rawTag}}:null;
+}
+function safeErrorCode(error){
+  const code=String(error?.code||"SCAN_FAILED");
+  return new Set(["SCAN_FAILED","SCAN_NOT_CONFIGURED","VISION_TIMEOUT","VISION_INVALID_JSON","VISION_HTTP_ERROR","AUTH_REQUIRED","AUTH_NOT_CONFIGURED","AUTH_INVALID","AUTH_UPSTREAM_TIMEOUT","BETA_INVITES_NOT_CONFIGURED","BETA_INVITE_REVOKED","BETA_INVITE_EXPIRED","BETA_INVITE_REQUIRED","BETA_CONSENT_REQUIRED"]).has(code)?code:"SCAN_FAILED";
 }
 function exclusiveWeaponRecord(raw,now){
   if(!raw||typeof raw!=="object")return null;
@@ -135,7 +145,6 @@ function rosterRowFromRaw(raw,now,allianceTag="",profileContext=null){
   const role=rosterRole(raw?.role||raw?.rank),confirmedRole=explicitLastWarManagerRank(role);
   const hq=safeRosterHq(raw?.hq_level??raw?.hq);
   const power=canonicalPowerMillions(raw?.power_m??raw?.power);
-  const confidence=num(raw?.confidence);
   const key=rosterIdentityKey(name,allianceTag);
   if(!name||!key)return null;
 
@@ -148,7 +157,6 @@ function rosterRowFromRaw(raw,now,allianceTag="",profileContext=null){
     role,
     hq_level:hq,
     power_m:power!=null&&power>0?Math.round(power*100)/100:null,
-    confidence:confidence==null?null:Math.max(0,Math.min(1,confidence)),
     updated_at:now,
     source:"roster_scan",
     rank_confirmation_status:confirmedRole?"confirmed_scan":"unconfirmed",
@@ -201,9 +209,9 @@ function promptFor(scanType,locale,allianceTag){
   const common=`You are WarBoost Vision reading a Last War: Survival screenshot. Read only facts actually visible in the image. Never invent hidden values. User locale: ${locale}. Return ONE valid JSON object only, without markdown or commentary.`;
   if(scanType==="alliance_roster")return `${common} This WarBoost action accepts TWO Last War layouts: (A) the alliance member list, or (B) an individual screen titled "PROFIL DU JOUEUR" / "PLAYER PROFILE". First identify the layout.
 
-For an ALLIANCE MEMBER LIST, return exactly {"screen_type":"member_list","alliance_roster":[{"name":string,"role":"R1|R2|R3|R4|R5|null","hq_level":number,"power_m":number,"confidence":number}]}. Include only rows visibly present. If the grade is not clearly visible, use null; never use R1/R2/R3 as a guess. Include the R5 if visibly shown separately above the R4/R3/R2/R1 lists.
+For an ALLIANCE MEMBER LIST, return exactly {"screen_type":"member_list","alliance_roster":[{"name":string,"role":"R1|R2|R3|R4|R5|null","hq_level":number,"power_m":number}]}. Include only rows visibly present. If the grade is not clearly visible, use null; never use R1/R2/R3 as a guess. Include the R5 if visibly shown separately above the R4/R3/R2/R1 lists. Do not return a confidence score.
 
-For an INDIVIDUAL PLAYER PROFILE, return exactly {"screen_type":"player_profile","player_profile":{"name":string,"role":"R1|R2|R3|R4|R5|null","hq_level":number,"power_m":number,"alliance_tag":string,"alliance_name":string,"server_id":string,"confidence":number}} and NO alliance_roster array. If the grade is not clearly visible, use null; never infer R1/R2/R3. On this layout:
+For an INDIVIDUAL PLAYER PROFILE, return exactly {"screen_type":"player_profile","player_profile":{"name":string,"role":"R1|R2|R3|R4|R5|null","hq_level":number,"power_m":number,"alliance_tag":string,"alliance_name":string,"server_id":string}} and NO alliance_roster array. If the grade is not clearly visible, use null; never infer R1/R2/R3. On this layout:
 - The PLAYER NICKNAME is in the TOP BLUE HEADER, immediately after the player's "Niv.XX" and optional alliance tag. Example: "Niv.35 [ALL4]Space commander" means nickname "Space commander" and HQ/QG 35.
 - The HQ/QG is ONLY the "Niv.XX" in that same top header immediately before the nickname.
 - NEVER use another level shown elsewhere on the profile as HQ/QG. A value such as "Niv.100" beside another icon/stat is NOT the QG.
@@ -216,7 +224,7 @@ For an INDIVIDUAL PLAYER PROFILE, return exactly {"screen_type":"player_profile"
 Alliance tag expected from WarBoost context is ${allianceTag||"unknown"}. A leading [${allianceTag||"TAG"}] decoration is not part of the nickname when it matches that alliance tag. Preserve genuine nickname characters, spaces and trailing digits. Power ending in M is numeric millions. Never infer hidden members, departures, ranks, HQ values or power.`;
   if(/^squad[1-4]$/i.test(scanType)){const id=Number(scanType.slice(-1));return `${common} This is Squad ${id}. First classify the screenshot as screen_type "formation_details", "formation_overview", or "unknown". Use "formation_details" ONLY when the title/details view clearly shows the 5 hero rows/cards and their equipment; use "formation_overview" for the general team/base screen, Formation Preset screen, or Current Formation screen before View Details. If it is "formation_overview", return {"screen_type":"formation_overview"} and do not invent squad or hero values. If it is "formation_details", return {"screen_type":"formation_details","squads":[{"id":${id},"power":number,"heroes":[{"name":string,"name_evidence":"visible_text","name_confidence":number,"level":number,"stars":number,"power":number,"exclusive":string,"gear":string}]}]}. Squad power must be expressed in millions: return 34.29 for a visible 34.29M, never 34290000. Read all 5 hero rows/cards. Hero name is allowed ONLY if the name itself is readable text; do not guess a portrait identity. Read the squad power and every clearly visible level, stars, hero power, exclusive level/text and gear. For gear use count=4;levels=L1,L2,L3,L4;rarity=... when visible. Lv.0 is real data.`}
   if(scanType==="profile")return `${common} Return visible player/account data only as {"player":{"name":string,"server_id":string,"hq_level":number,"power_m":number,"coordinates":string,"role":string},"alliance":{"tag":string,"name":string,"role":string}}.`;
-  if(scanType==="drone")return `${common} Return visible drone data only as {"drone":{"level":number,"power_m":number}}.`;
+  if(scanType==="drone")return `${common} Only drone level and drone power are supported by this scan. Return visible values only as {"drone":{"level":number,"power_m":number}}. Do not claim or return drone components, boosts, chips, chip levels, or other technology: this scan does not read them. Omit any missing or unreadable supported value; never guess or invent fields.`;
   if(scanType==="exclusive")return `${common} This is an exclusive-weapon detail screen from Last War. The layout and language may vary (for example Arme exclusive / Exclusive Weapon / Arma exclusiva, and Lv., Lvl., Level, Niv. or Niveau). Read only text and numbers that are actually visible.
 
 Identify the hero when the hero name is visible or clearly attached to the weapon screen (for example DVA or D.V.A.). Identify the exact visible exclusive-weapon name/type when present (for example "Lame de Frappe DVA"). Most importantly, read the weapon level shown next to the level marker, such as "Lv.26", and return it as the number 26. Do not confuse the hero level, skill level, star count, or another number with the weapon level.
@@ -225,7 +233,7 @@ Return one JSON object, allowing a partial but valid result: {"exclusive_weapons
   if(scanType==="awakening")return `${common} Return visible Awakening data only as {"hero_progression":[{"hero_name":string,"stars":number,"exclusive":number,"awakening":{"unlocked":boolean,"stars":number,"skill_level":number,"named_shards":number,"universal_shards":number,"trial_complete":boolean,"in_base":boolean,"power":number,"reshape_stage":number,"reshape_value":number}}]}.`;
   if(scanType==="shop")return `${common} Return visible shop data only as {"shop":{"store_type":string,"currency":string,"currency_balance":number,"vip_level":number,"vip_days_remaining":number,"offers":[{"item_name":string,"quantity":number,"price":number,"currency":string,"limit":string,"discount_pct":number,"category":string,"rarity":string,"contents":string,"offer_kind":string,"sold":boolean,"content_verified":boolean,"cost_gain_verified":boolean,"price_confidence":number,"currency_confidence":number}]}}. Preserve contents only when readable; do not treat a displayed discount as proof of value. Do not invent hidden offers or prices.`;
   if(scanType==="vs")return `${common} Return visible Alliance Duel data only as {"vs":{"theme":string,"time_remaining_text":string,"time_remaining_seconds":number,"our_server_id":string,"our_tag":string,"our_alliance":string,"opponent_server_id":string,"opponent_tag":string,"opponent":string,"our_score":number,"their_score":number,"our_percent":number,"their_percent":number,"personal_name":string,"personal_rank":number,"personal_score":number,"leaderboard":[{"rank":number,"alliance_tag":string,"player_name":string,"score":number}]}}. Read the active theme/day when visible; do not infer a fixed VS schedule if it is not visible.`;
-  if(scanType==="season")return `${common} Return visible season/technology facts only as {"season":{"name":string,"number":number,"day":number,"total_days":number,"profession":string,"progress_pct":number,"resistance":number,"focus":string,"crystal_event_eligible":boolean,"lifecycle":"active|ended|interseason"},"technology":{"type_mastery_pct":number,"hero_tech_pct":number,"siege_to_seize_pct":number,"defensive_fortification_pct":number,"tactical_weapon_pct":number}}. Set crystal_event_eligible only when the account/event eligibility is visibly confirmed; never infer it from a season number alone.`;
+  if(scanType==="season")return `${common} Return visible season and/or technology facts only. Either object may be omitted when it is not visible; a technology-only result is valid. Supported format: {"season":{"name":string,"number":number,"day":number,"total_days":number,"profession":string,"progress_pct":number,"resistance":number,"focus":string,"crystal_event_eligible":boolean,"lifecycle":"active|ended|interseason"},"technology":{"type_mastery_pct":number,"hero_tech_pct":number,"siege_to_seize_pct":number,"defensive_fortification_pct":number,"tactical_weapon_pct":number}}. Set crystal_event_eligible only when the account/event eligibility is visibly confirmed; never infer it from a season number alone. Omit missing or unreadable fields instead of guessing.`;
   return common;
 }
 async function openaiVision({image,scanType,locale,allianceTag}){
@@ -235,26 +243,37 @@ async function openaiVision({image,scanType,locale,allianceTag}){
   const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j?.error?.message||`Vision HTTP ${r.status}`),{status:r.status,code:j?.error?.code||"VISION_HTTP_ERROR"});
   return jsonFromText(textFromResponse(j));
 }
-async function customVision({image,scanType,locale,currentState}){
+async function customVision({image,scanType,locale,verifiedContext}){
   const url=env("WARBOOST_VISION_ENDPOINT");if(!url)return null;
-  const secret=env("WARBOOST_VISION_SECRET"),r=await fetchWithTimeout(url,{method:"POST",headers:{"content-type":"application/json",...(secret?{"x-warboost-vision-secret":secret}:{})},body:JSON.stringify({image_data_url:image,scan_type:scanType,locale,current_state:currentState})},REQUEST_TIMEOUT_MS,{code:"VISION_TIMEOUT",message:"WarBoost custom Vision timed out"});
-  const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j?.message||`Vision HTTP ${r.status}`),{status:r.status});return j?.state||j?.data||j;
+  const secret=env("WARBOOST_VISION_SECRET"),r=await fetchWithTimeout(url,{method:"POST",headers:{"content-type":"application/json",...(secret?{"x-warboost-vision-secret":secret}:{})},body:JSON.stringify({image_data_url:image,scan_type:scanType,locale,current_state:verifiedContext})},REQUEST_TIMEOUT_MS,{code:"VISION_TIMEOUT",message:"WarBoost custom Vision timed out"});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j?.message||`Vision HTTP ${r.status}`),{status:r.status,code:"VISION_HTTP_ERROR"});return j?.state||j?.data||j;
 }
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
+  let releaseGuard=()=>{},scanTypeForLog="unknown";
+  const startedAt=Date.now();
   try{
-    await requireBetaUser(req,{consent:true});
-    const image=String(req.body?.image_data_url||""),scanType=String(req.body?.scan_type||"profile").toLowerCase(),locale=String(req.body?.locale||"fr"),currentState=req.body?.current_state&&typeof req.body.current_state==="object"?req.body.current_state:null,allianceTag=String(currentState?.alliance?.tag||"").trim().toUpperCase();
+    const {user}=await requireBetaUser(req,{consent:true});
+    const image=String(req.body?.image_data_url||""),scanType=String(req.body?.scan_type||"profile").toLowerCase(),locale=String(req.body?.locale||"fr"),currentState=req.body?.current_state&&typeof req.body.current_state==="object"?req.body.current_state:null;
+    const scanTypeValid=/^(profile|squad[1-4]|drone|exclusive|awakening|shop|vs|season|alliance_roster)$/.test(scanType);
+    scanTypeForLog=scanTypeValid?scanType:"invalid";
+    if(!scanTypeValid)return res.status(400).json({error:"invalid_scan_type",message:"Type d’analyse invalide."});
+    const verifiedContext=verifiedRosterContext(scanType,currentState,user),allianceTag=verifiedContext?.alliance?.tag||"";
     if(!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(image))return res.status(400).json({error:"invalid_image",message:"Image invalide."});
     if(image.length>MAX_IMAGE_DATA_URL)return res.status(413).json({error:"image_too_large",message:"Capture trop volumineuse. Choisis de nouveau la capture."});
+    const slot=scanAbuseGuard.acquire(user?.id);
+    if(!slot.allowed){res.setHeader("Retry-After",String(slot.retryAfterSeconds));return res.status(429).json({error:"scan_rate_limited",code:"SCAN_RATE_LIMITED",message:"Trop d’analyses rapprochées. Réessaie dans un instant.",retry_after_seconds:slot.retryAfterSeconds})}
+    releaseGuard=slot.release;
     let extracted=null,engine="openai",firstError=null;
     if(env("OPENAI_API_KEY")){try{extracted=await openaiVision({image,scanType,locale,allianceTag})}catch(error){firstError=error}}
-    if(!extracted&&env("WARBOOST_VISION_ENDPOINT")){engine="custom";try{extracted=await customVision({image,scanType,locale,currentState})}catch(error){if(!firstError)firstError=error}}
-    if(!extracted){const message=firstError?.code==="VISION_TIMEOUT"?"L’analyse a dépassé le délai. Réessaie avec la même capture.":firstError?.message||"WarBoost Vision n’est pas configuré sur ce déploiement.";return res.status(503).json({error:"scan_provider_unavailable",code:firstError?.code||"SCAN_NOT_CONFIGURED",message})}
+    if(!extracted&&env("WARBOOST_VISION_ENDPOINT")){engine="custom";try{extracted=await customVision({image,scanType,locale,verifiedContext})}catch(error){if(!firstError)firstError=error}}
+    if(!extracted){console.error("WarBoost scan provider unavailable",{code:safeErrorCode(firstError||{code:"SCAN_NOT_CONFIGURED"}),status:Number(firstError?.status)||503,type:scanTypeForLog,duration_ms:Math.max(0,Date.now()-startedAt)});const message=firstError?.code==="VISION_TIMEOUT"?"L’analyse a dépassé le délai. Réessaie avec la même capture.":firstError?.message||"WarBoost Vision n’est pas configuré sur ce déploiement.";return res.status(503).json({error:"scan_provider_unavailable",code:firstError?.code||"SCAN_NOT_CONFIGURED",message})}
     const now=new Date().toISOString();
-    if(scanType==="alliance_roster"){const rows=sanitizeRosterRows(extracted,now,allianceTag);if(!rows.length)return res.status(422).json({error:"scan_no_useful_data",message:"La liste des membres n’a pas pu être lue clairement. Garde la capture et réessaie."});return res.status(200).json({ok:true,engine,scanned_at:now,roster_rows:rows,quality:{row_count:rows.length,requires_confirmation:true,single_pass:true}})}
-     if(/^squad[1-4]$/i.test(scanType)&&squadCaptureScreenType(extracted)==="overview")return res.status(422).json({error:"wrong_squad_capture",code:"WRONG_SQUAD_CAPTURE",message:"Cette capture n'est pas la bonne. Dans Last War : Préréglage de Formation → Voir les Détails → prends ensuite la capture “Détails de la formation”."});
-     const state=sanitize(extracted,now,scanType);if(!usefulState(scanType,state))return res.status(422).json({error:"scan_no_useful_data",message:"La capture est bien reçue, mais les données utiles ne sont pas assez lisibles. Garde cette capture et réessaie."});
-    return res.status(200).json({ok:true,engine,scanned_at:now,state,quality:{single_pass:true,requires_confirmation:/^squad[1-4]$/i.test(scanType)||scanType==="exclusive",partial_results_allowed:scanType==="exclusive",identity_enrichment_skipped:true}});
-  }catch(error){console.error("WarBoost scan R2",{message:error?.message,code:error?.code,status:error?.status});return res.status(error?.status||500).json({error:"scan_failed",code:error?.code||"SCAN_FAILED",message:error?.message||"La capture n’a pas pu être analysée."})}
+    const quality={source:"screenshot_ocr",freshness:{observed_at:now,basis:"server_scan_time",screenshot_age:"unknown"},single_pass:true,requires_confirmation:true};
+    if(scanType==="alliance_roster"){const rows=sanitizeRosterRows(extracted,now,allianceTag);if(!rows.length)return res.status(422).json({error:"scan_no_useful_data",message:"La liste des membres n’a pas pu être lue clairement. Garde la capture et réessaie."});return res.status(200).json({ok:true,engine,scanned_at:now,roster_rows:rows,quality:{...quality,row_count:rows.length}})}
+    if(/^squad[1-4]$/i.test(scanType)&&squadCaptureScreenType(extracted)==="overview")return res.status(422).json({error:"wrong_squad_capture",code:"WRONG_SQUAD_CAPTURE",message:"Cette capture n'est pas la bonne. Dans Last War : Préréglage de Formation → Voir les Détails → prends ensuite la capture “Détails de la formation”."});
+    const state=sanitize(extracted,now,scanType);if(!usefulState(scanType,state))return res.status(422).json({error:"scan_no_useful_data",message:"La capture est bien reçue, mais les données utiles ne sont pas assez lisibles. Garde cette capture et réessaie."});
+    return res.status(200).json({ok:true,engine,scanned_at:now,state,quality:{...quality,requires_confirmation:/^squad[1-4]$/i.test(scanType)||scanType==="exclusive"||["profile","drone","awakening","shop","vs","season","alliance_roster"].includes(scanType),partial_results_allowed:scanType==="exclusive",identity_enrichment_skipped:true}});
+  }catch(error){console.error("WarBoost scan R2",{code:safeErrorCode(error),status:Number(error?.status)||500,type:scanTypeForLog,duration_ms:Math.max(0,Date.now()-startedAt)});return res.status(error?.status||500).json({error:"scan_failed",code:error?.code||"SCAN_FAILED",message:error?.message||"La capture n’a pas pu être analysée."})}
+  finally{releaseGuard()}
 }

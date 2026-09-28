@@ -142,8 +142,9 @@ const nowMs=Date.parse('2026-09-07T16:00:00.000Z');
 
 // S6 technologies and Awakening swap safety remain available when their real conditions are known.
 {
-  const tech=season6TechPriorities({type_mastery_pct:80,hero_tech_pct:75,siege_to_seize_pct:60,defensive_fortification_pct:90,tactical_weapon_pct:70},{offense:true});
+  const tech=season6TechPriorities({type_mastery_pct:80,hero_tech_pct:75,siege_to_seize_pct:60,defensive_fortification_pct:90,tactical_weapon_pct:70},{mainType:'aircraft',offense:true});
   assert.equal(tech.known,true);assert.ok(tech.priorities.length>=4);assert.ok(tech.priorities.some(x=>x.key==='type_mastery'));assert.ok(tech.priorities.some(x=>x.key==='tactical_weapon'));
+  const untyped=season6TechPriorities({type_mastery_pct:80});assert.ok(!untyped.priorities.some(x=>x.key==='type_mastery'));
   const source={name:'DVA',stars:5,exclusive:'23',awakening:{unlocked:true,in_base:true,named_shards:0}};
   const target={name:'Kimberly',stars:5,exclusive:'20',awakening:{unlocked:true,in_base:true,named_shards:0}};
   const swap=awakeningSwapAssessment({swap:{source_hero:'DVA',target_hero:'Kimberly',attempts_remaining:1,active:true},heroes:[source,target]});

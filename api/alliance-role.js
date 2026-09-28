@@ -14,6 +14,32 @@ function profileIdentity(profile){
   return {name:String(p.name||"").trim(),server_id:normalizeServerId(p.server_id),alliance_tag:normalizeAllianceTag(a.tag),role:p.role,rank_confirmed_source:p.rank_confirmed_source,rank_confirmed_at:p.rank_confirmed_at};
 }
 function publicIdentityRow(row={},userId=""){return {name:String(row.name||"").trim(),server_id:normalizeServerId(row.server_id),alliance_tag:normalizeAllianceTag(row.alliance_tag),role:role(row.role),linked:Boolean(row?.player_id),linked_to_self:Boolean(userId&&String(row.player_id||"")===String(userId)),warboost_linked:row.warboost_linked===true}}
+export function resolveRequestedRosterRemovalMembers(current=[],requested=[],context={}){
+  const serverId=normalizeServerId(context.serverId),allianceTag=normalizeAllianceTag(context.allianceTag);
+  const selected=[],unresolved=[];
+  for(const raw of Array.isArray(requested)?requested:[]){
+    if(!raw||typeof raw!=="object"||Array.isArray(raw)){unresolved.push("member_identity_required");continue}
+    const name=String(raw.name||"").trim(),server_id=normalizeServerId(raw.server_id||serverId),alliance_tag=normalizeAllianceTag(raw.alliance_tag||allianceTag);
+    const expectedRaw=String(raw.expected_role||raw.current_role||raw.from_role||"").trim().toUpperCase();
+    if(!name||!serverId||!allianceTag||!/^(R[1-5])$/.test(expectedRaw)){unresolved.push("member_identity_required");continue}
+    if(server_id!==serverId||alliance_tag!==allianceTag){unresolved.push("member_not_found");continue}
+    const resolution=resolveCanonicalRosterMember(current,{...raw,name,server_id,alliance_tag,expected_role:expectedRaw},{serverId,allianceTag});
+    if(!resolution.ok){unresolved.push(resolution.code||"member_not_found");continue}
+    const member=resolution.member,memberServer=normalizeServerId(member?.server_id||serverId),memberAlliance=normalizeAllianceTag(member?.alliance_tag||allianceTag);
+    if(normalizeLastWarNickname(member?.name,allianceTag)!==normalizeLastWarNickname(name,allianceTag)||memberServer!==serverId||memberAlliance!==allianceTag){unresolved.push("member_not_found");continue}
+    if(role(member?.role)!==expectedRaw){unresolved.push("member_role_changed");continue}
+    selected.push(member);
+  }
+  if(unresolved.length)return {ok:false,error:unresolved[0]};
+  const unique=new Map(selected.map(row=>[row.canonical_member_key||`canonical:${normalizeLastWarNickname(row.name,allianceTag)}|${normalizeServerId(row.server_id||serverId)}|${normalizeAllianceTag(row.alliance_tag||allianceTag)}`,row]));
+  return {ok:true,rows:[...unique.values()]};
+}
+export function validateRosterRemovalRanks(current=[],rows=[],actorRole=null){
+  const targets=Array.isArray(rows)?rows:[],r5Count=(Array.isArray(current)?current:[]).filter(member=>role(member?.role)==="R5").length;
+  if(targets.some(member=>role(member?.role)==="R5")&&r5Count-targets.filter(member=>role(member?.role)==="R5").length<1)return {ok:false,status:400,error:"last_r5_protected"};
+  if(actorRole==="R4"&&targets.some(member=>role(member?.role)==="R5"))return {ok:false,status:403,error:"r5_protected"};
+  return {ok:true};
+}
 // Backward-compatibility audit marker for legacy verifiers: r5_required. HF8.6.4 extends safe role maintenance to verified R4 while keeping R5 protected.
 
 export default async function handler(req,res){
@@ -69,18 +95,10 @@ export default async function handler(req,res){
        const requested=Array.isArray(req.body?.members)?req.body.members:(Array.isArray(req.body?.member_keys)?req.body.member_keys.map(member_key=>({member_key})):[]);
        if(!requested.length||requested.length>20)return res.status(400).json({error:"member_keys_required"});
        const context={serverId:normalizeServerId(alliance.server_id),allianceTag:normalizeAllianceTag(alliance.tag)},current=Array.isArray(actorContext?.alliance?.roster)?actorContext.alliance.roster:actorRoster;
-       const selected=[],unresolved=[];
-       for(const raw of requested){
-         const resolution=resolveCanonicalRosterMember(current,typeof raw==="string"?{member_key:raw}:raw,context);
-         if(resolution.ok)selected.push(resolution.member);
-         else if(typeof raw!=="string"&&String(raw?.name||"").trim()&&String(raw?.server_id||context.serverId).trim()&&String(raw?.alliance_tag||context.allianceTag).trim())selected.push({...raw,canonical_member_key:raw.canonical_member_key||`canonical:${normalizeLastWarNickname(raw.name,raw.alliance_tag||context.allianceTag)}|${normalizeServerId(raw.server_id||context.serverId)}|${normalizeAllianceTag(raw.alliance_tag||context.allianceTag)}`});
-         else unresolved.push(resolution.code||"member_not_found");
-       }
-       if(unresolved.length)return res.status(409).json({error:unresolved[0]});
-       const unique=new Map(selected.map(row=>[row.canonical_member_key||`canonical:${normalizeLastWarNickname(row.name,context.allianceTag)}|${normalizeServerId(row.server_id||context.serverId)}|${normalizeAllianceTag(row.alliance_tag||context.allianceTag)}`,row]));
-       const rows=[...unique.values()],r5Count=current.filter(x=>role(x?.role)==="R5").length;
-       if(rows.some(x=>role(x?.role)==="R5")&&r5Count-rows.filter(x=>role(x?.role)==="R5").length<1)return res.status(400).json({error:"last_r5_protected"});
-       if(actorRole==="R4"&&rows.some(x=>role(x?.role)==="R5"))return res.status(403).json({error:"r5_protected"});
+        const selection=resolveRequestedRosterRemovalMembers(current,requested,context);
+        if(!selection.ok)return res.status(409).json({error:selection.error});
+        const rows=selection.rows,rankCheck=validateRosterRemovalRanks(current,rows,actorRole);
+        if(!rankCheck.ok)return res.status(rankCheck.status).json({error:rankCheck.error});
        const now=new Date().toISOString(),removedKeys=new Set(rows.map(x=>x.canonical_member_key||`canonical:${normalizeLastWarNickname(x.name,context.allianceTag)}|${normalizeServerId(x.server_id||context.serverId)}|${normalizeAllianceTag(x.alliance_tag||context.allianceTag)}`)),next=current.filter(x=>!removedKeys.has(x.canonical_member_key||`canonical:${normalizeLastWarNickname(x.name,context.allianceTag)}|${normalizeServerId(x.server_id||context.serverId)}|${normalizeAllianceTag(x.alliance_tag||context.allianceTag)}`)),newTombstones=rows.map(x=>({key:x.canonical_member_key||`canonical:${normalizeLastWarNickname(x.name,context.allianceTag)}|${normalizeServerId(x.server_id||context.serverId)}|${normalizeAllianceTag(x.alliance_tag||context.allianceTag)}`,name:x.name,server_id:x.server_id||context.serverId,alliance_tag:x.alliance_tag||context.allianceTag,removed_at:now}));
        const tombstones=normalizeRosterRemovalTombstones([...(actorContext?.roster_tombstones||[]),...newTombstones]),saved=await updateAllianceScopeRoster({alliance_id:actorContext.alliance.id||actor?.alliance_id,roster:next,roster_tombstones:tombstones,expected_updated_at:actorContext.alliance.updated_at});
        return res.status(200).json({ok:true,mode:"roster_members_removed",removed:rows.map(x=>({name:x.name,member_key:x.canonical_member_key||rosterLifecycleKey(x)})),roster:Array.isArray(saved?.roster)?saved.roster.filter(x=>!x?.__warboost_type):next,removal_tombstones:tombstones,alliance_updated_at:saved?.updated_at||now});
