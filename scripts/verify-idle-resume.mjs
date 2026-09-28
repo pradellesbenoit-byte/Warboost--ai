@@ -256,8 +256,8 @@ assert.match(app,/runAuthenticatedIdleResume\(\{[\s\S]*reconcile:reconcileAuthen
 assert.match(app,/event==="TOKEN_REFRESHED"&&session/);
 assert.match(app,/Mise à jour WarBoost…/);
 assert.match(app,/À jour/);
-assert.match(index,/app\.js\?v=hf8630-idle-resume-r1/);
-assert.match(sw,/warboost-v2-5-30-hf8-6-30-idle-resume-r1/);
+assert.match(index,/app\.js\?v=shop-observations-v2-5-32-hf8-6-34-r2/);
+assert.match(sw,/warboost-v2-5-32-hf8-6-34-shop-observations-r2/);
 assert.doesNotMatch(fs.readFileSync(new URL("../lib/idle-lifecycle.js",import.meta.url),"utf8"),/signOut|removeItem/);
 
 console.log("WarBoost 30-minute inactivity suspension and safe resume: PASS (8 scenarios)");
