@@ -40,6 +40,8 @@ import {canonicalPowerMillions} from "./lib/power-units.js";
 import {parseHeroPower,confirmedHeroPower,heroPowerIsConfirmed} from "./lib/hero-power.js";
 import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 import {createScanReviewDraft,scanReviewEntries,applyOwnedScanReview,scanRequestMatches} from "./lib/scan-review.js";
+import {buildScanReviewGroups,serializeScanReviewGear} from "./lib/scan-review-presentation.js";
+import {renderScanReviewMarkup} from "./lib/scan-review-markup.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.32";
@@ -549,7 +551,7 @@ async function saveHeroConfirmation(){
   state=next;
   recordProgressionSnapshot(`scan_squad${id}`,now);
   saveState(); // saves immediately, then schedules the cloud push in background.
-  st.className="notice";st.textContent=t("hero_confirm_saved");
+  showConfirmedScanStatus(st,"hero_confirm_saved");
   closeHeroConfirmation(false);
 }
 async function skipHeroConfirmation(){
@@ -2829,20 +2831,98 @@ $("#openScanBtn").addEventListener("click",()=>openQuickScan("profile"));$("#sca
 
 async function fetchWarBoostScan(payload){const response=await fetch("/api/scan",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(payload)}),json=await response.json().catch(()=>({}));return {response,json}}
 function scanResultHasUsefulData(scanType,payload){const type=String(scanType||"profile").toLowerCase(),x=payload&&typeof payload==="object"?payload:{};if(type==="profile"){const p=x.player||{},a=x.alliance||{};return Boolean(p.name||p.server_id||p.coordinates||p.role||Number(p.hq_level)>0||Number(p.power_m)>0||a.tag||a.name||a.server_id)}if(type==="drone"){const d=x.drone||{};return Number(d.level)>0||Number(d.power_m)>0}const sm=type.match(/^squad([1-4])$/);if(sm){const sq=x.squads?.[Number(sm[1])-1];if(!sq)return false;if(Number(sq.power)>0)return true;return (sq.heroes||[]).some(h=>Boolean(h?.name||Number(h?.level)>=0&&h?.level!==null||Number(h?.stars)>0||Number(h?.power)>0||h?.exclusive||h?.gear))}if(type==="exclusive")return Array.isArray(x.exclusive_weapons)&&x.exclusive_weapons.some(w=>w?.hero_name||w?.weapon_name||Number(w?.level)>=0&&w?.level!==null||Number(w?.power)>0);if(type==="awakening")return Array.isArray(x.hero_progression)&&x.hero_progression.some(h=>h?.hero_name||h?.awakening);if(type==="shop")return Boolean(x.shop&&(x.shop.store_type||x.shop.currency||Number(x.shop.currency_balance)>0||(x.shop.offers||[]).length));if(type==="vs")return Boolean(x.vs&&(x.vs.theme||x.vs.our_alliance||x.vs.opponent||Number(x.vs.our_score)>0||Number(x.vs.their_score)>0||x.vs.time_remaining_text));if(type==="season")return Boolean((x.season&&Object.keys(x.season).some(k=>k!=="updated_at"))||(x.technology&&Object.keys(x.technology).some(k=>k!=="updated_at"&&x.technology[k]!==null&&x.technology[k]!==undefined)));return Object.keys(x).length>0}
-function scanReviewFieldName(path){const names={name:"nickname",server_id:"server",hq_level:"hq",power:"power",power_m:"power",level:"level",profession:"profession",day:"day_label",week:"week",our_alliance:"your_alliance",opponent:"unknown_opponent",hero_name:"hero",weapon_name:"exclusive_weapon"};return path.map((part,index)=>typeof part==="number"?(path.slice(0,index).includes("heroes")?`${t("hero")} ${part+1}`:t("scan_review_field",{field:String(part+1)})):path[0]==="alliance"&&part==="name"?t("scan_review_alliance_name"):path[0]==="alliance"&&part==="tag"?t("scan_review_alliance_tag"):names[part]?t(names[part]):t("scan_review_field",{field:String(part).replaceAll("_"," ")})).join(" · ")}
-function setScanReviewError(key){const box=$("#scanReviewError");if(!box)return;box.textContent=t(key);box.classList.remove("hidden")}
+function setScanReviewError(key){const box=$("#scanReviewError");if(!box)return;box.dataset.scanReviewErrorKey=key;box.textContent=t(key);box.classList.remove("hidden")}
 function renderScanReview(draft){
   pendingScanReview=draft;const panel=$("#scanReviewPanel"),rows=$("#scanReviewRows");if(!panel||!rows)return false;
   const entries=scanReviewEntries(draft.patch);if(!entries.length){discardScanReviewDraft();return false}
-  const error=$("#scanReviewError");if(error){error.textContent="";error.classList.add("hidden")}
-  rows.innerHTML=entries.map(({path,value})=>{const encoded=esc(JSON.stringify(path)),text=String(value),power=/^(power|power_m)$/i.test(String(path.at(-1))),pending=power&&!(confirmedHeroPower(value)),editor=typeof value==="boolean"?`<select data-scan-review-path="${encoded}"><option value="true"${value?" selected":""}>${esc(t("scan_review_true"))}</option><option value="false"${!value?" selected":""}>${esc(t("scan_review_false"))}</option></select>`:`<input type="${typeof value==="number"?"number":"text"}" data-scan-review-path="${encoded}" value="${esc(text)}"${typeof value==="number"?' min="0" step="any" inputmode="decimal"':""} />`;return `<label class="scanReviewRow"><span>${esc(scanReviewFieldName(path))}${pending?` <small class="scanReviewPending">${esc(t("scan_review_power_pending"))}</small>`:""}</span>${editor}</label>`}).join("");
+  const error=$("#scanReviewError");if(error){error.textContent="";delete error.dataset.scanReviewErrorKey;error.classList.add("hidden")}
+  const markup=renderScanReviewMarkup(buildScanReviewGroups(draft.type,draft.patch),t,esc);
+  if(!markup.rows.length){discardScanReviewDraft();return false}
+  draft.displayRows=markup.rows;
+  rows.innerHTML=markup.html;
   $("#scanReviewMeta").textContent=`${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(draft.scannedAt).toLocaleString(locale||lang)}`;
-  panel.classList.remove("hidden");$("#exclusiveConfirmPanel")?.classList.add("hidden");$("#heroConfirmPanel")?.classList.add("hidden");return true;
+  panel.classList.remove("hidden");$("#exclusiveConfirmPanel")?.classList.add("hidden");$("#heroConfirmPanel")?.classList.add("hidden");
+  requestAnimationFrame(()=>{if(pendingScanReview===draft&&!panel.classList.contains("hidden"))panel.scrollIntoView({block:"start",behavior:"smooth"})});
+  return true;
+}
+function scanReviewFormEdits(draft){
+  const container=$("#scanReviewRows"),edits=[];
+  if(!container||!Array.isArray(draft.displayRows))return {error:"scan_review_apply_failed"};
+  for(const [id,row] of draft.displayRows.entries()){
+    if(row.kind==="gear"){
+      const counts=[...container.querySelectorAll(`[data-scan-gear-count="${id}"]`)];
+      if(!counts.length||counts.some(input=>input.validity?.badInput===true))return {error:"scan_review_gear_invalid"};
+      const parts=counts.map((input,index)=>({
+        count:input.value,
+        levels:container.querySelector(`[data-scan-gear-levels="${id}"][data-scan-gear-part="${index}"]`)?.value??"",
+        rarity:[...container.querySelectorAll(`[data-scan-gear-rarity="${id}"][data-scan-gear-part="${index}"]:checked`)].map(option=>option.value).join(",")
+      }));
+      const serialized=serializeScanReviewGear(parts);
+      if(serialized.error)return {error:"scan_review_gear_invalid"};
+      edits.push({path:row.path,value:serialized.value});
+    }else{
+      const input=container.querySelector(`[data-scan-review-id="${id}"]`);
+      if(!input)return {error:"scan_review_apply_failed"};
+      edits.push({path:row.path,value:input.value,badInput:input.validity?.badInput===true});
+    }
+  }
+  return {edits};
+}
+function updateScanReviewRaritySummary(container,id,index){
+  const summary=container.querySelector(`[data-scan-gear-rarity-summary="${id}"][data-scan-gear-part="${index}"]`);
+  if(!summary)return;
+  const names=[...container.querySelectorAll(`[data-scan-gear-rarity="${id}"][data-scan-gear-part="${index}"]:checked`)].map(input=>t(`scan_review_rarity_${input.value}`));
+  summary.textContent=`${t("scan_review_label_gear_rarity")} : ${names.join(" / ")||t("scan_review_status_missing")}`;
+}
+function translateOpenScanReview(statusBeforeLanguage){
+  const status=$("#scanStatus");
+  if(statusBeforeLanguage?.key&&status){
+    if(statusBeforeLanguage.confirmed)showConfirmedScanStatus(status,statusBeforeLanguage.key);
+    else{status.className=statusBeforeLanguage.className;status.textContent=t(statusBeforeLanguage.key)}
+  }
+  const draft=pendingScanReview,container=$("#scanReviewRows"),panel=$("#scanReviewPanel");
+  if(!draft||!container||!panel||panel.classList.contains("hidden"))return;
+  const controls=[...container.querySelectorAll("input,select")],focused=document.activeElement,focusIndex=controls.indexOf(focused);
+  const details=[...container.querySelectorAll("details")].map(item=>item.open);
+  const markup=renderScanReviewMarkup(buildScanReviewGroups(draft.type,draft.patch),t,esc);
+  const holder=document.createElement("div");holder.innerHTML=markup.html;
+  const replacements=[...holder.querySelectorAll("input,select")];
+  if(controls.length!==replacements.length)return;
+  for(const [index,replacement] of replacements.entries()){
+    const original=controls[index];
+    for(const attribute of ["aria-label","title","placeholder"]){
+      if(replacement.hasAttribute(attribute))original.setAttribute(attribute,replacement.getAttribute(attribute));
+      else original.removeAttribute(attribute);
+    }
+    if(original.tagName==="SELECT"){
+      const options=[...original.options],translated=[...replacement.options];
+      if(options.length===translated.length)options.forEach((option,at)=>{option.textContent=translated[at].textContent});
+    }
+    replacement.replaceWith(original);
+  }
+  container.replaceChildren(...holder.childNodes);
+  [...container.querySelectorAll("details")].forEach((item,index)=>{item.open=details[index]||false});
+  draft.displayRows=markup.rows;
+  draft.displayRows.forEach((row,id)=>{if(row.kind==="gear")for(const part of container.querySelectorAll(`[data-scan-gear-count="${id}"]`))updateScanReviewRaritySummary(container,id,part.dataset.scanGearPart)});
+  const error=$("#scanReviewError");if(error?.dataset.scanReviewErrorKey)error.textContent=t(error.dataset.scanReviewErrorKey);
+  $("#scanReviewMeta").textContent=`${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(draft.scannedAt).toLocaleString(locale||lang)}`;
+  if(focusIndex>=0)controls[focusIndex].focus({preventScroll:true});
+}
+function showConfirmedScanStatus(status,messageKey){
+  if(!status)return;
+  status.className="notice";status.dataset.scanReviewStatusKey=messageKey;
+  const badge=document.createElement("span");
+  badge.className="scanReviewBadge";badge.dataset.status="confirmed";
+  badge.textContent=t("scan_review_status_confirmed");
+  badge.setAttribute("aria-label",badge.textContent);badge.title=badge.textContent;
+  status.replaceChildren(badge,document.createTextNode(` ${t(messageKey)}`));
 }
 function confirmScanReview(){
   const draft=pendingScanReview;if(!draft||draft.owner!==pendingScanOwner())return discardScanReviewDraft();
   if(!scanRequestIsCurrent(draft.request)){discardScanReviewDraft();return}
-  const edits=[...($("#scanReviewRows")?.querySelectorAll("[data-scan-review-path]")||[])].map(input=>({path:JSON.parse(input.dataset.scanReviewPath),value:input.value,badInput:input.validity?.badInput===true}));
+  const form=scanReviewFormEdits(draft);
+  if(form.error){setScanReviewError(form.error);return}
+  const edits=form.edits;
   const result=applyOwnedScanReview(draft,pendingScanOwner(),edits);
   if(!result)return discardScanReviewDraft();
   if(result.errors.length){const error=result.errors[0];setScanReviewError(error.reason==="negative_number"?"scan_review_negative_number":error.reason==="invalid_boolean"?"scan_review_invalid_boolean":"scan_review_invalid_number");return}
@@ -2862,10 +2942,20 @@ function confirmScanReview(){
   const type=draft.type,squadId=sm?Number(sm[1]):null,names=draft.heroNames||[];
   discardScanReviewDraft();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden");
   if(squadId)startHeroConfirmation(squadId,names,heroSlots,now);
-  else{const status=$("#scanStatus");if(status){status.className=pendingPowerPaths.length?"notice warn":"notice";status.textContent=pendingPowerPaths.length?t("scan_review_power_pending"):t("scan_saved")}if(type==="vs"){render();openDrawer("vs");if(proFeatureAllowed())void requestAdvice("vs").then(live=>{$("#vsPlanText").textContent=structuredAdviceText("vs",live)})}}
+  else{const status=$("#scanStatus");if(status){if(pendingPowerPaths.length){status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_power_pending";status.textContent=t("scan_review_power_pending")}else showConfirmedScanStatus(status,"scan_saved")}if(type==="vs"){render();openDrawer("vs");if(proFeatureAllowed())void requestAdvice("vs").then(live=>{$("#vsPlanText").textContent=structuredAdviceText("vs",live)})}}
 }
 $("#confirmScanReviewBtn")?.addEventListener("click",confirmScanReview);
-$("#discardScanReviewBtn")?.addEventListener("click",()=>{discardScanReviewDraft();const status=$("#scanStatus");if(status){status.className="notice";status.textContent=t("scan_review_discarded")}});
+$("#discardScanReviewBtn")?.addEventListener("click",()=>{discardScanReviewDraft();const status=$("#scanStatus");if(status){status.className="notice";status.dataset.scanReviewStatusKey="scan_review_discarded";status.textContent=t("scan_review_discarded")}});
+$("#scanReviewRows")?.addEventListener("change",event=>{const input=event.target.closest?.("[data-scan-gear-rarity]");if(input)updateScanReviewRaritySummary(event.currentTarget,input.dataset.scanGearRarity,input.dataset.scanGearPart)});
+let scanReviewStatusBeforeLanguage=null;
+document.addEventListener("change",event=>{
+  if(event.target?.id!=="languageSelect")return;
+  const status=$("#scanStatus"),key=status?.dataset.scanReviewStatusKey,confirmed=Boolean(status?.querySelector(".scanReviewBadge[data-status='confirmed']"));
+  const reviewOpen=Boolean(pendingScanReview&&!$("#scanReviewPanel")?.classList.contains("hidden"));
+  const currentKey=key&&(confirmed||status.textContent.trim()===t(key))?key:reviewOpen&&status?.textContent.trim()===t("scan_review_ready")?"scan_review_ready":null;
+  scanReviewStatusBeforeLanguage={key:currentKey,confirmed,className:status?.className};
+},true);
+document.addEventListener("change",event=>{if(event.target?.id==="languageSelect")queueMicrotask(()=>translateOpenScanReview(scanReviewStatusBeforeLanguage))});
 async function imageToDataUrl(file){return new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const max=2048,scale=Math.min(1,max/Math.max(img.width,img.height)),w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);let data=c.toDataURL("image/jpeg",.9);if(data.length>3900000)data=c.toDataURL("image/jpeg",.78);URL.revokeObjectURL(url);resolve(data)}catch(e){reject(e)}};img.onerror=e=>{URL.revokeObjectURL(url);reject(e)};img.src=url})}
 $("#scanFile").addEventListener("change",async e=>{const file=e.target.files?.[0];if(!file)return;const selection=beginNewScanFileSelection();try{await selection.clearPending;if(selection.fileRevision!==scanFileSelectionRevision)return;const image=await imageToDataUrl(file);if(selection.fileRevision!==scanFileSelectionRevision)return;scanImageData=image;scanImageName=String(file.name||"capture.jpg");$("#scanPreview").src=image;$("#scanPreview").classList.remove("hidden");$("#clearScanCaptureBtn")?.classList.remove("hidden");const kept=await savePendingSingleScan(selection.owner,{scan_type:$("#scanType")?.value||"profile",image_data_url:image,name:scanImageName});if(selection.fileRevision!==scanFileSelectionRevision)return;$("#scanStatus").className=kept?"notice":"notice warn";$("#scanStatus").textContent=t(kept?"scan_ready":"scan_pending_local_failed")}catch{if(selection.fileRevision===scanFileSelectionRevision){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_error")}}});
 $("#scanType")?.addEventListener("change",()=>{scanInputRevision++;if(scanImageData)void savePendingSingleScan(pendingScanOwner(),{scan_type:$("#scanType")?.value||"profile",image_data_url:scanImageData,name:scanImageName})});
@@ -2919,7 +3009,7 @@ async function analyzeReviewedScan(){
       const draft={owner,type:scanType,request,patch,scannedAt:j.scanned_at||new Date().toISOString(),heroNames:Array.from({length:5},(_,i)=>String(rawHeroes?.[i]?.name||"").trim())};
       if(!scanReviewEntries(patch).length&&match){startHeroConfirmation(Number(match[1]),draft.heroNames,rawHeroes,draft.scannedAt);return}
       if(!renderScanReview(draft)){status.className="notice warn";status.textContent=t("scan_error");return}
-      status.className="notice";status.textContent=t("scan_review_ready");
+      status.className="notice";status.dataset.scanReviewStatusKey="scan_review_ready";status.textContent=t("scan_review_ready");
     }else{status.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){status.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else status.textContent=j.code==="SCAN_NOT_CONFIGURED"?t("scan_unconfigured"):(j.message||t("scan_error"))}
   }catch(e){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}
   finally{btn.disabled=false;btn.textContent=t("analyze")}
@@ -3325,6 +3415,6 @@ window.addEventListener("online",()=>{
 });
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&cloudDirty)void pushServerState({keepalive:true})});
 window.addEventListener("pagehide",()=>{if(cloudDirty)void pushServerState({keepalive:true})});
-if("serviceWorker" in navigator)window.addEventListener("load",async()=>{try{const generation="warboost-v2-5-32-hf8-6-34-shop-observations-r2",reloadKey=`${generation}:reloaded`,reg=await navigator.serviceWorker.register(`/sw.js?rev=${generation}`,{updateViaCache:"none"});let refreshing=sessionStorage.getItem(reloadKey)==="1";const activateWaiting=()=>{if(reg.waiting&&sessionStorage.getItem(reloadKey)!=="1")reg.waiting.postMessage({type:"WARBOOST_ACTIVATE"})};navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing||sessionStorage.getItem(reloadKey)==="1")return;refreshing=true;sessionStorage.setItem(reloadKey,"1");location.reload()});activateWaiting();reg.addEventListener("updatefound",()=>{const worker=reg.installing;if(worker)worker.addEventListener("statechange",()=>{if(worker.state==="installed")activateWaiting()})});await reg.update();activateWaiting()}catch{}});
+if("serviceWorker" in navigator)window.addEventListener("load",async()=>{try{const generation="warboost-scan-review-human-r1",reloadKey=`${generation}:reloaded`,reg=await navigator.serviceWorker.register(`/sw.js?rev=${generation}`,{updateViaCache:"none"});let refreshing=sessionStorage.getItem(reloadKey)==="1";const activateWaiting=()=>{if(reg.waiting&&sessionStorage.getItem(reloadKey)!=="1")reg.waiting.postMessage({type:"WARBOOST_ACTIVATE"})};navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing||sessionStorage.getItem(reloadKey)==="1")return;refreshing=true;sessionStorage.setItem(reloadKey,"1");location.reload()});activateWaiting();reg.addEventListener("updatefound",()=>{const worker=reg.installing;if(worker)worker.addEventListener("statechange",()=>{if(worker.state==="installed")activateWaiting()})});await reg.update();activateWaiting()}catch{}});
 handleJoinLink();applyLanguage();startForegroundRefreshes({refreshTime:true});void initCloudAuth().then(()=>idleLifecycle?.start(),()=>idleLifecycle?.start());render();renderAuth();renderBeta();restorePendingScans();
 // Legacy HF8.6.19 returning-player verification marker: function betaPrivateDataVisible(){const userId=String(cloudSession?.user?.id||"");const trustedLocal=Boolean(userId&&hasMeaningfulCore(readAccountState(userId))),checking=betaState?.access_status==="checking";return Boolean(cloudSession?.user)&&!checking&&betaAccessAllowed()&&betaConsentAccepted()&&(cloudProfileVerified||trustedLocal)}

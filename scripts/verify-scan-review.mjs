@@ -84,6 +84,7 @@ log('squad scan review covers non-name hero attributes while retaining five-name
 
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const i18n=fs.readFileSync(new URL('../i18n.js',import.meta.url),'utf8');
+const markup=fs.readFileSync(new URL('../lib/scan-review-markup.js',import.meta.url),'utf8');
 const analyze=app.slice(app.indexOf('async function analyzeReviewedScan()'),app.indexOf('$("#analyzeScanBtn").addEventListener("click",async event=>'));
 assert.doesNotMatch(analyze,/saveState\s*\(|mergeStateProtected\s*\(|state\s*=/,'analysis must only stage data before the review action');
 assert.match(app,/draft\.owner!==pendingScanOwner\(\)/,'review confirmation is scoped to current account');
@@ -92,11 +93,12 @@ assert.match(app,/pendingPowerPaths\.some\(path=>path\[0\]==="squads"/,'unreadab
 assert.match(app,/scanRequestIsCurrent\(request\)/,'analysis only stages results for the unchanged request context');
 assert.match(app,/if\(result\.errors\.length\)/,'invalid edits stop before state merge and retain the draft');
 assert.match(app,/scan_review_apply_failed/,'merge failures retain the review and show an inline error');
-assert.match(app,/typeof value==="boolean"\?`<select data-scan-review-path=/,'boolean review fields use explicit true/false options');
+assert.match(markup,/row\.kind==="boolean"[\s\S]*?<select/,'boolean review fields use explicit true/false options');
+assert.match(app,/renderScanReviewMarkup\(buildScanReviewGroups\(draft\.type,draft\.patch\),t,esc\)/,'review renders the localized grouped presentation');
 assert.match(app,/beginNewScanFileSelection\(\)/,'a newly selected image clears older scan confirmations immediately');
 assert.match(app,/mergeStateProtected\(safeClone\(previousState\),reviewed/,'profile identity uses the normal protected merge so omitted confirmed fields survive');
 assert.match(app,/out\.alliance=safeFields\(base\.alliance,incoming\.alliance,preferBase\)/,'alliance values omitted by Vision remain in the confirmed base state');
 assert.match(app,/a\.tag\|\|a\.name\|\|a\.server_id/,'profile alliance-only identity results remain reviewable');
-assert.match(app,/scan_review_alliance_name/,'profile alliance identity fields have explicit review labels');
+assert.match(markup,/scan_review_group_\$\{group\.kind\}/,'profile alliance identity is grouped under a localized label');
 assert.match(i18n,/scan_review_alliance_tag/,'alliance tag field label is localized');
 log('analysis and account-switch paths cannot persist or reuse an unconfirmed draft');

@@ -1,15 +1,34 @@
 .qg35HomeCard{border-color:rgba(142,112,255,.5);background:linear-gradient(145deg,rgba(89,64,177,.16),rgba(10,16,29,.92))}
-.scanReviewPanel{margin-top:10px;padding:12px;border:1px solid #315078;background:linear-gradient(145deg,#0a1424,#0b111e);border-radius:16px}
+.scanReviewPanel{margin-top:10px;min-width:0;padding:12px;border:1px solid #315078;background:linear-gradient(145deg,#0a1424,#0b111e);border-radius:16px}
 .scanReviewPanel .sectionTitle{margin-bottom:7px}
-.scanReviewRows{display:grid;gap:8px;margin:10px 0 12px}
-.scanReviewRow{display:grid;grid-template-columns:minmax(92px,.75fr) minmax(0,1.25fr);gap:8px;align-items:center;padding:8px;border:1px solid #223650;border-radius:12px;background:#0b1422}
-.scanReviewRow>span{min-width:0;color:#cbd8ec;font-size:11px;line-height:1.35;overflow-wrap:anywhere}
-.scanReviewRow input{width:100%;min-width:0;padding:10px;border:1px solid #344765;border-radius:10px;background:#0c1421;color:#fff;font-size:14px}
-.scanReviewRow input:focus{outline:2px solid rgba(83,231,255,.4);border-color:var(--cyan)}
-.scanReviewPending{display:block;margin-top:4px;color:#ffd28a;font-size:9px}
+.scanReviewRows{display:grid;gap:10px;margin:10px 0 12px;min-width:0}
+.scanReviewGroup{min-width:0;padding:10px;border:1px solid #2a4160;border-radius:14px;background:#0b1525}
+.scanReviewGroupTitle{margin:0 0 9px;color:#f3f8ff;font-size:14px;line-height:1.35;font-weight:750;overflow-wrap:anywhere}
+.scanReviewGroupRows{display:grid;gap:7px;min-width:0}
+.scanReviewRow{min-width:0;padding:9px 10px;border:1px solid #223650;border-radius:10px;background:#0b1422}
+.scanReviewRowHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.scanReviewRowHead label,.scanReviewRowHead .scanReviewFieldLabel{min-width:0;color:#dbe8f7;font-size:12px;font-weight:650;line-height:1.35;overflow-wrap:anywhere}
+.scanReviewBadge{flex:none;padding:3px 7px;border:1px solid #51677f;border-radius:999px;color:#c8d8e9;background:#172a3d;font-size:10px;font-weight:700;line-height:1.2}
+.scanReviewBadge[data-status="pending"]{color:#ffe0a0;border-color:#806335;background:#342813}
+.scanReviewBadge[data-status="missing"]{color:#b9cadc;border-color:#40556c;background:#172638}
+.scanReviewBadge[data-status="confirmed"]{color:#a8ebd6;border-color:#306f59;background:#123427}
+.scanReviewRow input,.scanReviewRow select{box-sizing:border-box;width:100%;min-width:0;padding:9px 10px;border:1px solid #344765;border-radius:9px;background:#0c1421;color:#fff;font-size:14px;line-height:1.35}
+.scanReviewRow input:focus,.scanReviewRow select:focus{outline:2px solid rgba(83,231,255,.4);outline-offset:1px;border-color:var(--cyan)}
+.scanReviewRow input::placeholder{color:#91a6bd;opacity:1}
+.scanReviewGearSummary{display:grid;gap:2px;margin:0 0 8px;color:#bcd6e8;font-size:11px;line-height:1.4;overflow-wrap:anywhere}
+.scanReviewGearFields{display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);gap:7px}
+.scanReviewGearFields label{display:grid;gap:4px;min-width:0;color:#bcd0e5;font-size:11px}
+.scanReviewGearFields .scanReviewRarity{grid-column:1 / -1}
+.scanReviewRarity summary{cursor:pointer;padding:6px 0;color:#c7dcf2;font-size:11px;line-height:1.4}
+.scanReviewRarity summary:focus-visible{outline:2px solid var(--cyan);border-radius:4px}
+.scanReviewRarityOptions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:5px 0}
+.scanReviewRarityOptions label{display:flex;align-items:center;gap:5px;min-height:30px;overflow-wrap:anywhere}
+.scanReviewRarityOptions input[type="checkbox"]{flex:none;width:16px;height:16px;min-width:16px;margin:0;padding:0;accent-color:var(--cyan)}
+.scanReviewGearSegment+.scanReviewGearSegment{margin-top:8px;padding-top:8px;border-top:1px solid #263c57}
+.scanReviewExclusiveNote{margin:0 0 7px;color:#b7d0e7;font-size:11px;line-height:1.35}
 .scanReviewMeta{margin:7px 0;padding:8px 9px;border:1px solid #263e5d;border-radius:10px;background:#0b1524;color:#a9bdd3;font-size:10px;line-height:1.4}
-.scanReviewPanel .buttonRow{grid-template-columns:1fr 1fr}
-@media(max-width:420px){.scanReviewRow{grid-template-columns:1fr;gap:6px}.scanReviewPanel{padding:10px}.scanReviewPanel .buttonRow{grid-template-columns:1fr}}
+.scanReviewPanel .buttonRow{position:sticky;bottom:calc(-12px - env(safe-area-inset-bottom));z-index:2;grid-template-columns:1fr 1fr;margin:10px -12px -12px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(9,16,28,.98);border-radius:0 0 16px 16px}
+@media(max-width:420px){.scanReviewPanel{padding:10px}.scanReviewGroup{padding:9px}.scanReviewRow{padding:8px}.scanReviewPanel .buttonRow{bottom:calc(-10px - env(safe-area-inset-bottom));margin:10px -10px -10px;padding:10px 10px calc(10px + env(safe-area-inset-bottom));grid-template-columns:1fr}.scanReviewGearFields{grid-template-columns:minmax(0,.75fr) minmax(0,1.25fr)}}
 .qg35HomeCard:disabled{cursor:not-allowed;filter:saturate(.72)}
 .qg35HomeCard.qg35HomeLocked{border-color:rgba(255,191,107,.4);background:linear-gradient(145deg,rgba(142,91,34,.15),rgba(10,16,29,.94))}
 .qg35HomeCard.qg35HomeUnknown{border-color:rgba(117,184,255,.45)}

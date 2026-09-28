@@ -30,7 +30,7 @@
     "test:restore-canonicalization": "node scripts/verify-restore-canonicalization.mjs",
     "test:hero-slot-integrity": "node scripts/verify-hero-slot-integrity-v2.5.28.mjs",
     "test:exclusive-power-persistence": "node scripts/verify-exclusive-power-persistence-v2.5.28.mjs",
-    "test:scan-review": "node scripts/verify-scan-review.mjs",
+    "test:scan-review": "node scripts/verify-scan-review.mjs && node scripts/verify-scan-review-presentation.mjs && node scripts/verify-scan-review-markup.mjs",
     "test:hero-power-backfill": "node scripts/verify-hero-power-backfill.mjs",
     "test:canyon-storm": "node scripts/verify-canyon-storm.mjs",
     "test:availability-capacity": "node scripts/verify-availability-capacity.mjs",
