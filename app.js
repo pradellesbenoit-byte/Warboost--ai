@@ -1,6 +1,6 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
-import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=qg35-home-visibility-v2-5-32-hf8-6-32-r1";
+import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=qg35-priority-acq-provenance-v2-5-32-hf8-6-33-r1";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
 import {canonicalShopStore} from "./lib/shop-catalog.js";
 import {resourceAcquisitionForPriority,formatAcquisitionCost} from "./lib/resource-acquisition.js";
@@ -42,7 +42,7 @@ import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.32";
-const RELEASE_LABEL="HF8.6.32"; // QG35+ home visibility and status-gated entry.
+const RELEASE_LABEL="HF8.6.33"; // Confirmed-data QG35+ priorities and dated acquisition references.
 // Legacy HF8.6.27 verification marker: const RELEASE_LABEL="HF8.6.27"
 // Legacy HF8.6.26 verification marker: const RELEASE_LABEL="HF8.6.26"
 // Legacy HF8.6.26 render-contract verification markers (non-executable):
@@ -1358,26 +1358,29 @@ function renderEndgameCoachDrawer(){
   if(!report.eligibility.eligible){content.innerHTML=`<div class="notice">${qg35Text("qg35_not_eligible")}</div>`;return}
   const confidenceLabel=t(`qg35_confidence_${report.confidence.band}`);
   const priorities=report.top_priorities.map((item,index)=>{
-    const scanType=qg35ScanType(item.action_key);
     return `<article class="qg35Priority">
       <div class="qg35PriorityHead"><span>${qg35Text(`qg35_priority_${index+1}`)}</span><span>${qg35Text(item.system_key,item.params)}</span></div>
       <h3>${qg35Text(item.action_key,item.params)}</h3>
       <p><b>${qg35Text("qg35_gain_label")}:</b> ${qg35Text(item.gain_key,item.params)}</p>
       <button class="smallBtn qg35WhyToggle" type="button" data-qg35-why="${index}" aria-expanded="false">${qg35Text("qg35_why")}</button>
       <p id="qg35Why${index}" class="qg35WhyText hidden">${qg35Text(item.why_key,item.params)}</p>
-      ${scanType?`<button class="secondaryBtn qg35WhyToggle" type="button" data-qg35-scan-type="${esc(scanType)}">${qg35Text("qg35_scan_now")}</button>`:""}
     </article>`;
   }).join("");
+  const nextCapture=report.next_capture
+    ?`<section class="qg35NextCapture qg35Intro"><strong>${qg35Text("qg35_next_capture")}</strong>
+      <p>${qg35Text(report.next_capture.action_key)}</p>
+      <button class="secondaryBtn" type="button" data-qg35-scan-type="${esc(report.next_capture.scan_type)}">${qg35Text("qg35_scan_now")}</button>
+    </section>`:"";
   const missing=report.missing_data.length
     ?`<ul class="qg35MissingList">${report.missing_data.map(item=>`<li>${qg35Text(item.message_key)}</li>`).join("")}</ul>`
     :`<p>${qg35Text("qg35_no_missing_data")}</p>`;
   const summary=`<section class="qg35Intro"><strong>${qg35Text("qg35_summary_title")}</strong>
     <p>${qg35Text("qg35_summary_intro")}</p>
     <div class="qg35Confidence">${qg35Text("qg35_confidence_label")}: <b>${esc(confidenceLabel)}</b> · ${qg35Text("qg35_confidence_detail",{score:report.confidence.score})}</div>
-  </section><div class="qg35Priorities">${priorities}</div>`;
-  const bottleneck=qg35DetailSection("qg35_section_bottleneck",
+  </section>${priorities?`<div class="qg35Priorities">${priorities}</div>`:`<p class="notice">${qg35Text("qg35_no_safe_action")}</p>`}${nextCapture}`;
+  const bottleneck=report.bottleneck?qg35DetailSection("qg35_section_bottleneck",
     `<p><b>${qg35Text(report.bottleneck.system_key,report.bottleneck.params)}</b></p><p>${qg35Text(report.bottleneck.diagnosis_key,report.bottleneck.params)}</p>
-    <p>${qg35Text(report.bottleneck.is_data_limited?"qg35_data_limited":"qg35_bottleneck_relative_note")}</p>`);
+    <p>${qg35Text(report.bottleneck.is_data_limited?"qg35_data_limited":"qg35_bottleneck_relative_note")}</p>`):"";
   const plan=report.seven_day_plan.map(item=>{
     const action=item.action
       ?`${qg35Text(item.action.system_key,item.action.params)} — ${qg35Text(item.action.action_key,item.action.params)}`
@@ -1386,6 +1389,8 @@ function renderEndgameCoachDrawer(){
     const conserve=item.conserve.length?item.conserve.map(name=>esc(name)).join(", "):qg35Text("qg35_none_known");
     return `<li><b>${qg35Text("qg35_day_label",{day:item.day})}</b> ${action}<br><span>${qg35Text("qg35_use_now")}: ${use} · ${qg35Text("qg35_conserve")}: ${conserve}</span><br><span>${qg35Text(item.wait_for_event_key)}</span></li>`;
   }).join("");
+  const planSection=report.seven_day_plan.length
+    ?qg35DetailSection("qg35_section_seven_days",`<ol class="qg35PlanList">${plan}</ol>`):"";
   const resources=report.resources.length?report.resources.map(item=>{
     const statusKey=item.recommendation==="UTILISER"?"qg35_resource_use_label":item.recommendation==="PRIORITÉ FAIBLE"?"qg35_resource_low_label":"qg35_resource_keep_label";
     return `<div class="qg35Resource"><strong>${esc(item.name)}</strong><span class="qg35StatusPill">${qg35Text(statusKey)}</span>
@@ -1422,7 +1427,7 @@ function renderEndgameCoachDrawer(){
     :`<p>${qg35Text(report.before_after.message_key)}</p>`;
   const advanced=`<div class="qg35AdvancedSections">
     ${bottleneck}
-    ${qg35DetailSection("qg35_section_seven_days",`<ol class="qg35PlanList">${plan}</ol>`)}
+    ${planSection}
     ${qg35DetailSection("qg35_section_resources",resources)}
     ${qg35DetailSection("qg35_section_squad1",`${roles}${heroRows}`)}
     ${qg35DetailSection("qg35_section_technology",technology)}
@@ -1654,7 +1659,7 @@ function renderShopRecommendationCard(x,groupRank,native,ui){
 function renderAcquisitionOption(option,view){
   const paid=option.type==="paid",badge=paid?t("acq_paid_in_last_war"):t("acq_game_currency");
   const best=option.bestInternal?`<span class="acqBestBadge">${esc(t("acq_best_internal"))}</span>`:"";
-  const observed=paid&&option.observed?`<span class="acqObservedBadge">${esc(t("acq_observed"))}</span>`:"";
+  const observed=option.observed?`<span class="acqObservedBadge">${esc(t("acq_observed"))}${option.referenceDate?` · ${esc(option.referenceDate)}`:""}</span>`:"";
   const why=t("acq_why_text",{focus:view.focus||""});
   return `<article class="acqOption${paid?" acqPaid":""}${option.bestInternal?" acqBest":""}"><div class="acqOptionHead"><b>${esc(option.item||"")}</b><span class="acqTypeBadge">${esc(badge)}</span></div>${best}<small class="acqSource">${esc(option.store||"")}</small><strong class="acqCost">${esc(formatAcquisitionCost(option,t,locale))}</strong>${observed}<p class="acqWhy"><b>${esc(t("acq_why"))}:</b> ${esc(why)}</p><small class="acqAvailability">${esc(t("acq_availability_note"))}</small></article>`;
 }

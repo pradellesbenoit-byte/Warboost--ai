@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
 import {LANGUAGES,translator} from "../i18n.js";
-import {SHOP_REFERENCE_CATALOG} from "../lib/shop-catalog.js";
+import {SHOP_REFERENCE_CATALOG,SHOP_REFERENCE_DATE,SHOP_REFERENCE_SOURCE} from "../lib/shop-catalog.js";
 import {
   ACQUISITION_I18N_KEYS,
   formatAcquisitionCost,
@@ -28,6 +29,9 @@ assert.equal(exclusiveView.options.length,3);
 assert.deepEqual(exclusiveView.options.map(option=>option.type),["internal","internal","paid"]);
 assert.equal(exclusiveView.options[0].amount,300);
 assert.equal(exclusiveView.options[1].amount,2500);
+assert.equal(exclusiveView.options[0].referenceDate,null,"A manually supplied cost must not inherit a date when the catalog has no observed price.");
+assert.equal(exclusiveView.options[1].referenceDate,SHOP_REFERENCE_DATE,"A matched in-game cost should expose its observation date.");
+assert.equal(exclusiveView.options[1].referenceSource,SHOP_REFERENCE_SOURCE);
 assert.equal(exclusiveView.options[2].priceEur,17);
 assert.equal(exclusiveView.options[2].amount,2000);
 assert.equal(exclusiveView.options[2].currency,"gold_brick");
@@ -98,5 +102,9 @@ for(const [priority,state={},family] of [
   assert.equal(view.resourceFamily,family);
   assert.ok(view.options.filter(option=>option.type==="internal").every(option=>option.observed),`${family} must use exact catalog matches`);
 }
+
+const acquisitionUi=await readFile(new URL("../app.js",import.meta.url),"utf8");
+assert.match(acquisitionUi,/option\.referenceDate/,"The acquisition UI should show a matched reference date.");
+assert.match(acquisitionUi,/const observed=option\.observed/,"Observed provenance should be visible for in-game and paid references.");
 
 console.log(`resource acquisition verification passed (${localeCodes.length} locales)`);

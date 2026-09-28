@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "../lib/endgame-coach.js";
-import {translator} from "../i18n.js";
+import {LANGUAGES,translator} from "../i18n.js";
 
 const namesByType={
   aircraft:["Ambolt","Cage","Carlie","DVA","Lucius"],
@@ -64,6 +64,8 @@ const threshold=createEndgameCoachReport({player:{hq_level:35}});
 assert.equal(threshold.eligibility.eligible,true);
 assert.equal(threshold.top_priorities.length,3);
 assert.equal(new Set(threshold.top_priorities.map(item=>item.action_key)).size,3);
+assert.equal(threshold.next_capture.scan_type,"squad1","The next useful capture should start with the formation.");
+assert.equal(threshold.seven_day_plan.length,7,"A seven-day plan should be shown only when it has three actual priorities.");
 assert.deepEqual(deriveEndgameCoachHomeState(threshold,{privateVisible:true}),{visible:true,state:"eligible",active:true,showProfileScan:false});
 
 for(const type of Object.keys(namesByType)){
@@ -77,6 +79,7 @@ const before=JSON.stringify(incomplete);
 const incompleteReport=createEndgameCoachReport(incomplete);
 assert.equal(JSON.stringify(incomplete),before,"The report must not mutate player state.");
 assert.equal(incompleteReport.top_priorities.length,3);
+assert.equal(incompleteReport.next_capture.scan_type,"squad1");
 assert.equal(incompleteReport.resources.length,0,"Shop currency and offers are not player rare-resource stock.");
 assert.equal(incompleteReport.missing_data.some(item=>item.id==="rare_resources"),true);
 assert.equal(incompleteReport.before_after.available,false);
@@ -104,9 +107,23 @@ assert.equal(completeReport.before_after.available,true);
 assert.equal(completeReport.before_after.after,120);
 assert.equal(completeReport.before_after.metric,"Formation size");
 assert.equal(completeReport.missing_data.length,0);
-assert.equal(completeReport.seven_day_plan.length,7);
-assert.equal(completeReport.seven_day_plan[0].use_now.length,0);
-assert.deepEqual(completeReport.seven_day_plan[3].use_now,["Crystal"]);
+assert.ok(completeReport.seven_day_plan.length<7,"A partial priority set must not be padded into a seven-day plan.");
+
+const equalProgression=makeState("aircraft",{complete:true,levels:[180,180,180,180,180]});
+equalProgression.exclusive_weapons=namesByType.aircraft.map(hero_name=>({hero_name,level:5,power:1000}));
+const noActionReport=createEndgameCoachReport(equalProgression);
+assert.deepEqual(noActionReport.top_priorities,[],"Confirmed, even progression must not receive generic filler priorities.");
+assert.equal(noActionReport.bottleneck,null);
+assert.equal(noActionReport.next_capture,null);
+assert.equal(noActionReport.seven_day_plan.length,0);
+
+const modulesOnly=makeState("aircraft",{complete:true,levels:[180,180,180,180,180]});
+delete modulesOnly.drone.components;
+delete modulesOnly.drone.chips;
+modulesOnly.exclusive_weapons=namesByType.aircraft.map(hero_name=>({hero_name,level:5,power:1000}));
+const modulesOnlyReport=createEndgameCoachReport(modulesOnly);
+assert.ok(modulesOnlyReport.missing_data.some(item=>item.id==="drone_modules"));
+assert.equal(modulesOnlyReport.next_capture,null,"A drone scan must not be recommended when only unsupported module fields are missing.");
 
 const held=makeState("tank",{complete:true});
 held.endgame.rare_resources=[{name:"Crystal",stock:10,usage_known:true,current_use:true,next_use:{cost:100,expected_gain:20,gain_source:"confirmed screen"}}];
@@ -140,6 +157,11 @@ assert.equal(fr("qg35_analyze_button"),"🧠 Analyser mon QG35");
 assert.equal(fr("qg35_locked_status"),"Disponible à partir du QG35");
 assert.equal(fr("qg35_unknown_status"),"QG non renseigné");
 assert.equal(es("qg35_title"),en("qg35_title"),"Other locales should fall back to English.");
+for(const [code] of LANGUAGES.filter(([locale])=>locale!=="auto")){
+  const t=translator(code);
+  for(const key of ["qg35_summary_title","qg35_next_capture","qg35_no_safe_action"])
+    assert.notEqual(t(key),key,`${code} is missing ${key}`);
+}
 for(const [path,source] of [
   ["app.js",await readFile(new URL("../app.js",import.meta.url),"utf8")],
   ["index.html",await readFile(new URL("../index.html",import.meta.url),"utf8")],
@@ -156,18 +178,19 @@ assert.match(appSource,/if\(!betaPrivateDataVisible\(\)\)\{hideEndgameCoach\(\);
 assert.match(appSource,/card\.classList\.remove\("hidden"\)/,"Authorized users should see the home card for every HQ state.");
 assert.match(appSource,/card\.disabled=!homeState\.active/,"The home card should only open the diagnosis for eligible HQ.");
 assert.match(appSource,/unknown\.classList\.toggle\("hidden",!homeState\.showProfileScan\)/,"Unknown HQ should reveal the profile-scan action.");
-assert.match(appSource,/const priorities=report\.top_priorities\.map/,"The drawer must render the report's three priorities.");
+assert.match(appSource,/const priorities=report\.top_priorities\.map/,"The drawer must render the report's actual priorities.");
+assert.match(appSource,/data-qg35-scan-type="\$\{esc\(report\.next_capture\.scan_type\)\}"/,"Only the report's next useful capture should be offered as a QG35 scan CTA.");
 assert.match(appSource,/if\(betaPrivateDataVisible\(\)&&name==="qg35Coach"\)safeRenderStep\("QG35_COACH_OPEN",renderEndgameCoachDrawer\)/,"Opening QG35+ should render the drawer after refreshing the current state.");
 assert.match(appSource,/openDrawer\("qg35Coach"\)/,"The active home card must open the QG35+ drawer.");
-assert.match(appSource,/qg35-home-visibility-v2-5-32-hf8-6-32-r1/,"The Coach module import must use the current cache-busting release.");
+assert.match(appSource,/qg35-priority-acq-provenance-v2-5-32-hf8-6-33-r1/,"The Coach module import must use the current cache-busting release.");
 const packageJson=JSON.parse(await readFile(new URL("../package.json",import.meta.url),"utf8"));
 assert.equal(packageJson.version,"2.5.32");
 const indexHtml=await readFile(new URL("../index.html",import.meta.url),"utf8");
 assert.match(indexHtml,/id="qg35CoachCard"[^>]*class="moduleCard qg35HomeCard hidden"/);
-assert.match(indexHtml,/styles\.css\?v=qg35-home-visibility-v2-5-32-hf8-6-32-r1/);
-assert.match(indexHtml,/app\.js\?v=qg35-home-visibility-v2-5-32-hf8-6-32-r1/);
-assert.match(indexHtml,/warboost-build" content="2\.5\.32-HF8\.6\.32-qg35-home-visibility-r1"/);
+assert.match(indexHtml,/styles\.css\?v=qg35-priority-acq-provenance-v2-5-32-hf8-6-33-r1/);
+assert.match(indexHtml,/app\.js\?v=qg35-priority-acq-provenance-v2-5-32-hf8-6-33-r1/);
+assert.match(indexHtml,/warboost-build" content="2\.5\.32-HF8\.6\.33-qg35-priority-acq-provenance-r1"/);
 const swSource=await readFile(new URL("../sw.js",import.meta.url),"utf8");
-assert.match(swSource,/warboost-v2-5-32-hf8-6-32-qg35-home-visibility-r1/);
+assert.match(swSource,/warboost-v2-5-32-hf8-6-33-qg35-priority-acq-provenance-r1/);
 
 console.log("QG35+ Coach eligibility, report completeness, privacy, access gating, translations, and read-only stability verified.");

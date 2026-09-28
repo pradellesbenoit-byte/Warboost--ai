@@ -2006,7 +2006,7 @@ const QG35_FR={
 };
 Object.assign(EN,QG35_EN);Object.assign(EN_GB,QG35_EN);Object.assign(EN_US,QG35_EN);Object.assign(packs.fr,QG35_FR);
 Object.assign(FR,{hero_power_rescan:"Puissance à rescanner"});
-for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V\d+(?:\.\d+){1,2}(?:\s+HF\d+(?:\.\d+){1,2})?/gi,'').replace(/HF\d+(?:\.\d+){1,2}/gi,'').replace(/(?:\s*[·-]\s*){2,}/g,' · ').replace(/^\s*[·-]\s*/,'').replace(/\s*[·-]\s*$/,'').trim();target.tagline=`V2.5.32 HF8.6.32${tail?` · ${tail}`:''}`}}
+for(const target of [EN,EN_GB,EN_US,...Object.values(packs)]){if(target?.tagline){let tail=String(target.tagline).replace(/V\d+(?:\.\d+){1,2}(?:\s+HF\d+(?:\.\d+){1,2})?/gi,'').replace(/HF\d+(?:\.\d+){1,2}/gi,'').replace(/(?:\s*[·-]\s*){2,}/g,' · ').replace(/^\s*[·-]\s*/,'').replace(/\s*[·-]\s*$/,'').trim();target.tagline=`V2.5.32 HF8.6.33${tail?` · ${tail}`:''}`}}
 // Legacy HF8.6.23 verification marker: target.tagline=`V2.5.28 HF8.6.23${tail?` · ${tail}`:''}`
 
 // Legacy HF8.6.20 verification marker: target.tagline=`V2.5.28 HF8.6.20${tail?` · ${tail}`:''}`
@@ -2090,3 +2090,33 @@ for(const [code,label] of Object.entries(ACQUISITION_PAID_LABELS)){
   target.acq_paid_in_last_war=label;
 }
 Object.assign(EN,{acq_official_paid:ACQUISITION_PAID_LABELS["en-GB"],acq_paid_in_last_war:ACQUISITION_PAID_LABELS["en-GB"]});
+const QG35_ACTION_LABELS={
+  fr:{qg35_summary_title:"Priorités fondées sur les données confirmées",qg35_next_capture:"Prochaine capture utile",qg35_no_safe_action:"Aucune action ne peut encore être recommandée de façon sûre à partir des données confirmées."},
+  "en-GB":{qg35_summary_title:"Priorities based on confirmed data",qg35_next_capture:"Next useful capture",qg35_no_safe_action:"No action can be safely recommended from the confirmed data yet."},
+  "en-US":{qg35_summary_title:"Priorities based on confirmed data",qg35_next_capture:"Next useful capture",qg35_no_safe_action:"No action can be safely recommended from the confirmed data yet."},
+  es:{qg35_summary_title:"Prioridades basadas en datos confirmados",qg35_next_capture:"Próxima captura útil",qg35_no_safe_action:"Aún no se puede recomendar una acción segura con los datos confirmados."},
+  it:{qg35_summary_title:"Priorità basate sui dati confermati",qg35_next_capture:"Prossima schermata utile",qg35_no_safe_action:"Non è ancora possibile consigliare un'azione sicura con i dati confermati."},
+  de:{qg35_summary_title:"Prioritäten auf Basis bestätigter Daten",qg35_next_capture:"Nächster sinnvoller Screenshot",qg35_no_safe_action:"Mit den bestätigten Daten kann noch keine sichere Aktion empfohlen werden."},
+  pt:{qg35_summary_title:"Prioridades baseadas em dados confirmados",qg35_next_capture:"Próxima captura útil",qg35_no_safe_action:"Ainda não é possível recomendar uma ação segura com os dados confirmados."},
+  nl:{qg35_summary_title:"Prioriteiten op basis van bevestigde gegevens",qg35_next_capture:"Volgende nuttige screenshot",qg35_no_safe_action:"Op basis van de bevestigde gegevens kan nog geen veilige actie worden aanbevolen."},
+  zh:{qg35_summary_title:"基于已确认数据的优先事项",qg35_next_capture:"下一张有用截图",qg35_no_safe_action:"目前无法根据已确认的数据安全地推荐操作。"},
+  ja:{qg35_summary_title:"確認済みデータに基づく優先事項",qg35_next_capture:"次に役立つスクリーンショット",qg35_no_safe_action:"確認済みデータだけでは、まだ安全な行動を推奨できません。"},
+  ru:{qg35_summary_title:"Приоритеты на основе подтверждённых данных",qg35_next_capture:"Следующий полезный снимок экрана",qg35_no_safe_action:"Пока нельзя безопасно рекомендовать действие на основе подтверждённых данных."},
+  ar:{qg35_summary_title:"الأولويات استنادًا إلى البيانات المؤكدة",qg35_next_capture:"لقطة الشاشة المفيدة التالية",qg35_no_safe_action:"لا يمكن حتى الآن التوصية بإجراء آمن استنادًا إلى البيانات المؤكدة."},
+  pl:{qg35_summary_title:"Priorytety oparte na potwierdzonych danych",qg35_next_capture:"Następny przydatny zrzut ekranu",qg35_no_safe_action:"Na podstawie potwierdzonych danych nie można jeszcze bezpiecznie zalecić działania."},
+  tr:{qg35_summary_title:"Doğrulanmış verilere dayalı öncelikler",qg35_next_capture:"Sonraki yararlı ekran görüntüsü",qg35_no_safe_action:"Doğrulanmış verilere göre henüz güvenli bir işlem önerilemiyor."},
+  ko:{qg35_summary_title:"확인된 데이터 기반 우선순위",qg35_next_capture:"다음으로 유용한 캡처",qg35_no_safe_action:"확인된 데이터만으로는 아직 안전한 작업을 추천할 수 없습니다."},
+  vi:{qg35_summary_title:"Ưu tiên dựa trên dữ liệu đã xác nhận",qg35_next_capture:"Ảnh chụp hữu ích tiếp theo",qg35_no_safe_action:"Chưa thể đề xuất hành động an toàn chỉ từ dữ liệu đã xác nhận."},
+  th:{qg35_summary_title:"ลำดับความสำคัญจากข้อมูลที่ยืนยันแล้ว",qg35_next_capture:"ภาพหน้าจอที่เป็นประโยชน์ถัดไป",qg35_no_safe_action:"ยังไม่สามารถแนะนำการดำเนินการที่ปลอดภัยจากข้อมูลที่ยืนยันแล้วได้"},
+  id:{qg35_summary_title:"Prioritas berdasarkan data terkonfirmasi",qg35_next_capture:"Tangkapan layar berguna berikutnya",qg35_no_safe_action:"Belum ada tindakan aman yang bisa disarankan berdasarkan data terkonfirmasi."},
+  uk:{qg35_summary_title:"Пріоритети на основі підтверджених даних",qg35_next_capture:"Наступний корисний знімок екрана",qg35_no_safe_action:"На основі підтверджених даних поки що не можна безпечно рекомендувати дію."},
+  ro:{qg35_summary_title:"Priorități bazate pe date confirmate",qg35_next_capture:"Următoarea captură utilă",qg35_no_safe_action:"Încă nu se poate recomanda în siguranță o acțiune pe baza datelor confirmate."},
+  el:{qg35_summary_title:"Προτεραιότητες βάσει επιβεβαιωμένων δεδομένων",qg35_next_capture:"Επόμενο χρήσιμο στιγμιότυπο",qg35_no_safe_action:"Δεν μπορεί ακόμη να προταθεί με ασφάλεια κάποια ενέργεια από τα επιβεβαιωμένα δεδομένα."},
+  cs:{qg35_summary_title:"Priority podle potvrzených údajů",qg35_next_capture:"Další užitečný snímek obrazovky",qg35_no_safe_action:"Na základě potvrzených údajů zatím nelze bezpečně doporučit žádnou akci."},
+  sv:{qg35_summary_title:"Prioriter baserade på bekräftade uppgifter",qg35_next_capture:"Nästa användbara skärmbild",qg35_no_safe_action:"Det går ännu inte att rekommendera en säker åtgärd utifrån bekräftade uppgifter."},
+};
+for(const [code,labels] of Object.entries(QG35_ACTION_LABELS)){
+  if(!packs[code])throw new Error(`Unknown QG35 locale ${code}`);
+  packs[code]=Object.assign(packs[code],labels);
+}
+Object.assign(EN,QG35_ACTION_LABELS["en-GB"]);
