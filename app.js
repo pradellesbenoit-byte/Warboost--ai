@@ -230,6 +230,8 @@ function mergeStateProtected(base,incoming,{preferBase=false}={}){
   out.availability_history=mergeAvailabilityHistory(base.availability_history,incoming.availability_history);
   out.activity_events=mergeActivityEvents(base.activity_events,incoming.activity_events);
   out.drone=safeFields(base.drone,incoming.drone,preferBase);
+  if(base.drone?.boostCombat||incoming.drone?.boostCombat)
+    out.drone.boostCombat=safeFields(base.drone?.boostCombat,incoming.drone?.boostCombat,preferBase);
   out.shop=mergeShopState(base.shop,incoming.shop);if(preferBase){out.shop={...out.shop,...base.shop,offers:base.shop?.offers||[],snapshots:out.shop.snapshots||base.shop?.snapshots||[]};}
    out.alliance=safeFields(base.alliance,incoming.alliance,preferBase);out.alliance.event_availability=mergeEventAvailabilities(base.alliance?.event_availability,incoming.alliance?.event_availability,...(out.alliance.members||[]).map(x=>x.event_availability||[]));out.alliance.availability_history=mergeAvailabilityHistory(base.alliance?.availability_history,incoming.alliance?.availability_history,...(out.alliance.members||[]).map(x=>x.availability_history||[]));out.alliance.desert_storm=mergeDesertStormState(base.alliance?.desert_storm,incoming.alliance?.desert_storm);out.alliance.canyon=mergeCanyonState(base.alliance?.canyon,incoming.alliance?.canyon);out.alliance.members=mergeAllianceMembersProtected(base.alliance?.members,incoming.alliance?.members,preferBase);out.alliance.unlinked_accounts=normalizeUnlinkedAccounts(out.alliance.unlinked_accounts,out.alliance.members,{serverId:out.alliance.server_id||out.player?.server_id,allianceTag:out.alliance.tag,currentPlayerId:out.player_id,currentPlayerName:out.player?.name,currentPlayerAliases:String(base.player_id||"")===String(out.player_id||"")?[base.player?.name]:[],identityLinkStatus:out.alliance.identity_link_status});
   out.vs=mergeVsState(base.vs,incoming.vs);if(preferBase)out.vs={...out.vs,...safeFields(incoming.vs,base.vs,false),snapshots:out.vs.snapshots||base.vs?.snapshots||[]};out.season=safeFields(base.season,incoming.season,preferBase);out.technology=safeFields(base.technology||{},incoming.technology||{},preferBase);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);
@@ -2970,7 +2972,7 @@ function confirmScanReview(){
   if(result.errors.length){const error=result.errors[0];setScanReviewError(error.reason==="negative_number"?"scan_review_negative_number":error.reason==="invalid_boolean"?"scan_review_invalid_boolean":"scan_review_invalid_number");return}
   const reviewed=result.patch;
   const pendingPowerPaths=[];
-  for(const edit of edits)if(/^(power|power_m)$/i.test(String(edit.path.at(-1)))){if(!String(edit.value??"").trim())continue;if(!confirmedHeroPower(edit.value)){let target=reviewed;for(const part of edit.path.slice(0,-1))target=target?.[part];if(target)delete target[edit.path.at(-1)];pendingPowerPaths.push(edit.path)}}
+  for(const edit of edits)if(/^(power|power_m)$/i.test(String(edit.path.at(-1)))){if(edit.path[0]==="drone")continue;if(!String(edit.value??"").trim())continue;if(!confirmedHeroPower(edit.value)){let target=reviewed;for(const part of edit.path.slice(0,-1))target=target?.[part];if(target)delete target[edit.path.at(-1)];pendingPowerPaths.push(edit.path)}}
   const sm=draft.type.match(/^squad([1-4])$/),squadIndex=sm?Number(sm[1])-1:null,heroSlots=sm?(reviewed.squads?.[squadIndex]?.heroes||[]):[];
   const previousState=state,now=draft.scannedAt||new Date().toISOString();let merged;
   try{
@@ -3045,14 +3047,14 @@ async function analyzeReviewedScan(){
     const {response:r,json:j}=await fetchWarBoostScan({scan_type:scanType,locale:lang,image_data_url:image,current_state:state});
     if(!scanRequestIsCurrent(request))return;
     if(r.ok&&j.state){
-      if(!scanResultHasUsefulData(scanType,j.state)){status.className="notice warn";status.textContent=t("scan_error");return}
+      if(!scanResultHasUsefulData(scanType,j.state)&&!(scanType==="drone"&&j.state?.drone?.boostCombat?.level!=null)){status.className="notice warn";status.textContent=t("scan_error");return}
       const patch=createScanReviewDraft(scanType,j.state),match=scanType.match(/^squad([1-4])$/),rawHeroes=match?j.state.squads?.[Number(match[1])-1]?.heroes:[];
       if(!patch){status.className="notice warn";status.textContent=t("scan_error");return}
       const draft={owner,type:scanType,request,patch,scannedAt:j.scanned_at||new Date().toISOString(),heroNames:Array.from({length:5},(_,i)=>String(rawHeroes?.[i]?.name||"").trim())};
       if(!scanReviewEntries(patch).length&&match){startHeroConfirmation(Number(match[1]),draft.heroNames,rawHeroes,draft.scannedAt);return}
       if(!renderScanReview(draft)){status.className="notice warn";status.textContent=t("scan_error");return}
       status.className="notice";status.dataset.scanReviewStatusKey="scan_review_ready";status.textContent=t("scan_review_ready");
-    }else{status.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){status.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else status.textContent=j.code==="SCAN_NOT_CONFIGURED"?t("scan_unconfigured"):(j.message||t("scan_error"))}
+    }else{status.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){status.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else if(scanType==="drone"&&j.error==="drone_no_supported_fields"){const key=j.drone_screen_type==="skill_chip"?"scan_drone_skill_chip_no_fields":"scan_drone_components_no_fields";status.dataset.scanReviewStatusKey=key;status.textContent=t(key)}else status.textContent=j.code==="SCAN_NOT_CONFIGURED"?t("scan_unconfigured"):(j.message||t("scan_error"))}
   }catch(e){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}
   finally{btn.disabled=false;btn.textContent=t("analyze")}
 }

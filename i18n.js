@@ -502,6 +502,68 @@ const SCAN_REVIEW_LABELS={
 };
 for(const [code,labels] of Object.entries(SCAN_REVIEW_LABELS)){if(!packs[code])throw new Error(`Unknown scan review locale ${code}`);Object.assign(packs[code],labels)}
 Object.assign(EN,SCAN_REVIEW_LABELS["en-GB"]);
+const SCAN_REVIEW_DRONE_TEXT={
+  fr:"Boost de Combat¦Non détecté / À confirmer",
+  "en-GB":"Combat Boost¦Not detected / To confirm",
+  "en-US":"Combat Boost¦Not detected / To confirm",
+  es:"Mejora de combate¦No detectado / Por confirmar",
+  it:"Potenziamento combattimento¦Non rilevato / Da confermare",
+  de:"Kampfboost¦Nicht erkannt / Zu bestätigen",
+  pt:"Bónus de combate¦Não detetado / A confirmar",
+  nl:"Gevechtsboost¦Niet gedetecteerd / Te bevestigen",
+  zh:"战斗增益¦未检测到 / 待确认",
+  ja:"戦闘ブースト¦未検出 / 要確認",
+  ru:"Боевой усилитель¦Не обнаружено / Нужно подтвердить",
+  ar:"تعزيز القتال¦لم يُرصد / يحتاج إلى تأكيد",
+  pl:"Wzmocnienie bojowe¦Nie wykryto / Do potwierdzenia",
+  tr:"Savaş Takviyesi¦Algılanmadı / Onay bekliyor",
+  ko:"전투 부스트¦감지되지 않음 / 확인 필요",
+  vi:"Tăng cường chiến đấu¦Không phát hiện / Cần xác nhận",
+  th:"บูสต์การต่อสู้¦ตรวจไม่พบ / ต้องยืนยัน",
+  id:"Peningkatan tempur¦Tidak terdeteksi / Perlu dikonfirmasi",
+  uk:"Бойове посилення¦Не виявлено / Потрібно підтвердити",
+  ro:"Bonus de luptă¦Nedetectat / De confirmat",
+  el:"Ενίσχυση μάχης¦Δεν εντοπίστηκε / Χρειάζεται επιβεβαίωση",
+  cs:"Bojové posílení¦Nezjištěno / K potvrzení",
+  sv:"Stridsförstärkning¦Hittades inte / Behöver bekräftas"
+};
+for(const [code,text] of Object.entries(SCAN_REVIEW_DRONE_TEXT)){
+  const [boost,missing]=text.split("¦");
+  if(!packs[code]||!boost||!missing)throw new Error(`Invalid Drone review translations for ${code}`);
+  Object.assign(packs[code],{scan_review_group_boostCombat:boost,scan_review_drone_power_missing:missing});
+}
+Object.assign(EN,{scan_review_group_boostCombat:"Combat Boost",scan_review_drone_power_missing:"Not detected / To confirm"});
+const SCAN_DRONE_UNSUPPORTED_TEXT={
+  fr:"Composants : aucun niveau général du Drone lisible sur cet écran. Aucune donnée enregistrée.¦Puce de Compétence : aucun niveau général du Drone lisible sur cet écran. Aucune donnée enregistrée.",
+  "en-GB":"Components: no general Drone level is visible on this screen. Nothing was saved.¦Skill Chip: no general Drone level is visible on this screen. Nothing was saved.",
+  "en-US":"Components: no general Drone level is visible on this screen. Nothing was saved.¦Skill Chip: no general Drone level is visible on this screen. Nothing was saved.",
+  es:"Componentes: aquí no se ve el nivel general del Drone. No se guardó nada.¦Chip de habilidad: aquí no se ve el nivel general del Drone. No se guardó nada.",
+  it:"Componenti: il livello generale del Drone non è visibile qui. Nessun dato salvato.¦Chip abilità: il livello generale del Drone non è visibile qui. Nessun dato salvato.",
+  de:"Komponenten: Der allgemeine Drohnenlevel ist hier nicht sichtbar. Nichts gespeichert.¦Fähigkeitschip: Der allgemeine Drohnenlevel ist hier nicht sichtbar. Nichts gespeichert.",
+  pt:"Componentes: o nível geral do Drone não está visível aqui. Nada foi guardado.¦Chip de habilidade: o nível geral do Drone não está visível aqui. Nada foi guardado.",
+  nl:"Onderdelen: het algemene Droneniveau is hier niet zichtbaar. Niets opgeslagen.¦Vaardigheidschip: het algemene Droneniveau is hier niet zichtbaar. Niets opgeslagen.",
+  zh:"组件：此页面未显示无人机总等级。未保存任何数据。¦技能芯片：此页面未显示无人机总等级。未保存任何数据。",
+  ja:"コンポーネント：この画面にドローン全体のレベルは表示されていません。保存していません。¦スキルチップ：この画面にドローン全体のレベルは表示されていません。保存していません。",
+  ru:"Компоненты: общий уровень дрона здесь не виден. Ничего не сохранено.¦Чип навыка: общий уровень дрона здесь не виден. Ничего не сохранено.",
+  ar:"المكوّنات: مستوى المسيّرة العام غير ظاهر هنا. لم يُحفظ شيء.¦شريحة المهارة: مستوى المسيّرة العام غير ظاهر هنا. لم يُحفظ شيء.",
+  pl:"Komponenty: ogólny poziom drona nie jest tu widoczny. Nic nie zapisano.¦Czip umiejętności: ogólny poziom drona nie jest tu widoczny. Nic nie zapisano.",
+  tr:"Bileşenler: genel Drone seviyesi burada görünmüyor. Veri kaydedilmedi.¦Beceri çipi: genel Drone seviyesi burada görünmüyor. Veri kaydedilmedi.",
+  ko:"구성 요소: 이 화면에는 드론 전체 레벨이 표시되지 않습니다. 저장된 데이터가 없습니다.¦스킬 칩: 이 화면에는 드론 전체 레벨이 표시되지 않습니다. 저장된 데이터가 없습니다.",
+  vi:"Linh kiện: cấp Drone tổng thể không hiển thị ở đây. Không lưu dữ liệu.¦Chip kỹ năng: cấp Drone tổng thể không hiển thị ở đây. Không lưu dữ liệu.",
+  th:"ส่วนประกอบ: หน้านี้ไม่แสดงเลเวลโดรนหลัก ไม่มีข้อมูลถูกบันทึก¦ชิปทักษะ: หน้านี้ไม่แสดงเลเวลโดรนหลัก ไม่มีข้อมูลถูกบันทึก",
+  id:"Komponen: level Drone utama tidak terlihat di sini. Tidak ada data yang disimpan.¦Chip keahlian: level Drone utama tidak terlihat di sini. Tidak ada data yang disimpan.",
+  uk:"Компоненти: загальний рівень дрона тут не видно. Нічого не збережено.¦Чип навички: загальний рівень дрона тут не видно. Нічого не збережено.",
+  ro:"Componente: nivelul general al Dronei nu este vizibil aici. Nimic salvat.¦Cip de abilitate: nivelul general al Dronei nu este vizibil aici. Nimic salvat.",
+  el:"Εξαρτήματα: το γενικό επίπεδο Drone δεν φαίνεται εδώ. Δεν αποθηκεύτηκε τίποτα.¦Τσιπ δεξιότητας: το γενικό επίπεδο Drone δεν φαίνεται εδώ. Δεν αποθηκεύτηκε τίποτα.",
+  cs:"Komponenty: celková úroveň dronu zde není vidět. Nic se neuložilo.¦Čip dovedností: celková úroveň dronu zde není vidět. Nic se neuložilo.",
+  sv:"Komponenter: drönarens allmänna nivå syns inte här. Inget sparades.¦Färdighetschipp: drönarens allmänna nivå syns inte här. Inget sparades."
+};
+for(const [code,text] of Object.entries(SCAN_DRONE_UNSUPPORTED_TEXT)){
+  const [components,skillChip]=text.split("¦");
+  if(!packs[code]||!components||!skillChip)throw new Error(`Invalid Drone screen translations for ${code}`);
+  Object.assign(packs[code],{scan_drone_components_no_fields:components,scan_drone_skill_chip_no_fields:skillChip});
+}
+Object.assign(EN,{scan_drone_components_no_fields:SCAN_DRONE_UNSUPPORTED_TEXT["en-GB"].split("¦")[0],scan_drone_skill_chip_no_fields:SCAN_DRONE_UNSUPPORTED_TEXT["en-GB"].split("¦")[1]});
 const SCAN_REVIEW_CAPTURE_KEYS=[
   "scan_review_squad_heading","scan_review_hero_heading","scan_review_offer_heading","scan_review_member_heading","scan_review_progress_heading",
   "scan_review_group_player","scan_review_group_alliance","scan_review_group_drone","scan_review_group_shop","scan_review_group_vs","scan_review_group_season","scan_review_group_technology","scan_review_group_progress","scan_review_group_other",

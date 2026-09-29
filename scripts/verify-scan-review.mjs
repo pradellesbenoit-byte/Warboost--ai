@@ -23,7 +23,7 @@ assert.deepEqual(profileReview,{
 },'profile review retains sanitized alliance tag/name and player server without staging alliance role/provenance');
 const omittedAllianceIdentity=createScanReviewDraft('profile',{player:{name:'Nora'},alliance:{name:'Nova Crew',role:'R5'}});
 assert.deepEqual(omittedAllianceIdentity,{player:{name:'Nora'},alliance:{name:'Nova Crew'}},'omitted confirmed alliance identity fields stay absent from the review patch');
-const sanitizedDrone=sanitize({drone:{level:150,power_m:2.4,components:['chip'],chips:[{level:9}]}},scanAt,'drone');
+const sanitizedDrone=sanitize({screen_type:'attributes',drone:{level:150,power_raw:'2.4M',power_label:'Drone power',power_evidence:'visible_drone_power',power_confidence:0.95,components:['chip'],chips:[{level:9}]}},scanAt,'drone');
 const droneReview=createScanReviewDraft('drone',sanitizedDrone);
 assert.deepEqual(scanReviewEntries(droneReview).map(entry=>entry.path),[['drone','level'],['drone','power_m']],'Drone review exposes only backend-supported level and power');
 assert.deepEqual(createScanReviewDraft('drone',{drone:{level:150,power_m:2.4,components:['chip'],chips:[{level:9}]}}),{drone:{level:150,power_m:2.4}},'Drone review explicitly rejects unsupported component/chip fields');

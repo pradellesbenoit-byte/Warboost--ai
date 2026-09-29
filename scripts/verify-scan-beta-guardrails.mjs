@@ -137,11 +137,14 @@ async function call(req=request()){
   assert.equal(technologyOnly.body.state.season,undefined);
   assert.equal(technologyOnly.body.quality.requires_confirmation,true);
 
-  providerOutput={state:{drone:{level:80,power_m:12.3,components:["unsupported"],boost:99,chips:["unsupported"]}}};
+  providerOutput={state:{screen_type:"attributes",screen_title:"Attributs",drone:{level:80,power_raw:"12.3M",power_label:"Drone power",power_evidence:"visible_drone_power",power_confidence:0.98,components:["unsupported"],boost:99,chips:["unsupported"]}}};
   const drone=await call(request({token:"drone-unsupported",body:{scan_type:"drone"}}));
   assert.equal(drone.status,200);
   assert.deepEqual(drone.body.state.drone,{updated_at:drone.body.scanned_at,level:80,power_m:12.3});
   assert.equal(drone.body.quality.requires_confirmation,true);
+  providerOutput={state:{drone:{level:400,power_m:0.907}}};
+  const unclassified=await call(request({token:"drone-unclassified",body:{scan_type:"drone"}}));
+  assert.equal(unclassified.status,422,"unclassified legacy Drone output cannot replace confirmed values");
   console.log("PASS: scan quality requires confirmation; technology-only is valid and drone extras are omitted");
 }
 
