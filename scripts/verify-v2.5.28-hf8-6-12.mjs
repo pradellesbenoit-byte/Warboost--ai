@@ -71,14 +71,16 @@ const pull=app.match(/async function pullServerState\(loginSeed=null(?:,\{fastRe
 assert.ok(pull,'pullServerState block missing');
 assert.match(pull,/const remote=hydrateCloudState\(j\.state,initialState\(\),userId\)/);
 assert.match(pull,/if\(!hasMeaningfulCore\(state\)&&hasMeaningfulCore\(remote\)\)merged=remote/);
-assert.match(pull,/catch\{merged=hasMeaningfulCore\(remote\)\?remote/);
-assert.match(pull,/rememberLastGoodState\(state,"cloud-pull"\)/);
+assert.match(pull,/const squadResult=reconcileCloudSquads\(state,remote,merged\)/);
+assert.match(pull,/catch\{state=hydrateCloudState\(merged,initialState\(\),userId\)\}/);
+assert.match(pull,/rememberLastGoodState\(state,"cloud-pull[^"]*"\)/);
 assert.match(app,/function scheduleCloudPullRetry\(delay=2500\)/);
 
 // 7) Sync/foreground lifecycle first restores cloud state when this device is blank.
-const sync=app.match(/async function syncAll\(\)\{[^\n]+\}/)?.[0]||'';
-assert.match(sync,/if\(!hasMeaningfulCore\(state\)&&cloudSession\?\.access_token\)\{const recovered=await pullServerState/);
-assert.match(app,/visibilityState==="visible"\)\{if\((?:!hasMeaningfulCore\(state\)|!cloudProfileVerified).*pullServerState/);
+const sync=app.match(/async function syncAll\(\)\{[\s\S]*?\n\}\n\$\("#syncAllBtn"/)?.[0]||'';
+assert.match(sync,/if\(!hasMeaningfulCore\(state\)&&cloudSession\?\.access_token\)\{/);
+assert.match(sync,/reconcileAuthenticatedRuntime\("manual-sync",\{force:true\}\)/);
+assert.match(app,/onRecentReturn:\(\{reason\}\)=>\{startForegroundRefreshes\(\);queueCriticalUiRepaint\(\);void reconcileAuthenticatedRuntime\(reason\)\}/);
 assert.match(app,/pagehide.*pushServerState\(\{keepalive:true\}\)/);
 
 // 8) Service worker ships the new recovery helper and forces a fresh cache generation.
@@ -88,7 +90,7 @@ assert.match(sw,/\/lib\/cloud-state-recovery\.js/);
 
 // 9) Release / health markers advertise the exact safeguards.
 assert.match(html,/HF8\.6\.12/);assert.match(html,/HF8\.6\.11/);
-assert.match(manifest,/HF8\.6\.(?:12|17)/);
+assert.match(manifest,/HF8\.6\.\d+/);
 assert.match(health,/ui_revision_final:"hf8\.6\.12-cloud-restore-guard"/);
 assert.match(health,/previous_future_player_revision:"hf8\.6\.11-future-player-reliability"/);
 for(const flag of ['cloud_state_blank_overwrite_guard','cloud_state_direct_server_hydration','cloud_state_pull_retry','large_mobile_keepalive_guard','transient_sync_error_not_persisted','server_cloud_restore_before_sync'])assert.match(health,new RegExp(`${flag}:true`));

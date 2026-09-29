@@ -1,4 +1,5 @@
 import {mergeNewest,normalizeState} from "../lib/normalize.js";
+import {reconcileCloudSquads} from "../lib/squad-freshness.js";
 import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,getAllianceRoster,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import {mergeCloudRosterPreservingManual,mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
@@ -14,7 +15,25 @@ function accessToken(req){return String(req.headers?.authorization||"").replace(
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   try{
     const {user}=await requireBetaUser(req,{consent:true}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,rosterPersisted=false,alliancePendingCanonical=false;
-    if(configured()||userMode){saved=userMode?await getProfileForUser(playerId,access):await getProfile(playerId);const baseUpdatedAt=req.body?.base_updated_at===null?null:String(req.body?.base_updated_at||"").trim()||null;if(saved?.updated_at&&baseUpdatedAt!==String(saved.updated_at))return res.status(409).json({error:"profile_write_conflict",message:"Le profil a été modifié sur un autre appareil.",state:saved.state,updated_at:saved.updated_at});if(saved?.state){const requestedRosterSync=current.alliance?.roster_sync_status==="pending";base=mergeNewest(base,saved.state);if(requestedRosterSync){base.alliance={...base.alliance,members:current.alliance.members,roster_review:current.alliance.roster_review,former_members:current.alliance.former_members,roster_snapshot_complete_at:current.alliance.roster_snapshot_complete_at,roster_sync_status:"pending",roster_sync_error:null}}}}
+    if(configured()||userMode){
+      saved=userMode?await getProfileForUser(playerId,access):await getProfile(playerId);
+      const baseUpdatedAt=req.body?.base_updated_at===null?null:String(req.body?.base_updated_at||"").trim()||null;
+      const cloudState=saved?.state?normalizeState({...saved.state,player_id:playerId}):null;
+      if(saved?.updated_at&&baseUpdatedAt!==String(saved.updated_at)){
+        return res.status(409).json({error:"profile_write_conflict",message:"Le profil a été modifié sur un autre appareil.",state:cloudState,updated_at:saved.updated_at});
+      }
+      if(cloudState){
+        base=mergeNewest(base,cloudState);
+        const squadResult=reconcileCloudSquads(current,cloudState,base);
+        if(squadResult.conflicts.length){
+          return res.status(409).json({error:"squad_freshness_ambiguous",message:"La composition de cette escouade doit être confirmée avant synchronisation.",state:cloudState,updated_at:saved.updated_at});
+        }
+        base=squadResult.state;
+        if(requestedRosterSync){
+          base.alliance={...base.alliance,members:current.alliance.members,roster_review:current.alliance.roster_review,former_members:current.alliance.former_members,roster_snapshot_complete_at:current.alliance.roster_snapshot_complete_at,roster_sync_status:"pending",roster_sync_error:null};
+        }
+      }
+    }
     let merged=base,provider="warboost-cloud",providerKind="warboost",capabilities=["player-consented-cloud","scan-derived-data","alliance-roster"];
     const now=new Date().toISOString();
     merged.sync={...merged.sync,provider,provider_kind:providerKind,access_status:"safe-launch-external-disabled",capabilities,status:"ok",last_sync:now,last_error:null,auto_ready:true,sources:{...merged.sync?.sources,official:false,public:false,scan:Boolean(merged.sync?.last_scan),alliance:false}};
