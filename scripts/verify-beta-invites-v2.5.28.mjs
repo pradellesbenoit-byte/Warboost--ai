@@ -112,14 +112,15 @@ const log=msg=>console.log(`✓ ${msg}`);
 // Version and Safe Launch invariants.
 {
   const pkg=JSON.parse(read('package.json')),health=read('api/health.js'),manifest=read('manifest.webmanifest'),sw=read('sw.js');
-  assert.equal(pkg.version,'2.5.28');
+  const escapedVersion=pkg.version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
   assert.equal(pkg.name,'warboost-v2-safe-launch-activity-events');
-  assert.match(health,/version:"2\.5\.28"/);
+  assert.match(health,new RegExp(`version:"${escapedVersion}"`));
   assert.match(health,/beta_database_invitation_registry:true/);
   assert.match(health,/beta_admin_invite_manager:true/);
   assert.match(health,/safe_launch_external_game_access_hard_disabled:true/);
   assert.match(health,/safe_launch_payments_code_disabled:true/);
-  assert.match(manifest,/V2\.5\.28/);
+  assert.match(manifest,new RegExp(`V${escapedVersion}`));
   assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate|hf8-commercial-readiness)/);
   log('V2.5.28 versioning and Safe Launch payment/game-access locks remain explicit');
 }

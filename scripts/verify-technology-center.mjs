@@ -7,6 +7,11 @@ import {buildScanReviewGroups} from "../lib/scan-review-presentation.js";
 import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
 import {normalizeState} from "../lib/normalize.js";
 import {translator} from "../i18n.js";
+import technologyI18nWest from "../lib/technology-i18n-west.js";
+import technologyI18nCjk from "../lib/technology-i18n-cjk.js";
+import technologyI18nEast from "../lib/technology-i18n-east.js";
+import technologyI18nRest from "../lib/technology-i18n-rest.js";
+import {savePendingTechnologyFiles,loadPendingTechnologyFiles,clearPendingTechnologyFiles} from "../lib/pending-scan-storage.js";
 
 const image="data:image/jpeg;base64,AA==";
 const card=(name,percent,extra={})=>({
@@ -75,6 +80,38 @@ test("Technology scan drafts expose values for review before confirmation",()=>{
   assert.deepEqual(review.errors,[]);
   const finalized=finalizeTechnologyReview(review.patch.technology,now);
   assert.equal(finalized.branches.development.percent,25);
+});
+
+test("Technology screenshots survive local save/reload and clear as one owner-scoped batch",async()=>{
+  const records=new Map();let upgraded=false;
+  const request=(action)=>{const req={result:undefined,error:null};queueMicrotask(()=>{try{req.result=action();req.onsuccess?.()}catch(error){req.error=error;req.onerror?.()}});return req};
+  globalThis.indexedDB={open(){
+    const req={result:null,error:null};
+    queueMicrotask(()=>{
+      const db={
+        objectStoreNames:{contains:()=>upgraded},
+        createObjectStore(){upgraded=true},
+        transaction(){return {objectStore(){return {
+          get:key=>request(()=>records.get(key)),
+          put:value=>request(()=>{records.set(value.key,value);return value.key}),
+          delete:key=>request(()=>records.delete(key))
+        }}}},close(){}
+      };
+      req.result=db;if(!upgraded)req.onupgradeneeded?.();req.onsuccess?.();
+    });
+    return req;
+  }};
+  const files=[
+    new File([new Blob(["capture-a"])],"technology-a.png",{type:"image/png",lastModified:1}),
+    new File([new Blob(["capture-b"])],"technology-b.png",{type:"image/png",lastModified:2})
+  ];
+  assert.equal(await savePendingTechnologyFiles("user:technology-test",files),true);
+  const restored=await loadPendingTechnologyFiles("user:technology-test");
+  assert.deepEqual(restored.map(file=>file.name),["technology-a.png","technology-b.png"]);
+  assert.deepEqual(restored.map(file=>file.size),files.map(file=>file.size));
+  assert.equal(await clearPendingTechnologyFiles("user:technology-test"),true);
+  assert.deepEqual(await loadPendingTechnologyFiles("user:technology-test"),[]);
+  delete globalThis.indexedDB;
 });
 
 test("a newer confirmed branch observation wins over an older one",()=>{
@@ -165,12 +202,37 @@ test("new growth, power, T10 and T11 goals survive state normalization",()=>{
     assert.equal(normalizeState({player_context:{objective}}).player_context.objective,objective);
 });
 
-test("Technology Center labels remain available in French and every language retains English fallback",()=>{
+test("Technology Center labels and advice are native in all 22 supported languages",()=>{
   assert.equal(translator("fr")("scan_technology"),"Centre Technologie");
   assert.equal(translator("en-US")("scan_technology"),"Technology Center");
-  assert.equal(translator("ar")("scan_technology"),"Technology Center");
-  for(const key of ["technology_advice_title","technology_advice_intro","technology_advice_priority","technology_advice_locked","technology_advice_t11_route","technology_advice_reason_vs_now","technology_advice_rank_note","technology_advice_source"]){
-    assert.notEqual(translator("fr")(key),key,`Missing French string: ${key}`);
-    assert.notEqual(translator("en")(key),key,`Missing English string: ${key}`);
+  const languages=["fr","en-GB","en-US","es","it","de","pt","nl","zh","ja","ru","ar","pl","tr","ko","vi","th","id","uk","ro","el","cs","sv"];
+  const nativeTechnologyPacks=Object.assign({},technologyI18nWest,technologyI18nCjk,technologyI18nEast,technologyI18nRest);
+  const keys=[
+    "scan_technology","scan_technology_help","scan_choose_multiple","scan_technology_capture_count","scan_technology_limit",
+    "scan_technology_name","scan_technology_state","scan_technology_percent","scan_technology_prerequisite",
+    "scan_technology_unknown_name","scan_technology_state_unknown","scan_technology_state_percent","scan_technology_state_max","scan_technology_state_locked",
+    "objective_growth","objective_power","objective_t10","objective_t11",
+    "technology_advice_title","technology_advice_intro","technology_advice_priority","technology_advice_next","technology_advice_locked",
+    "technology_advice_locked_requirement","technology_advice_locked_unknown","technology_advice_preserve_badges",
+    "technology_advice_vs_day_unknown","technology_advice_preserve_growth","technology_advice_t11_route",
+    "technology_advice_no_data","technology_advice_no_action","technology_advice_source","technology_advice_reason_general",
+    "technology_advice_reason_foundation","technology_advice_reason_economy","technology_advice_reason_heroes",
+    "technology_advice_reason_main_type","technology_advice_reason_pvp","technology_advice_reason_pve",
+    "technology_advice_reason_t10","technology_advice_reason_oil","technology_advice_reason_vs_now",
+    "technology_advice_reason_vs","technology_advice_main_type_unknown","technology_advice_rank_note"
+  ];
+  for(const language of languages){
+    const t=translator(language);
+    for(const key of keys)assert.notEqual(t(key),key,`Missing ${language} string: ${key}`);
+    if(!language.startsWith("en")){
+      if(language!=="fr"){
+        const nativePack=nativeTechnologyPacks[language];
+        assert.ok(nativePack,`Missing native Technology pack: ${language}`);
+        for(const key of keys){
+          assert.ok(Object.hasOwn(nativePack,key),`${language} has no native value for ${key}`);
+          assert.equal(t(key),nativePack[key],`${language} does not resolve its native value for ${key}`);
+        }
+      }
+    }
   }
 });

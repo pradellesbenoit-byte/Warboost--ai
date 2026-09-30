@@ -25,6 +25,8 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const read=(rel)=>fs.readFileSync(path.join(root,rel),'utf8');
 const log=(name)=>console.log(`✓ ${name}`);
+const CURRENT_VERSION=JSON.parse(read('package.json')).version;
+const CURRENT_VERSION_RE=new RegExp(`V${CURRENT_VERSION.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`);
 
 function callAdvice(scope,state,locale='fr-FR'){
   if(scope==='player'){
@@ -281,8 +283,9 @@ const baseState={
 
 // V2.5.28 Safe Launch beta: invitation allowlist, free PRO, consent and payment lock are enforced by design.
 {
-  const oldEmails=process.env.WARBOOST_BETA_EMAILS;
-  delete process.env.WARBOOST_BETA_EMAILS;
+  const isolatedEnvKeys=["WARBOOST_BETA_EMAILS","WARBOOST_SUPPORT_ADMINS","SUPABASE_URL","NEXT_PUBLIC_SUPABASE_URL","VITE_SUPABASE_URL","SUPABASE_SERVICE_ROLE_KEY"];
+  const oldEnv=Object.fromEntries(isolatedEnvKeys.map(key=>[key,process.env[key]]));
+  for(const key of isolatedEnvKeys)delete process.env[key];
   let cfg=betaConfig();
   assert.equal(cfg.release,true);assert.equal(cfg.enforced,true);assert.equal(cfg.configured,false);assert.equal(cfg.payments_enabled,false);assert.equal(cfg.pro_included,true);
   assert.equal(cfg.consent_version,BETA_CONSENT_VERSION);
@@ -292,7 +295,7 @@ const baseState={
   cfg=betaConfig();assert.equal(cfg.enforced,true);assert.equal(cfg.invited_count,2);
   access=betaAccessForUser({email:'ONE@example.com'});assert.equal(access.allowed,true);assert.equal(access.access_status,'legacy-invited');
   access=betaAccessForUser({email:'outsider@example.com'});assert.equal(access.allowed,false);assert.equal(access.access_status,'invite-required');
-  if(oldEmails===undefined)delete process.env.WARBOOST_BETA_EMAILS;else process.env.WARBOOST_BETA_EMAILS=oldEmails;
+  for(const [key,value] of Object.entries(oldEnv)){if(value===undefined)delete process.env[key];else process.env[key]=value}
   const app=read('app.js'),html=read('index.html'),pro=read('api/pro.js'),health=read('api/health.js');
   assert.match(app,/BETA_CONSENT_KEY/);assert.match(app,/x-warboost-beta-consent/);assert.match(app,/requireBetaAccess/);assert.match(app,/requireBetaConsent/);assert.match(app,/betaFeedbackReport/);
   assert.match(app,/function betaConsentStorageKey/);assert.match(app,/localStorage\.setItem\(key,"1"\)/);assert.doesNotMatch(app,/browser=\$\{navigator\.userAgent\}/);
@@ -372,7 +375,8 @@ const baseState={
 // Static application safeguards.
 {
   const app=read('app.js'),html=read('index.html'),pkg=JSON.parse(read('package.json')),sync=read('api/sync.js'),roleApi=read('api/alliance-role.js'),health=read('api/health.js'),migration=read('supabase/migration_v2_5_4.sql'),manifest=JSON.parse(read('manifest.webmanifest')),sw=read('sw.js');
-  assert.match(app,/APP_VERSION\s*=\s*["']2\.5\.28["']/);
+  const escapedVersion=pkg.version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  assert.match(app,new RegExp(`APP_VERSION\\s*=\\s*["']${escapedVersion}["']`));
   assert.match(app,/BACKUP_KEY\s*=\s*["']warboost_last_good_state["']/);
   assert.match(app,/function\s+rememberLastGoodState/);
   assert.match(app,/function\s+readLastGoodState/);
@@ -392,7 +396,7 @@ const baseState={
   assert.match(roleApi,/r5_required/);assert.match(roleApi,/owner_required_for_r5/);assert.match(roleApi,/owner_must_remain_r5/);
   assert.match(health,/disabled-safe-launch/);assert.match(health,/database_service_probe/);assert.match(health,/probeServiceAccess/);
   assert.match(health,/unauthorized_source_default\s*:\s*false/);
-  assert.equal(manifest.name.includes('V2.5.28'),true);
+  assert.equal(manifest.name.includes(`V${pkg.version}`),true);
   assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate|hf8-commercial-readiness)/);
   assert.match(migration,/create table if not exists public\.wb1_profiles/i);
   assert.match(migration,/create table if not exists public\.wb1_snapshots/i);
@@ -420,7 +424,7 @@ const baseState={
   assert.match(migration,/grant select, insert, update on table public\.wb1_alliance_members to service_role/i);
   assert.match(migration,/revoke all privileges on table public\.wb1_alliances from authenticated/i);
   assert.match(migration,/\(select auth\.uid\(\)\)::text/i);
-  assert.equal(pkg.version,'2.5.28');
+  assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
   log('Static persistence, language fallback, voice, roster, migration and authorization guards are present');
 }
 
@@ -836,7 +840,7 @@ log('Non-owner switching requires exact target roster proof and keeps the Last W
 // V2.5.28 labels are present in all explicit languages, including the safer VS/server/alliance copy.
 {
   const keys=['pro_exclusive_compare','pro_meta_sources','server_profile_insufficient','ex_missing','ex_not_ranked','meta_adjustment','ex_exact_cost_unknown','ex_compare_unavailable','meta_updated','meta_source_count','meta_secondary_policy','meta_source_official','meta_source_guide','meta_source_community','unknown_opponent','invite_note'];
-  for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const k of keys)assert.notEqual(tr(k),k,`${code} missing V2.5.28 ${k}`);assert.match(tr('tagline'),/V2\.5\.28/)}
+  for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const k of keys)assert.notEqual(tr(k),k,`${code} missing current-version ${k}`);assert.match(tr('tagline'),CURRENT_VERSION_RE)}
   assert.equal(translator('fr')('unknown_opponent'),'Adversaire non encore disponible');
   assert.match(translator('fr')('server_profile_insufficient'),/Données insuffisantes/);
   assert.match(translator('fr')('invite_note',{alliance:'ALL4'}),/espace WarBoost de l’alliance ALL4/);
@@ -918,12 +922,12 @@ log('Non-owner switching requires exact target roster proof and keeps the Last W
 // V2.5.28 UI/health/multilingual contract: beta players can distinguish historical paid references from current offers.
 {
   const app=read('app.js'),css=read('styles.css'),health=read('api/health.js'),pkg=JSON.parse(read('package.json')),readme=read('README.md'),sw=read('sw.js');
-  assert.equal(pkg.version,'2.5.28');assert.equal(pkg.name,'warboost-v2-safe-launch-activity-events');assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf3\.mjs/);assert.match(pkg.scripts.verify,/verify-scan-reliability-v2\.5\.28\.mjs/);assert.match(pkg.scripts.verify,/verify-activity-events-v2\.5\.28\.mjs/);
+  assert.equal(pkg.version,CURRENT_VERSION);assert.equal(pkg.name,'warboost-v2-safe-launch-activity-events');assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf3\.mjs/);assert.match(pkg.scripts.verify,/verify-scan-reliability-v2\.5\.28\.mjs/);assert.match(pkg.scripts.verify,/verify-activity-events-v2\.5\.28\.mjs/);
   assert.match(app,/historical_paid/);assert.match(app,/historical_reference_paid/);assert.match(app,/shop_group_paid_history/);assert.match(app,/displayRank=historicalPaid\?"—"/);
   assert.match(css,/\.shopHistoricalPaidCard/);assert.match(css,/\.shopHistoryGuard/);assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate|hf8-commercial-readiness)/);
   for(const flag of ['shop_diagnostic_ex_single_source_of_truth','shop_payment_channels_separated','paid_offer_requires_current_price_contents_cost_gain','reference_cash_prices_dated_not_current','historical_paid_references_quarantined','historical_paid_references_unranked','current_paid_scan_required_for_current_offer_group','shop_gear_target_explicit_or_unconfirmed'])assert.match(health,new RegExp(flag+':true'));
   const keys=['shop_group_game','shop_group_diamonds','shop_group_paid','shop_group_paid_history','shop_group_unknown','shop_paid_guard','shop_history_guard'];
-  for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const key of keys)assert.notEqual(tr(key),key,`${code} missing V2.5.28 ${key}`);assert.match(tr('tagline'),/V2\.5\.28/)}
+  for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const key of keys)assert.notEqual(tr(key),key,`${code} missing current-version ${key}`);assert.match(tr('tagline'),CURRENT_VERSION_RE)}
   assert.match(readme,/Safe Launch/i);assert.match(readme,/sur invitation/i);
   log('All 23 explicit languages and beta release docs separate historical paid references from current paid offers');
 }
@@ -1024,7 +1028,7 @@ console.log('\nWarBoost V2.5.28 verification: PASS');
 // Independent branding and player-facing transparency.
 {
   const html=read('index.html'),manifest=read('manifest.webmanifest'),css=read('styles.css');
-  assert.match(html,/WarBoost V2\.5\.28/);
+  assert.match(html,new RegExp(`WarBoost V${CURRENT_VERSION.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`));
   assert.match(html,/FUNFLY PTE\. LTD\./);
   assert.match(html,/not affiliated|ni affilié/i);
   assert.match(html,/legal\.html/);assert.match(html,/privacy\.html/);
@@ -1037,7 +1041,8 @@ console.log('\nWarBoost V2.5.28 verification: PASS');
 // Game update is informational only; no unverified hero/meta mutation is asserted.
 {
   assert.equal(REVIEWED_GAME_UPDATE.version,'1.0.364');
-  assert.equal(REVIEWED_GAME_UPDATE.released_on,'2026-09-09');
+  assert.equal(REVIEWED_GAME_UPDATE.released_on,null);
+  assert.equal(REVIEWED_GAME_UPDATE.source_kind,'third-party-store-metadata-aggregator');
   assert.equal(REVIEWED_GAME_UPDATE.meta_impact,'informational-only');
   assert.equal(REVIEWED_GAME_UPDATE.confirmed_hero_meta_change,false);
   assert.equal(REVIEWED_GAME_UPDATE.season7_status,'not-activated-from-rumors');

@@ -95,7 +95,7 @@ const mem=()=>{const m=new Map();return {getItem:k=>m.has(k)?m.get(k):null,setIt
   assert.match(sw,/reset-password\.html/);
   assert.match(sw,/reset-password\.js/);
   assert.match(sw,/warboost-v2-5-28-(?:hf2-declared-r4-r5-advice|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate|hf8-commercial-readiness)/);
-  assert.equal(pkg.version,'2.5.28');
+  assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
   console.log('✓ UI, service worker and release metadata include password recovery');
 }
 
@@ -104,7 +104,7 @@ const mem=()=>{const m=new Map();return {getItem:k=>m.has(k)?m.get(k):null,setIt
   for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){
     const t=translator(code);
     for(const key of keys)assert.notEqual(t(key),key,`${code} missing ${key}`);
-    assert.match(t('tagline'),/V2\.5\.28/);
+    assert.match(t('tagline'),new RegExp(`V${JSON.parse(read('package.json')).version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`));
   }
   console.log('✓ Password recovery labels exist in all 23 explicit languages');
 }

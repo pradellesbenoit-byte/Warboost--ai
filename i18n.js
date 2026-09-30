@@ -1,3 +1,8 @@
+import technologyI18nWest from "./lib/technology-i18n-west.js";
+import technologyI18nCjk from "./lib/technology-i18n-cjk.js";
+import technologyI18nEast from "./lib/technology-i18n-east.js";
+import technologyI18nRest from "./lib/technology-i18n-rest.js";
+
 const EN={
   tagline:"V2.4.7 · Hybrid Sync · no player token",
   account:"Account",server_ok:"Server OK",local_time:"Local time",coach:"AI Coach",configure_profile:"Set up your profile",configure_text:"WarBoost combines public data, smart scans and your alliance cloud to give you one clear priority.",configure:"Set up WarBoost",
@@ -561,6 +566,12 @@ for(const [code,text] of Object.entries(TECHNOLOGY_REVIEW_TEXT)){
   Object.assign(packs[code],Object.fromEntries(["name","state","percent","prerequisite","unknown_name","state_unknown","state_percent","state_max","state_locked"].map((key,index)=>[`scan_technology_${key}`,values[index]])));
 }
 Object.assign(EN,Object.fromEntries(["name","state","percent","prerequisite","unknown_name","state_unknown","state_percent","state_max","state_locked"].map((key,index)=>[`scan_technology_${key}`,TECHNOLOGY_REVIEW_TEXT["en-GB"].split("¦")[index]])));
+for(const translations of [technologyI18nWest,technologyI18nCjk,technologyI18nEast,technologyI18nRest]){
+  for(const [code,values] of Object.entries(translations)){
+    if(!packs[code])throw new Error(`Unknown Technology translation language: ${code}`);
+    Object.assign(packs[code],values);
+  }
+}
 const SCAN_REVIEW_LABELS={
   fr:{scan_review_title:"Vérifier les données du scan",scan_review_help:"Corrige ou vérifie chaque valeur Vision. Rien n’est enregistré avant ta confirmation.",scan_review_source:"Source",scan_review_scanned_at:"Date du scan",scan_review_field:"Champ : {field}",scan_review_power_pending:"Puissance à vérifier — non confirmée",scan_review_confirm:"Confirmer les valeurs",scan_review_discard:"Ignorer le résultat",scan_review_ready:"Résultat prêt : vérifie les valeurs avant de confirmer.",scan_review_discarded:"Résultat ignoré. Aucune donnée du scan n’a été enregistrée."},
   "en-GB":{scan_review_title:"Review scan data",scan_review_help:"Check or correct every Vision value. Nothing is saved until you confirm.",scan_review_source:"Source",scan_review_scanned_at:"Scanned at",scan_review_field:"Field: {field}",scan_review_power_pending:"Power needs checking — not confirmed",scan_review_confirm:"Confirm values",scan_review_discard:"Discard result",scan_review_ready:"Result ready: review the values before confirming.",scan_review_discarded:"Result discarded. No scan data was saved."},

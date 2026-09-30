@@ -98,15 +98,15 @@ const oldActive=new Date(Date.now()-20*864e5).toISOString();
 
 // UI/client/health/cache contract for the deployable HF3 build.
 {
-  const html=read('index.html'),app=read('app.js'),health=read('api/health.js'),sw=read('sw.js'),pkg=JSON.parse(read('package.json'));
+  const html=read('index.html'),app=read('app.js'),i18n=read('i18n.js'),health=read('api/health.js'),sw=read('sw.js'),pkg=JSON.parse(read('package.json'));
   assert.match(html,/WarBoost V2\.5\.28 HF(?:3|4|5|6|7|8)/);
   assert.match(html,/placeholder="Joueur01;R4;30;65,2"/);
   assert.match(html,/data-i18n="ai_estimate">Fiabilité des données/);
-  assert.match(app,/const inactivityPending=/);
-  assert.match(app,/activity_inactivity_not_evaluated/);
-  assert.match(app,/alliance_plan_refresh_required/);
-  assert.match(app,/alliance_plan_partial_refresh/);
-  assert.match(health,/build:"(?:hf3-final-reliability|hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate|hf8-commercial-readiness)"/);
+  assert.match(app,/summarizeAllianceActivity/);
+  assert.match(i18n,/activity_inactivity_not_evaluated/);
+  assert.match(i18n,/alliance_plan_refresh_required/);
+  assert.match(i18n,/alliance_plan_partial_refresh/);
+  assert.match(health,/build:"hf8-6-\d+-[^"]+"/);
   assert.match(health,/activity_zero_inactive_not_overclaimed_when_refresh_pending:true/);
   assert.match(health,/alliance_refresh_plan_never_double_counts_unknown:true/);
   assert.match(health,/public_beta_wording_consistent_23_languages:true/);

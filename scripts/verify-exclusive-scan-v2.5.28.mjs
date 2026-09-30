@@ -114,7 +114,7 @@ for(const [input,expected] of [
 
 // Existing squad and Drone scan paths remain useful and valid.
 {
-  const drone=sanitize({drone:{level:150}},now,"drone");
+  const drone=sanitize({screen_type:"attributes",drone:{level:150}},now,"drone");
   const squad=sanitize({squads:[{id:1,power:"34.29M",heroes:[{name:"DVA",level:150}]}]},now,"squad1");
   assert.equal(usefulState("drone",drone),true);
   assert.equal(usefulState("squad1",squad),true);

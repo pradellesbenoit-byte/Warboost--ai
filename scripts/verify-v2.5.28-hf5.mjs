@@ -64,12 +64,12 @@ const roster94=()=>Array.from({length:94},(_,i)=>({name:i===9?'les gladiateurs81
   log('cloud accounts match by Last War identity; unmatched accounts stay pending without creating a fake roster member');
 }
 
-// Once a game-identity link exists, a deliberate nickname change keeps history through the private continuity id.
+// A deliberate nickname change must be re-proved by exact Last War identity; a private id alone cannot relink it.
 {
   const first=linkCurrentPlayerIdentityIntoRoster([{name:'Alpha',role:'R3'}],{playerId:'private-id',name:'Alpha',serverId:'884',allianceTag:'ALL4',activityEvents:[event],updatedAt:now});
   const second=linkCurrentPlayerIdentityIntoRoster(first.members,{playerId:'private-id',name:'Alpha Renamed',serverId:'884',allianceTag:'ALL4',activityEvents:[],updatedAt:'2026-09-09T11:20:00Z'});
-  assert.equal(second.status,'linked_existing');assert.equal(second.members[0].name,'Alpha Renamed');assert.equal(second.members[0].activity_events.length,1);assert.equal(second.members[0].warboost_linked,true);
-  log('nickname change keeps participation history after an established Last War identity link');
+  assert.equal(second.status,'no_match');assert.equal(second.members[0].name,'Alpha');assert.equal(second.members[0].activity_events.length,1);assert.equal(second.members[0].warboost_linked,true);
+  log('nickname changes require exact Last War re-proof and do not overwrite established history');
 }
 
 // Normalization must preserve identity/link metadata and pending account hints without exposing e-mail.

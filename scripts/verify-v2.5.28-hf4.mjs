@@ -10,6 +10,8 @@ import {LANGUAGES,translator} from '../i18n.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const log=x=>console.log(`HF4 ✓ ${x}`);
+const currentVersion=JSON.parse(read('package.json')).version;
+const currentVersionPattern=new RegExp(`V${currentVersion.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')} HF\\d+(?:\\.\\d+)+`);
 const now='2026-09-08T20:30:00.000Z';
 const hero=(name,exclusive=10,power=6)=>({name,level:150,stars:5,power,exclusive,gear:'4 équipements niv.40'});
 const emptySquad=(id,heroes)=>({id,name:`Squad ${id}`,power:40+id,updated_at:now,needs_rescan:false,heroes});
@@ -81,7 +83,7 @@ const airState={
 
 // VS Day 2 is explicit and actionable: Today / Keep / Avoid, including Day 3 + Day 4 preparation.
 {
-  const v=buildVsAdvice(airState,'fr-FR');assert.equal(v.day,2);assert.deepEqual(v.priorities.map(x=>x.kind),['today','keep','avoid']);
+  const v=buildVsAdvice(airState,'fr-FR',{now:new Date(now)});assert.equal(v.day,2);assert.deepEqual(v.priorities.map(x=>x.kind),['today','keep','avoid']);
   assert.match(v.priorities[0].text,/Jour 2 · Expansion de base/);assert.match(v.priorities[1].text,/Jour 3/);assert.match(v.priorities[1].text,/Jour 4/);assert.match(v.priorities[2].text,/Évite/);assert.equal(v.opponent,null);
   log('VS Day 2 provides explicit Today / Keep / Avoid preparation without inventing an opponent');
 }
@@ -89,10 +91,10 @@ const airState={
 // UI + language + health contract for HF4.
 {
   const html=read('index.html'),app=read('app.js'),health=read('api/health.js'),sw=read('sw.js');
-  for(const id of ['eventImportText','eventImportBtn','eventImportStatus','allianceParticipationTable'])assert.match(html,new RegExp(`id=["']${id}["']`));
-  assert.match(html,/WarBoost V2\.5\.28 HF[45678]/);assert.match(app,/renderAllianceParticipationTable/);assert.match(app,/PLAYER_ACTIVITY_EVENT_TYPES/);assert.match(sw,/warboost-v2-5-28-(?:hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate|hf8-commercial-readiness)/);assert.match(health,/build:"(?:hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate|hf8-commercial-readiness)"/);
+  for(const id of ['eventImportText','eventImportBtn','eventImportStatus'])assert.match(html,new RegExp(`id=["']${id}["']`));
+  assert.match(html,currentVersionPattern);assert.match(app,/renderAllianceParticipationTable/);assert.match(app,/PLAYER_ACTIVITY_EVENT_TYPES/);assert.match(sw,/warboost-v2-5-28-(?:hf4-final-management-ai|hf5-lastwar-identity-link|hf6-player-ready-final|hf7-server-alliance-invite-gate|hf8-commercial-readiness)/);assert.match(health,/build:"hf8-6-\d+-[^"]+"/);
   for(const flag of ['player_specific_main_squad_ranking','exclusive_equal_score_previous_rank_tiebreak_explained','alliance_event_management_30_day_history','alliance_participation_statuses_distinct','alliance_missing_participation_never_means_absence','alliance_r5_r4_participation_import','vs_today_keep_avoid_plan'])assert.match(health,new RegExp(`${flag}:true`));
-  for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const key of ['event_desert_storm','event_canyon_storm','participation_participated','participation_absent_confirmed','participation_not_selected','participation_excused','participation_import_title','participation_player_history','ex_tie_previous'])assert.notEqual(tr(key),key,`${code} missing ${key}`);assert.match(tr('tagline'),/V2\.5\.28 HF[45678]/)}
+  for(const [code] of LANGUAGES.filter(([c])=>c!=='auto')){const tr=translator(code);for(const key of ['event_desert_storm','event_canyon_storm','participation_participated','participation_absent_confirmed','participation_not_selected','participation_excused','participation_import_title','participation_player_history','ex_tie_previous'])assert.notEqual(tr(key),key,`${code} missing ${key}`);assert.match(tr('tagline'),currentVersionPattern)}
   const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);
   log('HF4 UI, 23-language labels, health safeguards, cache key and 12-function budget are present');
 }

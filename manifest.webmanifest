@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost V2.5.28 HF8.6.28 — Mobile UI Stabilization · HF8.6.27 / HF8.6.26 / HF8.6.25 lineage",
+  "name": "WarBoost V2.5.32 HF8.6.34 — Public Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V2.5.28 HF8.6.28 — repeated mobile READY repaint for Coach/Sync/Player Activity, preserving HF8.6.27 Season, Alliance, VS and Safe Launch safeguards.",
+  "description": "WarBoost V2.5.32 HF8.6.34 — public-beta companion with confirmed scans, alliance planning and contextual PRO guidance.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

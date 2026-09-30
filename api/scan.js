@@ -279,7 +279,7 @@ Return one JSON object, allowing a partial but valid result: {"exclusive_weapons
    if(scanType==="secret_mobile_squad")return `${common} Read the Secret Mobile Squad screen. Return only Special Supplementary Task labels whose text is visibly printed. Keep the exact visible wording and language; accept the newer text-label layout and older layouts without assuming a task name from an icon, reward, position, or game guide. If a label is partially readable, preserve the visible text. If no task text is visible, omit that row; never invent or normalize an unknown task. Return {"special_supplementary_tasks":[{"label":"exact visible task text","label_evidence":"visible_text","confidence":0.0}]}. WarBoost will retain the exact text as unmapped and require owner confirmation before saving.`;
   return common;
 }
-async function openaiVision({image,images,scanType,locale,allianceTag}){
+export async function openaiVision({image,images,scanType,locale,allianceTag}){
   const key=env("OPENAI_API_KEY");if(!key)return null;
   const model=env("WARBOOST_VISION_MODEL")||"gpt-5.6-luna";
   const content=[{type:"input_text",text:promptFor(scanType,locale,allianceTag)},...(Array.isArray(images)&&images.length?images:[image]).map(imageUrl=>({type:"input_image",image_url:imageUrl,detail:"high"}))];
