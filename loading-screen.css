@@ -11,7 +11,11 @@
     radial-gradient(ellipse at 50% 28%,rgba(31,94,153,.42),transparent 52%),
     linear-gradient(150deg,#081324 0%,#07101d 57%,#060b14 100%);
 }
-.loadingScreen.hidden{display:none!important}
+.loadingScreen.hidden{
+  opacity:0;
+  visibility:hidden;
+  transition:opacity 180ms ease,visibility 0s linear 180ms;
+}
 .loadingArtwork,.loadingVeil{
   position:absolute;
   inset:0;
@@ -155,5 +159,6 @@ body.loading-active{
   .loadingProgress{margin-top:18px}
 }
 @media(prefers-reduced-motion:reduce){
+  .loadingScreen.hidden{transition:none}
   .loadingProgress span{animation:none;left:31%;width:38%}
 }

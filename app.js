@@ -25,7 +25,7 @@ import {renderDesertStormPlanInto} from "./lib/desert-storm-plan-ui.js?v=hf8630-
 import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
 import {createIdleLifecycle} from "./lib/idle-lifecycle.js?v=warboost-startup-screen-r1";
 import {runAuthenticatedIdleResume} from "./lib/session-resume.js?v=hf8630-idle-resume-r1";
-import {createLoadingScreenController,revealExactLoadingArtwork} from "./lib/loading-screen.js?v=warboost-startup-screen-r1";
+import {createLoadingScreenController,revealExactLoadingArtwork} from "./lib/loading-screen.js?v=warboost-startup-screen-r2";
 import {createReturnViewController} from "./lib/return-view.js?v=warboost-startup-screen-r1";
 import {unlockDesertStormSearchInput} from "./lib/desert-storm-search.js";
 import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
@@ -3657,7 +3657,7 @@ if("serviceWorker" in navigator){
   serviceWorkerUpdatePromise=new Promise(resolve=>{
     window.addEventListener("load",async()=>{
       try{
-        const generation="warboost-startup-screen-r1",reloadKey=`${generation}:reloaded`;
+        const generation="warboost-startup-screen-r2",reloadKey=`${generation}:reloaded`;
         const reg=await navigator.serviceWorker.register(`/sw.js?rev=${generation}`,{updateViaCache:"none"});
         let refreshing=false;
         try{refreshing=sessionStorage.getItem(reloadKey)==="1"}catch{}

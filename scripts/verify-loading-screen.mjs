@@ -3,6 +3,7 @@ import fs from "node:fs";
 import {
   createLoadingScreenController,
   LOADING_ARTWORK_PATH,
+  LOADING_MIN_VISIBLE_MS,
   revealExactLoadingArtwork
 } from "../lib/loading-screen.js";
 import {
@@ -68,30 +69,65 @@ function makeStorage(){
   };
 }
 
-// The initial screen is a modal, updates its truthful stage, and hides without
-// imposing a minimum delay after the real startup work has completed.
+// Opening and resume each stay visible for at least three seconds, while
+// preserving modal state and the user's scroll position.
 {
-  const doc=new FakeDocument(),storageCalls=[],scrollCalls=[];
+  let now=100;
+  const doc=new FakeDocument(),timeoutDelays=[],timeoutCallbacks=[],scrollCalls=[];
   const windowRef={scrollX:55,scrollY:89,scrollTo:(x,y)=>scrollCalls.push([x,y])};
   const controller=createLoadingScreenController({
-    documentRef:doc,windowRef,translate:key=>key,now:()=>100,
-    setTimeoutFn:(fn,delay)=>{storageCalls.push(delay);fn()}
+    documentRef:doc,windowRef,translate:key=>key,now:()=>now,
+    setTimeoutFn:(fn,delay)=>{timeoutDelays.push(delay);timeoutCallbacks.push(fn);return timeoutCallbacks.length}
   });
+  assert.equal(LOADING_MIN_VISIBLE_MS,3000);
   assert.equal(controller.isVisible(),true);
   assert.equal(doc.getElementById("appContent").hasAttribute("inert"),true);
   assert.equal(doc.getElementById("allianceDrawer").getAttribute("aria-hidden"),"true");
+  controller.show("open","profile");
+  const openingHide=controller.hide();
+  assert.deepEqual(timeoutDelays,[3000]);
+  assert.equal(controller.isVisible(),true);
+  now=3099;
+  assert.equal(controller.isVisible(),true);
+  now=3100;timeoutCallbacks[0]();
+  await openingHide;
+  assert.equal(controller.isVisible(),false);
+  assert.equal(doc.body.classList.contains("loading-active"),false);
+  assert.equal(doc.getElementById("appContent").hasAttribute("inert"),false);
+  assert.equal(doc.getElementById("allianceDrawer").getAttribute("aria-hidden"),"false");
+  assert.deepEqual(scrollCalls,[[55,89]]);
+
+  now=900_000;
   controller.show("resume","cloud");
   assert.equal(doc.getElementById("loadingTitle").textContent,"loading_resume_title");
   assert.equal(doc.getElementById("loadingStage").textContent,"loading_stage_cloud");
   controller.setStage("expired");controller.setRetryVisible(true);
   assert.equal(doc.getElementById("loadingRetry").textContent,"loading_sign_in");
-  await controller.hide();
+  now=901_000;
+  const resumeHide=controller.hide();
+  assert.deepEqual(timeoutDelays,[3000,2000]);
+  assert.equal(controller.isVisible(),true);
+  now=903_000;timeoutCallbacks[1]();
+  await resumeHide;
   assert.equal(controller.isVisible(),false);
-  assert.equal(storageCalls.length,0);
   assert.equal(doc.body.classList.contains("loading-active"),false);
   assert.equal(doc.getElementById("appContent").hasAttribute("inert"),false);
   assert.equal(doc.getElementById("allianceDrawer").getAttribute("aria-hidden"),"false");
-  assert.deepEqual(scrollCalls,[[55,89]]);
+  assert.deepEqual(scrollCalls,[[55,89],[55,89]]);
+}
+
+// If real startup work already took longer than the minimum, do not add delay.
+{
+  let now=0,scheduled=0;
+  const controller=createLoadingScreenController({
+    documentRef:new FakeDocument(),translate:key=>key,now:()=>now,
+    setTimeoutFn:()=>{scheduled++;return scheduled}
+  });
+  controller.show("open","profile");
+  now=4500;
+  await controller.hide();
+  assert.equal(scheduled,0);
+  assert.equal(controller.isVisible(),false);
 }
 
 // A newer show request wins over an older pending hide request.
@@ -214,15 +250,21 @@ assert.match(app,/dataset\.artwork=found\?"available":"missing"/);
 assert.match(app,/onSuspend:\(\)=>\{stopForegroundRefreshes\(\);loadingScreen\?\.show\("resume","cloud"\)\}/);
 assert.doesNotMatch(app,/onSuspend:[^\n]*closeDrawers/);
 assert.match(app,/finishOperation\(\)/);
-assert.match(sw,/lib\/loading-screen\.js\?v=warboost-startup-screen-r1/);
-assert.match(sw,/loading-screen\.css\?v=warboost-startup-screen-r1/);
+assert.match(index,/loading-screen\.css\?v=warboost-startup-screen-r2/);
+assert.match(index,/app\.js\?v=warboost-startup-screen-r2/);
+assert.match(app,/lib\/loading-screen\.js\?v=warboost-startup-screen-r2/);
+assert.match(sw,/warboost-loading-startup-screen-r2/);
+assert.match(sw,/lib\/loading-screen\.js\?v=warboost-startup-screen-r2/);
+assert.match(sw,/loading-screen\.css\?v=warboost-startup-screen-r2/);
 assert.match(sw,/SHELL\.push\("\/assets\/warboost-loading-scene\.webp"\)/);
 assert.match(sw,/e\.request\.method==="HEAD"/);
 assert.match(server,/["']\.webp["']:"image\/webp"/);
 assert.match(css,/env\(safe-area-inset-/);
+assert.match(css,/\.loadingScreen\.hidden\{[\s\S]*opacity:0;[\s\S]*visibility:hidden;[\s\S]*transition:opacity 180ms ease,visibility 0s linear 180ms/);
 assert.match(css,/@media\(max-width:540px\)/);
 assert.match(css,/@media\(max-aspect-ratio:9\/16\)/);
 assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
+assert.match(css,/\.loadingScreen\.hidden\{transition:none\}/);
 assert.match(css,/data-artwork="available"[\s\S]*object-fit:contain/);
 assert.equal(LOADING_ARTWORK_PATH,"/assets/warboost-loading-scene.webp");
 assert.equal(artwork.subarray(0,4).toString("ascii"),"RIFF");

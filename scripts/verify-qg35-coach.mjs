@@ -190,10 +190,10 @@ assert.match(indexHtml,/id="qg35CoachCard"[^>]*class="moduleCard qg35HomeCard hi
 assert.match(appSource,/shop-catalog\.js\?v=shop-observations-v2-5-32-hf8-6-34-r2/);
 assert.match(appSource,/resource-acquisition\.js\?v=shop-observations-v2-5-32-hf8-6-34-r2/);
 assert.match(indexHtml,/styles\.css\?v=scan-review-human-r1/);
-assert.match(indexHtml,/app\.js\?v=warboost-startup-screen-r1/);
+assert.match(indexHtml,/app\.js\?v=warboost-startup-screen-r2/);
 assert.match(indexHtml,/warboost-build" content="2\.5\.32-HF8\.6\.34-shop-observations-r2"/);
 const swSource=await readFile(new URL("../sw.js",import.meta.url),"utf8");
-assert.match(swSource,/warboost-loading-startup-screen-r1/);
+assert.match(swSource,/warboost-loading-startup-screen-r2/);
 assert.match(swSource,/shop-observations-2026-09-28\.js/);
 
 console.log("QG35+ Coach eligibility, report completeness, privacy, access gating, translations, and read-only stability verified.");

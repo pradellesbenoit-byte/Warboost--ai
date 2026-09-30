@@ -12,7 +12,7 @@ const app=read('app.js'),html=read('index.html'),health=read('api/health.js'),st
 // Release identity and cache invalidation must be unambiguous on player devices.
 assert.match(app,/const RELEASE_LABEL="HF8\.6\.34"/);
 assert.match(html,/WarBoost V2\.5\.32 HF8\.6\.34/);
-assert.match(html,/\/app\.js\?v=warboost-startup-screen-r1/);
+assert.match(html,/\/app\.js\?v=warboost-startup-screen-r2/);
 assert.match(html,/\/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/);
 assert.match(sw,/warboost-v2-5-28-hf8-6-19-public-beta-full-reliability/);
 assert.match(manifest.name,/HF8\.6\.34/);

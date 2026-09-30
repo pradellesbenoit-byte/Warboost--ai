@@ -6,7 +6,7 @@ const app=read('app.js'), html=read('index.html'), i18n=read('i18n.js'), sw=read
 function need(ok,msg){if(!ok)throw new Error(msg)}
 need(/const RELEASE_LABEL="HF8\.6\.34"/.test(app),'release label missing');
 need(/WarBoost V2\.5\.32 HF8\.6\.34/.test(html),'HTML release missing');
-need(/\/app\.js\?v=warboost-startup-screen-r1/.test(html)&&/\/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/.test(html),'cache bust missing');
+need(/\/app\.js\?v=warboost-startup-screen-r2/.test(html)&&/\/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/.test(html),'cache bust missing');
 need(/V2\.5\.32 HF8\.6\.34/.test(i18n),'i18n release missing');
 need(/shop-observations-v2-5-32-hf8-6-34-r2/.test(sw),'service worker cache missing');
 need(/release:"HF8\.6\.34"/.test(health),'health release missing');

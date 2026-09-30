@@ -13,7 +13,7 @@ const standard=fs.readFileSync(new URL('../WARBOOST_V2_5_28_HF8_6_25_PLAYER_LAUN
 
 assert.match(app,/const RELEASE_LABEL="HF8\.6\.34"/);
 assert.match(index,/WarBoost V2\.5\.32 HF8\.6\.34/);
-assert.match(index,/app\.js\?v=warboost-startup-screen-r1/);
+assert.match(index,/app\.js\?v=warboost-startup-screen-r2/);
 assert.match(index,/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/);
 assert.match(sw,/shop-observations-v2-5-32-hf8-6-34-r2/);
 assert.match(health,/release:"HF8\.6\.34"/);
