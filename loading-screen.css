@@ -36,7 +36,7 @@
   opacity:1;
 }
 .loadingScreen[data-artwork="available"] .loadingVeil{
-  background:transparent;
+  background:linear-gradient(180deg,transparent 72%,rgba(4,11,22,.34) 76%,rgba(4,11,22,.9) 80%,rgba(4,11,22,.98) 100%);
 }
 .loadingCard{
   position:relative;
@@ -56,8 +56,8 @@
 .loadingScreen[data-artwork="available"] .loadingCard{
   align-self:end;
   justify-self:center;
-  width:min(100%,520px);
-  padding:clamp(16px,3vw,24px);
+  width:min(100%,460px);
+  padding:12px 18px;
   border-color:rgba(106,193,255,.48);
   border-radius:20px;
   background:rgba(4,11,22,.98);
@@ -66,10 +66,23 @@
   -webkit-backdrop-filter:none;
 }
 .loadingScreen[data-artwork="available"] .loadingBrand{
-  margin-bottom:8px;
+  display:none;
+}
+.loadingScreen[data-artwork="available"] .loadingCard h1{
+  margin-bottom:4px;
+  font-size:clamp(1.1rem,3vw,1.5rem);
+}
+.loadingScreen[data-artwork="available"] .loadingCard p{
+  font-size:clamp(.82rem,2.2vw,.95rem);
+  line-height:1.35;
 }
 .loadingScreen[data-artwork="available"] .loadingProgress{
-  margin:16px 0 12px;
+  height:4px;
+  margin:10px 0 8px;
+}
+.loadingScreen[data-artwork="available"] .loadingStage{
+  min-height:1.3em;
+  font-size:.82rem!important;
 }
 .loadingBrand{
   margin-bottom:14px;
@@ -133,6 +146,9 @@ body.loading-active{
 @media(max-width:540px){
   .loadingScreen{padding-left:calc(14px + env(safe-area-inset-left, 0px));padding-right:calc(14px + env(safe-area-inset-right, 0px))}
   .loadingCard{width:100%;padding:28px 22px;border-radius:20px}
+}
+@media(max-aspect-ratio:9/16){
+  .loadingScreen[data-artwork="available"] .loadingArtwork{object-fit:cover}
 }
 @media(max-height:620px){
   .loadingCard{padding-top:22px;padding-bottom:22px}
