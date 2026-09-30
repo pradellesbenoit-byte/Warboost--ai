@@ -20,6 +20,7 @@
 - [OCR power confirmation](ocr-power-confirmation.md) — retain visibly unreadable power text for manual correction; only parsed positive values may propagate as confirmed hero power.
 - [OCR review boundary](ocr-review-boundary.md) — actionable scan values need owner- and capture-bound review before replacing confirmed data; unreadable fields stay pending.
 - [Drone OCR power evidence](drone-ocr-power-evidence.md) — keep visible whole-unit Drone power separate from canonical millions; a provider decimal alone is not evidence.
+- [Named Technology scan evidence](named-technology-scan.md) — never infer a branch from its grid position or map a scanned percentage into an unrelated legacy category.
 - [Hybrid event availability](event-availability-hybrid.md) — player declarations sync only to their exact linked roster row; alliance views aggregate sources without replacing unlinked members.
 - [Shared roster view](shared-roster-view.md) — hydrate alliance screens from the canonical cloud roster; local player state may enrich but never replace or truncate it.
 - [Behavior-oriented UI checks](behavior-oriented-ui-checks.md) — render tests should assert the intended ordering helper/behavior, not brittle exact loop syntax.

@@ -130,10 +130,10 @@ async function call(req=request()){
   assert.equal(JSON.stringify(customProviderPayloads[otherPayloadIndex]).includes("Private Name"),false);
   assert.equal(JSON.stringify(customProviderPayloads[otherPayloadIndex]).includes("Private Member"),false);
 
-  providerOutput={state:{technology:{hero_tech_pct:17}}};
+  providerOutput={state:{technology:{cards:[{name:"Équipe 3",name_evidence:"visible_text",name_confidence:0.98,percent:"17 %",state:"percent",value_evidence:"same_card",value_confidence:0.98}]}}};
   const technologyOnly=await call(request({token:"technology-only",body:{scan_type:"season"}}));
   assert.equal(technologyOnly.status,200,"technology-only season capture is useful");
-  assert.deepEqual(technologyOnly.body.state.technology,{updated_at:technologyOnly.body.scanned_at,hero_tech_pct:17});
+  assert.deepEqual(technologyOnly.body.state.technology,{updated_at:technologyOnly.body.scanned_at,branches:{team_3:{name:"Équipe 3",state:"percent",percent:17,updated_at:technologyOnly.body.scanned_at}},unmapped:[]});
   assert.equal(technologyOnly.body.state.season,undefined);
   assert.equal(technologyOnly.body.quality.requires_confirmation,true);
 

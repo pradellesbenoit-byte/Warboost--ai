@@ -475,6 +475,37 @@ Object.assign(CS,{stronger_squad_note:"{name} je nyní silnější ({power}), al
 Object.assign(SV,{stronger_squad_note:"{name} är för närvarande starkare ({power}), men Trupp 1 förblir din valda huvudtrupp.",tagline:"V2.5.2 · Tillförlitlighet för huvudtrupp · utan spelartoken"});
 
 const packs={fr:FR,"en-GB":EN_GB,"en-US":EN_US,es:ES,it:IT,de:DE,pt:PT,nl:NL,zh:ZH,ja:JA,ru:RU,ar:AR,pl:PL,tr:TR,ko:KO,vi:VI,th:TH,id:ID,uk:UK,ro:RO,el:EL,cs:CS,sv:SV};
+const TECHNOLOGY_REVIEW_TEXT={
+  fr:"Nom de la branche¦Statut¦Progression (%)¦Prérequis visible¦Branche à identifier¦À confirmer¦Pourcentage¦Niveau Max¦Verrouillée",
+  "en-GB":"Branch name¦Status¦Progress (%)¦Visible prerequisite¦Unidentified branch¦To confirm¦Percentage¦Max Level¦Locked",
+  "en-US":"Branch name¦Status¦Progress (%)¦Visible prerequisite¦Unidentified branch¦To confirm¦Percentage¦Max Level¦Locked",
+  es:"Nombre de rama¦Estado¦Progreso (%)¦Requisito visible¦Rama sin identificar¦Por confirmar¦Porcentaje¦Nivel máximo¦Bloqueada",
+  it:"Nome ramo¦Stato¦Progresso (%)¦Requisito visibile¦Ramo non identificato¦Da confermare¦Percentuale¦Livello massimo¦Bloccato",
+  de:"Zweigname¦Status¦Fortschritt (%)¦Sichtbare Voraussetzung¦Unbekannter Zweig¦Zu bestätigen¦Prozent¦Maximale Stufe¦Gesperrt",
+  pt:"Nome do ramo¦Estado¦Progresso (%)¦Pré-requisito visível¦Ramo não identificado¦A confirmar¦Percentagem¦Nível máximo¦Bloqueado",
+  nl:"Naam van tak¦Status¦Voortgang (%)¦Zichtbare vereiste¦Onbekende tak¦Te bevestigen¦Percentage¦Maximaal niveau¦Vergrendeld",
+  zh:"分支名称¦状态¦进度 (%)¦可见前提条件¦未识别分支¦待确认¦百分比¦最高等级¦已锁定",
+  ja:"分岐名¦状態¦進捗 (%)¦表示された解放条件¦未識別の分岐¦要確認¦割合¦最大レベル¦ロック中",
+  ru:"Название ветки¦Статус¦Прогресс (%)¦Видимое условие¦Неизвестная ветка¦Подтвердить¦Процент¦Макс. уровень¦Заблокировано",
+  ar:"اسم الفرع¦الحالة¦التقدم (%)¦الشرط الظاهر¦فرع غير معروف¦يحتاج إلى تأكيد¦النسبة¦المستوى الأقصى¦مقفل",
+  pl:"Nazwa gałęzi¦Stan¦Postęp (%)¦Widoczny warunek¦Nieznana gałąź¦Do potwierdzenia¦Procent¦Maksymalny poziom¦Zablokowana",
+  tr:"Dal adı¦Durum¦İlerleme (%)¦Görünen ön koşul¦Tanımlanamayan dal¦Onay bekliyor¦Yüzde¦Maksimum Seviye¦Kilitli",
+  ko:"분기 이름¦상태¦진행률 (%)¦표시된 조건¦확인되지 않은 분기¦확인 필요¦백분율¦최대 레벨¦잠김",
+  vi:"Tên nhánh¦Trạng thái¦Tiến độ (%)¦Điều kiện hiển thị¦Nhánh chưa xác định¦Cần xác nhận¦Phần trăm¦Cấp tối đa¦Đã khóa",
+  th:"ชื่อสาย¦สถานะ¦ความคืบหน้า (%)¦เงื่อนไขที่มองเห็น¦สายที่ยังไม่ระบุ¦ต้องยืนยัน¦เปอร์เซ็นต์¦เลเวลสูงสุด¦ล็อก",
+  id:"Nama cabang¦Status¦Progres (%)¦Prasyarat yang terlihat¦Cabang belum dikenal¦Perlu dikonfirmasi¦Persentase¦Level Maks¦Terkunci",
+  uk:"Назва гілки¦Стан¦Прогрес (%)¦Видима умова¦Невідома гілка¦Потрібне підтвердження¦Відсоток¦Максимальний рівень¦Заблоковано",
+  ro:"Numele ramurii¦Stare¦Progres (%)¦Condiție vizibilă¦Ramură necunoscută¦De confirmat¦Procent¦Nivel maxim¦Blocată",
+  el:"Όνομα κλάδου¦Κατάσταση¦Πρόοδος (%)¦Ορατή προϋπόθεση¦Άγνωστος κλάδος¦Προς επιβεβαίωση¦Ποσοστό¦Μέγιστο επίπεδο¦Κλειδωμένο",
+  cs:"Název větve¦Stav¦Postup (%)¦Viditelná podmínka¦Neznámá větev¦K potvrzení¦Procento¦Maximální úroveň¦Uzamčeno",
+  sv:"Grenens namn¦Status¦Framsteg (%)¦Synligt villkor¦Okänd gren¦Behöver bekräftas¦Procent¦Maxnivå¦Låst"
+};
+for(const [code,text] of Object.entries(TECHNOLOGY_REVIEW_TEXT)){
+  const values=text.split("¦");
+  if(!packs[code]||values.length!==9)throw new Error(`Invalid Technology translations for ${code}`);
+  Object.assign(packs[code],Object.fromEntries(["name","state","percent","prerequisite","unknown_name","state_unknown","state_percent","state_max","state_locked"].map((key,index)=>[`scan_technology_${key}`,values[index]])));
+}
+Object.assign(EN,Object.fromEntries(["name","state","percent","prerequisite","unknown_name","state_unknown","state_percent","state_max","state_locked"].map((key,index)=>[`scan_technology_${key}`,TECHNOLOGY_REVIEW_TEXT["en-GB"].split("¦")[index]])));
 const SCAN_REVIEW_LABELS={
   fr:{scan_review_title:"Vérifier les données du scan",scan_review_help:"Corrige ou vérifie chaque valeur Vision. Rien n’est enregistré avant ta confirmation.",scan_review_source:"Source",scan_review_scanned_at:"Date du scan",scan_review_field:"Champ : {field}",scan_review_power_pending:"Puissance à vérifier — non confirmée",scan_review_confirm:"Confirmer les valeurs",scan_review_discard:"Ignorer le résultat",scan_review_ready:"Résultat prêt : vérifie les valeurs avant de confirmer.",scan_review_discarded:"Résultat ignoré. Aucune donnée du scan n’a été enregistrée."},
   "en-GB":{scan_review_title:"Review scan data",scan_review_help:"Check or correct every Vision value. Nothing is saved until you confirm.",scan_review_source:"Source",scan_review_scanned_at:"Scanned at",scan_review_field:"Field: {field}",scan_review_power_pending:"Power needs checking — not confirmed",scan_review_confirm:"Confirm values",scan_review_discard:"Discard result",scan_review_ready:"Result ready: review the values before confirming.",scan_review_discarded:"Result discarded. No scan data was saved."},
