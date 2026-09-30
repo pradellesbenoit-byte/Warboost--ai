@@ -7,7 +7,7 @@
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization
 // Scan request restore: keep server-side scan completion authoritative; browser no longer aborts /api/scan at 60 s.
-const CACHE="warboost-technology-center-scan-r1";
+const CACHE="warboost-technology-center-scan-r2";
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-25-player-launch-integrity
 // Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
@@ -23,6 +23,7 @@ const SHELL=["/", "/index.html", "/styles.css", "/publisher-ui.css", "/app.js", 
 SHELL.push("/lib/resource-acquisition.js?v=shop-observations-v2-5-32-hf8-6-34-r2","/lib/shop-catalog.js?v=shop-observations-v2-5-32-hf8-6-34-r2","/lib/shop-catalog.js","/lib/shop-observations-2026-09-28.js");
 SHELL.push("/lib/pending-account-cache.js","/lib/desert-storm-plan-ui.js?v=hf8630-desert-storm-plan-r2","/lib/idle-lifecycle.js?v=hf8630-idle-resume-r1","/lib/session-resume.js?v=hf8630-idle-resume-r1","/lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1","/styles.css?v=scan-review-human-r1","/app.js?v=squad-confirmed-restore-r1","/publisher-ui.js?v=hf8630-desert-storm-plan-r2");
 SHELL.push("/lib/scan-review.js","/lib/scan-review-presentation.js","/lib/scan-review-markup.js","/lib/squad-freshness.js");
+SHELL.push("/lib/player-scan-types.js");
 SHELL.push("/lib/technology-scan.js","/lib/technology-advisor.js","/technology-advice.css");
 self.addEventListener("message",e=>{if(e.data?.type==="WARBOOST_ACTIVATE")self.skipWaiting()});
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));

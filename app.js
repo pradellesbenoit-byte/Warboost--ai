@@ -1,4 +1,5 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
+import {buildPlayerScanOptions,normalizePlayerScanType} from "./lib/player-scan-types.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
@@ -769,7 +770,7 @@ function closeSquadCaptureHelp(){
   $("#squadCaptureHelpPanel")?.classList.add("hidden");
   $("#squadCaptureWrongNotice")?.classList.add("hidden");
 }
-function renderScanTypeOptions(){const sel=$("#scanType");if(!sel)return;const current=sel.value||"profile";const opts=[["profile",t("scan_profile")],["squad1",`${t("squad")} 1`],["squad2",`${t("squad")} 2`],["squad3",`${t("squad")} 3`],["squad4",`${t("squad")} 4`],["drone",t("scan_drone")],["exclusive",t("scan_exclusive")],["awakening",t("scan_awakening")],["shop",t("scan_shop")],["vs",t("scan_vs")],["season",t("scan_season")],["technology",t("scan_technology")],["secret_mobile_squad",t("scan_secret_mobile_squad")]];sel.innerHTML=opts.map(([v,label])=>`<option value="${v}">${esc(label)}</option>`).join("");sel.value=opts.some(([v])=>v===current)?current:"profile";updateSquadCaptureHelp(sel.value);updateScanCaptureMode()}
+function renderScanTypeOptions(){const sel=$("#scanType");if(!sel)return;const current=sel.value||"profile";const opts=buildPlayerScanOptions(t);sel.innerHTML=opts.map(({value,label})=>`<option value="${esc(value)}">${esc(label)}</option>`).join("");sel.value=normalizePlayerScanType(current,opts);updateSquadCaptureHelp(sel.value);updateScanCaptureMode()}
 function ensureExtendedObjectives(){
   const select=$("#fObjective");if(!select)return;
   for(const [value,key] of [["growth","objective_growth"],["power","objective_power"],["t10","objective_t10"],["t11","objective_t11"]]){
@@ -1408,7 +1409,7 @@ function renderSeasonAccess(){
   notice.hidden=confirmed;
   notice.style.display=confirmed?"none":"";
 }
-function openQuickScan(type){if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("scan");renderScanTypeOptions();if($("#scanType"))$("#scanType").value=type;updateSquadCaptureHelp(type)}
+function openQuickScan(type){if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("scan");renderScanTypeOptions();const opts=buildPlayerScanOptions(t),safeType=normalizePlayerScanType(type,opts),sel=$("#scanType");if(sel)sel.value=safeType;updateSquadCaptureHelp(safeType)}
 
 function qg35Text(key,params={}){
   const translated={...params};

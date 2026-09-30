@@ -2525,33 +2525,33 @@ const SAFE_LAUNCH_FEEDBACK={
 for(const [code,labels] of Object.entries(SAFE_LAUNCH_FEEDBACK))Object.assign(packs[code],labels);
 Object.assign(EN,SAFE_LAUNCH_FEEDBACK["en-GB"]);
 
-const SECRET_MOBILE_SQUAD_SCAN_LABELS={
-  fr:{game_update_title:"Veille du jeu · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tâches",scan_secret_mobile_squad_help:"WarBoost conserve le texte exact visible. Il ne devine pas le sens d’un libellé inconnu et n’enregistre rien avant ta confirmation."},
-  "en-GB":{game_update_title:"Game watch · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tasks",scan_secret_mobile_squad_help:"WarBoost keeps the exact visible text. It does not guess the meaning of an unknown label, and saves nothing until you confirm the scan."},
-  "en-US":{game_update_title:"Game watch · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tasks",scan_secret_mobile_squad_help:"WarBoost keeps the exact visible text. It does not guess the meaning of an unknown label, and saves nothing until you confirm the scan."},
-  es:{game_update_title:"Seguimiento del juego · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tareas",scan_secret_mobile_squad_help:"WarBoost conserva el texto visible exacto. No adivina el significado de una etiqueta desconocida y no guarda nada hasta que confirmes el análisis."},
-  it:{game_update_title:"Monitoraggio gioco · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · attività",scan_secret_mobile_squad_help:"WarBoost conserva il testo esatto visibile. Non indovina il significato di un'etichetta sconosciuta e non salva nulla prima della tua conferma."},
-  de:{game_update_title:"Spielbeobachtung · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · Aufgaben",scan_secret_mobile_squad_help:"WarBoost übernimmt den exakt sichtbaren Text. Die Bedeutung unbekannter Bezeichnungen wird nicht geraten; gespeichert wird erst nach deiner Bestätigung."},
-  pt:{game_update_title:"Monitorização do jogo · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tarefas",scan_secret_mobile_squad_help:"O WarBoost mantém o texto visível exato. Não adivinha o significado de um rótulo desconhecido e só guarda os dados depois da tua confirmação."},
-  nl:{game_update_title:"Gamebewaking · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · taken",scan_secret_mobile_squad_help:"WarBoost bewaart de exact zichtbare tekst. De betekenis van een onbekend label wordt niet geraden; er wordt pas opgeslagen na jouw bevestiging."},
-  zh:{game_update_title:"游戏追踪 · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · 任务",scan_secret_mobile_squad_help:"WarBoost 会保留屏幕上实际显示的文字，不会猜测未知标签的含义；只有你确认扫描后才会保存。"},
-  ja:{game_update_title:"ゲーム監視 · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · タスク",scan_secret_mobile_squad_help:"WarBoostは画面に表示された文字をそのまま保持します。不明なラベルの意味は推測せず、確認されるまで保存しません。"},
-  ru:{game_update_title:"Мониторинг игры · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · задания",scan_secret_mobile_squad_help:"WarBoost сохраняет точный видимый текст. Значение неизвестной подписи не угадывается; данные сохраняются только после подтверждения."},
-  ar:{game_update_title:"مراقبة اللعبة · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · المهام",scan_secret_mobile_squad_help:"يحفظ WarBoost النص الظاهر كما هو. لا يخمّن معنى التسمية غير المعروفة، ولا يحفظ شيئاً قبل تأكيدك للمسح."},
-  pl:{game_update_title:"Monitoring gry · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · zadania",scan_secret_mobile_squad_help:"WarBoost zachowuje dokładny widoczny tekst. Nie zgaduje znaczenia nieznanej etykiety i niczego nie zapisuje przed potwierdzeniem skanu."},
-  tr:{game_update_title:"Oyun takibi · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · görevler",scan_secret_mobile_squad_help:"WarBoost ekranda görünen metni aynen saklar. Bilinmeyen etiketlerin anlamını tahmin etmez ve taramayı onaylayana kadar hiçbir şeyi kaydetmez."},
-  ko:{game_update_title:"게임 모니터링 · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · 임무",scan_secret_mobile_squad_help:"WarBoost는 화면에 보이는 문구를 그대로 보존합니다. 알 수 없는 문구의 의미를 추측하지 않으며, 확인하기 전에는 저장하지 않습니다."},
-  vi:{game_update_title:"Theo dõi game · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · nhiệm vụ",scan_secret_mobile_squad_help:"WarBoost giữ nguyên văn bản nhìn thấy trên màn hình. Ứng dụng không đoán ý nghĩa nhãn lạ và chỉ lưu sau khi bạn xác nhận."},
-  th:{game_update_title:"ติดตามเกม · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · ภารกิจ",scan_secret_mobile_squad_help:"WarBoost จะเก็บข้อความที่มองเห็นตามจริง ไม่เดาความหมายของป้ายที่ไม่รู้จัก และจะบันทึกเมื่อคุณยืนยันการสแกนแล้วเท่านั้น"},
-  id:{game_update_title:"Pantauan game · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tugas",scan_secret_mobile_squad_help:"WarBoost menyimpan teks yang terlihat persis seperti aslinya. Arti label yang tidak dikenal tidak ditebak dan data tidak disimpan sebelum Anda mengonfirmasi."},
-  uk:{game_update_title:"Моніторинг гри · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · завдання",scan_secret_mobile_squad_help:"WarBoost зберігає точний видимий текст. Значення невідомої назви не вгадується; дані зберігаються лише після вашого підтвердження."},
-  ro:{game_update_title:"Monitorizare joc · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · sarcini",scan_secret_mobile_squad_help:"WarBoost păstrează exact textul vizibil. Nu ghicește sensul unei etichete necunoscute și nu salvează nimic înainte de confirmarea scanării."},
-  el:{game_update_title:"Παρακολούθηση παιχνιδιού · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · αποστολές",scan_secret_mobile_squad_help:"Το WarBoost διατηρεί ακριβώς το ορατό κείμενο. Δεν μαντεύει τη σημασία άγνωστης ετικέτας και δεν αποθηκεύει τίποτα πριν επιβεβαιώσεις τη σάρωση."},
-  cs:{game_update_title:"Sledování hry · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · úkoly",scan_secret_mobile_squad_help:"WarBoost zachová přesný viditelný text. Význam neznámého označení neodhaduje a nic neuloží, dokud sken nepotvrdíte."},
-  sv:{game_update_title:"Spelbevakning · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · uppgifter",scan_secret_mobile_squad_help:"WarBoost sparar den exakta synliga texten. Okända etiketter tolkas inte genom gissningar och inget sparas innan du bekräftar skanningen."}
+const SECRET_MOBILE_SQUAD_SCAN_COPY={
+  fr:{game_update_title:"Veille du jeu · 1.0.364",scan_secret_mobile_squad_help:"WarBoost conserve le texte exact visible. Il ne devine pas le sens d’un libellé inconnu et n’enregistre rien avant ta confirmation."},
+  "en-GB":{game_update_title:"Game watch · 1.0.364",scan_secret_mobile_squad_help:"WarBoost keeps the exact visible text. It does not guess the meaning of an unknown label, and saves nothing until you confirm the scan."},
+  "en-US":{game_update_title:"Game watch · 1.0.364",scan_secret_mobile_squad_help:"WarBoost keeps the exact visible text. It does not guess the meaning of an unknown label, and saves nothing until you confirm the scan."},
+  es:{game_update_title:"Seguimiento del juego · 1.0.364",scan_secret_mobile_squad_help:"WarBoost conserva el texto visible exacto. No adivina el significado de una etiqueta desconocida y no guarda nada hasta que confirmes el análisis."},
+  it:{game_update_title:"Monitoraggio gioco · 1.0.364",scan_secret_mobile_squad_help:"WarBoost conserva il testo esatto visibile. Non indovina il significato di un'etichetta sconosciuta e non salva nulla prima della tua conferma."},
+  de:{game_update_title:"Spielbeobachtung · 1.0.364",scan_secret_mobile_squad_help:"WarBoost übernimmt den exakt sichtbaren Text. Die Bedeutung unbekannter Bezeichnungen wird nicht geraten; gespeichert wird erst nach deiner Bestätigung."},
+  pt:{game_update_title:"Monitorização do jogo · 1.0.364",scan_secret_mobile_squad_help:"O WarBoost mantém o texto visível exato. Não adivinha o significado de um rótulo desconhecido e só guarda os dados depois da tua confirmação."},
+  nl:{game_update_title:"Gamebewaking · 1.0.364",scan_secret_mobile_squad_help:"WarBoost bewaart de exact zichtbare tekst. De betekenis van een onbekend label wordt niet geraden; er wordt pas opgeslagen na jouw bevestiging."},
+  zh:{game_update_title:"游戏追踪 · 1.0.364",scan_secret_mobile_squad_help:"WarBoost 会保留屏幕上实际显示的文字，不会猜测未知标签的含义；只有你确认扫描后才会保存。"},
+  ja:{game_update_title:"ゲーム監視 · 1.0.364",scan_secret_mobile_squad_help:"WarBoostは画面に表示された文字をそのまま保持します。不明なラベルの意味は推測せず、確認されるまで保存しません。"},
+  ru:{game_update_title:"Мониторинг игры · 1.0.364",scan_secret_mobile_squad_help:"WarBoost сохраняет точный видимый текст. Значение неизвестной подписи не угадывается; данные сохраняются только после подтверждения."},
+  ar:{game_update_title:"مراقبة اللعبة · 1.0.364",scan_secret_mobile_squad_help:"يحفظ WarBoost النص الظاهر كما هو. لا يخمّن معنى التسمية غير المعروفة، ولا يحفظ شيئاً قبل تأكيدك للمسح."},
+  pl:{game_update_title:"Monitoring gry · 1.0.364",scan_secret_mobile_squad_help:"WarBoost zachowuje dokładny widoczny tekst. Nie zgaduje znaczenia nieznanej etykiety i niczego nie zapisuje przed potwierdzeniem skanu."},
+  tr:{game_update_title:"Oyun takibi · 1.0.364",scan_secret_mobile_squad_help:"WarBoost ekranda görünen metni aynen saklar. Bilinmeyen etiketlerin anlamını tahmin etmez ve taramayı onaylayana kadar hiçbir şeyi kaydetmez."},
+  ko:{game_update_title:"게임 모니터링 · 1.0.364",scan_secret_mobile_squad_help:"WarBoost는 화면에 보이는 문구를 그대로 보존합니다. 알 수 없는 문구의 의미를 추측하지 않으며, 확인하기 전에는 저장하지 않습니다."},
+  vi:{game_update_title:"Theo dõi game · 1.0.364",scan_secret_mobile_squad_help:"WarBoost giữ nguyên văn bản nhìn thấy trên màn hình. Ứng dụng không đoán ý nghĩa nhãn lạ và chỉ lưu sau khi bạn xác nhận."},
+  th:{game_update_title:"ติดตามเกม · 1.0.364",scan_secret_mobile_squad_help:"WarBoost จะเก็บข้อความที่มองเห็นตามจริง ไม่เดาความหมายของป้ายที่ไม่รู้จัก และจะบันทึกเมื่อคุณยืนยันการสแกนแล้วเท่านั้น"},
+  id:{game_update_title:"Pantauan game · 1.0.364",scan_secret_mobile_squad_help:"WarBoost menyimpan teks yang terlihat persis seperti aslinya. Arti label yang tidak dikenal tidak ditebak dan data tidak disimpan sebelum Anda mengonfirmasi."},
+  uk:{game_update_title:"Моніторинг гри · 1.0.364",scan_secret_mobile_squad_help:"WarBoost зберігає точний видимий текст. Значення невідомої назви не вгадується; дані зберігаються лише після вашого підтвердження."},
+  ro:{game_update_title:"Monitorizare joc · 1.0.364",scan_secret_mobile_squad_help:"WarBoost păstrează exact textul vizibil. Nu ghicește sensul unei etichete necunoscute și nu salvează nimic înainte de confirmarea scanării."},
+  el:{game_update_title:"Παρακολούθηση παιχνιδιού · 1.0.364",scan_secret_mobile_squad_help:"Το WarBoost διατηρεί ακριβώς το ορατό κείμενο. Δεν μαντεύει τη σημασία άγνωστης ετικέτας και δεν αποθηκεύει τίποτα πριν επιβεβαιώσεις τη σάρωση."},
+  cs:{game_update_title:"Sledování hry · 1.0.364",scan_secret_mobile_squad_help:"WarBoost zachová přesný viditelný text. Význam neznámého označení neodhaduje a nic neuloží, dokud sken nepotvrdíte."},
+  sv:{game_update_title:"Spelbevakning · 1.0.364",scan_secret_mobile_squad_help:"WarBoost sparar den exakta synliga texten. Okända etiketter tolkas inte genom gissningar och inget sparas innan du bekräftar skanningen."}
 };
-for(const [code,labels] of Object.entries(SECRET_MOBILE_SQUAD_SCAN_LABELS))Object.assign(packs[code],labels);
-Object.assign(EN,SECRET_MOBILE_SQUAD_SCAN_LABELS["en-GB"]);
+for(const [code,labels] of Object.entries(SECRET_MOBILE_SQUAD_SCAN_COPY))Object.assign(packs[code],labels);
+Object.assign(EN,SECRET_MOBILE_SQUAD_SCAN_COPY["en-GB"]);
 const SECRET_MOBILE_SQUAD_SAVED_TITLES={
   fr:"Libellés visibles déjà enregistrés","en-GB":"Previously saved visible labels","en-US":"Previously saved visible labels",
   es:"Etiquetas visibles guardadas",it:"Etichette visibili salvate",de:"Bereits gespeicherte sichtbare Bezeichnungen",

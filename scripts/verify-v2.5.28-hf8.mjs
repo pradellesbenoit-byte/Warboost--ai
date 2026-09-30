@@ -5,10 +5,17 @@ import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {LANGUAGES,translator} from '../i18n.js';
 import {commercialConfig,PRO_PLAN,verifyWebhookSignature,createCheckoutForUser} from '../lib/commercial-pro.js';
+import {assertCurrentReleaseContract} from './release-contract.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const log=x=>console.log(`HF8 ✓ ${x}`);
+const releaseContract=assertCurrentReleaseContract({
+  packageVersion:JSON.parse(read('package.json')).version,
+  health:read('api/health.js'),
+  html:read('index.html'),
+  serviceWorker:read('sw.js')
+});
 
 {
   const cfg=commercialConfig();
@@ -21,8 +28,7 @@ const log=x=>console.log(`HF8 ✓ ${x}`);
 }
 
 {
-  const pro=read('api/pro.js'),commerce=read('lib/commercial-pro.js'),html=read('index.html'),app=read('app.js'),health=read('api/health.js'),sw=read('sw.js'),manifest=JSON.parse(read('manifest.webmanifest')),pkg=JSON.parse(read('package.json'));
-  assert.match(html,/WarBoost V2\.5\.28 HF8/);
+  const pro=read('api/pro.js'),commerce=read('lib/commercial-pro.js'),html=read('index.html'),app=read('app.js'),health=read('api/health.js'),manifest=JSON.parse(read('manifest.webmanifest')),pkg=JSON.parse(read('package.json'));
   assert.match(html,/id="proCommercialPreview"/);
   assert.match(app,/function formatProPrice/);
   assert.match(app,/commercial_preview_note/);
@@ -34,9 +40,7 @@ const log=x=>console.log(`HF8 ✓ ${x}`);
   assert.match(commerce,/billing_portal\/sessions/);
   assert.match(commerce,/checkout\/sessions/);
   assert.match(commerce,/timingSafeEqual/);
-  assert.match(health,/build:"hf8-commercial-readiness"/);
   assert.match(health,/commercial_price_server_locked_499_eur_month:true/);
-  assert.match(sw,/warboost-v2-5-28-hf8-commercial-readiness/);
   assert.match(manifest.name,/HF8/);
   assert.match(pkg.scripts.check,/commercial-pro\.js/);
   assert.match(pkg.scripts.verify,/verify-v2\.5\.28-hf8\.mjs/);
@@ -63,7 +67,7 @@ const log=x=>console.log(`HF8 ✓ ${x}`);
       assert.notEqual(tr(key),key,`${code} missing ${key}`);
       if(!code.startsWith('en'))assert.notEqual(tr(key),en(key),`${code} inherits English commercial copy for ${key}`);
     }
-    assert.match(tr('tagline'),/V2\.5\.28 HF8/);
+    assert.ok(tr('tagline').includes(releaseContract.versionLabel),`${code} tagline must include ${releaseContract.versionLabel}`);
   }
   log('23 explicit languages have localized HF8 commercial-readiness copy');
 }

@@ -7,6 +7,7 @@
 - [Alliance rank provenance](rank-provenance.md) — manual changes outrank older scans; newer explicit Last War R4/R5 scans can supersede older rank evidence, while missing rank stays unknown.
 - [Desert Storm selection identity](desert-storm-selection-identity.md) — canonical keys migrate legacy lifecycle aliases without losing selections during filtered rerenders.
 - [Verification environment](verification-environment.md) — distinguish private preview masking, injected Supabase config, and public beta deployment state.
+- [Release contract checks](release-contract-verification.md) — validate current package/API/build/title/cache metadata, not historical HF markers or regexes that match comments.
 - [Vercel server imports](vercel-server-imports.md) — keep cache-busting queries at browser entrypoints; use plain imports in modules shared with API routes.
 - [Canonical roster field boundary](canonical-roster-field-boundary.md) — canonical roster persistence must whitelist gameplay fields and never forward arbitrary imported profile fields.
 - [Unified alliance authorization](alliance-authorization.md) — roster writes trust authenticated owner/membership or a uniquely linked canonical manager row, never browser-declared roles.
