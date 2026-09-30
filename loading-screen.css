@@ -28,6 +28,16 @@
     linear-gradient(180deg,rgba(4,10,20,.38) 0%,rgba(4,10,20,.35) 32%,rgba(4,10,20,.78) 72%,rgba(4,10,20,.94) 100%),
     radial-gradient(ellipse at center,transparent 8%,rgba(3,8,17,.42) 100%);
 }
+.loadingScreen[data-artwork="available"]{
+  background:#050b15;
+}
+.loadingScreen[data-artwork="available"] .loadingArtwork{
+  object-fit:contain;
+  opacity:1;
+}
+.loadingScreen[data-artwork="available"] .loadingVeil{
+  background:transparent;
+}
 .loadingCard{
   position:relative;
   z-index:1;
@@ -42,6 +52,24 @@
   text-align:center;
   backdrop-filter:blur(15px);
   -webkit-backdrop-filter:blur(15px);
+}
+.loadingScreen[data-artwork="available"] .loadingCard{
+  align-self:end;
+  justify-self:center;
+  width:min(100%,520px);
+  padding:clamp(16px,3vw,24px);
+  border-color:rgba(106,193,255,.48);
+  border-radius:20px;
+  background:rgba(4,11,22,.98);
+  box-shadow:0 12px 44px rgba(0,0,0,.48),inset 0 1px rgba(255,255,255,.07);
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+.loadingScreen[data-artwork="available"] .loadingBrand{
+  margin-bottom:8px;
+}
+.loadingScreen[data-artwork="available"] .loadingProgress{
+  margin:16px 0 12px;
 }
 .loadingBrand{
   margin-bottom:14px;
