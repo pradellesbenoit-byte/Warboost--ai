@@ -475,6 +475,61 @@ Object.assign(CS,{stronger_squad_note:"{name} je nyní silnější ({power}), al
 Object.assign(SV,{stronger_squad_note:"{name} är för närvarande starkare ({power}), men Trupp 1 förblir din valda huvudtrupp.",tagline:"V2.5.2 · Tillförlitlighet för huvudtrupp · utan spelartoken"});
 
 const packs={fr:FR,"en-GB":EN_GB,"en-US":EN_US,es:ES,it:IT,de:DE,pt:PT,nl:NL,zh:ZH,ja:JA,ru:RU,ar:AR,pl:PL,tr:TR,ko:KO,vi:VI,th:TH,id:ID,uk:UK,ro:RO,el:EL,cs:CS,sv:SV};
+const TECH_ADVICE_EN={
+  scan_technology:"Technology Center",scan_technology_help:"Select one or more Technology Center screenshots. Overlapping cards are deduplicated; uncertain or conflicting readings stay in the review panel.",
+  scan_choose_multiple:"Choose one or more screenshots",scan_technology_capture_count:"Selected screenshots: {count}",scan_technology_limit:"Choose no more than three Technology Center screenshots.",
+  objective_growth:"Growth",objective_power:"Power",objective_t10:"T10 troops",objective_t11:"T11 troops",
+  technology_advice_title:"Technology Center guidance",technology_advice_intro:"Based on confirmed branch scans, HQ, season and your selected goal. Community guidance is not an official game rule.",
+  technology_advice_priority:"Priority",technology_advice_next:"Then consider",technology_advice_locked:"Locked branches",
+  technology_advice_locked_requirement:"Visible requirement: {requirement}",technology_advice_locked_unknown:"Check the unlock requirement in Last War before investing.",
+  technology_advice_preserve_badges:"For a VS goal, consider saving scarce badges for the next VS Day 3.",technology_advice_vs_day_unknown:"The current VS day is unknown; verify the schedule before timing research resources.",
+  technology_advice_preserve_growth:"At this HQ stage, keep scarce resources focused on development and economy.",
+  technology_advice_t11_route:"T11 progression uses the separate Armament Institute, not a Technology Center branch. Check its current in-game requirements; this scan cannot confirm them.",
+  technology_advice_no_data:"No confirmed incomplete branches found. Scan the Technology Center first.",
+  technology_advice_no_action:"No scanned incomplete branch can be recommended for this goal yet. Check the goal and in-game prerequisites.",
+  technology_advice_source:"Community reference, not an official game priority.",
+  technology_advice_reason_general:"Relevant to your current account stage and selected goal.",
+  technology_advice_reason_foundation:"Builds the development and economy foundation for this HQ stage.",
+  technology_advice_reason_economy:"Supports resource growth; compare it with active bottlenecks before spending scarce resources.",
+  technology_advice_reason_heroes:"Supports hero progression for your selected goal.",
+  technology_advice_reason_main_type:"Matches your confirmed main troop type.",
+  technology_advice_reason_pvp:"Supports the selected PvP focus.",
+  technology_advice_reason_pve:"Supports the selected PvE focus.",
+  technology_advice_reason_t10:"Moves toward T10 through Special Forces; confirm the current in-game prerequisites.",
+  technology_advice_reason_oil:"Relevant after Age of Oil is available; confirm the unlock in-game.",
+  technology_advice_reason_vs_now:"The visible timing is VS Day 3; research can support this VS cycle.",
+  technology_advice_reason_vs:"Relevant to the VS goal; wait for the recommended timing.",
+  technology_advice_main_type_unknown:"Your main troop type is not confirmed, so troop specialization is not ranked.",
+  technology_advice_rank_note:"Priorities use your stage and goal, not a sort by completion percentage."
+};
+const TECH_ADVICE_FR={
+  scan_technology:"Centre Technologie",scan_technology_help:"Sélectionne une ou plusieurs captures du Centre Technologie. Les cartes qui se chevauchent sont dédoublonnées; les lectures incertaines ou contradictoires restent à vérifier.",
+  scan_choose_multiple:"Choisir une ou plusieurs captures",scan_technology_capture_count:"Captures sélectionnées : {count}",scan_technology_limit:"Choisis au maximum trois captures du Centre Technologie.",
+  objective_growth:"Croissance",objective_power:"Puissance",objective_t10:"Troupes T10",objective_t11:"Troupes T11",
+  technology_advice_title:"Conseils du Centre Technologie",technology_advice_intro:"Basés sur les branches confirmées, le QG, la saison et ton objectif. Les conseils communautaires ne sont pas des règles officielles du jeu.",
+  technology_advice_priority:"Priorité",technology_advice_next:"À considérer ensuite",technology_advice_locked:"Branches verrouillées",
+  technology_advice_locked_requirement:"Prérequis visible : {requirement}",technology_advice_locked_unknown:"Vérifie le prérequis directement dans Last War avant d’investir.",
+  technology_advice_preserve_badges:"Pour un objectif VS, garde éventuellement les médailles rares pour le prochain jour 3 du VS.",technology_advice_vs_day_unknown:"Le jour VS actuel est inconnu; vérifie le calendrier avant de choisir le moment des recherches.",
+  technology_advice_preserve_growth:"À ce niveau de QG, concentre les ressources rares sur le développement et l’économie.",
+  technology_advice_t11_route:"La progression T11 passe par l’Institut d’Armement, séparé du Centre Technologie. Vérifie ses conditions actuelles en jeu; ce scan ne peut pas les confirmer.",
+  technology_advice_no_data:"Aucune branche confirmée et incomplète. Scanne d’abord le Centre Technologie.",
+  technology_advice_no_action:"Aucune branche scannée ne peut encore être conseillée pour cet objectif. Vérifie l’objectif et les prérequis en jeu.",
+  technology_advice_source:"Référence communautaire, pas une priorité officielle du jeu.",
+  technology_advice_reason_general:"Pertinent pour l’étape actuelle du compte et l’objectif choisi.",
+  technology_advice_reason_foundation:"Renforce le socle développement et économie adapté à ce niveau de QG.",
+  technology_advice_reason_economy:"Soutient la croissance des ressources; compare cette branche aux blocages actifs avant d’utiliser des ressources rares.",
+  technology_advice_reason_heroes:"Soutient la progression des héros correspondant à l’objectif choisi.",
+  technology_advice_reason_main_type:"Correspond au type de troupes principal confirmé.",
+  technology_advice_reason_pvp:"Soutient l’objectif PvP sélectionné.",
+  technology_advice_reason_pve:"Soutient l’objectif PvE sélectionné.",
+  technology_advice_reason_t10:"Fait progresser vers T10 via Forces Spéciales; vérifie les prérequis actuels en jeu.",
+  technology_advice_reason_oil:"Pertinent après le déblocage de l’Ère du Pétrole; vérifie-le en jeu.",
+  technology_advice_reason_vs_now:"Le moment visible est le jour 3 du VS; la recherche peut servir ce cycle.",
+  technology_advice_reason_vs:"Pertinent pour l’objectif VS; attends le moment recommandé.",
+  technology_advice_main_type_unknown:"Le type de troupes principal n’est pas confirmé; aucune spécialisation de troupes n’est classée.",
+  technology_advice_rank_note:"Les priorités tiennent compte de l’étape et de l’objectif, pas d’un tri par pourcentage terminé."
+};
+Object.assign(EN,TECH_ADVICE_EN);Object.assign(EN_GB,TECH_ADVICE_EN);Object.assign(EN_US,TECH_ADVICE_EN);Object.assign(FR,TECH_ADVICE_FR);
 const TECHNOLOGY_REVIEW_TEXT={
   fr:"Nom de la branche¦Statut¦Progression (%)¦Prérequis visible¦Branche à identifier¦À confirmer¦Pourcentage¦Niveau Max¦Verrouillée",
   "en-GB":"Branch name¦Status¦Progress (%)¦Visible prerequisite¦Unidentified branch¦To confirm¦Percentage¦Max Level¦Locked",

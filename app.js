@@ -33,7 +33,7 @@ import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMI
 import {cleanRosterOcrName,rosterIdentityKey,resolveRosterScanRows,confirmRosterScanPossibleMatch,rosterScanHasUnresolvedIdentity} from "./lib/roster-identity-resolution.js";
 import {canonicalRosterMemberKey,previewAllianceRankChanges,applyAllianceRankChanges,permissionTransitions,rankManagementKey,confirmedCanonicalSelfRole} from "./lib/alliance-rank-management.js";
 import {preferredRankEvidence,rankConfirmationStatus} from "./lib/rank-provenance.js";
-import {savePendingSingleScan,loadPendingSingleScan,clearPendingSingleScan,savePendingRosterFiles,loadPendingRosterFiles,clearPendingRosterFiles,movePendingScans} from "./lib/pending-scan-storage.js";
+import {savePendingSingleScan,loadPendingSingleScan,clearPendingSingleScan,savePendingRosterFiles,loadPendingRosterFiles,clearPendingRosterFiles,savePendingTechnologyFiles,loadPendingTechnologyFiles,clearPendingTechnologyFiles,movePendingScans} from "./lib/pending-scan-storage.js";
 import {hasMeaningfulCoreState,hydrateCloudState,mergeDesertStormState,desertStormSelectionSignature,canUseKeepaliveBody,betaStateAfterVerifiedStateRead} from "./lib/cloud-state-recovery.js";
 import {readOwnProfileDirect} from "./lib/cloud-profile-direct.js";
 import {shouldPreserveVerifiedSessionAccess,betaStateForSessionBootstrap,preserveAllowedAfterTransient,restoreAttemptSucceeded,canRevealOwnedPrivateState,deriveRuntimeAccessState} from "./lib/session-bootstrap.js";
@@ -44,6 +44,7 @@ import {createScanReviewDraft,scanReviewEntries,applyOwnedScanReview,scanRequest
 import {buildScanReviewGroups,serializeScanReviewGear} from "./lib/scan-review-presentation.js";
 import {renderScanReviewMarkup} from "./lib/scan-review-markup.js";
 import {mergeTechnologyBranches,finalizeTechnologyReview} from "./lib/technology-scan.js";
+import {buildTechnologyAdvice} from "./lib/technology-advisor.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.32";
@@ -424,6 +425,7 @@ function bindAllianceAccordions(){
   });
 }
 let alliancePlayerModalScrollTop=0,alliancePlayerModalHistory=false,alliancePlayerModalLastFocus=null,alliancePlayerModalBodyStyles=null;
+let scanImageDataList=[];
 let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
 let recentlyGeneratedDesertStormPlan=null;
 let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0,sharedRosterLinkPromise=null;
@@ -463,15 +465,39 @@ let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pe
 let pendingScanReview=null;
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
 function discardScanReviewDraft(){pendingScanReview=null;$("#scanReviewPanel")?.classList.add("hidden");const rows=$("#scanReviewRows");if(rows)rows.replaceChildren()}
-function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft()}
-async function restorePendingScans(){const owner=pendingScanOwner();try{const pending=await loadPendingSingleScan(owner);if(pending?.image_data_url){scanImageData=pending.image_data_url;scanImageName=pending.name||"capture.jpg";renderScanTypeOptions();const type=$("#scanType");if(type&&[...type.options].some(o=>o.value===pending.scan_type))type.value=pending.scan_type;updateSquadCaptureHelp(type?.value||"profile");const preview=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(preview){preview.src=scanImageData;preview.classList.remove("hidden")}if(clear)clear.classList.remove("hidden");if(status){status.className="notice";status.textContent=t("scan_ready")}}const files=await loadPendingRosterFiles(owner);if(files.length){rosterScanFiles=appendRosterScanFiles([],files,{limit:ROSTER_SCAN_FILE_LIMIT}).files;rosterScanDraft=[];renderRosterScanFiles();renderRosterScanDraft()}}catch{}}
-async function persistPendingRosterQueue(){return await savePendingRosterFiles(pendingScanOwner(),rosterScanFiles).catch(()=>false)}
-function clearScanImage({forget=true}={}){scanInputRevision++;scanFileSelectionRevision++;const owner=pendingScanOwner();scanImageData=null;scanImageName="capture.jpg";pendingExclusiveScan=[];pendingExclusiveScannedAt=null;pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");discardScanReviewDraft();const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");if(forget)void clearPendingSingleScan(owner)}
-function beginNewScanFileSelection(){
-  const owner=pendingScanOwner(),revision=++scanInputRevision;scanFileSelectionRevision++;scanImageData=null;scanImageName="capture.jpg";pendingExclusiveScan=[];pendingExclusiveScannedAt=null;pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";discardScanReviewDraft();$("#heroConfirmPanel")?.classList.add("hidden");$("#exclusiveConfirmPanel")?.classList.add("hidden");const preview=$("#scanPreview"),clear=$("#clearScanCaptureBtn");if(preview){preview.removeAttribute("src");preview.classList.add("hidden")}if(clear)clear.classList.add("hidden");
-  return {owner,revision,fileRevision:scanFileSelectionRevision,clearPending:clearPendingSingleScan(owner)};
+function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft()}
+async function restorePendingScans(){
+  const owner=pendingScanOwner();
+  try{
+    const techFiles=await loadPendingTechnologyFiles(owner);
+    if(techFiles.length){
+      scanImageDataList=[];for(const file of techFiles)scanImageDataList.push(await imageToDataUrlLimited(file,1_900_000));
+      scanImageData=scanImageDataList[0]||null;scanImageName=techFiles.map(file=>file.name).join(", ");
+      renderScanTypeOptions();const type=$("#scanType");if(type)type.value="technology";
+      updateScanCaptureMode();updateTechnologyScanPreview(techFiles.map(file=>file.name));
+      const clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(clear)clear.classList.remove("hidden");
+      if(status){status.className="notice";status.textContent=t("scan_ready")}
+    }else{
+      const pending=await loadPendingSingleScan(owner);
+      if(pending?.image_data_url){
+        scanImageData=pending.image_data_url;scanImageDataList=[scanImageData];scanImageName=pending.name||"capture.jpg";
+        renderScanTypeOptions();const type=$("#scanType");if(type&&[...type.options].some(o=>o.value===pending.scan_type))type.value=pending.scan_type;
+        updateSquadCaptureHelp(type?.value||"profile");updateScanCaptureMode();updateTechnologyScanPreview([scanImageName]);
+        const clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(clear)clear.classList.remove("hidden");
+        if(status){status.className="notice";status.textContent=t("scan_ready")}
+      }
+    }
+    const files=await loadPendingRosterFiles(owner);if(files.length){rosterScanFiles=appendRosterScanFiles([],files,{limit:ROSTER_SCAN_FILE_LIMIT}).files;rosterScanDraft=[];renderRosterScanFiles();renderRosterScanDraft()}
+  }catch{}
 }
-function scanRequestIsCurrent(request){return scanRequestMatches(request,{owner:pendingScanOwner(),scanType:$("#scanType")?.value||"profile",imageFingerprint:scanImageData,revision:scanInputRevision})}
+async function persistPendingRosterQueue(){return await savePendingRosterFiles(pendingScanOwner(),rosterScanFiles).catch(()=>false)}
+function clearScanImage({forget=true}={}){scanInputRevision++;scanFileSelectionRevision++;const owner=pendingScanOwner();scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";pendingExclusiveScan=[];pendingExclusiveScannedAt=null;pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");discardScanReviewDraft();const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");updateTechnologyScanPreview([]);if(forget){void clearPendingSingleScan(owner);void clearPendingTechnologyFiles(owner)}}
+function beginNewScanFileSelection(){
+  const owner=pendingScanOwner(),revision=++scanInputRevision;scanFileSelectionRevision++;scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";pendingExclusiveScan=[];pendingExclusiveScannedAt=null;pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";discardScanReviewDraft();$("#heroConfirmPanel")?.classList.add("hidden");$("#exclusiveConfirmPanel")?.classList.add("hidden");const preview=$("#scanPreview"),clear=$("#clearScanCaptureBtn");if(preview){preview.removeAttribute("src");preview.classList.add("hidden")}if(clear)clear.classList.add("hidden");updateTechnologyScanPreview([]);
+  return {owner,revision,fileRevision:scanFileSelectionRevision,clearPending:Promise.all([clearPendingSingleScan(owner),clearPendingTechnologyFiles(owner)])};
+}
+function scanCaptureFingerprint(scanType=$("#scanType")?.value||"profile"){return scanType==="technology"?scanImageDataList.join("\n"):scanImageData}
+function scanRequestIsCurrent(request){return scanRequestMatches(request,{owner:pendingScanOwner(),scanType:$("#scanType")?.value||"profile",imageFingerprint:scanCaptureFingerprint(),revision:scanInputRevision})}
 function exclusiveNumber(value){const text=String(value??"").trim().replace(",",".");if(!text)return null;const n=Number(text);return Number.isFinite(n)?n:null}
 function exclusivePower(value){const parsed=parseHeroPower(value);return parsed===null?null:parsed}
 function renderExclusiveConfirmation(rows=[]){
@@ -743,7 +769,31 @@ function closeSquadCaptureHelp(){
   $("#squadCaptureHelpPanel")?.classList.add("hidden");
   $("#squadCaptureWrongNotice")?.classList.add("hidden");
 }
-function renderScanTypeOptions(){const sel=$("#scanType");if(!sel)return;const current=sel.value||"profile";const opts=[["profile",t("scan_profile")],["squad1",`${t("squad")} 1`],["squad2",`${t("squad")} 2`],["squad3",`${t("squad")} 3`],["squad4",`${t("squad")} 4`],["drone",t("scan_drone")],["exclusive",t("scan_exclusive")],["awakening",t("scan_awakening")],["shop",t("scan_shop")],["vs",t("scan_vs")],["season",t("scan_season")],["secret_mobile_squad",t("scan_secret_mobile_squad")]];sel.innerHTML=opts.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=opts.some(([v])=>v===current)?current:"profile";updateSquadCaptureHelp(sel.value)}
+function renderScanTypeOptions(){const sel=$("#scanType");if(!sel)return;const current=sel.value||"profile";const opts=[["profile",t("scan_profile")],["squad1",`${t("squad")} 1`],["squad2",`${t("squad")} 2`],["squad3",`${t("squad")} 3`],["squad4",`${t("squad")} 4`],["drone",t("scan_drone")],["exclusive",t("scan_exclusive")],["awakening",t("scan_awakening")],["shop",t("scan_shop")],["vs",t("scan_vs")],["season",t("scan_season")],["technology",t("scan_technology")],["secret_mobile_squad",t("scan_secret_mobile_squad")]];sel.innerHTML=opts.map(([v,label])=>`<option value="${v}">${esc(label)}</option>`).join("");sel.value=opts.some(([v])=>v===current)?current:"profile";updateSquadCaptureHelp(sel.value);updateScanCaptureMode()}
+function ensureExtendedObjectives(){
+  const select=$("#fObjective");if(!select)return;
+  for(const [value,key] of [["growth","objective_growth"],["power","objective_power"],["t10","objective_t10"],["t11","objective_t11"]]){
+    if(select.querySelector(`option[value="${value}"]`))continue;
+    const option=document.createElement("option");option.value=value;option.dataset.i18n=key;option.textContent=t(key);select.append(option);
+  }
+}
+ensureExtendedObjectives();
+function updateTechnologyScanPreview(names=scanImageDataList.map((_,index)=>scanImageName.split(", ")[index]||`${t("scan_technology")} ${index+1}`)){
+  const list=$("#scanImageBatchList"),isTechnology=$("#scanType")?.value==="technology",items=Array.isArray(names)?names:[];
+  if(list){list.classList.toggle("hidden",!isTechnology||!items.length);list.innerHTML=items.length?`<b>${esc(t("scan_technology_capture_count",{count:items.length}))}</b><ul>${items.map(name=>`<li>${esc(name)}</li>`).join("")}</ul>`:""}
+  const preview=$("#scanPreview");
+  if(preview){
+    const first=scanImageDataList[0]||scanImageData;
+    if(first){preview.src=first;preview.classList.remove("hidden")}else{preview.removeAttribute("src");preview.classList.add("hidden")}
+  }
+}
+function updateScanCaptureMode(){
+  const isTechnology=$("#scanType")?.value==="technology",input=$("#scanFile"),label=$("#scanCaptureLabel"),help=$("#technologyScanHelp");
+  if(input)input.multiple=isTechnology;
+  if(label){label.dataset.i18n=isTechnology?"scan_choose_multiple":"choose_capture";label.textContent=t(label.dataset.i18n)}
+  if(help)help.classList.toggle("hidden",!isTechnology);
+  updateTechnologyScanPreview();
+}
 function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(lang);t=translator(lang);document.documentElement.lang=lang;document.documentElement.dir=dirFor(lang);$$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});$$('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));$$('[data-i18n-alt]').forEach(el=>el.setAttribute('alt',t(el.dataset.i18nAlt)));$$('[data-i18n-placeholder]').forEach(el=>{const text=t(el.dataset.i18nPlaceholder);el.setAttribute('placeholder',text);if(el.isContentEditable)el.setAttribute('data-placeholder',text)});const sel=$("#languageSelect");if(sel){sel.innerHTML=LANGUAGES.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=languageChoice}renderScanTypeOptions();renderClock();render();renderAuth();renderBeta();renderPro();renderVoiceSettings();renderSupportAccess();renderSupportTickets();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden")}
 function saveState(options={}){const renderUi=options?.renderUi!==false,signedInUserId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");if(signedInUserId&&ownerId&&ownerId!==signedInUserId){if(hasMeaningfulCore(state))rememberAccountState(ownerId,state);const own=readAccountState(signedInUserId);state=hasMeaningfulCore(own)?hydrateCloudState(own,initialState(),signedInUserId):initialState();state.player_id=signedInUserId;state.sync={...state.sync,status:"waiting",last_error:"account_owner_mismatch",pending_cloud_save:false};if(renderUi)render();return false}if(signedInUserId&&!ownerId)state.player_id=signedInUserId;state=repairLegacySquadIdentity(state).state;state=backfillConfirmedHeroPowers(state).state;state.updated_at=new Date().toISOString();state.version=APP_VERSION;localStateRevision++;const localOk=safeLocalSet(STORE_KEY,JSON.stringify(state));if(!localOk)state.sync={...state.sync,status:"waiting",last_error:"local_storage_unavailable",pending_cloud_save:true};rememberLastGoodState(state,"save");if(signedInUserId&&String(state.player_id||"")===signedInUserId)rememberAccountState(signedInUserId,state);if(renderUi)render();if(!suppressPush&&hasMeaningfulCore(state))scheduleServerSave(localOk?350:0);return localOk}
 function scheduleServerSave(delay=350){cloudDirty=true;clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushServerState(),Math.max(0,Number(delay)||0))}
@@ -1690,7 +1740,7 @@ function proHeroVisual(hero,top=false){const hit=heroPresentation(hero);if(!hit)
 function proProgressLabel(x){return String(x?.progress_label||x?.presentation?.progress_label||((x?.current_label&&x?.next_target)?`${x.current_label} → ${x.next_target}`:"")||"").trim()}
 function adaptiveCertaintyLabel(v){return t(v==="certain"?"certainty_certain":v==="probable"?"certainty_probable":"certainty_speculative")}
 function adaptiveConditionLabel(v){return t(v==="now"?"condition_now":v==="hold_vs"?"condition_hold_vs":v==="payback"?"condition_payback":v==="refresh"?"condition_refresh":"condition_neutral")}
-function adaptiveObjectiveLabel(v){return t(v==="pvp"?"objective_pvp":v==="pve"?"objective_pve":v==="vs"?"objective_vs":v==="season"?"objective_season":v==="balanced"?"objective_balanced":"objective_auto")}
+function adaptiveObjectiveLabel(v){return t(v==="power"?"objective_power":v==="growth"?"objective_growth":v==="t10"?"objective_t10":v==="t11"?"objective_t11":v==="pvp"?"objective_pvp":v==="pve"?"objective_pve":v==="vs"?"objective_vs":v==="season"?"objective_season":v==="balanced"?"objective_balanced":"objective_auto")}
 function adaptiveServerLabel(v){return t(v==="new"?"server_profile_new":v==="mature"?"server_profile_mature":v==="competitive"?"server_profile_competitive":v==="mixed"?"server_profile_mixed":"server_profile_insufficient")}
 function adaptiveSeasonPhaseLabel(v){const phase=String(v||"unknown");if(phase==="interseason")return t("season_interseason");if(phase==="ended")return t("season_ended_short");const key=`season_phase_${phase}`,label=t(key);return label===key?"—":label}
 function adaptiveDateLabel(v){const d=new Date(v||"");if(Number.isNaN(d.getTime()))return "—";try{return new Intl.DateTimeFormat(localeFor(lang),{dateStyle:"short",timeStyle:"short"}).format(d)}catch{return d.toLocaleString()}}
@@ -1779,11 +1829,30 @@ function renderAcquisitionAiShop(analysis){
   shopList.innerHTML=groups.length?groups.map(g=>`<section class="shopGroup" data-shop-group="${esc(g.type)}"><div class="shopGroupTitle"><span>${esc(shopGroupLabel(g.type))}</span><small>${esc(String(g.rows.length))}</small></div>${g.rows.map((x,i)=>renderShopRecommendationCard(x,i+1,native,ui)).join("")}</section>`).join(""):`<div class="notice">${esc(t("shop_no_recommendations"))}</div>`;
 }
 
+function renderTechnologyAdvicePanel(advice){
+  const panel=$("#proTechnologyAdvice");if(!panel)return;
+  if(!advice){panel.classList.add("hidden");panel.replaceChildren();return}
+  const objective=String(advice.context?.objective||"auto"),objectiveLabel=adaptiveObjectiveLabel(objective);
+  const branchCard=(branch,rank)=>`<article class="techAdviceCard"><div class="techAdviceHead"><b>${esc(branch.name)}</b><span>${rank?`${esc(t("technology_advice_priority"))} ${rank} · ${esc(branch.percent)}%`:`${esc(branch.percent)}%`}</span></div><p>${esc(t(branch.reason_key||"technology_advice_reason_general",{goal:objectiveLabel}))}</p></article>`;
+  const primary=advice.main?branchCard(advice.main,1):"";
+  const next=(advice.next||[]).map((branch,index)=>branchCard(branch,index+2)).join("");
+  const locked=(advice.locked||[]).length?`<div class="techAdviceLocked"><h4>${esc(t("technology_advice_locked"))}</h4><ul>${advice.locked.map(branch=>`<li><b>${esc(branch.name)}</b> — ${esc(branch.prerequisite?t("technology_advice_locked_requirement",{requirement:branch.prerequisite}):t("technology_advice_locked_unknown"))}</li>`).join("")}</ul></div>`:"";
+  const notice=advice.status==="separate_path"?t(advice.path_key||"technology_advice_t11_route"):
+    advice.status==="no_data"?t("technology_advice_no_data"):advice.status==="no_action"?t("technology_advice_no_action"):"";
+  const preserve=advice.preserve_key?`<p class="techAdviceNotice">${esc(t(advice.preserve_key))}</p>`:"";
+  const typeUnknown=["pvp","pve","power","vs","season"].includes(objective)&&!advice.context?.main_type
+    ?`<p class="techAdviceNotice">${esc(t("technology_advice_main_type_unknown"))}</p>`:"";
+  const sources=(advice.sources||[]).map(source=>`<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ");
+  panel.innerHTML=`<div class="techAdviceTitle"><h3>${esc(t("technology_advice_title"))}</h3><span class="pill">${esc(objectiveLabel)}</span></div><p class="techAdviceIntro">${esc(t("technology_advice_intro"))}</p>${notice?`<p class="techAdviceNotice">${esc(notice)}</p>`:""}${primary?`<h4>${esc(t("technology_advice_priority"))}</h4>${primary}`:""}${next?`<h4>${esc(t("technology_advice_next"))}</h4><div class="techAdviceGrid">${next}</div>`:""}${preserve}${typeUnknown}${locked}<p class="techAdviceDisclaimer">${esc(t("technology_advice_rank_note"))}</p><div class="techAdviceSources"><b>${esc(t("technology_advice_source"))}</b><br>${sources}</div>`;
+  panel.classList.remove("hidden");
+}
+
 function renderProPriority(analysis){
   const native=aiUsesNativeCopy(),ui=aiUiText(),panel=$("#proPriorityPanel"),summary=$("#proPrioritySummary"),contextBox=$("#proAdaptiveContext"),list=$("#proPriorityList"),compare=$("#proSquadCompare"),exCompare=$("#proExclusiveCompare"),metaSources=$("#proMetaSources"),confidence=$("#proConfidence"),note=$("#playerSyncInfo"),shopConfidence=$("#shopConfidence"),shopCatalogPill=$("#shopCatalogPill"),avoid=$("#proAvoidList");
   if(!panel||!analysis)return;
   if(currentPlayerAdviceAnalysis!==analysis)activeAcquisitionShopView=null;
   currentPlayerAdviceAnalysis=analysis;
+  renderTechnologyAdvicePanel(analysis.technology_advice||buildTechnologyAdvice(state,{mainType:analysis.composition?.main_type||null}));
   if(note)note.classList.add("hidden");panel.classList.remove("hidden");
   const top=Array.isArray(analysis.priorities)?analysis.priorities[0]:null;
   const vsObjective=String(state?.player_context?.objective||"").toLowerCase()==="vs",vsFresh=vsSnapshotFreshness(state?.vs||{},{now:serverNow}),vsContextWarning=vsObjective&&!vsFresh.current?`⚠️ ${t("vs_stale_notice")} · `:"";
@@ -2890,7 +2959,19 @@ $("#syncAllBtn").addEventListener("click",syncAll);$("#syncPlayerBtn").addEventL
 $("#openScanBtn").addEventListener("click",()=>openQuickScan("profile"));$("#scanPlayerBtn").addEventListener("click",()=>openQuickScan(playerOnboardingStatus().next_type||"profile"));$("#playerOnboardingScanBtn")?.addEventListener("click",e=>openQuickScan(e.currentTarget?.dataset?.nextScan||playerOnboardingStatus().next_type||"profile"));$("#quickProfileScanBtn")?.addEventListener("click",()=>openQuickScan("profile"));$("#quickSquadScanBtn")?.addEventListener("click",()=>{const strongest=strongestSquadFromState(state);openQuickScan(`squad${strongest.id||1}`)});$("#quickDroneScanBtn")?.addEventListener("click",()=>openQuickScan("drone"));$("#scanShopBtn")?.addEventListener("click",()=>openQuickScan("shop"));$("#scanVsBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#vsStartScanBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#scanSeasonBtn")?.addEventListener("click",()=>openQuickScan("season"));
 
 async function fetchWarBoostScan(payload){const response=await fetch("/api/scan",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(payload)}),json=await response.json().catch(()=>({}));return {response,json}}
-function scanResultHasUsefulData(scanType,payload){const type=String(scanType||"profile").toLowerCase(),x=payload&&typeof payload==="object"?payload:{};if(type==="profile"){const p=x.player||{},a=x.alliance||{};return Boolean(p.name||p.server_id||p.coordinates||p.role||Number(p.hq_level)>0||Number(p.power_m)>0||a.tag||a.name||a.server_id)}if(type==="drone"){const d=x.drone||{};return Number(d.level)>0||Number(d.power_m)>0}const sm=type.match(/^squad([1-4])$/);if(sm){const sq=x.squads?.[Number(sm[1])-1];if(!sq)return false;if(Number(sq.power)>0)return true;return (sq.heroes||[]).some(h=>Boolean(h?.name||Number(h?.level)>=0&&h?.level!==null||Number(h?.stars)>0||Number(h?.power)>0||h?.exclusive||h?.gear))}if(type==="exclusive")return Array.isArray(x.exclusive_weapons)&&x.exclusive_weapons.some(w=>w?.hero_name||w?.weapon_name||Number(w?.level)>=0&&w?.level!==null||Number(w?.power)>0);if(type==="awakening")return Array.isArray(x.hero_progression)&&x.hero_progression.some(h=>h?.hero_name||h?.awakening);if(type==="shop")return Boolean(x.shop&&(x.shop.store_type||x.shop.currency||Number(x.shop.currency_balance)>0||(x.shop.offers||[]).length));if(type==="vs")return Boolean(x.vs&&(x.vs.theme||x.vs.our_alliance||x.vs.opponent||Number(x.vs.our_score)>0||Number(x.vs.their_score)>0||x.vs.time_remaining_text));if(type==="season")return Boolean((x.season&&Object.keys(x.season).some(k=>k!=="updated_at"))||(x.technology&&Object.keys(x.technology).some(k=>k!=="updated_at"&&x.technology[k]!==null&&x.technology[k]!==undefined)));return Object.keys(x).length>0}
+function scanResultHasUsefulData(scanType,payload){
+  const type=String(scanType||"profile").toLowerCase(),x=payload&&typeof payload==="object"?payload:{};
+  if(type==="technology")return Boolean(x.technology&&(Object.keys(x.technology.branches||{}).length||(x.technology.unmapped||[]).length));
+  if(type==="profile"){const p=x.player||{},a=x.alliance||{};return Boolean(p.name||p.server_id||p.coordinates||p.role||Number(p.hq_level)>0||Number(p.power_m)>0||a.tag||a.name||a.server_id)}
+  if(type==="drone"){const d=x.drone||{};return Number(d.level)>0||Number(d.power_m)>0}
+  const sm=type.match(/^squad([1-4])$/);if(sm){const sq=x.squads?.[Number(sm[1])-1];if(!sq)return false;if(Number(sq.power)>0)return true;return (sq.heroes||[]).some(h=>Boolean(h?.name||Number(h?.level)>=0&&h?.level!==null||Number(h?.stars)>0||Number(h?.power)>0||h?.exclusive||h?.gear))}
+  if(type==="exclusive")return Array.isArray(x.exclusive_weapons)&&x.exclusive_weapons.some(w=>w?.hero_name||w?.weapon_name||Number(w?.level)>=0&&w?.level!==null||Number(w?.power)>0);
+  if(type==="awakening")return Array.isArray(x.hero_progression)&&x.hero_progression.some(h=>h?.hero_name||h?.awakening);
+  if(type==="shop")return Boolean(x.shop&&(x.shop.store_type||x.shop.currency||Number(x.shop.currency_balance)>0||(x.shop.offers||[]).length));
+  if(type==="vs")return Boolean(x.vs&&(x.vs.theme||x.vs.our_alliance||x.vs.opponent||Number(x.vs.our_score)>0||Number(x.vs.their_score)>0||x.vs.time_remaining_text));
+  if(type==="season")return Boolean((x.season&&Object.keys(x.season).some(k=>k!=="updated_at"))||(x.technology&&Object.keys(x.technology).some(k=>k!=="updated_at"&&x.technology[k]!==null&&x.technology[k]!==undefined)));
+  return Object.keys(x).length>0;
+}
 function setScanReviewError(key){const box=$("#scanReviewError");if(!box)return;box.dataset.scanReviewErrorKey=key;box.textContent=t(key);box.classList.remove("hidden")}
 function renderScanReview(draft){
   pendingScanReview=draft;const panel=$("#scanReviewPanel"),rows=$("#scanReviewRows");if(!panel||!rows)return false;
@@ -2994,11 +3075,11 @@ function confirmScanReview(){
      event.updated_at=confirmedAt;event.source="owner_confirmed_scan";
      event.tasks=event.tasks.map(task=>({...task,label_evidence:"visible_text",mapping_status:"unmapped",review_state:"owner_confirmed",confirmed_at:confirmedAt,source:"owner_confirmed_scan"}));
    }
-   if(draft.type==="season"&&reviewed.technology){
+    if(["season","technology"].includes(draft.type)&&reviewed.technology){
      reviewed.technology=finalizeTechnologyReview(reviewed.technology,draft.scannedAt);
      if(!Object.keys(reviewed.technology.branches||{}).length)delete reviewed.technology;
    }
-   if(draft.type==="season"&&!reviewed.technology&&!reviewed.season){setScanReviewError("scan_review_apply_failed");return}
+    if(draft.type==="season"&&!reviewed.technology&&!reviewed.season||draft.type==="technology"&&!reviewed.technology){setScanReviewError("scan_review_apply_failed");return}
   const pendingPowerPaths=[];
   for(const edit of edits)if(/^(power|power_m)$/i.test(String(edit.path.at(-1)))){if(edit.path[0]==="drone")continue;if(!String(edit.value??"").trim())continue;if(!confirmedHeroPower(edit.value)){let target=reviewed;for(const part of edit.path.slice(0,-1))target=target?.[part];if(target)delete target[edit.path.at(-1)];pendingPowerPaths.push(edit.path)}}
   const sm=draft.type.match(/^squad([1-4])$/),squadIndex=sm?Number(sm[1])-1:null,heroSlots=sm?(reviewed.squads?.[squadIndex]?.heroes||[]):[];
@@ -3029,8 +3110,44 @@ document.addEventListener("change",event=>{
 },true);
 document.addEventListener("change",event=>{if(event.target?.id==="languageSelect")queueMicrotask(()=>translateOpenScanReview(scanReviewStatusBeforeLanguage))});
 async function imageToDataUrl(file){return new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const max=2048,scale=Math.min(1,max/Math.max(img.width,img.height)),w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);let data=c.toDataURL("image/jpeg",.9);if(data.length>3900000)data=c.toDataURL("image/jpeg",.78);URL.revokeObjectURL(url);resolve(data)}catch(e){reject(e)}};img.onerror=e=>{URL.revokeObjectURL(url);reject(e)};img.src=url})}
-$("#scanFile").addEventListener("change",async e=>{const file=e.target.files?.[0];if(!file)return;const selection=beginNewScanFileSelection();try{await selection.clearPending;if(selection.fileRevision!==scanFileSelectionRevision)return;const image=await imageToDataUrl(file);if(selection.fileRevision!==scanFileSelectionRevision)return;scanImageData=image;scanImageName=String(file.name||"capture.jpg");$("#scanPreview").src=image;$("#scanPreview").classList.remove("hidden");$("#clearScanCaptureBtn")?.classList.remove("hidden");const kept=await savePendingSingleScan(selection.owner,{scan_type:$("#scanType")?.value||"profile",image_data_url:image,name:scanImageName});if(selection.fileRevision!==scanFileSelectionRevision)return;$("#scanStatus").className=kept?"notice":"notice warn";$("#scanStatus").textContent=t(kept?"scan_ready":"scan_pending_local_failed")}catch{if(selection.fileRevision===scanFileSelectionRevision){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_error")}}});
-$("#scanType")?.addEventListener("change",()=>{scanInputRevision++;if(scanImageData)void savePendingSingleScan(pendingScanOwner(),{scan_type:$("#scanType")?.value||"profile",image_data_url:scanImageData,name:scanImageName})});
+async function imageToDataUrlLimited(file,maxDataUrlLength){
+  const original=await imageToDataUrl(file);
+  if(original.length<=maxDataUrlLength)return original;
+  const image=new Image(),loaded=new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject});
+  image.src=original;await loaded;
+  const canvas=document.createElement("canvas");canvas.width=image.width;canvas.height=image.height;
+  const context=canvas.getContext("2d");if(!context)throw new Error("image_canvas_unavailable");
+  context.drawImage(image,0,0,canvas.width,canvas.height);
+  for(const quality of [.78,.64,.5,.38,.28]){
+    const data=canvas.toDataURL("image/jpeg",quality);
+    if(data.length<=maxDataUrlLength)return data;
+  }
+  throw new Error("image_too_large");
+}
+$("#scanFile").addEventListener("change",async e=>{
+  const scanType=$("#scanType")?.value||"profile",files=Array.from(e.target.files||[]);
+  if(!files.length)return;
+  if(scanType==="technology"&&files.length>3){const status=$("#scanStatus");if(status){status.className="notice warn";status.textContent=t("scan_technology_limit")}return}
+  const selection=beginNewScanFileSelection();
+  try{
+    await selection.clearPending;if(selection.fileRevision!==scanFileSelectionRevision)return;
+    const multi=scanType==="technology",selected=multi?files:files.slice(0,1);
+    const images=[];for(const file of selected)images.push(await imageToDataUrlLimited(file,multi?1_900_000:3_900_000));
+    if(selection.fileRevision!==scanFileSelectionRevision)return;
+    scanImageDataList=images;scanImageData=images[0]||null;
+    const names=selected.map(file=>String(file.name||"capture.jpg"));scanImageName=names.join(", ");
+    updateTechnologyScanPreview(names);$("#clearScanCaptureBtn")?.classList.remove("hidden");
+    const kept=multi?await savePendingTechnologyFiles(selection.owner,selected):
+      await savePendingSingleScan(selection.owner,{scan_type:scanType,image_data_url:scanImageData,name:names[0]});
+    if(selection.fileRevision!==scanFileSelectionRevision)return;
+    $("#scanStatus").className=kept?"notice":"notice warn";$("#scanStatus").textContent=t(kept?"scan_ready":"scan_pending_local_failed");
+  }catch{if(selection.fileRevision===scanFileSelectionRevision){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_error")}}
+});
+$("#scanType")?.addEventListener("change",()=>{
+  scanInputRevision++;const scanType=$("#scanType")?.value||"profile";updateScanCaptureMode();
+  if(scanType==="technology"&&scanImageData)void savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName});
+  else if(scanType!=="technology"){void clearPendingTechnologyFiles(pendingScanOwner());if(scanImageData)void savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName})}
+});
 $("#clearScanCaptureBtn")?.addEventListener("click",()=>{clearScanImage();const st=$("#scanStatus");if(st){st.className="notice";st.textContent=t("scan_wait")}});
 async function analyzeExclusiveScan(){
   const btn=$("#analyzeScanBtn"),status=$("#scanStatus"),scanType=$("#scanType")?.value||"profile",owner=pendingScanOwner(),image=scanImageData,request={owner,scanType,imageFingerprint:image,revision:scanInputRevision};
@@ -3066,13 +3183,14 @@ async function analyzeExclusiveScan(){
   finally{btn.disabled=false;btn.textContent=t("analyze")}
 }
 async function analyzeReviewedScan(){
-  const btn=$("#analyzeScanBtn"),status=$("#scanStatus"),scanType=$("#scanType")?.value||"profile",owner=pendingScanOwner(),image=scanImageData,request={owner,scanType,imageFingerprint:image,revision:scanInputRevision};
-  if(!scanImageData){status.className="notice warn";status.textContent=t("scan_wait");return}
+  const btn=$("#analyzeScanBtn"),status=$("#scanStatus"),scanType=$("#scanType")?.value||"profile",owner=pendingScanOwner(),image=scanImageData,images=scanType==="technology"?(scanImageDataList.length?scanImageDataList:[image].filter(Boolean)):[image].filter(Boolean),request={owner,scanType,imageFingerprint:scanCaptureFingerprint(scanType),revision:scanInputRevision};
+  if(!images.length||scanType==="technology"&&images.length>3){status.className="notice warn";status.textContent=t("scan_wait");return}
   if(!requireBetaAccess()||!requireBetaConsent())return;
   if(!cloudSession?.access_token){openDrawer("account");authMessage(t("connect_pro"));return}
   btn.disabled=true;btn.textContent=t("scan_processing");status.className="notice";status.textContent=t("scan_processing");
   try{
-    const {response:r,json:j}=await fetchWarBoostScan({scan_type:scanType,locale:lang,image_data_url:image,current_state:state});
+    const payload={scan_type:scanType,locale:lang,...(scanType==="technology"?{image_data_urls:images}:{image_data_url:image,current_state:state})};
+    const {response:r,json:j}=await fetchWarBoostScan(payload);
     if(!scanRequestIsCurrent(request))return;
     if(r.ok&&j.state){
       if(!scanResultHasUsefulData(scanType,j.state)&&!(scanType==="drone"&&j.state?.drone?.boostCombat?.level!=null)){status.className="notice warn";status.textContent=t("scan_error");return}
@@ -3081,6 +3199,7 @@ async function analyzeReviewedScan(){
       const draft={owner,type:scanType,request,patch,scannedAt:j.scanned_at||new Date().toISOString(),heroNames:Array.from({length:5},(_,i)=>String(rawHeroes?.[i]?.name||"").trim())};
       if(!scanReviewEntries(patch).length&&match){startHeroConfirmation(Number(match[1]),draft.heroNames,rawHeroes,draft.scannedAt);return}
       if(!renderScanReview(draft)){status.className="notice warn";status.textContent=t("scan_error");return}
+       if(scanType==="technology"){void clearPendingTechnologyFiles(owner);void clearPendingSingleScan(owner)}
       status.className="notice";status.dataset.scanReviewStatusKey="scan_review_ready";status.textContent=t("scan_review_ready");
     }else{status.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){status.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else if(scanType==="drone"&&j.error==="drone_no_supported_fields"){const key=j.drone_screen_type==="skill_chip"?"scan_drone_skill_chip_no_fields":"scan_drone_components_no_fields";status.dataset.scanReviewStatusKey=key;status.textContent=t(key)}else status.textContent=j.code==="SCAN_NOT_CONFIGURED"?t("scan_unconfigured"):(j.message||t("scan_error"))}
   }catch(e){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}

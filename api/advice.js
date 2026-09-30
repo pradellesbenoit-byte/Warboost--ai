@@ -1,3 +1,4 @@
+import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import {configured} from "../lib/supabase.js";
 import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
@@ -1341,6 +1342,7 @@ export default async function handler(req,res){
      analysis.last_war_rules=lastWarRuleContext();
     analysis.seven_day_plan=buildSevenDayPlan(s,analysis);
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
+    analysis.technology_advice=buildTechnologyAdvice(s,{mainType:analysis.composition?.main_type||null});
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }

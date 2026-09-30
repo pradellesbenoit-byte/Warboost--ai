@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/styles.css?v=scan-review-human-r1" />
   <link rel="stylesheet" href="/hero-layout-fix.css" />
   <link rel="stylesheet" href="/publisher-ui.css" />
+  <link rel="stylesheet" href="/technology-advice.css" />
   <!-- Legacy verification marker: WarBoost V2.5.28 HF8.6.12 -->
   <!-- Legacy verification marker: WarBoost V2.5.28 HF8.6.11 -->
   <!-- Legacy HF8.6.19: WarBoost V2.5.28 HF8.6.19 · /app.js?v=hf8619 · /publisher-ui.js?v=hf8619 -->
@@ -166,7 +167,7 @@
       <div class="sectionTitle"><h3 data-i18n="pro_diagnostic">Diagnostic PRO</h3><span id="proConfidence" class="pill">—</span></div>
       <p id="proPrioritySummary" class="heroText" style="margin:0 0 10px"></p><div id="proAdaptiveContext" class="notice proContextSummary" style="margin:0 0 12px"></div>
       <div class="proSubTitle" data-i18n="pro_top_actions">Priorités d'action</div>
-      <div id="proPriorityList" class="priorityList"></div><div id="proAvoidList" class="avoidList"></div>
+      <div id="proPriorityList" class="priorityList"></div><section id="proTechnologyAdvice" class="proTechAdvice hidden" aria-live="polite"></section><div id="proAvoidList" class="avoidList"></div>
       <details id="proExclusiveCompareDetails" class="compactDetails"><summary data-i18n="pro_exclusive_compare">Comparaison EX · 5 héros</summary><div id="proExclusiveCompare" class="exclusiveCompare"></div></details>
       <details id="proMetaSourcesDetails" class="compactDetails"><summary data-i18n="pro_meta_sources">Sources méta et date</summary><div id="proMetaSources" class="metaSources"></div></details>
       <details class="compactDetails"><summary data-i18n="pro_squad_compare">Comparaison des escouades</summary><div id="proSquadCompare" class="squadCompare"></div></details>
@@ -297,7 +298,7 @@
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>📷 <span data-i18n="scan_title">WarBoost Scan</span></h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>
     <div class="section"><p class="heroText" data-i18n="scan_intro">Choisis une capture du jeu. WarBoost Vision lit uniquement les données utiles visibles dans l’image et les fusionne avec ton profil enregistré.</p>
        <div class="settingsForm">
-          <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="drone">Drone</option><option value="exclusive">Arme exclusive</option><option value="shop">Boutique du jeu</option><option value="vs">VS</option><option value="season">Saison</option><option value="secret_mobile_squad">Secret Mobile Squad — tasks</option></select></div>
+           <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="drone">Drone</option><option value="exclusive">Arme exclusive</option><option value="shop">Boutique du jeu</option><option value="vs">VS</option><option value="season">Saison</option><option value="technology">Centre Technologie</option><option value="secret_mobile_squad">Secret Mobile Squad — tasks</option></select></div>
           <p id="secretMobileSquadScanHelp" class="privacyText hidden" data-i18n="scan_secret_mobile_squad_help">WarBoost keeps the exact visible task text. It does not guess unknown task meanings, and nothing is saved until you confirm the scan.</p>
           <section id="secretMobileSquadSaved" class="scanReviewPanel hidden" aria-live="polite"><div class="sectionTitle"><h3 data-i18n="scan_secret_mobile_squad_saved_title">Saved visible task labels</h3></div><div id="secretMobileSquadSavedRows" class="settingsForm"></div></section>
          <div id="squadCaptureHelp" class="squadCaptureHelp hidden">
@@ -314,7 +315,9 @@
              <button id="squadCaptureAckBtn" class="secondaryBtn wideBtn" type="button" data-i18n="scan_squad_capture_ack">J'ai compris</button>
            </div>
          </div>
-        <label class="captureButton" for="scanFile"><span>🖼️</span><b data-i18n="choose_capture">Prendre ou choisir une capture</b></label><input id="scanFile" class="hidden" type="file" accept="image/png,image/jpeg,image/webp" />
+         <label class="captureButton" for="scanFile"><span>🖼️</span><b id="scanCaptureLabel" data-i18n="choose_capture">Prendre ou choisir une capture</b></label><input id="scanFile" class="hidden" type="file" accept="image/png,image/jpeg,image/webp" />
+         <p id="technologyScanHelp" class="privacyText hidden" data-i18n="scan_technology_help">Sélectionne une ou plusieurs captures du Centre Technologie. Les captures qui se chevauchent sont fusionnées; les valeurs incertaines ou contradictoires restent à vérifier.</p>
+         <div id="scanImageBatchList" class="scanImageBatchList hidden" aria-live="polite"></div>
         <img id="scanPreview" class="scanPreview hidden" data-i18n-alt="scan_preview_alt" alt="Aperçu de la capture" />
         <button id="clearScanCaptureBtn" class="secondaryBtn wideBtn hidden" type="button" data-i18n="clear_capture">Effacer la capture de cet appareil</button>
         <button id="analyzeScanBtn" class="primaryAction" data-i18n="analyze">Analyser la capture</button>
