@@ -23,8 +23,10 @@ import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisio
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan.js";
 import {renderDesertStormPlanInto} from "./lib/desert-storm-plan-ui.js?v=hf8630-desert-storm-plan-r2";
 import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
-import {createIdleLifecycle} from "./lib/idle-lifecycle.js?v=hf8630-idle-resume-r1";
+import {createIdleLifecycle} from "./lib/idle-lifecycle.js?v=warboost-startup-screen-r1";
 import {runAuthenticatedIdleResume} from "./lib/session-resume.js?v=hf8630-idle-resume-r1";
+import {createLoadingScreenController,revealExactLoadingArtwork} from "./lib/loading-screen.js?v=warboost-startup-screen-r1";
+import {createReturnViewController} from "./lib/return-view.js?v=warboost-startup-screen-r1";
 import {unlockDesertStormSearchInput} from "./lib/desert-storm-search.js";
 import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
 import {CANYON_STORM_RULESET,buildCanyonPlan,normalizeCanyonState,mergeCanyonState,clearCanyonPreparationSelection} from "./lib/canyon-storm-plan.js";
@@ -337,13 +339,15 @@ function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,cloudRetryTimer=null,cloudPullRetryTimer=null,cloudDirty=false,localStateRevision=0,cloudRevision=null,suppressPush=false,cloudHydrationPending=false,cloudProfileVerified=false,canonicalRosterReady=false,cloud=null,cloudSession=null,cloudRecoveryRedirect="",cloudDataConfig={url:"",key:""},sessionApplyInFlight=null,lastAppliedSessionKey="",runtimeReconcileInFlight=null,lastRuntimeReconcileAt=0,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false,payments_enabled:false,commercial_preview:false,subscription:null},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null,scanImageName="capture.jpg",supportTicketsState=[],supportBusy=false;
 let currentPlayerAdviceAnalysis=null,currentAcquisitionViews=[],activeAcquisitionShopView=null;
-let foregroundClockInterval=null,foregroundServerTimeInterval=null,foregroundPausedAt=null,idleResumeInFlight=null,idleResumeStatusTimer=null,idleLifecycle=null;
+let foregroundClockInterval=null,foregroundServerTimeInterval=null,foregroundPausedAt=null,idleResumeInFlight=null,idleLifecycle=null;
+let loadingScreen=null,returnViewController=null,activeLoadingOperations=0,serviceWorkerReloadListenerInstalled=false;
 let runtimeReconcileInFlightForce=false;
 let bootstrapDiagnostics={run_id:"",started_at:null,finished_at:null,status:"idle",stages:[]};
 function bootstrapNow(){return typeof performance!=="undefined"&&performance.now?performance.now():Date.now()}
 function resetBootstrapDiagnostics(reason="session"){bootstrapDiagnostics={run_id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,started_at:new Date().toISOString(),finished_at:null,status:reason,stages:[]};return bootstrapDiagnostics}
 function pushBootstrapStage(stage,ms,status="ok",error=null,source="browser"){const entry={stage:String(stage||"UNKNOWN").slice(0,48),ms:Math.max(0,Math.round(Number(ms)||0)),status:String(status||"ok").slice(0,16),error:error?String(error).slice(0,80):null,source};bootstrapDiagnostics.stages.push(entry);if(bootstrapDiagnostics.stages.length>32)bootstrapDiagnostics.stages=bootstrapDiagnostics.stages.slice(-32);return entry}
-async function runBootstrapStage(stage,fn){const started=bootstrapNow();try{const value=await fn();const failed=value&&value.ok===false&&!value.cloud_empty;pushBootstrapStage(stage,bootstrapNow()-started,failed?"error":"ok",failed?(value.error||"failed"):null);return value}catch(error){pushBootstrapStage(stage,bootstrapNow()-started,"error",error?.code||error?.name||"error");throw error}}
+function loadingStageForBootstrap(stage){if(stage==="STATE_API_CANONICAL")return"alliance";if(["BETA_CHECK_PARALLEL","STATE_API","DIRECT_PROFILE"].includes(stage))return"cloud";return"session"}
+async function runBootstrapStage(stage,fn){loadingScreen?.setStage(loadingStageForBootstrap(stage));const started=bootstrapNow();try{const value=await fn();const failed=value&&value.ok===false&&!value.cloud_empty;pushBootstrapStage(stage,bootstrapNow()-started,failed?"error":"ok",failed?(value.error||"failed"):null);return value}catch(error){pushBootstrapStage(stage,bootstrapNow()-started,"error",error?.code||error?.name||"error");throw error}}
 function appendServerRestoreTrace(trace){for(const entry of Array.isArray(trace)?trace:[]){pushBootstrapStage(entry?.stage||"SERVER",entry?.ms||0,entry?.status||"ok",entry?.error||null,"server")}}
 function finishBootstrapDiagnostics(status="done"){bootstrapDiagnostics.status=status;bootstrapDiagnostics.finished_at=new Date().toISOString()}
 function compactBootstrapDiagnostics(){return {release:RELEASE_LABEL,run_id:bootstrapDiagnostics.run_id,status:bootstrapDiagnostics.status,started_at:bootstrapDiagnostics.started_at,finished_at:bootstrapDiagnostics.finished_at,stages:(bootstrapDiagnostics.stages||[]).slice(-16)}}
@@ -464,32 +468,43 @@ let voiceGreetedSections=new Set(),availableVoices=[];
 const openRosterRoles=new Set();
 let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pendingHeroScannedAt=null,pendingHeroOwner="",pendingExclusiveScan=[],pendingExclusiveScannedAt=null,scanInputRevision=0,scanFileSelectionRevision=0;
 let pendingScanReview=null;
+let pendingScanRestoreInFlight=null,pendingScanRestoreOwner="";
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
 function discardScanReviewDraft(){pendingScanReview=null;$("#scanReviewPanel")?.classList.add("hidden");const rows=$("#scanReviewRows");if(rows)rows.replaceChildren()}
 function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft()}
 async function restorePendingScans(){
   const owner=pendingScanOwner();
-  try{
-    const techFiles=await loadPendingTechnologyFiles(owner);
-    if(techFiles.length){
-      scanImageDataList=[];for(const file of techFiles)scanImageDataList.push(await imageToDataUrlLimited(file,1_900_000));
-      scanImageData=scanImageDataList[0]||null;scanImageName=techFiles.map(file=>file.name).join(", ");
-      renderScanTypeOptions();const type=$("#scanType");if(type)type.value="technology";
-      updateScanCaptureMode();updateTechnologyScanPreview(techFiles.map(file=>file.name));
-      const clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(clear)clear.classList.remove("hidden");
-      if(status){status.className="notice";status.textContent=t("scan_ready")}
-    }else{
-      const pending=await loadPendingSingleScan(owner);
-      if(pending?.image_data_url){
+  if(pendingScanRestoreInFlight&&pendingScanRestoreOwner===owner)return pendingScanRestoreInFlight;
+  const inputRevision=scanInputRevision,fileRevision=scanFileSelectionRevision;
+  const task=(async()=>{
+    try{
+      const techFiles=await loadPendingTechnologyFiles(owner);
+      const techImages=[];
+      if(techFiles.length)for(const file of techFiles)techImages.push(await imageToDataUrlLimited(file,1_900_000));
+      const pending=techFiles.length?null:await loadPendingSingleScan(owner);
+      const files=await loadPendingRosterFiles(owner);
+      if(owner!==pendingScanOwner()||scanInputRevision!==inputRevision||scanFileSelectionRevision!==fileRevision)return {ok:true,stale:true};
+      if(techFiles.length){
+        scanImageDataList=techImages;scanImageData=scanImageDataList[0]||null;scanImageName=techFiles.map(file=>file.name).join(", ");
+        renderScanTypeOptions();const type=$("#scanType");if(type)type.value="technology";
+        updateScanCaptureMode();updateTechnologyScanPreview(techFiles.map(file=>file.name));
+        const clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(clear)clear.classList.remove("hidden");
+        if(status){status.className="notice";status.textContent=t("scan_ready")}
+      }else if(pending?.image_data_url){
         scanImageData=pending.image_data_url;scanImageDataList=[scanImageData];scanImageName=pending.name||"capture.jpg";
         renderScanTypeOptions();const type=$("#scanType");if(type&&[...type.options].some(o=>o.value===pending.scan_type))type.value=pending.scan_type;
         updateSquadCaptureHelp(type?.value||"profile");updateScanCaptureMode();updateTechnologyScanPreview([scanImageName]);
         const clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(clear)clear.classList.remove("hidden");
         if(status){status.className="notice";status.textContent=t("scan_ready")}
       }
-    }
-    const files=await loadPendingRosterFiles(owner);if(files.length){rosterScanFiles=appendRosterScanFiles([],files,{limit:ROSTER_SCAN_FILE_LIMIT}).files;rosterScanDraft=[];renderRosterScanFiles();renderRosterScanDraft()}
-  }catch{}
+      if(files.length){rosterScanFiles=appendRosterScanFiles([],files,{limit:ROSTER_SCAN_FILE_LIMIT}).files;rosterScanDraft=[];renderRosterScanFiles();renderRosterScanDraft()}
+      return {ok:true};
+    }catch{return {ok:false}}
+  })();
+  pendingScanRestoreInFlight=task;pendingScanRestoreOwner=owner;
+  try{return await task}finally{
+    if(pendingScanRestoreInFlight===task){pendingScanRestoreInFlight=null;pendingScanRestoreOwner=""}
+  }
 }
 async function persistPendingRosterQueue(){return await savePendingRosterFiles(pendingScanOwner(),rosterScanFiles).catch(()=>false)}
 function clearScanImage({forget=true}={}){scanInputRevision++;scanFileSelectionRevision++;const owner=pendingScanOwner();scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";pendingExclusiveScan=[];pendingExclusiveScannedAt=null;pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");discardScanReviewDraft();const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");updateTechnologyScanPreview([]);if(forget){void clearPendingSingleScan(owner);void clearPendingTechnologyFiles(owner)}}
@@ -627,6 +642,8 @@ async function saveInlineHeroNames(squadId,container,button=null){
 
 if(!localStorage.getItem(LANG_KEY)){for(const key of LEGACY_LANGUAGE_KEYS){const v=localStorage.getItem(key);if(v){localStorage.setItem(LANG_KEY,v);break}}}
 let languageChoice=localStorage.getItem(LANG_KEY)||"auto",lang=resolveLanguage(languageChoice),locale=localeFor(lang),t=translator(lang);
+loadingScreen=createLoadingScreenController({documentRef:document,windowRef:window,translate:key=>t(key)});
+returnViewController=createReturnViewController({documentRef:document,windowRef:window,openDrawer,canRestorePrivateData:()=>betaPrivateDataVisible()});
 function betaConsentStorageKey(){const id=String(cloudSession?.user?.id||"").trim();return id?`${BETA_CONSENT_KEY}:${id}`:null}
 function betaConsentAccepted(){const key=betaConsentStorageKey();return Boolean(key&&localStorage.getItem(key)==="1")}
 function authHeaders(extra={}){return {...extra,...(cloudSession?.access_token?{authorization:`Bearer ${cloudSession.access_token}`}:{}) ,...(betaConsentAccepted()?{"x-warboost-beta-consent":BETA_CONSENT_VERSION}:{})}}
@@ -1315,41 +1332,30 @@ async function reconcileAuthenticatedRuntime(reason="runtime",{force=false}={}){
   runtimeReconcileInFlightForce=Boolean(force);
   try{return await task}finally{if(runtimeReconcileInFlight===task){runtimeReconcileInFlight=null;runtimeReconcileInFlightForce=false}}
 }
-function showIdleResumeStatus(kind){
-  const node=$("#idleResumeStatus");if(!node)return;
-  clearTimeout(idleResumeStatusTimer);
-  const french=String(document.documentElement.lang||"fr").toLowerCase().startsWith("fr");
-  const messages={
-    working:french?"Mise à jour WarBoost…":"Updating WarBoost…",
-    done:french?"À jour":"Up to date",
-    reconnect:french?"Session expirée — reconnecte-toi pour continuer.":"Session expired — sign in again to continue.",
-    failed:french?"Mise à jour impossible pour le moment. Tes données sont conservées.":"Update unavailable right now. Your data is preserved."
-  };
-  node.textContent=messages[kind]||messages.working;node.classList.remove("hidden");
-  if(kind!=="working")idleResumeStatusTimer=setTimeout(()=>node.classList.add("hidden"),kind==="done"?1800:4500);
-}
 async function performIdleResume(reason="idle-return"){
   if(idleResumeInFlight)return idleResumeInFlight;
   const task=(async()=>{
-    showIdleResumeStatus("working");
+    loadingScreen?.show("resume","cloud");
     try{
       const result=await runAuthenticatedIdleResume({
         auth:cloud?.auth,currentSession:cloudSession,
         setSession:session=>{cloudSession=session;renderAuth()},
         applySession,reconcile:reconcileAuthenticatedRuntime
       });
+      startForegroundRefreshes({refreshTime:!result?.skipped&&!result?.reauthRequired});
       if(result?.reauthRequired){
-        startForegroundRefreshes();
-        showIdleResumeStatus("reconnect");
+        loadingScreen?.setStage("expired");loadingScreen?.setRetryVisible(true);
         return result;
       }
-      if(result?.skipped){startForegroundRefreshes();$("#idleResumeStatus")?.classList.add("hidden");return result}
-      startForegroundRefreshes({refreshTime:true});
-      showIdleResumeStatus(result?.ok===false?"failed":"done");
+      if(result?.ok===false){
+        loadingScreen?.setStage("offline");loadingScreen?.setRetryVisible(true);
+        return result;
+      }
+      await loadingScreen?.hide();
       return result;
     }catch(error){
       startForegroundRefreshes();
-      showIdleResumeStatus("failed");
+      loadingScreen?.setStage("offline");loadingScreen?.setRetryVisible(true);
       return {ok:false,error:error?.name||"idle_resume_failed"};
     }
   })();
@@ -2876,8 +2882,9 @@ function openDrawer(name){
   // Re-render immediately before a user opens any data drawer. Because render() now has complete
   // per-surface boundaries, a failure in one module cannot stop this drawer from refreshing.
   if(["account","player","alliance","vs","season","qg35Coach"].includes(String(name||"")))safeRenderStep(`DRAWER_REFRESH_${String(name||"").toUpperCase()}`,render);
-  closeDrawers();
+  closeDrawers({preserveReturn:true});
   $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false")}
+  returnViewController?.remember(name);
   if(name==="account"){safeRenderStep("ACCOUNT_OPEN_FIELDS",renderAccountFields);safeRenderStep("ACCOUNT_OPEN_AUTH",renderAuth);safeRenderStep("ACCOUNT_OPEN_BETA",renderBeta);safeRenderStep("ACCOUNT_OPEN_PRO",renderPro)}
   if(betaPrivateDataVisible()&&name==="player")safeRenderStep("PLAYER_OPEN_CORE",()=>renderPlayerCoreSummary(state.player,state.drone||{}));
   if(betaPrivateDataVisible()&&name==="alliance"){safeRenderStep("ALLIANCE_OPEN_CORE",()=>renderAllianceCoreSummary(state.player,state.alliance));safeRenderStep("ALLIANCE_OPEN_MEMBERS",renderMembers);safeRenderStep("ALLIANCE_OPEN_ACCESS",renderAllianceAccess);safeRenderStep("ALLIANCE_OPEN_DESERT_STORM",renderDesertStormPlanner);safeRenderStep("ALLIANCE_OPEN_CANYON",renderCanyonPlanner);bindAllianceAccordions();resetAllianceAccordions()}
@@ -2886,7 +2893,7 @@ function openDrawer(name){
   if(betaPrivateDataVisible()&&name==="qg35Coach")safeRenderStep("QG35_COACH_OPEN",renderEndgameCoachDrawer);
   if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)
 }
-function closeDrawers(){unmountAuthControls();closeAlliancePlayerProfile();closeAllianceEventDetail();$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")})}
+function closeDrawers({preserveReturn=false}={}){unmountAuthControls();closeAlliancePlayerProfile();closeAllianceEventDetail();$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")});if(!preserveReturn)returnViewController?.remember(null)}
 
 $$('[data-open]').forEach(b=>b.addEventListener("click",()=>{if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer(b.dataset.open)}));$("#homeProBtn")?.addEventListener("click",()=>{openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"start"}),140)});$$('[data-close]').forEach(b=>b.addEventListener("click",closeDrawers));$("#backdrop").addEventListener("click",closeDrawers);$("#accountBtn").addEventListener("click",()=>openDrawer("account"));$("#adviceAction").addEventListener("click",()=>{if(state.player.name&&(!requireBetaAccess()||!requireBetaConsent()))return;if(playerNeedsOnboarding()&&betaPrivateDataVisible()){const next=playerOnboardingStatus().next_type||"profile";return openQuickScan(next)}openDrawer(state.player.name?"player":"account")});$("#languageSelect").addEventListener("change",e=>{languageChoice=e.target.value;safeLocalSet(LANG_KEY,languageChoice);applyLanguage()});
 $("#qg35CoachCard")?.addEventListener("click",event=>{const card=event.currentTarget;if(card?.disabled||!betaPrivateDataVisible())return;if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("qg35Coach")});
@@ -2959,7 +2966,21 @@ async function syncAll(){
 $("#syncAllBtn").addEventListener("click",syncAll);$("#syncPlayerBtn").addEventListener("click",syncAll);
 $("#openScanBtn").addEventListener("click",()=>openQuickScan("profile"));$("#scanPlayerBtn").addEventListener("click",()=>openQuickScan(playerOnboardingStatus().next_type||"profile"));$("#playerOnboardingScanBtn")?.addEventListener("click",e=>openQuickScan(e.currentTarget?.dataset?.nextScan||playerOnboardingStatus().next_type||"profile"));$("#quickProfileScanBtn")?.addEventListener("click",()=>openQuickScan("profile"));$("#quickSquadScanBtn")?.addEventListener("click",()=>{const strongest=strongestSquadFromState(state);openQuickScan(`squad${strongest.id||1}`)});$("#quickDroneScanBtn")?.addEventListener("click",()=>openQuickScan("drone"));$("#scanShopBtn")?.addEventListener("click",()=>openQuickScan("shop"));$("#scanVsBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#vsStartScanBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#scanSeasonBtn")?.addEventListener("click",()=>openQuickScan("season"));
 
-async function fetchWarBoostScan(payload){return fetchJsonBounded("/api/scan",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(payload)},48000)}
+function beginActiveLoadingOperation(){
+  activeLoadingOperations++;idleLifecycle?.setBusy(true);
+  let finished=false;
+  return ()=>{
+    if(finished)return;
+    finished=true;activeLoadingOperations=Math.max(0,activeLoadingOperations-1);
+    idleLifecycle?.noteActivity({type:"operation-complete"});
+    idleLifecycle?.setBusy(activeLoadingOperations>0);
+  };
+}
+async function fetchWarBoostScan(payload){
+  const finishOperation=beginActiveLoadingOperation();
+  try{return await fetchJsonBounded("/api/scan",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(payload)},48000)}
+  finally{finishOperation()}
+}
 function scanResultHasUsefulData(scanType,payload){
   const type=String(scanType||"profile").toLowerCase(),x=payload&&typeof payload==="object"?payload:{};
   if(type==="technology")return Boolean(x.technology&&(Object.keys(x.technology.branches||{}).length||(x.technology.unmapped||[]).length));
@@ -3617,7 +3638,7 @@ document.addEventListener("click",e=>{const btn=e.target.closest?.("[data-inline
 document.addEventListener("click",e=>{const btn=e.target.closest?.(".heroConfirmAction[data-hero-confirm]");if(!btn)return;e.preventDefault();e.stopPropagation();startHeroConfirmation(btn.dataset.heroConfirm)});
 $("#saveHeroNamesBtn")?.addEventListener("click",saveHeroConfirmation);$("#skipHeroNamesBtn")?.addEventListener("click",skipHeroConfirmation);
 idleLifecycle=createIdleLifecycle({
-  onSuspend:()=>{stopForegroundRefreshes();try{closeDrawers()}catch{}},
+  onSuspend:()=>{stopForegroundRefreshes();loadingScreen?.show("resume","cloud")},
   onBackground:()=>stopForegroundRefreshes(),
   onResume:({reason})=>performIdleResume(reason),
   onRecentReturn:({reason})=>{startForegroundRefreshes();queueCriticalUiRepaint();void reconcileAuthenticatedRuntime(reason)}
@@ -3628,7 +3649,86 @@ window.addEventListener("online",()=>{
   else void reconcileAuthenticatedRuntime("online",{force:true});
 });
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&cloudDirty)void pushServerState({keepalive:true})});
-window.addEventListener("pagehide",()=>{if(cloudDirty)void pushServerState({keepalive:true})});
-if("serviceWorker" in navigator)window.addEventListener("load",async()=>{try{const generation="warboost-scan-review-human-r1",reloadKey=`${generation}:reloaded`,reg=await navigator.serviceWorker.register(`/sw.js?rev=${generation}`,{updateViaCache:"none"});let refreshing=sessionStorage.getItem(reloadKey)==="1";const activateWaiting=()=>{if(reg.waiting&&sessionStorage.getItem(reloadKey)!=="1")reg.waiting.postMessage({type:"WARBOOST_ACTIVATE"})};navigator.serviceWorker.addEventListener("controllerchange",()=>{if(refreshing||sessionStorage.getItem(reloadKey)==="1")return;refreshing=true;sessionStorage.setItem(reloadKey,"1");location.reload()});activateWaiting();reg.addEventListener("updatefound",()=>{const worker=reg.installing;if(worker)worker.addEventListener("statechange",()=>{if(worker.state==="installed")activateWaiting()})});await reg.update();activateWaiting()}catch{}});
-handleJoinLink();applyLanguage();startForegroundRefreshes({refreshTime:true});void initCloudAuth().then(()=>idleLifecycle?.start(),()=>idleLifecycle?.start());render();renderAuth();renderBeta();restorePendingScans();
+window.addEventListener("pagehide",()=>{returnViewController?.capture();if(cloudDirty)void pushServerState({keepalive:true})});
+const STARTUP_MODE_STORAGE_KEY="warboost-startup-mode";
+const STARTUP_SCAN_RESTORE_WAIT_MS=5000;
+let serviceWorkerUpdatePromise=Promise.resolve({ok:false,skipped:true});
+if("serviceWorker" in navigator){
+  serviceWorkerUpdatePromise=new Promise(resolve=>{
+    window.addEventListener("load",async()=>{
+      try{
+        const generation="warboost-startup-screen-r1",reloadKey=`${generation}:reloaded`;
+        const reg=await navigator.serviceWorker.register(`/sw.js?rev=${generation}`,{updateViaCache:"none"});
+        let refreshing=false;
+        try{refreshing=sessionStorage.getItem(reloadKey)==="1"}catch{}
+        const activateWaiting=()=>{if(reg.waiting&&!refreshing)reg.waiting.postMessage({type:"WARBOOST_ACTIVATE"})};
+        if(!serviceWorkerReloadListenerInstalled){
+          serviceWorkerReloadListenerInstalled=true;
+          navigator.serviceWorker.addEventListener("controllerchange",()=>{
+            let alreadyReloaded=false;
+            try{alreadyReloaded=sessionStorage.getItem(reloadKey)==="1"}catch{}
+            if(refreshing||alreadyReloaded)return;
+            refreshing=true;returnViewController?.capture();
+            try{sessionStorage.setItem(reloadKey,"1");sessionStorage.setItem(STARTUP_MODE_STORAGE_KEY,"update")}catch{}
+            location.reload();
+          });
+        }
+        activateWaiting();
+        reg.addEventListener("updatefound",()=>{
+          const worker=reg.installing;
+          if(worker)worker.addEventListener("statechange",()=>{if(worker.state==="installed")activateWaiting()});
+        });
+        await reg.update();
+        activateWaiting();
+        resolve({ok:true});
+      }catch{resolve({ok:false})}
+    },{once:true});
+  });
+}
+$("#loadingRetry")?.addEventListener("click",async()=>{
+  const stage=loadingScreen?.getState().stage;
+  if(stage==="expired"){
+    await loadingScreen?.hide();
+    openDrawer("account");
+    return;
+  }
+  idleLifecycle?.continueOffline();
+  await loadingScreen?.hide();
+});
+async function initializeWarBoost(){
+  let mode="open";
+  try{if(sessionStorage.getItem(STARTUP_MODE_STORAGE_KEY)==="update")mode="update";sessionStorage.removeItem(STARTUP_MODE_STORAGE_KEY)}catch{}
+  loadingScreen?.show(mode,"profile");
+  void revealExactLoadingArtwork({imageElement:$("#loadingArtwork")}).then(found=>{
+    const screen=$("#loadingScreen");if(screen)screen.dataset.artwork=found?"available":"missing";
+  });
+  applyLanguage();
+  handleJoinLink();
+  startForegroundRefreshes({refreshTime:true});
+  render();renderAuth();renderBeta();
+  loadingScreen?.setStage("session");
+  try{await initCloudAuth()}catch{}
+  loadingScreen?.setStage("scans");
+  let scanRestoreTimer=null;
+  await Promise.race([
+    restorePendingScans(),
+    new Promise(resolve=>{scanRestoreTimer=setTimeout(()=>resolve({timeout:true}),STARTUP_SCAN_RESTORE_WAIT_MS)})
+  ]);
+  if(scanRestoreTimer!==null)clearTimeout(scanRestoreTimer);
+  if(!pendingJoinCode())returnViewController?.restore();
+  loadingScreen?.setStage("version");
+  await Promise.race([
+    serviceWorkerUpdatePromise,
+    new Promise(resolve=>setTimeout(()=>resolve({ok:false,timeout:true}),1600))
+  ]);
+  const cloudUnavailable=["config-unreachable","config-missing"].includes(cloudInit?.status)
+    ||Boolean(cloudSession?.access_token&&betaConsentAccepted()&&betaState?.restore_error);
+  if(cloudUnavailable){loadingScreen?.setStage("offline");loadingScreen?.setRetryVisible(true)}
+  else await loadingScreen?.hide();
+  idleLifecycle?.start({markReady:true});
+}
+void initializeWarBoost().catch(()=>{
+  loadingScreen?.setStage("offline");loadingScreen?.setRetryVisible(true);
+  idleLifecycle?.start({markReady:true});
+});
 // Legacy HF8.6.19 returning-player verification marker: function betaPrivateDataVisible(){const userId=String(cloudSession?.user?.id||"");const trustedLocal=Boolean(userId&&hasMeaningfulCore(readAccountState(userId))),checking=betaState?.access_status==="checking";return Boolean(cloudSession?.user)&&!checking&&betaAccessAllowed()&&betaConsentAccepted()&&(cloudProfileVerified||trustedLocal)}

@@ -2591,3 +2591,190 @@ const GAME_UPDATE_NOTES={
 };
 for(const [code,note] of Object.entries(GAME_UPDATE_NOTES))packs[code].game_update_note=note;
 EN.game_update_note=GAME_UPDATE_NOTES["en-GB"];
+const LOADING_SCREEN_COPY={
+  fr:{
+    loading_open_title:"Préparation de ta session WarBoost",loading_resume_title:"Reprise de ta session WarBoost",loading_update_title:"Installation d’une mise à jour WarBoost",
+    loading_context:"Ton profil enregistré et l’écran courant sont conservés.",loading_stage_profile:"Chargement du profil enregistré sur cet appareil…",
+    loading_stage_session:"Restauration de ta session existante…",loading_stage_cloud:"Vérification et synchronisation des données cloud…",
+    loading_stage_alliance:"Restauration des données d’alliance et du roster…",loading_stage_scans:"Restauration des scans en attente sur cet appareil…",
+    loading_stage_version:"Vérification de la version WarBoost…",loading_stage_error:"Le service cloud est indisponible. Tes données enregistrées sont conservées.",
+    loading_stage_expired:"Session expirée. Reconnecte-toi pour continuer.",loading_continue:"Continuer avec les données enregistrées",loading_sign_in:"Ouvrir la connexion"
+  },
+  "en-GB":{
+    loading_open_title:"Preparing your WarBoost session",loading_resume_title:"Resuming your WarBoost session",loading_update_title:"Applying a WarBoost update",
+    loading_context:"Your saved profile and current screen are being kept in place.",loading_stage_profile:"Loading the profile saved on this device…",
+    loading_stage_session:"Restoring your existing session…",loading_stage_cloud:"Checking and synchronising your cloud data…",
+    loading_stage_alliance:"Restoring alliance and roster data…",loading_stage_scans:"Restoring pending scans from this device…",
+    loading_stage_version:"Checking the WarBoost version…",loading_stage_error:"The cloud service is unavailable. Your saved data is still here.",
+    loading_stage_expired:"Your session expired. Sign in again to continue.",loading_continue:"Continue with saved data",loading_sign_in:"Open sign-in"
+  },
+  "en-US":{
+    loading_open_title:"Preparing your WarBoost session",loading_resume_title:"Resuming your WarBoost session",loading_update_title:"Applying a WarBoost update",
+    loading_context:"Your saved profile and current screen are being kept in place.",loading_stage_profile:"Loading the profile saved on this device…",
+    loading_stage_session:"Restoring your existing session…",loading_stage_cloud:"Checking and synchronizing your cloud data…",
+    loading_stage_alliance:"Restoring alliance and roster data…",loading_stage_scans:"Restoring pending scans from this device…",
+    loading_stage_version:"Checking the WarBoost version…",loading_stage_error:"The cloud service is unavailable. Your saved data is still here.",
+    loading_stage_expired:"Your session expired. Sign in again to continue.",loading_continue:"Continue with saved data",loading_sign_in:"Open sign-in"
+  },
+  es:{
+    loading_open_title:"Preparando tu sesión de WarBoost",loading_resume_title:"Reanudando tu sesión de WarBoost",loading_update_title:"Aplicando una actualización de WarBoost",
+    loading_context:"Se conservan tu perfil guardado y la pantalla actual.",loading_stage_profile:"Cargando el perfil guardado en este dispositivo…",
+    loading_stage_session:"Restaurando tu sesión actual…",loading_stage_cloud:"Comprobando y sincronizando tus datos en la nube…",
+    loading_stage_alliance:"Restaurando los datos de la alianza y la plantilla…",loading_stage_scans:"Restaurando los escaneos pendientes de este dispositivo…",
+    loading_stage_version:"Comprobando la versión de WarBoost…",loading_stage_error:"El servicio en la nube no está disponible. Tus datos guardados siguen aquí.",
+    loading_stage_expired:"La sesión ha caducado. Inicia sesión de nuevo para continuar.",loading_continue:"Continuar con los datos guardados",loading_sign_in:"Abrir inicio de sesión"
+  },
+  it:{
+    loading_open_title:"Preparazione della sessione WarBoost",loading_resume_title:"Ripresa della sessione WarBoost",loading_update_title:"Installazione di un aggiornamento WarBoost",
+    loading_context:"Il profilo salvato e la schermata corrente restano invariati.",loading_stage_profile:"Caricamento del profilo salvato su questo dispositivo…",
+    loading_stage_session:"Ripristino della sessione esistente…",loading_stage_cloud:"Verifica e sincronizzazione dei dati cloud…",
+    loading_stage_alliance:"Ripristino dei dati dell’alleanza e del roster…",loading_stage_scans:"Ripristino delle scansioni in sospeso su questo dispositivo…",
+    loading_stage_version:"Verifica della versione di WarBoost…",loading_stage_error:"Il servizio cloud non è disponibile. I dati salvati sono ancora presenti.",
+    loading_stage_expired:"La sessione è scaduta. Accedi di nuovo per continuare.",loading_continue:"Continua con i dati salvati",loading_sign_in:"Apri l’accesso"
+  },
+  de:{
+    loading_open_title:"WarBoost-Sitzung wird vorbereitet",loading_resume_title:"WarBoost-Sitzung wird fortgesetzt",loading_update_title:"WarBoost-Update wird angewendet",
+    loading_context:"Dein gespeichertes Profil und der aktuelle Bildschirm bleiben erhalten.",loading_stage_profile:"Gespeichertes Profil auf diesem Gerät wird geladen…",
+    loading_stage_session:"Vorhandene Sitzung wird wiederhergestellt…",loading_stage_cloud:"Cloud-Daten werden geprüft und synchronisiert…",
+    loading_stage_alliance:"Allianz- und Kaderdaten werden wiederhergestellt…",loading_stage_scans:"Ausstehende Scans auf diesem Gerät werden wiederhergestellt…",
+    loading_stage_version:"WarBoost-Version wird geprüft…",loading_stage_error:"Der Cloud-Dienst ist nicht verfügbar. Deine gespeicherten Daten sind weiterhin vorhanden.",
+    loading_stage_expired:"Deine Sitzung ist abgelaufen. Melde dich erneut an.",loading_continue:"Mit gespeicherten Daten fortfahren",loading_sign_in:"Anmeldung öffnen"
+  },
+  pt:{
+    loading_open_title:"A preparar a tua sessão WarBoost",loading_resume_title:"A retomar a tua sessão WarBoost",loading_update_title:"A aplicar uma atualização do WarBoost",
+    loading_context:"O perfil guardado e o ecrã atual são mantidos.",loading_stage_profile:"A carregar o perfil guardado neste dispositivo…",
+    loading_stage_session:"A restaurar a sessão existente…",loading_stage_cloud:"A verificar e sincronizar os dados na nuvem…",
+    loading_stage_alliance:"A restaurar os dados da aliança e do roster…",loading_stage_scans:"A restaurar os scans pendentes neste dispositivo…",
+    loading_stage_version:"A verificar a versão do WarBoost…",loading_stage_error:"O serviço na nuvem está indisponível. Os teus dados guardados continuam aqui.",
+    loading_stage_expired:"A sessão expirou. Inicia sessão novamente para continuar.",loading_continue:"Continuar com os dados guardados",loading_sign_in:"Abrir início de sessão"
+  },
+  nl:{
+    loading_open_title:"Je WarBoost-sessie wordt voorbereid",loading_resume_title:"Je WarBoost-sessie wordt hervat",loading_update_title:"WarBoost wordt bijgewerkt",
+    loading_context:"Je opgeslagen profiel en huidige scherm blijven behouden.",loading_stage_profile:"Opgeslagen profiel op dit apparaat laden…",
+    loading_stage_session:"Bestaande sessie herstellen…",loading_stage_cloud:"Cloudgegevens controleren en synchroniseren…",
+    loading_stage_alliance:"Alliantie- en rostergegevens herstellen…",loading_stage_scans:"Openstaande scans op dit apparaat herstellen…",
+    loading_stage_version:"WarBoost-versie controleren…",loading_stage_error:"De cloudservice is niet beschikbaar. Je opgeslagen gegevens zijn er nog.",
+    loading_stage_expired:"Je sessie is verlopen. Meld je opnieuw aan om door te gaan.",loading_continue:"Doorgaan met opgeslagen gegevens",loading_sign_in:"Inloggen openen"
+  },
+  zh:{
+    loading_open_title:"正在准备 WarBoost 会话",loading_resume_title:"正在恢复 WarBoost 会话",loading_update_title:"正在应用 WarBoost 更新",
+    loading_context:"已保留你保存的资料和当前页面。",loading_stage_profile:"正在加载此设备上保存的资料…",
+    loading_stage_session:"正在恢复现有登录会话…",loading_stage_cloud:"正在检查并同步云端数据…",
+    loading_stage_alliance:"正在恢复联盟和成员名单数据…",loading_stage_scans:"正在恢复此设备上待处理的扫描…",
+    loading_stage_version:"正在检查 WarBoost 版本…",loading_stage_error:"云服务暂不可用，你保存的数据仍然保留。",
+    loading_stage_expired:"会话已过期，请重新登录后继续。",loading_continue:"使用已保存的数据继续",loading_sign_in:"打开登录"
+  },
+  ja:{
+    loading_open_title:"WarBoost セッションを準備しています",loading_resume_title:"WarBoost セッションを再開しています",loading_update_title:"WarBoost の更新を適用しています",
+    loading_context:"保存済みプロフィールと現在の画面はそのまま保持されます。",loading_stage_profile:"この端末に保存されたプロフィールを読み込み中…",
+    loading_stage_session:"既存のセッションを復元中…",loading_stage_cloud:"クラウドデータを確認・同期中…",
+    loading_stage_alliance:"同盟とメンバー名簿のデータを復元中…",loading_stage_scans:"この端末の保留中のスキャンを復元中…",
+    loading_stage_version:"WarBoost のバージョンを確認中…",loading_stage_error:"クラウドサービスを利用できません。保存データは保持されています。",
+    loading_stage_expired:"セッションの有効期限が切れました。再度ログインしてください。",loading_continue:"保存データで続行",loading_sign_in:"ログインを開く"
+  },
+  ru:{
+    loading_open_title:"Подготовка сеанса WarBoost",loading_resume_title:"Возобновление сеанса WarBoost",loading_update_title:"Установка обновления WarBoost",
+    loading_context:"Сохранённый профиль и текущий экран останутся без изменений.",loading_stage_profile:"Загрузка профиля, сохранённого на этом устройстве…",
+    loading_stage_session:"Восстановление текущего сеанса…",loading_stage_cloud:"Проверка и синхронизация облачных данных…",
+    loading_stage_alliance:"Восстановление данных альянса и состава…",loading_stage_scans:"Восстановление ожидающих сканирований с этого устройства…",
+    loading_stage_version:"Проверка версии WarBoost…",loading_stage_error:"Облачный сервис недоступен. Сохранённые данные на месте.",
+    loading_stage_expired:"Срок действия сеанса истёк. Войдите снова, чтобы продолжить.",loading_continue:"Продолжить с сохранёнными данными",loading_sign_in:"Открыть вход"
+  },
+  ar:{
+    loading_open_title:"جارٍ تجهيز جلسة WarBoost",loading_resume_title:"جارٍ استئناف جلسة WarBoost",loading_update_title:"جارٍ تطبيق تحديث WarBoost",
+    loading_context:"سيظل ملفك المحفوظ والشاشة الحالية كما هما.",loading_stage_profile:"جارٍ تحميل الملف المحفوظ على هذا الجهاز…",
+    loading_stage_session:"جارٍ استعادة جلستك الحالية…",loading_stage_cloud:"جارٍ التحقق من بيانات السحابة ومزامنتها…",
+    loading_stage_alliance:"جارٍ استعادة بيانات التحالف وقائمة الأعضاء…",loading_stage_scans:"جارٍ استعادة عمليات المسح المعلّقة على هذا الجهاز…",
+    loading_stage_version:"جارٍ التحقق من إصدار WarBoost…",loading_stage_error:"خدمة السحابة غير متاحة. بياناتك المحفوظة ما زالت موجودة.",
+    loading_stage_expired:"انتهت صلاحية الجلسة. سجّل الدخول مجددًا للمتابعة.",loading_continue:"المتابعة بالبيانات المحفوظة",loading_sign_in:"فتح تسجيل الدخول"
+  },
+  pl:{
+    loading_open_title:"Przygotowywanie sesji WarBoost",loading_resume_title:"Wznawianie sesji WarBoost",loading_update_title:"Instalowanie aktualizacji WarBoost",
+    loading_context:"Zapisany profil i bieżący ekran pozostają bez zmian.",loading_stage_profile:"Wczytywanie profilu zapisanego na tym urządzeniu…",
+    loading_stage_session:"Przywracanie istniejącej sesji…",loading_stage_cloud:"Sprawdzanie i synchronizowanie danych w chmurze…",
+    loading_stage_alliance:"Przywracanie danych sojuszu i składu…",loading_stage_scans:"Przywracanie oczekujących skanów z tego urządzenia…",
+    loading_stage_version:"Sprawdzanie wersji WarBoost…",loading_stage_error:"Usługa w chmurze jest niedostępna. Zapisane dane nadal są dostępne.",
+    loading_stage_expired:"Sesja wygasła. Zaloguj się ponownie, aby kontynuować.",loading_continue:"Kontynuuj z zapisanymi danymi",loading_sign_in:"Otwórz logowanie"
+  },
+  tr:{
+    loading_open_title:"WarBoost oturumun hazırlanıyor",loading_resume_title:"WarBoost oturumun sürdürülüyor",loading_update_title:"WarBoost güncellemesi uygulanıyor",
+    loading_context:"Kaydedilmiş profilin ve açık ekranın korunuyor.",loading_stage_profile:"Bu cihaza kaydedilmiş profil yükleniyor…",
+    loading_stage_session:"Mevcut oturum geri yükleniyor…",loading_stage_cloud:"Bulut verileri kontrol ediliyor ve eşitleniyor…",
+    loading_stage_alliance:"İttifak ve kadro verileri geri yükleniyor…",loading_stage_scans:"Bu cihazdaki bekleyen taramalar geri yükleniyor…",
+    loading_stage_version:"WarBoost sürümü kontrol ediliyor…",loading_stage_error:"Bulut hizmeti kullanılamıyor. Kaydedilmiş verilerin duruyor.",
+    loading_stage_expired:"Oturumun süresi doldu. Devam etmek için yeniden giriş yap.",loading_continue:"Kaydedilmiş verilerle devam et",loading_sign_in:"Giriş ekranını aç"
+  },
+  ko:{
+    loading_open_title:"WarBoost 세션을 준비하고 있어요",loading_resume_title:"WarBoost 세션을 다시 시작하고 있어요",loading_update_title:"WarBoost 업데이트를 적용하고 있어요",
+    loading_context:"저장된 프로필과 현재 화면은 그대로 유지됩니다.",loading_stage_profile:"이 기기에 저장된 프로필을 불러오는 중…",
+    loading_stage_session:"기존 세션을 복원하는 중…",loading_stage_cloud:"클라우드 데이터를 확인하고 동기화하는 중…",
+    loading_stage_alliance:"동맹 및 명단 데이터를 복원하는 중…",loading_stage_scans:"이 기기의 대기 중인 스캔을 복원하는 중…",
+    loading_stage_version:"WarBoost 버전을 확인하는 중…",loading_stage_error:"클라우드 서비스를 사용할 수 없어요. 저장된 데이터는 그대로 있어요.",
+    loading_stage_expired:"세션이 만료되었어요. 다시 로그인해 주세요.",loading_continue:"저장된 데이터로 계속하기",loading_sign_in:"로그인 열기"
+  },
+  vi:{
+    loading_open_title:"Đang chuẩn bị phiên WarBoost",loading_resume_title:"Đang tiếp tục phiên WarBoost",loading_update_title:"Đang áp dụng bản cập nhật WarBoost",
+    loading_context:"Hồ sơ đã lưu và màn hình hiện tại sẽ được giữ nguyên.",loading_stage_profile:"Đang tải hồ sơ đã lưu trên thiết bị này…",
+    loading_stage_session:"Đang khôi phục phiên hiện tại…",loading_stage_cloud:"Đang kiểm tra và đồng bộ dữ liệu đám mây…",
+    loading_stage_alliance:"Đang khôi phục dữ liệu liên minh và danh sách thành viên…",loading_stage_scans:"Đang khôi phục các lượt quét đang chờ trên thiết bị…",
+    loading_stage_version:"Đang kiểm tra phiên bản WarBoost…",loading_stage_error:"Dịch vụ đám mây hiện không khả dụng. Dữ liệu đã lưu vẫn còn nguyên.",
+    loading_stage_expired:"Phiên đã hết hạn. Hãy đăng nhập lại để tiếp tục.",loading_continue:"Tiếp tục với dữ liệu đã lưu",loading_sign_in:"Mở đăng nhập"
+  },
+  th:{
+    loading_open_title:"กำลังเตรียมเซสชัน WarBoost",loading_resume_title:"กำลังกลับมาใช้เซสชัน WarBoost",loading_update_title:"กำลังติดตั้งการอัปเดต WarBoost",
+    loading_context:"โปรไฟล์ที่บันทึกไว้และหน้าปัจจุบันจะยังคงเดิม",loading_stage_profile:"กำลังโหลดโปรไฟล์ที่บันทึกไว้ในอุปกรณ์นี้…",
+    loading_stage_session:"กำลังกู้คืนเซสชันเดิม…",loading_stage_cloud:"กำลังตรวจสอบและซิงค์ข้อมูลบนคลาวด์…",
+    loading_stage_alliance:"กำลังกู้คืนข้อมูลพันธมิตรและรายชื่อสมาชิก…",loading_stage_scans:"กำลังกู้คืนรายการสแกนที่ค้างอยู่ในอุปกรณ์นี้…",
+    loading_stage_version:"กำลังตรวจสอบเวอร์ชัน WarBoost…",loading_stage_error:"บริการคลาวด์ไม่พร้อมใช้งาน ข้อมูลที่บันทึกไว้ยังอยู่ครบ",
+    loading_stage_expired:"เซสชันหมดอายุแล้ว โปรดเข้าสู่ระบบอีกครั้งเพื่อดำเนินการต่อ",loading_continue:"ดำเนินการต่อด้วยข้อมูลที่บันทึกไว้",loading_sign_in:"เปิดหน้าเข้าสู่ระบบ"
+  },
+  id:{
+    loading_open_title:"Menyiapkan sesi WarBoost",loading_resume_title:"Melanjutkan sesi WarBoost",loading_update_title:"Menerapkan pembaruan WarBoost",
+    loading_context:"Profil tersimpan dan layar saat ini tetap dipertahankan.",loading_stage_profile:"Memuat profil yang tersimpan di perangkat ini…",
+    loading_stage_session:"Memulihkan sesi yang sudah ada…",loading_stage_cloud:"Memeriksa dan menyinkronkan data cloud…",
+    loading_stage_alliance:"Memulihkan data aliansi dan daftar anggota…",loading_stage_scans:"Memulihkan pemindaian tertunda dari perangkat ini…",
+    loading_stage_version:"Memeriksa versi WarBoost…",loading_stage_error:"Layanan cloud tidak tersedia. Data tersimpan tetap ada.",
+    loading_stage_expired:"Sesi kedaluwarsa. Masuk kembali untuk melanjutkan.",loading_continue:"Lanjutkan dengan data tersimpan",loading_sign_in:"Buka halaman masuk"
+  },
+  uk:{
+    loading_open_title:"Підготовка сеансу WarBoost",loading_resume_title:"Відновлення сеансу WarBoost",loading_update_title:"Застосування оновлення WarBoost",
+    loading_context:"Збережений профіль і поточний екран залишаться без змін.",loading_stage_profile:"Завантаження профілю, збереженого на цьому пристрої…",
+    loading_stage_session:"Відновлення наявного сеансу…",loading_stage_cloud:"Перевірка та синхронізація хмарних даних…",
+    loading_stage_alliance:"Відновлення даних альянсу та складу…",loading_stage_scans:"Відновлення сканувань, що очікують, із цього пристрою…",
+    loading_stage_version:"Перевірка версії WarBoost…",loading_stage_error:"Хмарна служба недоступна. Збережені дані залишилися на місці.",
+    loading_stage_expired:"Термін дії сеансу минув. Увійдіть знову, щоб продовжити.",loading_continue:"Продовжити зі збереженими даними",loading_sign_in:"Відкрити вхід"
+  },
+  ro:{
+    loading_open_title:"Se pregătește sesiunea WarBoost",loading_resume_title:"Se reia sesiunea WarBoost",loading_update_title:"Se aplică o actualizare WarBoost",
+    loading_context:"Profilul salvat și ecranul curent sunt păstrate.",loading_stage_profile:"Se încarcă profilul salvat pe acest dispozitiv…",
+    loading_stage_session:"Se restaurează sesiunea existentă…",loading_stage_cloud:"Se verifică și se sincronizează datele din cloud…",
+    loading_stage_alliance:"Se restaurează datele alianței și ale listei…",loading_stage_scans:"Se restaurează scanările în așteptare de pe acest dispozitiv…",
+    loading_stage_version:"Se verifică versiunea WarBoost…",loading_stage_error:"Serviciul cloud nu este disponibil. Datele salvate sunt în continuare aici.",
+    loading_stage_expired:"Sesiunea a expirat. Conectează-te din nou pentru a continua.",loading_continue:"Continuă cu datele salvate",loading_sign_in:"Deschide autentificarea"
+  },
+  el:{
+    loading_open_title:"Προετοιμασία της συνεδρίας WarBoost",loading_resume_title:"Επαναφορά της συνεδρίας WarBoost",loading_update_title:"Εφαρμογή ενημέρωσης WarBoost",
+    loading_context:"Το αποθηκευμένο προφίλ και η τρέχουσα οθόνη διατηρούνται.",loading_stage_profile:"Φόρτωση του προφίλ που είναι αποθηκευμένο σε αυτή τη συσκευή…",
+    loading_stage_session:"Επαναφορά της υπάρχουσας συνεδρίας…",loading_stage_cloud:"Έλεγχος και συγχρονισμός δεδομένων cloud…",
+    loading_stage_alliance:"Επαναφορά δεδομένων συμμαχίας και ρόστερ…",loading_stage_scans:"Επαναφορά εκκρεμών σαρώσεων από αυτή τη συσκευή…",
+    loading_stage_version:"Έλεγχος έκδοσης WarBoost…",loading_stage_error:"Η υπηρεσία cloud δεν είναι διαθέσιμη. Τα αποθηκευμένα δεδομένα παραμένουν εδώ.",
+    loading_stage_expired:"Η συνεδρία έληξε. Συνδέσου ξανά για να συνεχίσεις.",loading_continue:"Συνέχεια με τα αποθηκευμένα δεδομένα",loading_sign_in:"Άνοιγμα σύνδεσης"
+  },
+  cs:{
+    loading_open_title:"Příprava relace WarBoost",loading_resume_title:"Obnovení relace WarBoost",loading_update_title:"Instalace aktualizace WarBoost",
+    loading_context:"Uložený profil i aktuální obrazovka zůstanou zachovány.",loading_stage_profile:"Načítání profilu uloženého v tomto zařízení…",
+    loading_stage_session:"Obnovování stávající relace…",loading_stage_cloud:"Kontrola a synchronizace cloudových dat…",
+    loading_stage_alliance:"Obnovování údajů o alianci a soupisce…",loading_stage_scans:"Obnovování čekajících skenů z tohoto zařízení…",
+    loading_stage_version:"Kontrola verze WarBoost…",loading_stage_error:"Cloudová služba není dostupná. Uložená data zůstávají zachována.",
+    loading_stage_expired:"Platnost relace vypršela. Pro pokračování se znovu přihlas.",loading_continue:"Pokračovat s uloženými daty",loading_sign_in:"Otevřít přihlášení"
+  },
+  sv:{
+    loading_open_title:"Förbereder din WarBoost-session",loading_resume_title:"Återupptar din WarBoost-session",loading_update_title:"Installerar en WarBoost-uppdatering",
+    loading_context:"Din sparade profil och den aktuella skärmen behålls.",loading_stage_profile:"Läser in profilen som sparats på den här enheten…",
+    loading_stage_session:"Återställer den befintliga sessionen…",loading_stage_cloud:"Kontrollerar och synkroniserar molndata…",
+    loading_stage_alliance:"Återställer allians- och laguppställningsdata…",loading_stage_scans:"Återställer väntande skanningar från den här enheten…",
+    loading_stage_version:"Kontrollerar WarBoost-versionen…",loading_stage_error:"Molntjänsten är inte tillgänglig. Dina sparade data finns kvar.",
+    loading_stage_expired:"Din session har gått ut. Logga in igen för att fortsätta.",loading_continue:"Fortsätt med sparade data",loading_sign_in:"Öppna inloggning"
+  }
+};
+for(const [code,copy] of Object.entries(LOADING_SCREEN_COPY))Object.assign(packs[code],copy);

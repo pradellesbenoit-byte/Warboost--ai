@@ -48,16 +48,16 @@ function response(status,body){
   return {ok:status>=200&&status<300,status,json:async()=>body};
 }
 
-// 1. Thirty minutes without input suspends the interface, closes transient UI,
+// 1. Fifteen minutes without input suspends the interface while preserving data,
 // pauses foreground polling, and never closes the native app.
 {
-  let closes=0,paused=0,resumes=0,appCloseCalls=0;
-  const env=makeLifecycle({onSuspend:()=>{closes++;paused++},onResume:async()=>{resumes++;return {ok:true}}});
+  let suspensions=0,paused=0,resumes=0,appCloseCalls=0;
+  const env=makeLifecycle({onSuspend:()=>{suspensions++;paused++},onResume:async()=>{resumes++;return {ok:true}}});
   env.windowRef.close=()=>{appCloseCalls++};
   env.lifecycle.start();
   env.clock.advance(WARBOOST_IDLE_TIMEOUT_MS);
   assert.equal(env.lifecycle.isSuspended(),true);
-  assert.equal(closes,1);
+  assert.equal(suspensions,1);
   assert.equal(paused,1);
   assert.equal(resumes,0);
   assert.equal(appCloseCalls,0);
@@ -67,7 +67,7 @@ function response(status,body){
   assert.equal(env.lifecycle.isSuspended(),false);
 }
 
-// 2. Real activity resets the 30-minute deadline; a return before the deadline
+// 2. Real activity resets the 15-minute deadline; a return before the deadline
 // does not force profile reconciliation.
 {
   let suspensions=0,resumes=0,recentReturns=0;
@@ -77,9 +77,9 @@ function response(status,body){
     onRecentReturn:()=>{recentReturns++}
   });
   env.lifecycle.start();
-  env.clock.advance(25*60*1000);
-  env.lifecycle.noteActivity({type:"click",isTrusted:true});
   env.clock.advance(10*60*1000);
+  env.lifecycle.noteActivity({type:"click",isTrusted:true});
+  env.clock.advance(4*60*1000);
   assert.equal(suspensions,0);
   env.documentRef.visibilityState="hidden";
   env.documentRef.dispatch("visibilitychange");
@@ -91,7 +91,7 @@ function response(status,body){
   assert.equal(env.lifecycle.isSuspended(),false);
 }
 
-// 3. A PWA hidden for more than 30 minutes suspends, then visibilitychange
+// 3. A PWA hidden for more than 15 minutes suspends, then visibilitychange
 // performs one shared resume despite focus/pageshow events arriving together.
 {
   let suspensions=0,resumes=0,finishResume;
@@ -247,17 +247,61 @@ function response(status,body){
   assert.deepEqual(JSON.parse(storage.getItem(coreKey)),profile);
 }
 
+// 9. An active scan/upload holds the idle deadline; finishing it starts a fresh
+// 15-minute window instead of suspending in the middle of the request.
+{
+  let suspensions=0,resumes=0;
+  const env=makeLifecycle({
+    onSuspend:()=>{suspensions++},
+    onResume:async()=>{resumes++;return {ok:true}}
+  });
+  env.lifecycle.start();
+  env.clock.advance(WARBOOST_IDLE_TIMEOUT_MS-1000);
+  env.lifecycle.setBusy(true);
+  env.clock.advance(WARBOOST_IDLE_TIMEOUT_MS+5*60*1000);
+  assert.equal(env.lifecycle.isSuspended(),false);
+  assert.equal(env.lifecycle.isIdleDue(),false);
+  assert.equal((await env.lifecycle.returnFrom("visibilitychange")).reason,"operation-in-progress");
+  env.lifecycle.noteActivity({type:"operation-complete"});
+  env.lifecycle.setBusy(false);
+  env.clock.advance(WARBOOST_IDLE_TIMEOUT_MS-1);
+  assert.equal(env.lifecycle.isSuspended(),false);
+  env.clock.advance(1);
+  assert.equal(env.lifecycle.isSuspended(),true);
+  assert.equal(suspensions,1);
+  assert.equal(resumes,0);
+}
+
+// 10. Startup that already restored local/cloud state marks the app ready rather
+// than immediately repeating an old idle resume from persisted timestamps.
+{
+  const clock=makeClock(),storage=makeStorage({"warboost-idle-v1":JSON.stringify({
+    version:1,lastActivityAt:clock.now()-WARBOOST_IDLE_TIMEOUT_MS*4,suspendedAt:clock.now()-WARBOOST_IDLE_TIMEOUT_MS
+  })});
+  let suspensions=0,resumes=0;
+  const env=makeLifecycle({
+    storage,onSuspend:()=>{suspensions++},onResume:async()=>{resumes++;return {ok:true}}
+  });
+  const result=env.lifecycle.start({markReady:true});
+  assert.equal(result.suspended,false);
+  assert.equal(env.lifecycle.isSuspended(),false);
+  assert.equal(suspensions,0);
+  assert.equal(resumes,0);
+  assert.equal(JSON.parse(storage.getItem("warboost-idle-v1")).lastActivityAt,clock.now());
+}
+
 const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
 const index=fs.readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const sw=fs.readFileSync(new URL("../sw.js",import.meta.url),"utf8");
-assert.match(app,/onSuspend:\(\)=>\{stopForegroundRefreshes\(\);try\{closeDrawers\(\)/);
+assert.match(app,/onSuspend:\(\)=>\{stopForegroundRefreshes\(\);loadingScreen\?\.show\("resume","cloud"\)\}/);
 assert.match(app,/onResume:\(\{reason\}\)=>performIdleResume\(reason\)/);
 assert.match(app,/runAuthenticatedIdleResume\(\{[\s\S]*reconcile:reconcileAuthenticatedRuntime/);
 assert.match(app,/event==="TOKEN_REFRESHED"&&session/);
-assert.match(app,/Mise à jour WarBoost…/);
-assert.match(app,/À jour/);
-assert.match(index,/app\.js\?v=shop-observations-v2-5-32-hf8-6-34-r2/);
-assert.match(sw,/warboost-v2-5-32-hf8-6-34-shop-observations-r2/);
+assert.match(app,/loadingScreen\?\.show\(mode,"profile"\)/);
+assert.match(app,/function beginActiveLoadingOperation\(\)/);
+assert.match(app,/fetchWarBoostScan\(payload\)[\s\S]*finishOperation\(\)/);
+assert.match(index,/app\.js\?v=warboost-startup-screen-r1/);
+assert.match(sw,/warboost-loading-startup-screen-r1/);
 assert.doesNotMatch(fs.readFileSync(new URL("../lib/idle-lifecycle.js",import.meta.url),"utf8"),/signOut|removeItem/);
 
-console.log("WarBoost 30-minute inactivity suspension and safe resume: PASS (8 scenarios)");
+console.log("WarBoost 15-minute inactivity suspension and safe resume: PASS (10 scenarios)");
