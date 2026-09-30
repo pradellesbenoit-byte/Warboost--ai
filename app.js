@@ -709,11 +709,26 @@ function safeSelfRole(requested){return normalizedRole(requested)}
 
 function vsDayFromServer(d){const day=lastWarServerClock(d).getUTCDay();return day===0?0:day}
 function isSquadScanType(type){return /^squad[1-4]$/i.test(String(type||""))}
+function renderSavedSecretMobileSquad(type){
+  const panel=$("#secretMobileSquadSaved"),rows=$("#secretMobileSquadSavedRows");
+  if(!panel||!rows)return;
+  const tasks=state?.special_events?.secret_mobile_squad?.tasks||[];
+  panel.classList.toggle("hidden",type!=="secret_mobile_squad"||!tasks.length);
+  rows.replaceChildren();
+  for(const task of tasks){
+    const row=document.createElement("div");
+    row.className="notice";
+    row.textContent=String(task?.label||"");
+    rows.append(row);
+  }
+}
 function updateSquadCaptureHelp(type){
   const wrapper=$("#squadCaptureHelp"),panel=$("#squadCaptureHelpPanel"),wrong=$("#squadCaptureWrongNotice");
   if(!wrapper)return;
   const visible=isSquadScanType(type);
   wrapper.classList.toggle("hidden",!visible);
+  $("#secretMobileSquadScanHelp")?.classList.toggle("hidden",type!=="secret_mobile_squad");
+  renderSavedSecretMobileSquad(type);
   if(!visible){panel?.classList.add("hidden");wrong?.classList.add("hidden")}
 }
 function openSquadCaptureHelp(wrong=false){
@@ -728,7 +743,7 @@ function closeSquadCaptureHelp(){
   $("#squadCaptureHelpPanel")?.classList.add("hidden");
   $("#squadCaptureWrongNotice")?.classList.add("hidden");
 }
-function renderScanTypeOptions(){const sel=$("#scanType");if(!sel)return;const current=sel.value||"profile";const opts=[["profile",t("scan_profile")],["squad1",`${t("squad")} 1`],["squad2",`${t("squad")} 2`],["squad3",`${t("squad")} 3`],["squad4",`${t("squad")} 4`],["drone",t("scan_drone")],["exclusive",t("scan_exclusive")],["awakening",t("scan_awakening")],["shop",t("scan_shop")],["vs",t("scan_vs")],["season",t("scan_season")]];sel.innerHTML=opts.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=opts.some(([v])=>v===current)?current:"profile";updateSquadCaptureHelp(sel.value)}
+function renderScanTypeOptions(){const sel=$("#scanType");if(!sel)return;const current=sel.value||"profile";const opts=[["profile",t("scan_profile")],["squad1",`${t("squad")} 1`],["squad2",`${t("squad")} 2`],["squad3",`${t("squad")} 3`],["squad4",`${t("squad")} 4`],["drone",t("scan_drone")],["exclusive",t("scan_exclusive")],["awakening",t("scan_awakening")],["shop",t("scan_shop")],["vs",t("scan_vs")],["season",t("scan_season")],["secret_mobile_squad",t("scan_secret_mobile_squad")]];sel.innerHTML=opts.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=opts.some(([v])=>v===current)?current:"profile";updateSquadCaptureHelp(sel.value)}
 function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(lang);t=translator(lang);document.documentElement.lang=lang;document.documentElement.dir=dirFor(lang);$$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});$$('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));$$('[data-i18n-alt]').forEach(el=>el.setAttribute('alt',t(el.dataset.i18nAlt)));$$('[data-i18n-placeholder]').forEach(el=>{const text=t(el.dataset.i18nPlaceholder);el.setAttribute('placeholder',text);if(el.isContentEditable)el.setAttribute('data-placeholder',text)});const sel=$("#languageSelect");if(sel){sel.innerHTML=LANGUAGES.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=languageChoice}renderScanTypeOptions();renderClock();render();renderAuth();renderBeta();renderPro();renderVoiceSettings();renderSupportAccess();renderSupportTickets();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden")}
 function saveState(options={}){const renderUi=options?.renderUi!==false,signedInUserId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");if(signedInUserId&&ownerId&&ownerId!==signedInUserId){if(hasMeaningfulCore(state))rememberAccountState(ownerId,state);const own=readAccountState(signedInUserId);state=hasMeaningfulCore(own)?hydrateCloudState(own,initialState(),signedInUserId):initialState();state.player_id=signedInUserId;state.sync={...state.sync,status:"waiting",last_error:"account_owner_mismatch",pending_cloud_save:false};if(renderUi)render();return false}if(signedInUserId&&!ownerId)state.player_id=signedInUserId;state=repairLegacySquadIdentity(state).state;state=backfillConfirmedHeroPowers(state).state;state.updated_at=new Date().toISOString();state.version=APP_VERSION;localStateRevision++;const localOk=safeLocalSet(STORE_KEY,JSON.stringify(state));if(!localOk)state.sync={...state.sync,status:"waiting",last_error:"local_storage_unavailable",pending_cloud_save:true};rememberLastGoodState(state,"save");if(signedInUserId&&String(state.player_id||"")===signedInUserId)rememberAccountState(signedInUserId,state);if(renderUi)render();if(!suppressPush&&hasMeaningfulCore(state))scheduleServerSave(localOk?350:0);return localOk}
 function scheduleServerSave(delay=350){cloudDirty=true;clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushServerState(),Math.max(0,Number(delay)||0))}
@@ -2972,6 +2987,13 @@ function confirmScanReview(){
   if(!result)return discardScanReviewDraft();
   if(result.errors.length){const error=result.errors[0];setScanReviewError(error.reason==="negative_number"?"scan_review_negative_number":error.reason==="invalid_boolean"?"scan_review_invalid_boolean":"scan_review_invalid_number");return}
    const reviewed=result.patch;
+   if(draft.type==="secret_mobile_squad"){
+     const event=reviewed.special_events?.secret_mobile_squad;
+     if(!event||!Array.isArray(event.tasks)||!event.tasks.length){setScanReviewError("scan_review_apply_failed");return}
+     const confirmedAt=new Date().toISOString();
+     event.updated_at=confirmedAt;event.source="owner_confirmed_scan";
+     event.tasks=event.tasks.map(task=>({...task,label_evidence:"visible_text",mapping_status:"unmapped",review_state:"owner_confirmed",confirmed_at:confirmedAt,source:"owner_confirmed_scan"}));
+   }
    if(draft.type==="season"&&reviewed.technology){
      reviewed.technology=finalizeTechnologyReview(reviewed.technology,draft.scannedAt);
      if(!Object.keys(reviewed.technology.branches||{}).length)delete reviewed.technology;
@@ -2987,7 +3009,7 @@ function confirmScanReview(){
     merged.sync.last_scan=now;merged.sync.sources={...merged.sync.sources,scan:true};
     if(["profile","drone","awakening"].includes(draft.type))state=merged,recordProgressionSnapshot(`scan_${draft.type}`,now),merged=state;
     if(sm){const sq=merged.squads?.[Number(sm[1])-1];if(sq){sq.needs_rescan=true;sq.composition_changed_at=now}}
-    state=merged;saveState();
+    state=merged;saveState();updateSquadCaptureHelp($("#scanType")?.value||"profile");
   }catch{state=previousState;setScanReviewError("scan_review_apply_failed");return}
   const type=draft.type,squadId=sm?Number(sm[1]):null,names=draft.heroNames||[];
   discardScanReviewDraft();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden");

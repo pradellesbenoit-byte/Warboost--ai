@@ -49,7 +49,7 @@ const event=(type,date,status='participated',source='player_self_report')=>({eve
 
 // Current public game watch is reviewed, informational only and season rumors remain blocked.
 {
-  assert.equal(REVIEWED_GAME_UPDATE.version,'1.0.362');assert.equal(REVIEWED_GAME_UPDATE.released_on,'2026-09-09');assert.equal(REVIEWED_GAME_UPDATE.reviewed_on,'2026-09-09');assert.equal(REVIEWED_GAME_UPDATE.meta_impact,'informational-only');assert.equal(REVIEWED_GAME_UPDATE.confirmed_hero_meta_change,false);assert.equal(REVIEWED_GAME_UPDATE.season7_status,'not-activated-from-rumors');
+  assert.equal(REVIEWED_GAME_UPDATE.version,'1.0.364');assert.equal(REVIEWED_GAME_UPDATE.released_on,null);assert.equal(REVIEWED_GAME_UPDATE.reviewed_on,'2026-09-30');assert.equal(REVIEWED_GAME_UPDATE.source_kind,'third-party-store-metadata-aggregator');assert.equal(REVIEWED_GAME_UPDATE.meta_impact,'informational-only');assert.equal(REVIEWED_GAME_UPDATE.confirmed_hero_meta_change,false);assert.equal(REVIEWED_GAME_UPDATE.season7_status,'not-activated-from-rumors');
   log('game watch refreshed to 1.0.362 without inventing hero/meta/Season 7 impact');
 }
 

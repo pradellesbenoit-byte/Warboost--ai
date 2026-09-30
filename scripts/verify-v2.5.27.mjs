@@ -997,7 +997,7 @@ console.log('\nWarBoost V2.5.27 verification: PASS');
 
 // Game update is informational only; no unverified hero/meta mutation is asserted.
 {
-  assert.equal(REVIEWED_GAME_UPDATE.version,'1.0.362');
+  assert.equal(REVIEWED_GAME_UPDATE.version,'1.0.364');
   assert.equal(REVIEWED_GAME_UPDATE.released_on,'2026-09-09');
   assert.equal(REVIEWED_GAME_UPDATE.meta_impact,'informational-only');
   assert.equal(REVIEWED_GAME_UPDATE.confirmed_hero_meta_change,false);

@@ -2458,3 +2458,70 @@ const SAFE_LAUNCH_FEEDBACK={
 };
 for(const [code,labels] of Object.entries(SAFE_LAUNCH_FEEDBACK))Object.assign(packs[code],labels);
 Object.assign(EN,SAFE_LAUNCH_FEEDBACK["en-GB"]);
+
+const SECRET_MOBILE_SQUAD_SCAN_LABELS={
+  fr:{game_update_title:"Veille du jeu · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tâches",scan_secret_mobile_squad_help:"WarBoost conserve le texte exact visible. Il ne devine pas le sens d’un libellé inconnu et n’enregistre rien avant ta confirmation."},
+  "en-GB":{game_update_title:"Game watch · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tasks",scan_secret_mobile_squad_help:"WarBoost keeps the exact visible text. It does not guess the meaning of an unknown label, and saves nothing until you confirm the scan."},
+  "en-US":{game_update_title:"Game watch · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tasks",scan_secret_mobile_squad_help:"WarBoost keeps the exact visible text. It does not guess the meaning of an unknown label, and saves nothing until you confirm the scan."},
+  es:{game_update_title:"Seguimiento del juego · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tareas",scan_secret_mobile_squad_help:"WarBoost conserva el texto visible exacto. No adivina el significado de una etiqueta desconocida y no guarda nada hasta que confirmes el análisis."},
+  it:{game_update_title:"Monitoraggio gioco · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · attività",scan_secret_mobile_squad_help:"WarBoost conserva il testo esatto visibile. Non indovina il significato di un'etichetta sconosciuta e non salva nulla prima della tua conferma."},
+  de:{game_update_title:"Spielbeobachtung · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · Aufgaben",scan_secret_mobile_squad_help:"WarBoost übernimmt den exakt sichtbaren Text. Die Bedeutung unbekannter Bezeichnungen wird nicht geraten; gespeichert wird erst nach deiner Bestätigung."},
+  pt:{game_update_title:"Monitorização do jogo · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tarefas",scan_secret_mobile_squad_help:"O WarBoost mantém o texto visível exato. Não adivinha o significado de um rótulo desconhecido e só guarda os dados depois da tua confirmação."},
+  nl:{game_update_title:"Gamebewaking · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · taken",scan_secret_mobile_squad_help:"WarBoost bewaart de exact zichtbare tekst. De betekenis van een onbekend label wordt niet geraden; er wordt pas opgeslagen na jouw bevestiging."},
+  zh:{game_update_title:"游戏追踪 · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · 任务",scan_secret_mobile_squad_help:"WarBoost 会保留屏幕上实际显示的文字，不会猜测未知标签的含义；只有你确认扫描后才会保存。"},
+  ja:{game_update_title:"ゲーム監視 · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · タスク",scan_secret_mobile_squad_help:"WarBoostは画面に表示された文字をそのまま保持します。不明なラベルの意味は推測せず、確認されるまで保存しません。"},
+  ru:{game_update_title:"Мониторинг игры · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · задания",scan_secret_mobile_squad_help:"WarBoost сохраняет точный видимый текст. Значение неизвестной подписи не угадывается; данные сохраняются только после подтверждения."},
+  ar:{game_update_title:"مراقبة اللعبة · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · المهام",scan_secret_mobile_squad_help:"يحفظ WarBoost النص الظاهر كما هو. لا يخمّن معنى التسمية غير المعروفة، ولا يحفظ شيئاً قبل تأكيدك للمسح."},
+  pl:{game_update_title:"Monitoring gry · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · zadania",scan_secret_mobile_squad_help:"WarBoost zachowuje dokładny widoczny tekst. Nie zgaduje znaczenia nieznanej etykiety i niczego nie zapisuje przed potwierdzeniem skanu."},
+  tr:{game_update_title:"Oyun takibi · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · görevler",scan_secret_mobile_squad_help:"WarBoost ekranda görünen metni aynen saklar. Bilinmeyen etiketlerin anlamını tahmin etmez ve taramayı onaylayana kadar hiçbir şeyi kaydetmez."},
+  ko:{game_update_title:"게임 모니터링 · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · 임무",scan_secret_mobile_squad_help:"WarBoost는 화면에 보이는 문구를 그대로 보존합니다. 알 수 없는 문구의 의미를 추측하지 않으며, 확인하기 전에는 저장하지 않습니다."},
+  vi:{game_update_title:"Theo dõi game · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · nhiệm vụ",scan_secret_mobile_squad_help:"WarBoost giữ nguyên văn bản nhìn thấy trên màn hình. Ứng dụng không đoán ý nghĩa nhãn lạ và chỉ lưu sau khi bạn xác nhận."},
+  th:{game_update_title:"ติดตามเกม · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · ภารกิจ",scan_secret_mobile_squad_help:"WarBoost จะเก็บข้อความที่มองเห็นตามจริง ไม่เดาความหมายของป้ายที่ไม่รู้จัก และจะบันทึกเมื่อคุณยืนยันการสแกนแล้วเท่านั้น"},
+  id:{game_update_title:"Pantauan game · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · tugas",scan_secret_mobile_squad_help:"WarBoost menyimpan teks yang terlihat persis seperti aslinya. Arti label yang tidak dikenal tidak ditebak dan data tidak disimpan sebelum Anda mengonfirmasi."},
+  uk:{game_update_title:"Моніторинг гри · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · завдання",scan_secret_mobile_squad_help:"WarBoost зберігає точний видимий текст. Значення невідомої назви не вгадується; дані зберігаються лише після вашого підтвердження."},
+  ro:{game_update_title:"Monitorizare joc · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · sarcini",scan_secret_mobile_squad_help:"WarBoost păstrează exact textul vizibil. Nu ghicește sensul unei etichete necunoscute și nu salvează nimic înainte de confirmarea scanării."},
+  el:{game_update_title:"Παρακολούθηση παιχνιδιού · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · αποστολές",scan_secret_mobile_squad_help:"Το WarBoost διατηρεί ακριβώς το ορατό κείμενο. Δεν μαντεύει τη σημασία άγνωστης ετικέτας και δεν αποθηκεύει τίποτα πριν επιβεβαιώσεις τη σάρωση."},
+  cs:{game_update_title:"Sledování hry · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · úkoly",scan_secret_mobile_squad_help:"WarBoost zachová přesný viditelný text. Význam neznámého označení neodhaduje a nic neuloží, dokud sken nepotvrdíte."},
+  sv:{game_update_title:"Spelbevakning · 1.0.364",scan_secret_mobile_squad:"Secret Mobile Squad · uppgifter",scan_secret_mobile_squad_help:"WarBoost sparar den exakta synliga texten. Okända etiketter tolkas inte genom gissningar och inget sparas innan du bekräftar skanningen."}
+};
+for(const [code,labels] of Object.entries(SECRET_MOBILE_SQUAD_SCAN_LABELS))Object.assign(packs[code],labels);
+Object.assign(EN,SECRET_MOBILE_SQUAD_SCAN_LABELS["en-GB"]);
+const SECRET_MOBILE_SQUAD_SAVED_TITLES={
+  fr:"Libellés visibles déjà enregistrés","en-GB":"Previously saved visible labels","en-US":"Previously saved visible labels",
+  es:"Etiquetas visibles guardadas",it:"Etichette visibili salvate",de:"Bereits gespeicherte sichtbare Bezeichnungen",
+  pt:"Rótulos visíveis guardados",nl:"Eerder opgeslagen zichtbare labels",zh:"已保存的可见任务标签",
+  ja:"保存済みの表示ラベル",ru:"Сохранённые видимые названия",ar:"التسميات الظاهرة المحفوظة",
+  pl:"Zapisane widoczne etykiety",tr:"Önceden kaydedilen görünür etiketler",ko:"저장된 표시 문구",
+  vi:"Nhãn hiển thị đã lưu",th:"ป้ายงานที่บันทึกแล้ว",id:"Label tugas yang tersimpan",
+  uk:"Збережені видимі назви",ro:"Etichete vizibile salvate",el:"Αποθηκευμένες ορατές ετικέτες",
+  cs:"Uložené viditelné popisky",sv:"Tidigare sparade synliga etiketter"
+};
+for(const [code,label] of Object.entries(SECRET_MOBILE_SQUAD_SAVED_TITLES))packs[code].scan_secret_mobile_squad_saved_title=label;
+EN.scan_secret_mobile_squad_saved_title=SECRET_MOBILE_SQUAD_SAVED_TITLES["en-GB"];
+const GAME_UPDATE_NOTES={
+  fr:"Version 1.0.364 listée par un agrégateur tiers. Date de sortie et changements en jeu non vérifiés indépendamment.",
+  "en-GB":"Version 1.0.364 listed by a third-party store metadata aggregator. Release date and in-game changes are unverified.",
+  "en-US":"Version 1.0.364 listed by a third-party store metadata aggregator. Release date and in-game changes are unverified.",
+  es:"Versión 1.0.364 listada por un agregador externo. La fecha de lanzamiento y los cambios del juego no se han verificado de forma independiente.",
+  it:"Versione 1.0.364 indicata da un aggregatore di metadati di terze parti. Data di rilascio e modifiche al gioco non verificate in modo indipendente.",
+  de:"Version 1.0.364 laut Metadaten-Aggregator eines Drittanbieters. Veröffentlichungsdatum und Änderungen im Spiel sind nicht unabhängig bestätigt.",
+  pt:"Versão 1.0.364 listada por um agregador externo. A data de lançamento e as alterações no jogo não foram verificadas de forma independente.",
+  nl:"Versie 1.0.364 vermeld door een externe metadata-aggregator. Releasedatum en wijzigingen in het spel zijn niet onafhankelijk bevestigd.",
+  zh:"第三方元数据聚合器列出了 1.0.364 版本。发布日期和游戏内改动尚未独立核实。",
+  ja:"第三者のメタデータ集約サイトに1.0.364が掲載されています。配信日とゲーム内変更は独立して確認されていません。",
+  ru:"Версия 1.0.364 указана в стороннем агрегаторе метаданных. Дата выпуска и изменения в игре независимо не подтверждены.",
+  ar:"يذكر مجمّع بيانات تابع لجهة خارجية الإصدار 1.0.364. لم يتم التحقق بشكل مستقل من تاريخ الإصدار أو تغييرات اللعبة.",
+  pl:"Wersję 1.0.364 wymienia zewnętrzny agregator metadanych. Data wydania i zmiany w grze nie zostały niezależnie potwierdzone.",
+  tr:"Üçüncü taraf bir meta veri toplayıcısında 1.0.364 sürümü listeleniyor. Yayın tarihi ve oyun içi değişiklikler bağımsız olarak doğrulanmadı.",
+  ko:"타사 메타데이터 집계 사이트에 버전 1.0.364가 등록되어 있습니다. 출시일과 게임 내 변경 사항은 독립적으로 확인되지 않았습니다.",
+  vi:"Phiên bản 1.0.364 được liệt kê bởi một trang tổng hợp siêu dữ liệu bên thứ ba. Ngày phát hành và thay đổi trong game chưa được xác minh độc lập.",
+  th:"เว็บไซต์รวบรวมข้อมูลบุคคลที่สามระบุเวอร์ชัน 1.0.364 แต่ยังไม่ได้ตรวจสอบวันที่เผยแพร่หรือการเปลี่ยนแปลงในเกมอย่างเป็นอิสระ",
+  id:"Versi 1.0.364 tercantum di agregator metadata pihak ketiga. Tanggal rilis dan perubahan dalam game belum diverifikasi secara independen.",
+  uk:"Сторонній агрегатор метаданих указує версію 1.0.364. Дату випуску та зміни в грі незалежно не підтверджено.",
+  ro:"Versiunea 1.0.364 este listată de un agregator terț de metadate. Data lansării și schimbările din joc nu au fost verificate independent.",
+  el:"Η έκδοση 1.0.364 αναφέρεται από τρίτο συγκεντρωτή μεταδεδομένων. Η ημερομηνία κυκλοφορίας και οι αλλαγές στο παιχνίδι δεν έχουν επαληθευτεί ανεξάρτητα.",
+  cs:"Verzi 1.0.364 je uvedena v agregátoru metadat třetí strany. Datum vydání ani změny ve hře nebyly nezávisle ověřeny.",
+  sv:"Version 1.0.364 listas av en tredjepartsaggregator för metadata. Releasedatum och ändringar i spelet har inte verifierats oberoende."
+};
+for(const [code,note] of Object.entries(GAME_UPDATE_NOTES))packs[code].game_update_note=note;
+EN.game_update_note=GAME_UPDATE_NOTES["en-GB"];

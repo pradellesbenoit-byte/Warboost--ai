@@ -10,7 +10,7 @@ import {seasonLifecycle,seasonIsActive,activeSeasonProgress} from '../lib/season
 import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '../lib/adaptive-context.js';
 import {confirmedCompositionForSquad,selectPrimarySquad} from '../lib/squad-identity.js';
 import {scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine} from '../lib/vs-live.js';
-import {LAST_WAR_RULES,LAST_WAR_RULES_VERSION,crystalEventEligibility,crystalBossGuidance,shopRuleGuidance,lastWarRuleContext,ruleProvenance} from '../lib/last-war-rules.js';
+import {LAST_WAR_RULES,LAST_WAR_RULES_VERSION,crystalEventEligibility,crystalBossGuidance,ammoBonanzaGuidance,shopRuleGuidance,lastWarRuleContext,ruleProvenance} from '../lib/last-war-rules.js';
 const ENGINE_VERSION="2.5.28";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
@@ -611,8 +611,9 @@ function shopTargetReason(category,target,locale){
 }
 
 function normItem(v){return cleanName(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
-const KNOWN_SHOP_CATEGORIES=new Set(["vip_time","blueprint","exclusive","hero","drone","stamina","armament","skill","speed_heal","speed_research","speed_build","speed_train","speed","shield","teleport","campaign_chest","resource","cosmetic","chest","monthly_pass","super_monthly_pass","training","overlord","badge_value","gear_material","armament_material","decoration_component","superalloy","season_skill","profession","hero_recruit","survivor","trade","transfer","combat_data","event_pack","diamond_topup","gold_brick","crystal_pass","crystal_shop_pass","crystal_boss","silver_brick","battle_pass","alliance_star_party"]);
-function itemCategory(name,explicitCategory="",store=""){const explicit=normItem(explicitCategory).replace(/\s+/g,"_");if(KNOWN_SHOP_CATEGORIES.has(explicit))return explicit;const ref=referenceCategoryForItem(name,store);if(ref)return ref;const s=normItem(`${name||""} ${explicitCategory||""}`);
+const KNOWN_SHOP_CATEGORIES=new Set(["vip_time","blueprint","exclusive","hero","drone","stamina","armament","skill","speed_heal","speed_research","speed_build","speed_train","speed","shield","teleport","campaign_chest","resource","cosmetic","chest","monthly_pass","super_monthly_pass","training","overlord","badge_value","gear_material","armament_material","decoration_component","superalloy","season_skill","profession","hero_recruit","survivor","trade","transfer","combat_data","event_pack","diamond_topup","gold_brick","crystal_pass","crystal_shop_pass","crystal_boss","silver_brick","battle_pass","alliance_star_party","pass_voucher","event_ammo","legacy_mobilization_coupon"]);
+function itemCategory(name,explicitCategory="",store=""){const s=normItem(`${name||""} ${explicitCategory||""}`);if(/mobilization.{0,20}coupon|coupon.{0,20}mobilization|coupon de mobilisation|coupon mobilisation/.test(s))return "legacy_mobilization_coupon";if(/(?:ammo|ammunition|munition|bullet|balle).{0,36}(?:pack|bonanza|loot)|(?:pack|bonanza|loot).{0,36}(?:ammo|ammunition|munition|bullet|balle)|bullseye loot/.test(s))return "event_ammo";const explicit=normItem(explicitCategory).replace(/\s+/g,"_");if(KNOWN_SHOP_CATEGORIES.has(explicit))return explicit;const ref=referenceCategoryForItem(name,store);if(ref)return ref;
+  if(/(?:battle|combat|monthly|hebdomadaire|weekly).{0,28}(?:pass|voucher|coupon|ticket)|(?:voucher|coupon|ticket).{0,28}(?:battle|combat|monthly|weekly|pass)|通行证.*券|月卡.*券/.test(s))return "pass_voucher";
   if(/super.*monthly|monthly.*super|super.*mensuel|super.*monat|超级月卡|超級月卡|スーパー.*マンスリー/.test(s))return "super_monthly_pass";
   if(/crystal.*(shop|pass|store)|shop.*crystal|pass.*crystal|cristal.*(boutique|pass)|晶石.*商店|晶石.*通行证|水晶.*商店/.test(s))return "crystal_shop_pass";
   if(/crystal.*boss|boss.*crystal|boss.*cristal|晶石.*boss|水晶.*boss/.test(s))return "crystal_boss";
@@ -641,8 +642,8 @@ function itemCategory(name,explicitCategory="",store=""){const explicit=normItem
   if(/chest|coffre|宝箱|ボックス/.test(s))return "chest";
   return "other";
 }
-function storeKind(v){const canonical=canonicalShopStore(v),s=normItem(canonical||v);if(/honor|honneur|ehre|荣誉|名誉|الشرف/.test(s))return "honor";if(/campaign|campagne|战役|キャンペーン|الحملة/.test(s))return "campaign";if(/alliance|allianz|联盟|同盟|التحالف/.test(s))return "alliance";if(/vip/.test(s))return "vip";if(/diamond|diamant|diamante|钻石|ダイヤ|ألماس/.test(s))return "diamond";if(/season|saison|temporada|赛季|シーズン|الموسم/.test(s))return "season";if(/cosmetic|cosmetique|kosmetik|装饰|コスメ/.test(s))return "cosmetics";if(/coupon|coupons/.test(s))return "coupons";if(/centre commercial|bons plans|mobilisation|pass|hebdomadaire|mensuel|promotion|brique/.test(s))return "paid";return "other";}
-function currencyKey(v){const s=normItem(v).replace(/[’']/g," ");if(!s)return "";if(/diamond|diamant|钻石|ダイヤ|الماس/.test(s))return "diamonds";if(/honor|honneur|medaille.*honneur|荣誉|名誉/.test(s))return "honor_medals";if(/campaign|campagne/.test(s))return "campaign_points";if(/alliance|联盟|同盟/.test(s))return "alliance_coins";if(/season|saison/.test(s))return "season_tokens";if(/coupon/.test(s))return "coupons";if(/cosmetic|cosmetique/.test(s))return "cosmetic_tokens";if(/eur|euro|€/.test(s))return "EUR";if(/usd|\$/.test(s))return "USD";return cleanName(v);}
+function storeKind(v){const canonical=canonicalShopStore(v),s=normItem(canonical||v);if(/honor|honneur|ehre|荣誉|名誉|الشرف/.test(s))return "honor";if(/campaign|campagne|战役|キャンペーン|الحملة/.test(s))return "campaign";if(/alliance|allianz|联盟|同盟|التحالف/.test(s))return "alliance";if(/vip/.test(s))return "vip";if(/diamond|diamant|diamante|钻石|ダイヤ|ألماس/.test(s))return "diamond";if(/crystal|cristal|晶石|水晶/.test(s))return "crystal";if(/season|saison|temporada|赛季|シーズン|الموسم/.test(s))return "season";if(/cosmetic|cosmetique|kosmetik|装饰|コスメ/.test(s))return "cosmetics";if(/coupon|coupons/.test(s))return "coupons";if(/centre commercial|bons plans|mobilisation|pass|hebdomadaire|mensuel|promotion|brique/.test(s))return "paid";return "other";}
+function currencyKey(v){const s=normItem(v).replace(/[’']/g," ");if(!s)return "";if(/diamond|diamant|钻石|ダイヤ|الماس/.test(s))return "diamonds";if(/silver.*brick|brick.*silver|brique.*argent|银砖|銀レンガ/.test(s))return "silver_bricks";if(/amethyst|amethyste|紫水晶/.test(s))return "amethyst_crystals";if(/crystal ore|minerai.*cristal|水晶矿|晶石矿/.test(s))return "crystal_ore";if(/honor|honneur|medaille.*honneur|荣誉|名誉/.test(s))return "honor_medals";if(/campaign|campagne/.test(s))return "campaign_points";if(/alliance|联盟|同盟/.test(s))return "alliance_coins";if(/season|saison/.test(s))return "season_tokens";if(/coupon/.test(s))return "coupons";if(/cosmetic|cosmetique/.test(s))return "cosmetic_tokens";if(/eur|euro|€/.test(s))return "EUR";if(/usd|\$/.test(s))return "USD";return cleanName(v);}
 function expectedCurrencyForStore(store){return ({honor:"honor_medals",campaign:"campaign_points",alliance:"alliance_coins",vip:"diamonds",diamond:"diamonds",season:"season_tokens",cosmetics:"cosmetic_tokens",coupons:"coupons"})[storeKind(store)]||null;}
 function normalizedObservedItemKey(o){const ref=findShopReference(o?.item_name,o?._store_type||o?.store_type||o?.store);return normItem(ref?.item||o?.item_name).replace(/[^a-z0-9À-￿]+/g," ").trim();}
 function normalizeObservedCurrency(o){const expected=expectedCurrencyForStore(o?._store_type||o?.store_type||o?.store),read=currencyKey(o?._currency||o?.currency);if(expected)return {currency:expected,normalized:read!==expected,expected,read};return {currency:read||cleanName(o?._currency||o?.currency),normalized:false,expected:null,read};}
@@ -824,6 +825,9 @@ function baseOfferScore(cat,needs){
   if(cat==="crystal_shop_pass")return 60;
   if(cat==="crystal_boss")return 58;
   if(cat==="battle_pass")return 56;
+  if(cat==="pass_voucher")return 42;
+  if(cat==="event_ammo")return 42;
+  if(cat==="legacy_mobilization_coupon")return 0;
   if(cat==="alliance_star_party")return 54;
   if(cat==="silver_brick")return 28;
   if(cat==="blueprint")return 84+needs.gearUrgency*14;
@@ -879,15 +883,19 @@ function scoreVisibleOffer(o,needs,state){const rawStore=o?.store_type||o?.store
     if(cat==="crystal_boss")factors.push(crystalBossGuidance(state?._locale));
   }
   const currency=cleanName(o?.currency)||cleanName(shop?.currency),price=num(o?.price),balance=num(shop?.currency_balance),reserve=VIP30_REFERENCE_POLICY.diamonds;
+  const offerCurrency=currencyKey(currency),walletCurrency=currencyKey(shop?.currency),walletMatches=Boolean(walletCurrency&&offerCurrency&&walletCurrency===offerCurrency);
   const diamond=isDiamondCurrency(currency)||((store==="vip"||store==="diamond")&&!isCashCurrency(currency));
-  if(diamond&&price!==null){
-    if(balance!==null){
-      if(balance<price){score=0;factors.push(a.notAffordable);}
-      else if(cat!=="vip_time"&&balance-price<reserve){score-=26;factors.push(a.lowBudget);}
-      else {const discretionary=Math.max(0,balance-reserve);if(cat!=="vip_time"&&discretionary>0&&price>discretionary*.25)score-=6;factors.push(a.budgetOk);}
-    }else factors.push(a.unknownBudget);
-  }
+  if(price!==null&&!isCashCurrency(currency)&&balance!==null&&walletMatches){
+    if(balance<price){score=0;factors.push(a.notAffordable);}
+    else if(diamond&&cat!=="vip_time"&&balance-price<reserve){score-=26;factors.push(a.lowBudget);}
+    else if(diamond){const discretionary=Math.max(0,balance-reserve);if(cat!=="vip_time"&&discretionary>0&&price>discretionary*.25)score-=6;factors.push(a.budgetOk);}
+  }else if(diamond&&price!==null)factors.push(a.unknownBudget);
   if(isCashCurrency(currency)){const targeted=["exclusive","blueprint","gear_material","drone","armament","armament_material","monthly_pass","super_monthly_pass","crystal_pass","crystal_shop_pass","battle_pass"].includes(cat);score=Math.min(score,targeted?88:78);factors.push(a.realMoney);}
+  if(cat==="legacy_mobilization_coupon"){score=0;factors.push(state?._locale&&String(state._locale).toLowerCase().startsWith("fr")?"Ancien coupon de mobilisation : disponibilité actuelle non confirmée, ne pas le recommander.":"Legacy Mobilization Coupon: current availability is not confirmed; do not recommend it.");}
+  if(cat==="event_ammo"){
+    factors.push(ammoBonanzaGuidance(state?._locale));
+    if(isCashCurrency(currency)){score=0;factors.push(state?._locale&&String(state._locale).toLowerCase().startsWith("fr")?"Aucun achat d’ammunition en argent réel n’est recommandé.":"Real-money ammunition purchases are not recommended.");}
+  }
   if(store==="campaign"&&cat==="exclusive"){
     if(!campaignExclusiveTargets.length){factors.push(state?._locale&&String(state._locale).toLowerCase().startsWith("fr")?"Arme exclusive déjà débloquée non confirmée : ne pas utiliser ces fragments pour un premier déblocage ; vérifie l’offre et l’arme en jeu.":"An already-unlocked Exclusive Weapon upgrade is not confirmed: do not use these fragments for an initial unlock; verify the offer and weapon in game.");}
     else factors.push(state?._locale&&String(state._locale).toLowerCase().startsWith("fr")?"Utiliser uniquement pour améliorer une arme exclusive déjà débloquée ; jamais pour un premier déblocage.":"Use only to upgrade an already-unlocked Exclusive Weapon; never for an initial unlock.");
@@ -900,6 +908,7 @@ function scoreVisibleOffer(o,needs,state){const rawStore=o?.store_type||o?.store
   const situationalGuard=situationalUtilityGuard(cat,state,state?._locale,o?.item_name||"");
   if(situationalGuard.situational){score=Math.min(score,situationalGuard.cap);factors.push(situationalGuard.reason);}
   if(store==="campaign"&&cat==="exclusive"&&!campaignExclusiveTargets.length)score=0;
+  if(cat==="legacy_mobilization_coupon"||cat==="event_ammo"&&isCashCurrency(currency))score=0;
   score=Math.max(0,Math.min(100,Math.round(score)));
   return {score,cat,factors,budget:{currency,price,balance,reserve,diamond},opaque_container:opaqueGuard.opaque,opaque_score_cap:opaqueGuard.cap,situational_resource:situationalGuard.situational,situational_context_confirmed:situationalGuard.contextual,situational_score_cap:situationalGuard.cap};
 }
@@ -1341,4 +1350,4 @@ export default async function handler(req,res){
   return res.status(400).json({error:"unknown_scope"});
 }
 
-export {buildPlayerAnalysis,buildShopAdvice,buildAllianceAdvice,buildVsAdvice,buildSeasonAdvice,buildSevenDayPlan,buildCrossDomain};
+export {buildPlayerAnalysis,buildShopAdvice,buildAllianceAdvice,buildVsAdvice,buildSeasonAdvice,buildSevenDayPlan,buildCrossDomain,itemCategory,currencyKey,scoreVisibleOffer};
