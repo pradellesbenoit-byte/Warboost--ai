@@ -4,18 +4,20 @@ import {LANGUAGES} from '../i18n.js';
 import {canRevealOwnedPrivateState} from '../lib/session-bootstrap.js';
 
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const idle=fs.readFileSync(new URL('../lib/idle-lifecycle.js',import.meta.url),'utf8');
 const index=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const sw=fs.readFileSync(new URL('../sw.js',import.meta.url),'utf8');
 const health=fs.readFileSync(new URL('../api/health.js',import.meta.url),'utf8');
 const manifest=fs.readFileSync(new URL('../manifest.webmanifest',import.meta.url),'utf8');
 const standard=fs.readFileSync(new URL('../WARBOOST_V2_5_28_HF8_6_25_PLAYER_LAUNCH_INTEGRITY.md',import.meta.url),'utf8');
 
-assert.match(app,/const RELEASE_LABEL="HF8\.6\.(?:25|2[6-9]|[3-9]\d*)"/);
-assert.match(index,/WarBoost V2\.5\.28 HF8\.6\.(?:25|2[6-9]|[3-9]\d*)/);
-assert.match(index,/app\.js\?v=hf862(?:5|[6-9]|\d{2,})/);
-assert.match(sw,/hf8-6-(?:25-player-launch-integrity|2[6-9]-|[3-9]\d*-)/);
-assert.match(health,/release:"HF8\.6\.(?:25|2[6-9]|[3-9]\d*)"/);
-assert.match(manifest,/HF8\.6\.25/);
+assert.match(app,/const RELEASE_LABEL="HF8\.6\.34"/);
+assert.match(index,/WarBoost V2\.5\.32 HF8\.6\.34/);
+assert.match(index,/app\.js\?v=squad-confirmed-restore-r1/);
+assert.match(index,/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/);
+assert.match(sw,/shop-observations-v2-5-32-hf8-6-34-r2/);
+assert.match(health,/release:"HF8\.6\.34"/);
+assert.match(manifest,/HF8\.6\.34/);
 
 // Exact security boundary: only current authenticated owner + invite + consent can render private data.
 const user='player-a';
@@ -28,8 +30,10 @@ assert.equal(canRevealOwnedPrivateState({userId:user,stateOwnerId:user,betaAllow
 assert.match(app,/async function reconcileAuthenticatedRuntime\(reason="runtime"/);
 assert.match(app,/scheduleCloudPullRetry[\s\S]*restoreAuthenticatedProfile\(readAccountState/);
 assert.match(app,/window\.addEventListener\("online",[\s\S]*reconcileAuthenticatedRuntime\("online",\{force:true\}\)/);
-assert.match(app,/visibilitychange[\s\S]*reconcileAuthenticatedRuntime\("visible"\)/);
-assert.match(app,/pageshow[\s\S]*reconcileAuthenticatedRuntime/);
+assert.match(idle,/add\(documentRef,"visibilitychange",handleVisibilityChange\)/);
+assert.match(idle,/returnFrom\("visibilitychange"\)/);
+assert.match(idle,/add\(windowRef,"pageshow",handleReturnEvent\)/);
+assert.match(app,/onRecentReturn:\(\{reason\}\)=>\{startForegroundRefreshes\(\);queueCriticalUiRepaint\(\);void reconcileAuthenticatedRuntime\(reason\)\}/);
 assert.match(app,/reconcileAuthenticatedRuntime\("manual-sync",\{force:true\}\)/);
 
 // Account-safe persistence and cloud-write ownership.

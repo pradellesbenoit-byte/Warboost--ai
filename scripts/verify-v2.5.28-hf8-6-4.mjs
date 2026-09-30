@@ -32,6 +32,6 @@ assert.match(health,/alliance_rank_manager_immediate_render:true/);
 assert.match(health,/alliance_rank_manager_canonical_batch_persistence:true/);
 assert.match(health,/alliance_rank_manager_cloud_refresh_no_revert:true/);
 assert.match(sw,/hf8-6-4-rank-persistence/);
-assert.match(pkg.description,/HF8\.6\.(?:4|17)/);
+assert.match(pkg.description,/HF8\.6\.34/);
 const migrations=fs.readdirSync(path.join(root,'supabase')).filter(x=>/hf8[_-]?6[_-]?4/i.test(x));assert.equal(migrations.length,0,'HF8.6.4 must not add a Supabase migration');
 console.log('WarBoost V2.5.28 HF8.6.4 Rank Persistence Reliability verification: PASS');

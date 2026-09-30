@@ -10,14 +10,14 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const app=read('app.js'),html=read('index.html'),health=read('api/health.js'),stateApi=read('api/state.js'),auth=read('lib/auth.js'),beta=read('lib/beta-access.js'),supabase=read('lib/supabase.js'),support=read('api/support.js'),scan=read('api/scan.js'),commercial=read('lib/commercial-pro.js'),i18n=read('i18n.js'),sw=read('sw.js'),manifest=JSON.parse(read('manifest.webmanifest')),pkg=JSON.parse(read('package.json'));
 
 // Release identity and cache invalidation must be unambiguous on player devices.
-assert.match(app,/const RELEASE_LABEL="HF8\.6\.19"/);
-assert.match(html,/WarBoost V2\.5\.28 HF8\.6\.19/);
-assert.match(html,/\/app\.js\?v=hf8619/);
-assert.match(html,/\/publisher-ui\.js\?v=hf8619/);
+assert.match(app,/const RELEASE_LABEL="HF8\.6\.34"/);
+assert.match(html,/WarBoost V2\.5\.32 HF8\.6\.34/);
+assert.match(html,/\/app\.js\?v=squad-confirmed-restore-r1/);
+assert.match(html,/\/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/);
 assert.match(sw,/warboost-v2-5-28-hf8-6-19-public-beta-full-reliability/);
-assert.match(manifest.name,/HF8\.6\.19/);
-assert.match(pkg.description,/HF8\.6\.19/);
-assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.19/);
+assert.match(manifest.name,/HF8\.6\.34/);
+assert.match(pkg.description,/HF8\.6\.34/);
+assert.match(i18n,/target\.tagline=`V2\.5\.32 HF8\.6\.34/);
 
 // Server outbound network calls are bounded. Raw fetch is allowed only inside the timeout helper.
 for(const f of ['lib/auth.js','lib/beta-access.js','lib/supabase.js','lib/commercial-pro.js','api/support.js','api/scan.js']){
@@ -30,7 +30,9 @@ assert.match(beta,/1800/,'pending invite acceptance must never block first login
 assert.match(supabase,/fetchWithTimeout/);
 assert.match(commercial,/10000/);
 assert.match(support,/15000/);
-assert.match(scan,/50000/);
+const scanTimeout=Number(scan.match(/const REQUEST_TIMEOUT_MS=(\d+)/)?.[1]||0);
+assert.ok(scanTimeout>0&&scanTimeout<50000,`scan provider timeout ${scanTimeout}ms must remain bounded below the serverless request limit`);
+assert.match(scan,/fetchWithTimeout\("https:\/\/api\.openai\.com\/v1\/responses"/);
 
 // Browser player-facing traffic is bounded except the intentionally best-effort pagehide keepalive.
 const runtimeRawFetch=app.split(/\n/).filter(line=>line.includes('fetch(')&&!line.trim().startsWith('//')&&!line.includes('return await fetch(input')&&!line.includes('keepalive?await fetch("/api/state"'));
@@ -51,7 +53,7 @@ assert.match(app,/retryCloudProfileRestore/);
 const clockIdx=health.indexOf('if(clockOnly)return');
 const probeIdx=health.indexOf('const serviceDb=configured()');
 assert.ok(clockIdx>0&&probeIdx>clockIdx,'clock-only health path must precede database probes');
-assert.match(health,/release:"HF8\.6\.19"/);
+assert.match(health,/release:"HF8\.6\.34"/);
 for(const flag of ['public_beta_server_fetch_timeouts','public_beta_bootstrap_stage_tracing','public_beta_fast_clock_endpoint','public_beta_profile_save_guard','public_beta_pending_join_persistence'])assert.match(health,new RegExp(`${flag}:true`));
 
 // New-player onboarding: identity validation, durable local save, explicit cloud status, pending alliance join retention.
@@ -150,7 +152,7 @@ for(const required of ['state.js','sync.js','scan.js','advice.js','alliance-role
   const healthHandler=(await import(`../api/health.js?hf8619clock=${Date.now()}`)).default;
   const res={statusCode:200,body:null,setHeader(){},status(c){this.statusCode=c;return this},json(v){this.body=v;return this}};
   await healthHandler({url:'/api/health?clock=1',query:{clock:'1'}},res);
-  assert.equal(res.statusCode,200);assert.equal(res.body.clock_only,true);assert.match(String(res.body.release),/^HF8\.6\.(19|20|21|22|23|24)$/);
+  assert.equal(res.statusCode,200);assert.equal(res.body.clock_only,true);assert.match(String(res.body.release),/^HF8\.6\.34$/);
   globalThis.fetch=originalFetch;
 }
 

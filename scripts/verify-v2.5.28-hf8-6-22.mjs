@@ -7,15 +7,15 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const app=read('app.js'),html=read('index.html'),health=read('api/health.js'),sw=read('sw.js'),i18n=read('i18n.js'),manifest=JSON.parse(read('manifest.webmanifest')),pkg=JSON.parse(read('package.json'));
 
-assert.match(app,/const RELEASE_LABEL="HF8\.6\.(22|23)"/);
-assert.match(html,/WarBoost V2\.5\.28 HF8\.6\.(22|23)/);
-assert.match(html,/\/app\.js\?v=hf862(2|3)/);
-assert.match(html,/\/publisher-ui\.js\?v=hf862(2|3)/);
+assert.match(app,/const RELEASE_LABEL="HF8\.6\.34"/);
+assert.match(html,/WarBoost V2\.5\.32 HF8\.6\.34/);
+assert.match(html,/\/app\.js\?v=squad-confirmed-restore-r1/);
+assert.match(html,/\/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/);
 assert.match(sw,/warboost-v2-5-28-hf8-6-(22-full-module-render-isolation|23-session-state-machine-reliability)/);
-assert.match(manifest.name,/HF8\.6\.(22|23)/);
-assert.match(pkg.description,/HF8\.6\.(22|23)/);
-assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.(22|23)/);
-assert.match(health,/release:"HF8\.6\.(22|23)"/);
+assert.match(manifest.name,/HF8\.6\.34/);
+assert.match(pkg.description,/HF8\.6\.34/);
+assert.match(i18n,/target\.tagline=`V2\.5\.32 HF8\.6\.34/);
+assert.match(health,/release:"HF8\.6\.34"/);
 assert.match(health,/ui_revision_full_module_render_isolation:"hf8\.6\.22-full-module-render-isolation"/);
 assert.match(health,/all_visible_surfaces_isolated:true/);
 assert.match(health,/drawer_refresh_before_open:true/);
@@ -34,7 +34,7 @@ for(const marker of ['MASK_HOME','MASK_PLAYER','MASK_ALLIANCE'])assert.match(bod
 
 // The regression seen on device was: home ALL4/R4 updated while Alliance drawer stayed — / 0 / —.
 // The drawer must force a fresh, fully isolated render immediately before opening.
-assert.match(app,/\["account","player","alliance","vs","season"\]\.includes[\s\S]*?DRAWER_REFRESH_/);
+assert.match(app,/\["account","player","alliance","vs","season","qg35Coach"\]\.includes[\s\S]*?DRAWER_REFRESH_/);
 assert.match(app,/function renderAllianceCoreSummary\(p,a\)[\s\S]*?#aTag[\s\S]*?#aCount[\s\S]*?#aRole/);
 assert.match(body,/safeRenderStep\("ALLIANCE_SUMMARY",\(\)=>renderAllianceCoreSummary\(p,a\)\)/);
 

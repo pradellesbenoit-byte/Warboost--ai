@@ -12,35 +12,48 @@ import {LANGUAGES,translator} from '../i18n.js';
 
 const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const app=read('app.js'),html=read('index.html'),health=read('api/health.js'),sw=read('sw.js');
+const app=read('app.js'),html=read('index.html'),health=read('api/health.js'),sw=read('sw.js'),lifecycle=read('lib/alliance-roster-lifecycle.js');
 const pkg=JSON.parse(read('package.json')),manifest=JSON.parse(read('manifest.webmanifest'));
 const now='2026-09-11T21:30:00.000Z';
 const later='2027-03-11T21:30:00.000Z';
 const ctx={server_id:'884',alliance_tag:'ALL4'};
 const mk=(name,role='R3',power_m=200,hq_level=35,extra={})=>({name,role,power_m,hq_level,updated_at:now,...ctx,...extra});
 
-// Direct R5/R4 removal is an alliance lifecycle action, not a destructive delete.
+// Direct R5/R4 removal archives history separately from the active roster.
 const participation={event_type:'desert_storm',event_date:'2026-09-10',participation_status:'participated',source:'player_self_report',updated_at:now};
 const leaving=mk('Former One','R1',187,35,{activity_events:[participation],membership_history:[{type:'joined',at:'2026-01-01T00:00:00.000Z',source:'roster_import'}]});
 const key=rosterLifecycleKey(leaving);
 let life=removeActiveRosterMember({members:[leaving,mk('Stays','R2')],review:[],former:[]},key,{now});
-assert.equal(life.changed,true);assert.equal(life.members.length,1);assert.equal(life.former.length,1);
-assert.equal(life.former[0].membership_status,'left_confirmed');assert.equal(life.former[0].activity_events[0].participation_status,'participated');
-assert.ok(life.former[0].membership_history.some(x=>x.type==='left_confirmed'&&x.source==='r5_r4_direct_removal'));
+assert.equal(life.changed,true);assert.equal(life.members.length,1);assert.equal(life.former.length,0);
+assert.equal(life.removal_tombstones.length,1);
+assert.equal(life.removal_tombstones[0].history.activity_events[0].participation_status,'participated');
+assert.ok(life.removal_tombstones[0].history.membership_history.some(x=>x.type==='joined'&&x.at==='2026-01-01T00:00:00.000Z'));
+assert.ok(life.removal_tombstones[0].history.membership_history.some(x=>x.type==='left_confirmed'&&x.source==='r5_r4_direct_removal'));
 
-// Six months later the same lifecycle identity can be restored without losing history.
-life=reinstateFormerRosterMember(life,key,{now:later});
-assert.equal(life.changed,true);assert.equal(life.former.length,0);assert.equal(life.members.length,2);
-const restored=life.members.find(x=>x.name==='Former One');assert.ok(restored);assert.equal(restored.left_at,null);
-assert.equal(restored.activity_events[0].participation_status,'participated');
-assert.ok(restored.membership_history.some(x=>x.type==='left_confirmed'));
-assert.ok(restored.membership_history.some(x=>x.type==='returned'&&x.source==='r5_r4_direct_reintegration'));
+// The legacy reinstate helper cannot revive the archived row; a fresh complete roster creates a clean membership.
+const legacyReinstate=reinstateFormerRosterMember(life,key,{now:later});
+assert.equal(legacyReinstate.changed,false);assert.equal(legacyReinstate.members.length,1);assert.equal(legacyReinstate.removal_tombstones.length,1);
+const oldFormer=reinstateFormerRosterMember({members:life.members,review:life.review,former:[{...leaving,key,removed_at:now,membership_status:'left_confirmed'}]},key,{now:later});
+assert.equal(oldFormer.changed,false);assert.equal(oldFormer.former.length,0);assert.equal(oldFormer.members.length,1);
+assert.equal(oldFormer.removal_tombstones.length,1);assert.ok(oldFormer.removal_tombstones[0].history.activity_events.some(x=>x.participation_status==='participated'));
+assert.doesNotMatch(lifecycle,/allowRemovedRejoin/,'removed members cannot bypass the explicit membership-proof requirement');
+life=applyRosterImportLifecycle({members:life.members,review:life.review,removal_tombstones:life.removal_tombstones},[...life.members,mk('Former One','R2',240,35)],{complete:true,now:later});
+assert.equal(life.former.length,0);assert.equal(life.members.length,2);
+const restored=life.members.find(x=>x.name==='Former One');assert.ok(restored);assert.equal(restored.joined_at,later);assert.equal(restored.left_at,null);
+assert.equal(restored.power_m,240);assert.equal(restored.activity_events.length,0);
+assert.equal(restored.membership_history.some(x=>x.type==='left_confirmed'),false);
+assert.equal(restored.player_id,null);assert.equal(restored.warboost_linked,false);
+assert.ok(life.removal_tombstones[0].history.activity_events.some(x=>x.participation_status==='participated'));
+assert.ok(life.removal_tombstones[0].history.membership_history.some(x=>x.type==='left_confirmed'));
 
-// A future roster import also recognizes a confirmed former member and reactivates it.
+// updated_at alone is not proof of rejoining; a later complete roster is explicit proof.
 let former=removeActiveRosterMember({members:[leaving],review:[],former:[]},key,{now});
-let imported=applyRosterImportLifecycle({members:former.members,review:former.review,former:former.former},[mk('Former One','R2',240,35)],{complete:false,now:later});
-assert.equal(imported.former.length,0);assert.equal(imported.members.length,1);assert.equal(imported.members[0].role,'R2');
-assert.ok(imported.members[0].membership_history.some(x=>x.type==='returned'));
+let imported=applyRosterImportLifecycle({members:former.members,review:former.review,removal_tombstones:former.removal_tombstones},[mk('Former One','R2',240,35)],{complete:false,now:later,allowRemovedRejoin:true});
+assert.equal(imported.former.length,0);assert.equal(imported.members.length,0,'updated_at must not bypass the departure tombstone');
+imported=applyRosterImportLifecycle({members:imported.members,review:imported.review,removal_tombstones:imported.removal_tombstones},[mk('Former One','R2',240,35)],{complete:true,now:later});
+assert.equal(imported.members.length,1);assert.equal(imported.members[0].role,'R2');assert.equal(imported.members[0].joined_at,later);
+assert.equal(imported.members[0].membership_history.some(x=>x.type==='left_confirmed'),false);
+assert.ok(imported.removal_tombstones[0].history.membership_history.some(x=>x.type==='left_confirmed'));
 
 // Current in-game structure values captured on 2026-09-11 are locked as the tactical reference.
 assert.equal(DESERT_STORM_RULESET.max_starters,20);assert.equal(DESERT_STORM_RULESET.max_substitutes,10);
@@ -87,8 +100,9 @@ const dsSource=read('lib/desert-storm-plan.js');
 assert.doesNotMatch(dsSource,/after\s+10\s+minutes|10\s*min|15\s*min|phase.{0,12}\d+\s*min/i);
 assert.match(dsSource,/opening \/ center open \/ late/);
 
-// UI: simple remove/reintegrate plus R5/R4 registered-player picker and copyable short orders.
-for(const token of ['data-roster-active-remove','data-roster-former-reinstate','removeActiveRosterMember','reinstateFormerRosterMember','renderDesertStormPlanner','buildDesertStormPlan'])assert.match(app,new RegExp(token));
+// UI: removal is available, while a departed member returns only through a fresh roster import.
+for(const token of ['data-roster-active-remove','removeActiveRosterMember','renderDesertStormPlanner','buildDesertStormPlan'])assert.match(app,new RegExp(token));
+assert.doesNotMatch(app,/data-roster-former-reinstate|reinstateFormerRosterMember/);
 for(const id of ['desertStormPlanner','desertStormRosterPicker','desertStormGenerateBtn','desertStormCopyBtn'])assert.match(html,new RegExp(`id=["']${id}["']`));
 assert.match(html,/data-i18n=["']ds_registration_guard["']/);assert.match(app,/ds_order_objectives/);assert.match(app,/ds_order_center/);assert.match(app,/ds_order_help/);
 

@@ -11,10 +11,10 @@ assert.match(app,/const RELEASE_LABEL="HF8\.6\.18"/);
 assert.match(html,/HF8\.6\.18/);
 assert.match(html,/\/app\.js\?v=hf8618/);
 assert.match(html,/\/publisher-ui\.js\?v=hf8618/);
-assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.18/);
+assert.match(i18n,/target\.tagline=`V2\.5\.32 HF8\.6\.34/);
 assert.match(sw,/warboost-v2-5-28-hf8-6-18-fast-login-restore/);
-assert.match(manifest,/HF8\.6\.18/);
-assert.match(pkg.description,/HF8\.6\.18/);
+assert.match(manifest,/HF8\.6\.34/);
+assert.match(pkg.description,/HF8\.6\.34/);
 
 // Login-critical recovery must use the lightweight authenticated state route.
 assert.match(app,/pullServerState\(loginSeed,\{fastRestore:true\}\)/);
@@ -22,7 +22,8 @@ assert.match(app,/pullServerState\(seed,\{fastRestore:true\}\)/);
 assert.match(app,/async function pullServerState\(loginSeed=null,\{fastRestore=false\}=\{\}\)/);
 assert.match(app,/fastRestore\?"\/api\/state\?restore=1":"\/api\/state"/);
 assert.match(app,/stateTimeout=fastRestore\?6500:12000/);
-assert.match(app,/scheduleCloudPullRetry[\s\S]{0,700}pullServerState\(seed,\{fastRestore:true\}\)/);
+const retryBlock=app.slice(app.indexOf('function scheduleCloudPullRetry'),app.indexOf('async function fetchSessionCritical'));
+assert.match(retryBlock,/restoreAuthenticatedProfile\(readAccountState\(cloudSession\?\.user\?\.id\),\{reason:"retry"\}\)/);
 
 // Server fast restore returns the player's own profile before history/roster work.
 const getBlock=stateApi.slice(stateApi.indexOf('if(req.method==="GET")'),stateApi.indexOf('if(req.method==="POST")'));

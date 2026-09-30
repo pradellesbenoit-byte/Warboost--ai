@@ -19,5 +19,5 @@ assert.match(sw,/hf8-6-14-session-apply-unblock/);
 assert.match(health,/ui_revision_session_apply_unblock:"hf8\.6\.14-session-apply-unblock"/);
 assert.match(health,/pending_scan_migration_non_blocking_for_auth:true/);
 assert.match(health,/session_cloud_reads_bounded:true/);
-assert.match(pkg.description,/HF8\.6\.(?:14|17)/);
+assert.match(pkg.description,/HF8\.6\.34/);
 console.log('WarBoost V2.5.28 HF8.6.14 Session Apply Unblock verification: PASS');

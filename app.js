@@ -1545,7 +1545,7 @@ function renderEndgameCoachDrawer(){
   const beforeAfter=report.before_after.available
     ?`<p>${qg35Text("qg35_metric_label")}: ${esc(report.before_after.metric)} (${esc(report.before_after.unit)})</p><p>${qg35Text("qg35_before_value")}: ${qg35Value(report.before_after.before)} · ${qg35Text("qg35_after_value")}: ${qg35Value(report.before_after.after)}</p><p>${qg35Text("qg35_source_label")}: ${esc(report.before_after.source)}</p>`
     :`<p>${qg35Text(report.before_after.message_key)}</p>`;
-  const advanced=`<div class="qg35AdvancedSections">
+  const advanced=`<div id="qg35AdvancedSections" class="qg35AdvancedSections">
     ${bottleneck}
     ${planSection}
     ${qg35DetailSection("qg35_section_resources",resources)}
@@ -2959,7 +2959,7 @@ async function syncAll(){
 $("#syncAllBtn").addEventListener("click",syncAll);$("#syncPlayerBtn").addEventListener("click",syncAll);
 $("#openScanBtn").addEventListener("click",()=>openQuickScan("profile"));$("#scanPlayerBtn").addEventListener("click",()=>openQuickScan(playerOnboardingStatus().next_type||"profile"));$("#playerOnboardingScanBtn")?.addEventListener("click",e=>openQuickScan(e.currentTarget?.dataset?.nextScan||playerOnboardingStatus().next_type||"profile"));$("#quickProfileScanBtn")?.addEventListener("click",()=>openQuickScan("profile"));$("#quickSquadScanBtn")?.addEventListener("click",()=>{const strongest=strongestSquadFromState(state);openQuickScan(`squad${strongest.id||1}`)});$("#quickDroneScanBtn")?.addEventListener("click",()=>openQuickScan("drone"));$("#scanShopBtn")?.addEventListener("click",()=>openQuickScan("shop"));$("#scanVsBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#vsStartScanBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#scanSeasonBtn")?.addEventListener("click",()=>openQuickScan("season"));
 
-async function fetchWarBoostScan(payload){const response=await fetch("/api/scan",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(payload)}),json=await response.json().catch(()=>({}));return {response,json}}
+async function fetchWarBoostScan(payload){return fetchJsonBounded("/api/scan",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(payload)},48000)}
 function scanResultHasUsefulData(scanType,payload){
   const type=String(scanType||"profile").toLowerCase(),x=payload&&typeof payload==="object"?payload:{};
   if(type==="technology")return Boolean(x.technology&&(Object.keys(x.technology.branches||{}).length||(x.technology.unmapped||[]).length));

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {appendProgressionSnapshot,progressionComparison,strongestSquadFromState} from '../lib/progression-history.js';
-import {markCanonicalRosterPresence,removeActiveRosterMember,reinstateFormerRosterMember,currentActiveRosterMembers,rosterLifecycleKey} from '../lib/alliance-roster-lifecycle.js';
+import {markCanonicalRosterPresence,removeActiveRosterMember,applyRosterImportLifecycle,mergeRosterLifecycleMetadata,currentActiveRosterMembers,rosterLifecycleKey} from '../lib/alliance-roster-lifecycle.js';
+import {mergeCloudRosterWithIdentity} from '../lib/alliance-roster-merge.js';
 import {desertStormMemberKeys,normalizeDesertStormSelections} from '../lib/desert-storm-selection.js';
 import {buildDesertStormPlan} from '../lib/desert-storm-plan.js';
 import {LANGUAGES,translator} from '../i18n.js';
@@ -34,14 +35,26 @@ metricHist=appendProgressionSnapshot(metricHist,realSquadUpdate,{source:'squad_u
 assert.equal(metricCmp.main_squad.change_m,2);assert.equal(metricCmp.main_squad.elapsed_days,12);assert.equal(metricCmp.main_squad.updated_at,day13);
 
 // A direct departure must survive a later stale canonical/cloud refresh.
-const member={name:'Dengrengola',server_id:'884',alliance_tag:'ALL4',role:'R1',power_m:187,hq_level:35,joined_at:'2026-01-01T00:00:00.000Z',updated_at:'2026-09-10T00:00:00.000Z'};
+const member={name:'Dengrengola',server_id:'884',alliance_tag:'ALL4',role:'R1',power_m:187,hq_level:35,joined_at:'2026-01-01T00:00:00.000Z',updated_at:'2026-09-10T00:00:00.000Z',activity_events:[{event_type:'vs',event_date:'2026-09-10',participation_status:'participated',source:'player_self_report',updated_at:'2026-09-10T00:00:00.000Z'}],membership_history:[{type:'joined',at:'2026-01-01T00:00:00.000Z',source:'roster_import'}]};
 const key=rosterLifecycleKey(member);let life=removeActiveRosterMember({members:[member],review:[],former:[]},key,{now:'2026-09-12T06:33:28.553Z'});
-assert.equal(life.members.length,0);assert.equal(life.former.length,1);
+assert.equal(life.members.length,0);assert.equal(life.former.length,0);assert.equal(life.removal_tombstones.length,1);
+assert.ok(life.removal_tombstones[0].history.activity_events.some(x=>x.participation_status==='participated'));
+assert.ok(life.removal_tombstones[0].history.membership_history.some(x=>x.type==='joined'));
 const staleCloud={...member,updated_at:'2026-09-12T08:50:00.000Z'};
-assert.equal(currentActiveRosterMembers([staleCloud],[],life.former).length,0,'stale cloud roster resurrected removed member');
-life=reinstateFormerRosterMember(life,key,{now:'2027-03-12T08:00:00.000Z'});assert.equal(life.members.length,1);assert.equal(currentActiveRosterMembers(life.members,life.review,life.former).length,1);
-assert.match(sync,/preserveVerifiedR5\(merged\.alliance\?\.members,rosterMerged\)/);
-assert.match(sync,/currentActiveRosterMembers\(preservedR5\.rows,merged\.alliance\?\.roster_review,merged\.alliance\?\.former_members\)/);
+assert.equal(currentActiveRosterMembers([staleCloud],[],[],life.removal_tombstones).length,0,'stale cloud roster resurrected removed member');
+const rejoinAt='2027-03-12T08:00:00.000Z';
+life=applyRosterImportLifecycle({members:[],review:[],removal_tombstones:life.removal_tombstones},[{...member,role:'R2',power_m:205}],{complete:true,now:rejoinAt});
+assert.equal(life.members.length,1);assert.equal(life.members[0].joined_at,rejoinAt);
+assert.equal(life.members[0].activity_events.length,0,'old activity leaked into the new membership');
+assert.equal(life.members[0].membership_history.some(x=>x.type==='left_confirmed'),false);
+assert.ok(life.removal_tombstones[0].history.activity_events.some(x=>x.participation_status==='participated'),'rejoin discarded archived activity');
+assert.equal(currentActiveRosterMembers([staleCloud],[],[],life.removal_tombstones).length,0,'a rejoined_at marker alone must not allow an old cloud row');
+assert.equal(mergeRosterLifecycleMetadata([], [staleCloud],{removal_tombstones:life.removal_tombstones}).length,0,'lifecycle merge accepted an old cloud row after rejoin');
+assert.equal(mergeCloudRosterWithIdentity([], [staleCloud],{serverId:'884',allianceTag:'ALL4',removal_tombstones:life.removal_tombstones}).roster.length,0,'cloud merge accepted a stale row after rejoin');
+assert.equal(mergeCloudRosterWithIdentity([], [{...staleCloud,server_id:'884',alliance_tag:'OTHER'}],{serverId:'884',allianceTag:'ALL4'}).roster.length,0,'cloud roster crossed alliance scope');
+assert.equal(currentActiveRosterMembers(life.members,life.review,life.former,life.removal_tombstones).length,1);
+assert.match(sync,/preserveVerifiedR5\(merged\.alliance\?\.members,rosterMerged,\{removal_tombstones:ctx\.roster_tombstones\}\)/);
+assert.match(sync,/currentActiveRosterMembers\(preservedR5\.rows,merged\.alliance\?\.roster_review,merged\.alliance\?\.former_members,ctx\.roster_tombstones\)/);
 
 // A current canonical snapshot wins over stale lifecycle blockers without deleting lifecycle history.
 const roster94=markCanonicalRosterPresence(Array.from({length:94},(_,i)=>({
@@ -88,7 +101,7 @@ assert.match(app,/slice\(0,12\)/);assert.match(app,/renderRosterScanDraft/);asse
 
 // Quick player updates + dated progression are present without forcing a full rescan.
 for(const id of ['progressionSummary','quickProfileScanBtn','quickSquadScanBtn','quickDroneScanBtn'])assert.match(html,new RegExp(`id=["']${id}["']`));
-assert.match(app,/recordProgressionSnapshot\("manual_profile"\)/);assert.match(app,/recordProgressionSnapshot\(`scan_\$\{scanType\}`/);assert.match(pkg.scripts.check,/progression-history\.js/);
+assert.match(app,/recordProgressionSnapshot\("manual_profile"\)/);assert.match(app,/recordProgressionSnapshot\(`scan_\$\{draft\.type\}`,now\)/);assert.match(app,/recordProgressionSnapshot\(`scan_squad\$\{id\}`,now\)/);assert.match(pkg.scripts.check,/progression-history\.js/);
 
 // All explicit languages resolve HF8.6 UI keys without exposing raw keys.
 const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.length,23);

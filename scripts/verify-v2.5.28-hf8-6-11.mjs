@@ -56,7 +56,7 @@ assert.match(html,/id="seasonAccessNotice"/);
 assert.match(html,/id="scanSeasonBtn"/);
 assert.match(app,/openQuickScan\("vs"\)/);
 assert.match(app,/openQuickScan\("season"\)/);
-assert.match(app,/if\(proFeatureAllowed\(\)\)\{const live=await requestAdvice\("vs"\)/);
+ assert.match(app,/if\(proFeatureAllowed\(\)\)void requestAdvice\("vs"\)\.then\(live=>\{\$\("#vsPlanText"\)\.textContent=structuredAdviceText\("vs",live\)\}\)/);
 
 // 7) Private modules require both accepted beta access and consent before opening.
 assert.match(app,/\$\$\('\[data-open\]'\).*requireBetaAccess\(\)\|\|!requireBetaConsent\(\)/);

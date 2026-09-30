@@ -8,14 +8,14 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const app=read('app.js'),html=read('index.html'),stateApi=read('api/state.js'),beta=read('lib/beta-access.js'),supabase=read('lib/supabase.js'),health=read('api/health.js'),sw=read('sw.js'),i18n=read('i18n.js'),manifest=JSON.parse(read('manifest.webmanifest')),pkg=JSON.parse(read('package.json'));
 
 // Release identity and mobile cache invalidation.
-assert.match(app,/const RELEASE_LABEL="HF8\.6\.20"/);
-assert.match(html,/WarBoost V2\.5\.28 HF8\.6\.20/);
-assert.match(html,/\/app\.js\?v=hf8620/);
-assert.match(html,/\/publisher-ui\.js\?v=hf8620/);
+assert.match(app,/const RELEASE_LABEL="HF8\.6\.34"/);
+assert.match(html,/WarBoost V2\.5\.32 HF8\.6\.34/);
+assert.match(html,/\/app\.js\?v=squad-confirmed-restore-r1/);
+assert.match(html,/\/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/);
 assert.match(sw,/warboost-v2-5-28-hf8-6-20-verified-login-isolation/);
-assert.match(manifest.name,/HF8\.6\.20/);
-assert.match(pkg.description,/HF8\.6\.20/);
-assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.20/);
+assert.match(manifest.name,/HF8\.6\.34/);
+assert.match(pkg.description,/HF8\.6\.34/);
+assert.match(i18n,/target\.tagline=`V2\.5\.32 HF8\.6\.34/);
 
 // Privacy boundary: old local squads/profile must never be rendered while invitation verification is still checking.
 assert.match(app,/function betaPrivateDataVisible\(\)\{[^\n]*checking=betaState\?\.access_status==="checking"[^\n]*!checking[^\n]*cloudProfileVerified\|\|trustedLocal/);

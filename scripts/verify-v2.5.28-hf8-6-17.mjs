@@ -16,9 +16,9 @@ assert.match(html,/\/app\.js\?v=hf861(?:7|8)/);
 assert.match(html,/\/publisher-ui\.js\?v=hf861(?:7|8)/);
 assert.match(sw,/(?:warboost-v2-5-28-hf8-6-17-cloud-profile-restore-reliability|warboost-v2-5-28-hf8-6-18-fast-login-restore)/);
 assert.match(sw,/"\/lib\/cloud-profile-direct\.js"/);
-assert.match(manifest,/HF8\.6\.(?:17|18)/);
-assert.match(pkg.description,/HF8\.6\.(?:17|18)/);
-assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.(?:17|18)/);
+assert.match(manifest,/HF8\.6\.34/);
+assert.match(pkg.description,/HF8\.6\.34/);
+assert.match(i18n,/target\.tagline=`V2\.5\.32 HF8\.6\.34/);
 assert.doesNotMatch(i18n.slice(i18n.lastIndexOf('V2528_HF8_6_11_PLAYER_RELIABILITY')),/target\.tagline=`V2\.5\.28 HF8\.6\.11/);
 
 // The exact current bug: a meaningful local fallback must never stop an authenticated cloud retry.
@@ -32,7 +32,8 @@ assert.match(app,/lastAppliedSessionKey===key[\s\S]{0,180}cloudProfileVerified/)
 assert.match(app,/await applySession\(session\);/);
 assert.match(app,/if\(betaConsentAccepted\(\)&&!cloudProfileVerified\)\{[\s\S]{0,500}await pullServerState\(seed(?:,\{fastRestore:true\})?\)/);
 assert.match(sessionBlock,/catch\(error\)\{[\s\S]{0,700}scheduleCloudPullRetry\(1500\)/);
-assert.match(app,/if\(!cloudProfileVerified&&cloudSession\?\.access_token&&betaConsentAccepted\(\)\)pullServerState/);
+const restoreBlock=app.slice(app.indexOf('async function restoreAuthenticatedProfile'),app.indexOf('async function retryCloudProfileRestore'));
+assert.match(restoreBlock,/scheduleCloudPullRetry\(3000\)/);
 
 // Consent activation must attempt the authoritative state route even if betaState was not yet hydrated.
 const consentLine=app.match(/\$\("#betaConsent"\)\?\.addEventListener\("change",async e=>\{[^\n]+/s)?.[0]||'';
@@ -41,7 +42,7 @@ assert.doesNotMatch(consentLine,/if\(cloudSession\?\.access_token&&betaAccessAll
 
 // While the invite lookup is running, never display the legacy "not configured" fail-open state.
 assert.match(sessionBlock,/enforced:true,configured:true,allowed:false,access_status:"checking"/);
-assert.match(app,/betaState\.access_status==="checking"\)return t\("syncing"\)/);
+assert.match(app,/access\.phase==="syncing"\)return t\("syncing"\)/);
 
 // Fallback is strictly a read of the authenticated user's own row and only after invite verification.
 assert.match(app,/async function pullDirectOwnProfile/);

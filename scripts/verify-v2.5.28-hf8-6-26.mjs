@@ -10,13 +10,14 @@ const i18n=fs.readFileSync(new URL('../i18n.js',import.meta.url),'utf8');
 const health=fs.readFileSync(new URL('../api/health.js',import.meta.url),'utf8');
 const manifest=fs.readFileSync(new URL('../manifest.webmanifest',import.meta.url),'utf8');
 
-assert.match(app,/const RELEASE_LABEL="HF8\.6\.(?:26|2[7-9]|[3-9]\d*)"/);
-assert.match(index,/WarBoost V2\.5\.28 HF8\.6\.(?:26|2[7-9]|[3-9]\d*)/);
-assert.match(index,/app\.js\?v=hf862(?:6|[7-9]|\d{2,})/);
-assert.match(sw,/hf8-6-(?:26-cross-module-state-integrity|2[7-9]-|[3-9]\d*-)/);
-assert.match(health,/release:"HF8\.6\.(?:26|2[7-9]|[3-9]\d*)"/);
-assert.match(manifest,/HF8\.6\.26/);
-assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.(?:26|2[7-9]|[3-9]\d*)/);
+assert.match(app,/const RELEASE_LABEL="HF8\.6\.34"/);
+assert.match(index,/WarBoost V2\.5\.32 HF8\.6\.34/);
+assert.match(index,/app\.js\?v=squad-confirmed-restore-r1/);
+assert.match(index,/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/);
+assert.match(sw,/shop-observations-v2-5-32-hf8-6-34-r2/);
+assert.match(health,/release:"HF8\.6\.34"/);
+assert.match(manifest,/HF8\.6\.34/);
+assert.match(i18n,/target\.tagline=`V2\.5\.32 HF8\.6\.34/);
 assert.doesNotMatch(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.24/);
 
 const ready=deriveRuntimeAccessState({userId:'u1',stateOwnerId:'u1',betaAllowed:true,consentAccepted:true,betaAccessStatus:'accepted'});
@@ -51,7 +52,7 @@ assert.match(app,/summary\.roleCounts\.R5/);
 assert.match(app,/vsUsScore"\)\.textContent=liveKnown/);
 assert.match(app,/vsContextWarning=vsObjective&&!vsFresh\.current/);
 assert.match(app,/function renderSeasonAccess\(\)[\s\S]*confirmed=life===\"active\"\|\|life===\"ended\"\|\|life===\"interseason\"[\s\S]*confirmed\?\" hidden\"/);
-assert.match(index,/id="supportBuildPill"[^>]*>V2\.5\.28 · HF8\.6\.(?:26|2[7-9]|[3-9]\d*)/);
+assert.match(index,/id="supportBuildPill"[^>]*>V2\.5\.32 · HF8\.6\.34/);
 assert.match(app,/supportBuildPill/);
 assert.match(i18n,/Les données validées issues du scan restent enregistrées/);
 

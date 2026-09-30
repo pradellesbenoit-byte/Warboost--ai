@@ -8,14 +8,14 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const app=read('app.js'),html=read('index.html'),health=read('api/health.js'),sw=read('sw.js'),i18n=read('i18n.js'),manifest=JSON.parse(read('manifest.webmanifest')),pkg=JSON.parse(read('package.json'));
 
 // Release/cache identity.
-assert.match(app,/const RELEASE_LABEL="HF8\.6\.21"/);
-assert.match(html,/WarBoost V2\.5\.28 HF8\.6\.(21|22|23)/);
-assert.match(html,/\/app\.js\?v=hf862(1|2|3)/);
-assert.match(html,/\/publisher-ui\.js\?v=hf862(1|2|3)/);
+assert.match(app,/const RELEASE_LABEL="HF8\.6\.34"/);
+assert.match(html,/WarBoost V2\.5\.32 HF8\.6\.34/);
+assert.match(html,/\/app\.js\?v=squad-confirmed-restore-r1/);
+assert.match(html,/\/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/);
 assert.match(sw,/warboost-v2-5-28-hf8-6-21-render-boundary-reliability/);
-assert.match(manifest.name,/HF8\.6\.21/);
-assert.match(pkg.description,/HF8\.6\.21/);
-assert.match(i18n,/target\.tagline=`V2\.5\.28 HF8\.6\.(21|22|23)/);
+assert.match(manifest.name,/HF8\.6\.34/);
+assert.match(pkg.description,/HF8\.6\.34/);
+assert.match(i18n,/target\.tagline=`V2\.5\.32 HF8\.6\.34/);
 
 // Exact regression: account binding must happen before heavy Player/Alliance/VS/Season rendering.
 const renderStart=app.indexOf('function render(){');
@@ -44,7 +44,8 @@ for(const id of ['fName','fServer','fHq','fAlliance','fRole']){
 }
 
 // renderAccountFields must map the same state used by the Player drawer.
-assert.match(app,/\$\("#fName"\)\.value=p\.name\|\|""/);
+assert.match(app,/displayName=canonical\?\.name\|\|p\.name\|\|""/);
+assert.match(app,/\$\("#fName"\)\.value=displayName/);
 assert.match(app,/\$\("#fServer"\)\.value=p\.server_id\|\|""/);
 assert.match(app,/\$\("#fHq"\)\.value=p\.hq_level\|\|""/);
 assert.match(app,/\$\("#fAlliance"\)\.value=state\.alliance\.tag\|\|""/);
@@ -52,7 +53,7 @@ assert.match(app,/\$\("#fRole"\)\.value=p\.role\|\|"R1"/);
 assert.match(app,/function renderPlayerCoreSummary\(p,d\)[\s\S]*?#pName/);
 
 // Health makes this specific runtime hardening observable.
-assert.match(health,/release:"HF8\.6\.(21|22|23)"/);
+assert.match(health,/release:"HF8\.6\.34"/);
 assert.match(health,/ui_revision_render_boundary_reliability:"hf8\.6\.21-render-boundary-reliability"/);
 assert.match(health,/account_form_render_isolated:true/);
 assert.match(health,/module_render_failures_non_blocking:true/);
@@ -61,9 +62,10 @@ assert.match(health,/module_render_failures_non_blocking:true/);
 // except selectors that are intentionally generated dynamically.
 const htmlIds=new Set([...html.matchAll(/id="([^"]+)"/g)].map(m=>m[1]));
 const referenced=[...app.matchAll(/\$\("#([A-Za-z0-9_-]+)"\)/g)].map(m=>m[1]);
-const dynamicAllowed=new Set(['exclusiveWeaponCount','betaFeedbackBtn','exclusiveWeaponList','vsStartScanBtn','shopAdviceBtn','betaFeedbackKind','betaFeedbackText','betaFeedbackDiagnostics','betaFeedbackShareBtn','betaFeedbackStatus']); // optional/dynamically injected controls
+const dynamicAllowed=new Set(['exclusiveWeaponCount','betaFeedbackBtn','exclusiveWeaponList','vsStartScanBtn','shopAdviceBtn','betaFeedbackKind','betaFeedbackText','betaFeedbackDiagnostics','betaFeedbackShareBtn','betaFeedbackStatus','rankManagerLinkSelfBtn','qg35AdvancedSections']); // optional/dynamically injected controls
 const missing=[...new Set(referenced.filter(id=>!htmlIds.has(id)&&!dynamicAllowed.has(id)))];
 assert.deepEqual(missing,[],`missing DOM ids: ${missing.join(', ')}`);
+assert.match(app,/id="qg35AdvancedSections"/);
 
 assert.ok(pkg.scripts.check.includes('verify-v2.5.28-hf8-6-21.mjs'));
 assert.ok(pkg.scripts.verify.includes('verify-v2.5.28-hf8-6-21.mjs'));

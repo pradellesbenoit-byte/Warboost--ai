@@ -22,7 +22,7 @@ assert.match(sw,/(?:hf8-6-16-auth-session-commit-reliability|hf8-6-18-fast-login
 assert.match(health,/auth_success_requires_applied_session:true/);
 assert.match(health,/auth_returned_session_direct_apply:true/);
 assert.match(health,/auth_module_cache_bust:true/);
-assert.match(pkg.description,/HF8\.6\.(?:16|17|18)/);
+assert.match(pkg.description,/HF8\.6\.34/);
 
 // Dynamic auth contract: a successful password call returns the same session and emits SIGNED_IN.
 const storageMap=new Map();

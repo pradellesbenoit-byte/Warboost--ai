@@ -13,10 +13,11 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const html=read('index.html'),app=read('app.js'),health=read('api/health.js'),sync=read('api/sync.js'),sw=read('sw.js'),pkg=JSON.parse(read('package.json')),manifest=JSON.parse(read('manifest.webmanifest'));
 const ctx={server_id:'884',alliance_tag:'ALL4'};
 const m=(name,role,extra={})=>({name,role,...ctx,...extra});
-const t1='2026-09-11T18:00:00.000Z',t2='2026-09-11T18:10:00.000Z',t3='2026-09-11T18:20:00.000Z';
+const t0='2026-09-01T18:00:00.000Z',t1='2026-09-11T18:00:00.000Z',t2='2026-09-11T18:10:00.000Z',t3='2026-09-11T18:20:00.000Z';
+const pastParticipation={event_type:'vs',event_date:'2026-09-01',participation_status:'participated',source:'player_self_report',updated_at:t0};
 
 // Complete roster = explicit lifecycle authority, never an automatic departure.
-const existing=[m('les gladiateurs81','R4'),m('Joueur B','R3'),m('Joueur C','R2')];
+const existing=[m('les gladiateurs81','R4'),m('Joueur B','R3'),m('Joueur C','R2',{activity_events:[pastParticipation],membership_history:[{type:'joined',at:t0,source:'roster_import'}]})];
 const complete=[m('Nono 50','R5'),m('les gladiateurs81','R4'),m('Joueur B','R2')];
 let life=applyRosterImportLifecycle({members:existing,review:[],former:[]},complete,{complete:true,now:t1});
 assert.equal(life.members.length,3,'adding R5 while one member is missing must not create an artificial +1 active total');
@@ -26,20 +27,30 @@ assert.equal(life.review[0].name,'Joueur C');
 assert.equal(life.former.length,0,'missing member must never be auto-confirmed as departed');
 assert.ok(life.members.find(x=>x.name==='Joueur B')?.membership_history?.some(x=>x.type==='role_changed'&&x.from_role==='R3'&&x.to_role==='R2'),'rank change must be historized');
 
-// Departure needs R5/R4 confirmation; return reactivates the same history.
+// Departure needs R5/R4 confirmation; the tombstone archives history separately from a clean rejoin.
 const cKey=rosterLifecycleKey(life.review[0]);
 const left=confirmRosterDeparture({review:life.review,former:life.former},cKey,{now:t2});
-assert.equal(left.changed,true);assert.equal(left.review.length,0);assert.equal(left.former.length,1);
-assert.ok(left.former[0].membership_history.some(x=>x.type==='left_confirmed'));
-life=applyRosterImportLifecycle({members:life.members,review:left.review,former:left.former},[m('Joueur C','R3')],{complete:false,now:t3});
+assert.equal(left.changed,true);assert.equal(left.review.length,0);assert.equal(left.former.length,0);
+assert.equal(left.removal_tombstones.length,1);assert.ok(left.removal_tombstones[0].history.membership_history.some(x=>x.type==='left_confirmed'));
+assert.ok(left.removal_tombstones[0].history.activity_events.some(x=>x.participation_status==='participated'));
+life=applyRosterImportLifecycle({members:life.members,review:left.review,removal_tombstones:left.removal_tombstones},[...life.members,m('Joueur C','R3')],{complete:true,now:t3});
 assert.equal(life.former.length,0);assert.ok(life.members.some(x=>x.name==='Joueur C'));
 const returned=life.members.find(x=>x.name==='Joueur C');
-assert.ok(returned.membership_history.some(x=>x.type==='left_confirmed'),'departure history must survive return');
-assert.ok(returned.membership_history.some(x=>x.type==='returned'),'return must be historized');
+assert.equal(returned.joined_at,t3,'explicit rejoin must create a fresh membership timestamp');
+assert.equal(returned.activity_events.length,0,'archived activity must not be copied onto the new membership');
+assert.equal(returned.membership_history.some(x=>x.type==='left_confirmed'),false,'old departure history must stay in the tombstone archive');
+assert.ok(life.removal_tombstones[0].history.membership_history.some(x=>x.type==='joined'&&x.at===t0),'original membership history must remain archived');
+assert.ok(life.removal_tombstones[0].history.activity_events.some(x=>x.event_date==='2026-09-01'),'past participation must remain archived');
 
 // Partial import remains additive: a missing row changes nothing about membership.
 const partial=applyRosterImportLifecycle({members:[m('A','R4'),m('B','R3')],review:[],former:[]},[m('A','R4')],{complete:false,now:t1});
 assert.deepEqual(partial.members.map(x=>x.name).sort(),['A','B']);assert.equal(partial.review.length,0);assert.equal(partial.former.length,0);
+
+// Legacy former rows remain valid migration input but normalize to archived tombstones.
+const legacy=applyRosterImportLifecycle({members:[],review:[],former:[{...m('Legacy Former','R2'),membership_status:'left_confirmed',left_at:t2,membership_history:[{type:'joined',at:t0,source:'roster_import'}],activity_events:[pastParticipation]}]},[],{complete:false,now:t3});
+assert.equal(legacy.former.length,0);assert.equal(legacy.removal_tombstones.length,1);
+assert.ok(legacy.removal_tombstones[0].history.membership_history.some(x=>x.type==='joined'&&x.at===t0));
+assert.ok(legacy.removal_tombstones[0].history.activity_events.some(x=>x.event_date==='2026-09-01'));
 
 // Server canonical complete replacement may shrink, but exact member participation evidence survives.
 const evidence={event_type:'vs',event_date:'2026-09-11',participation_status:'participated',source:'player_self_report',updated_at:t1};
@@ -59,7 +70,7 @@ const endedAdvice=buildVsAdvice({vs:endedVs,updated_at:t1},'fr-FR',{now:new Date
 
 // HF8.4 UI/reliability guards.
 assert.match(html,/WarBoost V2\.5\.28 HF8\.(?:4|5)/);assert.match(html,/id=["']rosterFullSnapshot["']/);assert.match(html,/data-i18n=["']import_roster_help["'][^>]*>[^<]*R5/i);assert.doesNotMatch(html,/Nono 50/);
-for(const token of ['roster_review_title','former_members_title','identity_retry_match','vs_no_rescan_ended'])assert.match(app,new RegExp(token));
+for(const token of ['roster_review_title','identity_retry_match','vs_no_rescan_ended','normalizeRosterRemovalTombstones','roster_removal_tombstones'])assert.match(app,new RegExp(token));
 assert.match(app,/allianceParticipationByEvent/);assert.match(app,/confirmRosterDeparture/);assert.match(app,/restoreRosterReviewMember/);
 assert.match(sync,/roster_snapshot_complete_at/);assert.match(sync,/replaceCanonicalRosterFromCompleteSnapshot/);assert.doesNotMatch(sync,/roster_updated_at\|\|ctx\.alliance\?\.updated_at/);
 
