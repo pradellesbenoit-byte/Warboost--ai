@@ -251,7 +251,7 @@ assert.match(app,/onSuspend:\(\)=>\{stopForegroundRefreshes\(\);loadingScreen\?\
 assert.doesNotMatch(app,/onSuspend:[^\n]*closeDrawers/);
 assert.match(app,/finishOperation\(\)/);
 assert.match(index,/loading-screen\.css\?v=warboost-startup-screen-r2/);
-assert.match(index,/app\.js\?v=warboost-startup-screen-r2/);
+assert.match(index,/app\.js\?v=player-hq-confirmation-r1/);
 assert.match(app,/lib\/loading-screen\.js\?v=warboost-startup-screen-r2/);
 assert.match(sw,/warboost-loading-startup-screen-r2/);
 assert.match(sw,/lib\/loading-screen\.js\?v=warboost-startup-screen-r2/);

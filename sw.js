@@ -24,6 +24,7 @@ SHELL.push("/lib/resource-acquisition.js?v=shop-observations-v2-5-32-hf8-6-34-r2
 SHELL.push("/lib/pending-account-cache.js","/lib/desert-storm-plan-ui.js?v=hf8630-desert-storm-plan-r2","/lib/idle-lifecycle.js?v=hf8630-idle-resume-r1","/lib/session-resume.js?v=hf8630-idle-resume-r1","/lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1","/styles.css?v=scan-review-human-r1","/app.js?v=squad-confirmed-restore-r1","/publisher-ui.js?v=hf8630-desert-storm-plan-r2");
 SHELL.push("/lib/loading-screen.js?v=warboost-startup-screen-r2","/lib/return-view.js?v=warboost-startup-screen-r1","/lib/idle-lifecycle.js?v=warboost-startup-screen-r1","/loading-screen.css?v=warboost-startup-screen-r2","/app.js?v=warboost-startup-screen-r2","/publisher-ui.js?v=hf8630-desert-storm-plan-r2");
 SHELL.push("/lib/scan-review.js","/lib/scan-review-presentation.js","/lib/scan-review-markup.js","/lib/squad-freshness.js");
+SHELL.push("/lib/player-hq.js","/app.js?v=player-hq-confirmation-r1");
 SHELL.push("/lib/player-scan-types.js");
 SHELL.push("/lib/technology-scan.js","/lib/technology-advisor.js","/technology-advice.css");
 SHELL.push("/assets/warboost-loading-scene.webp");

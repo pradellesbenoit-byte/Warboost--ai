@@ -9,6 +9,7 @@ import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRo
 import {isManagerRole} from "../lib/alliance-scope.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 import {canonicalAllianceAuthorization} from "../lib/alliance-authorization.js";
+import {mergePlayerHqFields} from "../lib/player-hq.js";
 import {mergeEventAvailabilities,mergeAvailabilityHistory,mergePlayerAvailabilityIntoRoster} from "../lib/event-availability.js";
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
 
@@ -250,6 +251,8 @@ export default async function handler(req,res){
       let incoming=normalizeState({...req.body?.state,player_id:playerId});
       let recovered=null;
       if(previous?.state){
+        const previousState=normalizeState({...previous.state,player_id:playerId});
+        incoming.player={...incoming.player,...mergePlayerHqFields(previousState.player,incoming.player,{sameAccount:true})};
         recovered=recoverHeroData(incoming,{historicalStates:[{state:previous.state,captured_at:previous.updated_at,source:"previous_profile"}]});
         incoming=normalizeState({...recovered.state,player_id:playerId});
         if(heroDataSignature(previous.state)!==heroDataSignature(incoming)){

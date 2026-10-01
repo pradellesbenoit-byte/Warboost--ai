@@ -41,6 +41,7 @@ import {hasMeaningfulCoreState,hydrateCloudState,mergeDesertStormState,desertSto
 import {readOwnProfileDirect} from "./lib/cloud-profile-direct.js";
 import {shouldPreserveVerifiedSessionAccess,betaStateForSessionBootstrap,preserveAllowedAfterTransient,restoreAttemptSucceeded,canRevealOwnedPrivateState,deriveRuntimeAccessState} from "./lib/session-bootstrap.js";
 import {canonicalPowerMillions} from "./lib/power-units.js";
+import {confirmPlayerHq,mergePlayerHqFields,playerHqNeedsCloudSync,normalizePlayerHqLevel} from "./lib/player-hq.js";
 import {parseHeroPower,confirmedHeroPower,heroPowerIsConfirmed} from "./lib/hero-power.js";
 import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 import {createScanReviewDraft,scanReviewEntries,applyOwnedScanReview,scanRequestMatches} from "./lib/scan-review.js";
@@ -99,7 +100,7 @@ function clientId(){if(volatileClientId)return volatileClientId;try{let id=local
 function safeLocalSet(key,value){try{localStorage.setItem(key,value);return true}catch{return false}}
 function emptyHero(i){return {name:"",level:null,stars:null,power:null,exclusive:null,gear:null,awakening:null}}
 function emptySquad(i){return {id:i,name:`Squad ${i}`,power:null,last_confirmed_power:null,power_sync_status:"confirmed",updated_at:null,needs_rescan:false,composition_changed_at:null,composition_confirmed_at:null,composition_source:null,confirmed_composition:Array.from({length:5},()=>""),composition_conflict:null,heroes:Array.from({length:5},emptyHero)}}
-function initialState(){return {version:APP_VERSION,player_id:clientId(),updated_at:null,player:{name:"",server_id:"",hq_level:null,power_m:null,coordinates:null,role:"R1",updated_at:null},player_context:{objective:"auto",account_age_days:null,server_profile:"auto",updated_at:null},activity_events:[],player_availability:[],availability_history:[],exclusive_weapons:[],hero_progression:[],hero_profiles:[],progression_snapshots:[],drone:{level:null,power_m:null,updated_at:null},shop:{store_type:"",currency:"",currency_balance:null,vip_level:null,vip_days_remaining:null,offers:[],snapshots:[],updated_at:null},squads:[1,2,3,4].map(emptySquad),alliance:{id:null,owner_player_id:null,server_id:"",tag:"",name:"",role:"R1",cloud_role_verified:false,management_verified:false,invite_code:"",members:[],roster_review:[],former_members:[],roster_removal_tombstones:[],event_availability:[],availability_history:[],roster_updated_at:null,roster_snapshot_complete_at:null,unlinked_accounts:[],identity_link_status:"unknown",desert_storm:{team:"A",battle_time:"",registered_keys:[],plan:null,availability_reset_at:null,updated_at:null},canyon:normalizeCanyonState({}),updated_at:null},vs:{week:null,day:null,theme:"",our_alliance:"",our_tag:"",our_server_id:"",opponent:"",opponent_tag:"",opponent_server_id:"",our_score:null,their_score:null,our_percent:null,their_percent:null,time_remaining_text:"",time_remaining_seconds:null,personal_name:"",personal_rank:null,personal_score:null,leaderboard:[],score_confirmed:false,snapshots:[],updated_at:null},season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:null,resistance:null,focus:null,lifecycle:"unknown",lifecycle_source:null,ended_at:null,measured_hybrid_synergy:false,awakening_swap:null,updated_at:null},technology:{type_mastery_pct:null,hero_tech_pct:null,siege_to_seize_pct:null,defensive_fortification_pct:null,tactical_weapon_pct:null,updated_at:null},sync:{provider:"warboost-local",provider_kind:"local",access_status:"pending",capabilities:[],status:"local",last_sync:null,last_error:null,auto_ready:true,last_scan:null,official_last_sync:null,public_last_sync:null,sources:{official:false,public:false,scan:false,alliance:false}}}}
+function initialState(){return {version:APP_VERSION,player_id:clientId(),updated_at:null,player:{name:"",server_id:"",hq_level:null,hq_level_source:null,hq_level_confirmed_at:null,power_m:null,coordinates:null,role:"R1",updated_at:null},player_context:{objective:"auto",account_age_days:null,server_profile:"auto",updated_at:null},activity_events:[],player_availability:[],availability_history:[],exclusive_weapons:[],hero_progression:[],hero_profiles:[],progression_snapshots:[],drone:{level:null,power_m:null,updated_at:null},shop:{store_type:"",currency:"",currency_balance:null,vip_level:null,vip_days_remaining:null,offers:[],snapshots:[],updated_at:null},squads:[1,2,3,4].map(emptySquad),alliance:{id:null,owner_player_id:null,server_id:"",tag:"",name:"",role:"R1",cloud_role_verified:false,management_verified:false,invite_code:"",members:[],roster_review:[],former_members:[],roster_removal_tombstones:[],event_availability:[],availability_history:[],roster_updated_at:null,roster_snapshot_complete_at:null,unlinked_accounts:[],identity_link_status:"unknown",desert_storm:{team:"A",battle_time:"",registered_keys:[],plan:null,availability_reset_at:null,updated_at:null},canyon:normalizeCanyonState({}),updated_at:null},vs:{week:null,day:null,theme:"",our_alliance:"",our_tag:"",our_server_id:"",opponent:"",opponent_tag:"",opponent_server_id:"",our_score:null,their_score:null,our_percent:null,their_percent:null,time_remaining_text:"",time_remaining_seconds:null,personal_name:"",personal_rank:null,personal_score:null,leaderboard:[],score_confirmed:false,snapshots:[],updated_at:null},season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:null,resistance:null,focus:null,lifecycle:"unknown",lifecycle_source:null,ended_at:null,measured_hybrid_synergy:false,awakening_swap:null,updated_at:null},technology:{type_mastery_pct:null,hero_tech_pct:null,siege_to_seize_pct:null,defensive_fortification_pct:null,tactical_weapon_pct:null,updated_at:null},sync:{provider:"warboost-local",provider_kind:"local",access_status:"pending",capabilities:[],status:"local",last_sync:null,last_error:null,auto_ready:true,last_scan:null,official_last_sync:null,public_last_sync:null,sources:{official:false,public:false,scan:false,alliance:false}}}}
 function canonicalStoredHeroName(v){return canonicalHeroName(v)}
 function canonicalStoredExclusiveHeroName(row={}){return canonicalExclusiveWeaponHeroName(row?.hero_name,row?.weapon_name)}
 function mergeExclusiveWeapons(baseList,incomingList){
@@ -230,6 +231,8 @@ function mergeStateProtected(base,incoming,{preferBase=false}={}){
   if(!incoming||typeof incoming!=="object")return mergeState(initialState(),base);
   const out=mergeState(base,incoming);
   out.player=safeFields(base.player,incoming.player,preferBase);
+  const baseOwner=String(base?.player_id||"").trim(),incomingOwner=String(incoming?.player_id||"").trim();
+  out.player={...out.player,...mergePlayerHqFields(base?.player,incoming?.player,{sameAccount:!(baseOwner&&incomingOwner&&baseOwner!==incomingOwner)})};
   out.player_context=safeFields(base.player_context||{},incoming.player_context||{},preferBase);
   out.player_availability=mergeEventAvailabilities(base.player_availability,incoming.player_availability);
   out.availability_history=mergeAvailabilityHistory(base.availability_history,incoming.availability_history);
@@ -266,7 +269,12 @@ function safestLoginSeed(userId,currentState){
   const id=String(userId||"").trim(),owner=String(currentState?.player_id||"").trim(),localOwner=clientId(),cached=readAccountState(id);
   const currentAllowed=Boolean(id&&(owner===id||!owner||owner===localOwner));
   const current=currentAllowed?safeClone(currentState):null;
-  if(cached&&current)return stateTimestamp(current)>=stateTimestamp(cached)?current:safeClone(cached);
+  if(cached&&current){
+    if(owner!==id)return safeClone(cached);
+    const currentIsNewer=stateTimestamp(current)>=stateTimestamp(cached),chosen=currentIsNewer?current:safeClone(cached);
+    chosen.player={...(chosen.player||{}),...mergePlayerHqFields(current.player,cached.player,{sameAccount:true})};
+    return chosen;
+  }
   return cached?safeClone(cached):current;
 }
 function readLegacyJson(key){try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):null}catch{return null}}
@@ -1115,11 +1123,12 @@ async function pushServerState({keepalive=false}={}){
       // HF8.6.12 structurally hydrates j.state before the protected merge.
       const remote=hydrateCloudState(j.state,initialState(),cloudSession.user.id);
       const localChangedWhilePushing=localStateRevision!==pushRevision;
+      const hqNeedsPush=playerHqNeedsCloudSync(state.player,remote.player,{sameAccount:true});
       let merged=mergeStateProtected(state,remote,{preferBase:localChangedWhilePushing});
       const reconciled=reconcileCloudSquads(state,remote,merged);
       merged=reconciled.state;
       if(reconciled.conflicts.length)merged.sync={...merged.sync,status:"waiting",last_error:"squad_freshness_ambiguous",pending_cloud_save:true};
-      if(reconciled.localNewer.length||localChangedWhilePushing)cloudDirty=true;
+      if(reconciled.localNewer.length||localChangedWhilePushing||hqNeedsPush)cloudDirty=true;
       try{state=repairLegacySquadIdentity(merged).state;const restored=backfillConfirmedHeroPowers(state,{now:new Date().toISOString()});state=restored.state}catch{state=merged;cloudDirty=true}
       state=adoptCanonicalPendingAccounts(state,remote,{available:j?.alliance_roster_repair?.status==="canonical_roster_applied"});
       state.player_id=cloudSession.user.id;
@@ -1164,7 +1173,8 @@ async function pullDirectOwnProfile(loginSeed=null){
   try{const recovered=recoverLocalHeroHistory(merged);state=repairLegacySquadIdentity(recovered.state).state;const restored=backfillConfirmedHeroPowers(state,{now:new Date().toISOString()});state=restored.state;heroPowerBackfillChanged=restored.changed}catch{state=merged}
   if(!hasMeaningfulCore(state)&&hasMeaningfulCore(remote))state=remote;
   state.player_id=userId;state.updated_at=preferLocal?(state.updated_at||out.updated_at||new Date().toISOString()):(out.state?.updated_at||out.updated_at||state.updated_at);
-  const squadConflict=squadResult.conflicts.length>0,needsPush=preferLocal||squadResult.localNewer.length>0;
+  const hqNeedsPush=playerHqNeedsCloudSync(state.player,remote.player,{sameAccount:String(state.player_id||"")===userId&&String(remote.player_id||"")===userId});
+  const squadConflict=squadResult.conflicts.length>0,needsPush=preferLocal||squadResult.localNewer.length>0||hqNeedsPush;
   state.sync={...state.sync,status:squadConflict||needsPush?"waiting":"ok",last_sync:out.updated_at||new Date().toISOString(),last_error:squadConflict?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(squadConflict||needsPush)};
   safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-direct-rls-pull");rememberAccountState(userId,state);
   suppressPush=false;render();renderBeta();renderProvider();
@@ -1234,7 +1244,8 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     if(canonicalRosterReady&&state?.alliance)state.alliance=applyCanonicalRosterKeys(state.alliance);
     state.player_id=userId;
     state.updated_at=preferLocal&&!j?.alliance_roster_repair?.changed?(state.updated_at||new Date().toISOString()):(j.state?.updated_at||j.updated_at||state.updated_at);
-    const squadConflict=squadResult.conflicts.length>0,needsPush=preferLocal||squadResult.localNewer.length>0;
+    const hqNeedsPush=playerHqNeedsCloudSync(state.player,remote.player,{sameAccount:String(state.player_id||"")===userId&&String(remote.player_id||"")===userId});
+    const squadConflict=squadResult.conflicts.length>0,needsPush=preferLocal||squadResult.localNewer.length>0||hqNeedsPush;
     state.sync={...state.sync,status:squadConflict||needsPush?"waiting":"ok",last_sync:j.updated_at||new Date().toISOString(),last_error:squadConflict?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(squadConflict||needsPush)};
     safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull");rememberAccountState(userId,state);
     cloudProfileVerified=true;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;cloudHydrationPending=false;pushBootstrapStage("PROFILE_HYDRATE",bootstrapNow()-hydrateStarted,"ok");render();renderBeta();suppressPush=false;
@@ -2911,8 +2922,10 @@ $("#saveProfileBtn").addEventListener("click",async()=>{
   const show=(text,warn=false)=>{if(status){status.className=`notice${warn?" warn":""}`;status.textContent=text;status.classList.remove("hidden")}};
   if(!name||!/^\d{1,6}$/.test(server)||!Number.isFinite(hq)||hq<1||hq>200)return show(t("profile_required"),true);
   if(!/^R[1-5]$/.test(requestedRole))return show(t("profile_role_invalid"),true);
-  state.player.name=name;state.player.server_id=server;state.player.hq_level=Math.round(hq);
-  const ctxAgeRaw=String($("#fAccountAge")?.value??"").trim(),ctxAge=ctxAgeRaw===""?null:Number(ctxAgeRaw);state.player_context={...(state.player_context||{}),objective:$("#fObjective")?.value||"auto",account_age_days:ctxAge!==null&&Number.isFinite(ctxAge)&&ctxAge>=0?Math.round(ctxAge):null,server_profile:$("#fServerProfile")?.value||"auto",updated_at:new Date().toISOString()};state.player.role=safeSelfRole(requestedRole);state.player.updated_at=new Date().toISOString();state.alliance.server_id=state.player.server_id;state.alliance.tag=$("#fAlliance").value.trim().toUpperCase();state.vs.our_alliance=state.alliance.tag;reconcileCurrentPlayerAllianceIdentity({touch:true});recordProgressionSnapshot("manual_profile");saveState();
+  const confirmedAt=new Date().toISOString(),hqUpdate=confirmPlayerHq(state.player,Math.round(hq),{source:"manual_profile",confirmedAt});
+  if(!hqUpdate.accepted)return show(t("profile_required"),true);
+  state.player={...state.player,name,server_id:server,hq_level:hqUpdate.player.hq_level,hq_level_source:hqUpdate.player.hq_level_source,hq_level_confirmed_at:hqUpdate.player.hq_level_confirmed_at,updated_at:confirmedAt};
+  const ctxAgeRaw=String($("#fAccountAge")?.value??"").trim(),ctxAge=ctxAgeRaw===""?null:Number(ctxAgeRaw);state.player_context={...(state.player_context||{}),objective:$("#fObjective")?.value||"auto",account_age_days:ctxAge!==null&&Number.isFinite(ctxAge)&&ctxAge>=0?Math.round(ctxAge):null,server_profile:$("#fServerProfile")?.value||"auto",updated_at:confirmedAt};state.player.role=safeSelfRole(requestedRole);state.alliance.server_id=state.player.server_id;state.alliance.tag=$("#fAlliance").value.trim().toUpperCase();state.vs.our_alliance=state.alliance.tag;reconcileCurrentPlayerAllianceIdentity({touch:true});recordProgressionSnapshot("manual_profile");saveState();
   if(btn){btn.disabled=true;btn.textContent=t("syncing")}show(t("syncing"));clearTimeout(pushTimer);pushTimer=null;
   try{const saved=await pushServerState();if(!saved?.ok){show(t("profile_saved_pending"),true);return}const joined=await joinPendingAlliance();if(joined)await pushServerState();show(t("profile_saved_cloud"),false);setTimeout(closeDrawers,650)}catch{show(t("profile_saved_pending"),true)}finally{if(btn){btn.disabled=false;btn.textContent=t("save")}}
 });
@@ -3089,7 +3102,22 @@ function confirmScanReview(){
   const result=applyOwnedScanReview(draft,pendingScanOwner(),edits);
   if(!result)return discardScanReviewDraft();
   if(result.errors.length){const error=result.errors[0];setScanReviewError(error.reason==="negative_number"?"scan_review_negative_number":error.reason==="invalid_boolean"?"scan_review_invalid_boolean":"scan_review_invalid_number");return}
-   const reviewed=result.patch;
+  const reviewed=result.patch;
+  const hqConfirmedAt=new Date().toISOString();
+  if(draft.type==="profile"&&reviewed.player&&Object.prototype.hasOwnProperty.call(reviewed.player,"hq_level")){
+    const hqLevel=normalizePlayerHqLevel(reviewed.player.hq_level);
+    if(hqLevel===null){setScanReviewError("scan_review_invalid_number");return}
+    const confirmation=confirmPlayerHq(state.player,hqLevel,{source:"confirmed_scan",confirmedAt:hqConfirmedAt});
+    if(!confirmation.accepted){
+      delete reviewed.player.hq_level;
+      delete reviewed.player.hq_level_source;
+      delete reviewed.player.hq_level_confirmed_at;
+    }else{
+      reviewed.player.hq_level=confirmation.player.hq_level;
+      reviewed.player.hq_level_source=confirmation.player.hq_level_source;
+      reviewed.player.hq_level_confirmed_at=confirmation.player.hq_level_confirmed_at;
+    }
+  }
    if(draft.type==="secret_mobile_squad"){
      const event=reviewed.special_events?.secret_mobile_squad;
      if(!event||!Array.isArray(event.tasks)||!event.tasks.length){setScanReviewError("scan_review_apply_failed");return}
@@ -3105,7 +3133,7 @@ function confirmScanReview(){
   const pendingPowerPaths=[];
   for(const edit of edits)if(/^(power|power_m)$/i.test(String(edit.path.at(-1)))){if(edit.path[0]==="drone")continue;if(!String(edit.value??"").trim())continue;if(!confirmedHeroPower(edit.value)){let target=reviewed;for(const part of edit.path.slice(0,-1))target=target?.[part];if(target)delete target[edit.path.at(-1)];pendingPowerPaths.push(edit.path)}}
   const sm=draft.type.match(/^squad([1-4])$/),squadIndex=sm?Number(sm[1])-1:null,heroSlots=sm?(reviewed.squads?.[squadIndex]?.heroes||[]):[];
-  const previousState=state,now=draft.scannedAt||new Date().toISOString();let merged;
+  const previousState=state,now=draft.scannedAt||hqConfirmedAt;let merged;
   try{
     if(sm){reviewed.squads??=[];const incoming=reviewed.squads[squadIndex]||{},base=previousState.squads?.[squadIndex]||emptySquad(squadIndex+1);reviewed.squads[squadIndex]=incoming;for(const key of ["power","power_m","power_sync_status","last_confirmed_power"])if(incoming[key]===undefined)incoming[key]=base[key];if(pendingPowerPaths.some(path=>path[0]==="squads"&&path[1]===squadIndex)){incoming.power_sync_status="pending";incoming.last_confirmed_power=base.last_confirmed_power??base.power}delete incoming.heroes;for(let i=0;i<5;i++)heroSlots[i]={...(heroSlots[i]||{}),name:String(draft.heroNames?.[i]||"").trim()}}
     merged=repairLegacySquadIdentity(mergeStateProtected(safeClone(previousState),reviewed,{preferBase:false})).state;

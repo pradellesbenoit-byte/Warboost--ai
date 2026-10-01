@@ -44,7 +44,7 @@ assert.match(app,/lastAppliedSessionKey===key[\s\S]{0,260}betaState\?\.allowed==
 assert.match(sw,/\"\/lib\/session-bootstrap\.js\"/);
 
 assert.match(html,/WarBoost V2\.5\.32 HF8\.6\.34/);
-assert.match(html,/\/app\.js\?v=warboost-startup-screen-r2/);
+assert.match(html,/\/app\.js\?v=player-hq-confirmation-r1/);
 assert.match(html,/\/publisher-ui\.js\?v=hf8630-desert-storm-plan-r2/);
 assert.match(sw,/warboost-v2-5-28-hf8-6-23-session-state-machine-reliability/);
 assert.match(manifest.name,/HF8\.6\.34/);
