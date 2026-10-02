@@ -1,5 +1,8 @@
 # Event strategy validation — 2026-10-02
 
+Historical baseline report. Current compact war-organization validation is in
+`event-war-organization-validation.md`; the analytical panels below no longer render.
+
 ## Result
 
 Ready for local code review and cautious strategy proposals. This is not a certified complete/current official Last War ruleset, a production deployment, or an authenticated cloud acceptance test.

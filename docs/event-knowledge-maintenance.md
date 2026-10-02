@@ -26,7 +26,25 @@ WarBoost does not connect to a live official Last War event-rules feed.
 
 Keep knowledge, provenance, freshness and conditional orders internal. The Alliance
 event screen shows starters and reserves with short roles/statuses, reserve priority
-and the recalculation button, not strategy/source/order accordions.
+and conditional entry instructions, one short Plan B and the recalculation button,
+not strategy/source/order accordions.
+
+Battlefield organization uses balanced mission quotas and maximum-weight matching.
+Strength tiers distribute confirmed power across essential roles. Type preferences
+are organizational heuristics, not official damage or victory multipliers.
+Reserve selection considers the full explicit reserve pool, within the 10-place cap,
+and matches simultaneous vacancies jointly rather than greedily. Standby missions
+cover missing roles first, then diversify backup targets across the main lineup.
+Every entry trigger is conditional on a free slot; no automatic promotion.
+
+Confirmed opponent observations may be supplied per event through
+`alliance.event_opponents[event_type]`: `strength` (`stronger`, `similar`, `weaker`),
+`confirmed:true`, `source`, `updated_at`, optionally `event_instance`.
+The shared UI/API facade reads these observations without generating new enemy
+data. Observations older than one day, future observations, unconfirmed/unsourced
+observations and mismatched instances remain unknown. Never derive enemy strength
+from a VS score or an alliance name. If objective-rule evidence expires, Plan B
+requests confirmation instead of an aggressive action.
 
 Reserves must be explicitly declared, never inferred from absence or overflow.
 Match a confirmed withdrawal against recent squad strength, known type/formation

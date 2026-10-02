@@ -9,6 +9,7 @@ import {desertStormMemberKeys} from "../lib/desert-storm-selection.js";
 import {buildCanyonPlan} from "../lib/canyon-storm-plan.js";
 import {buildVsAdvice,buildSeasonAdvice} from "../api/advice.js";
 import {mergeEventAvailabilities,normalizeEventAvailability,upsertEventAvailability,mergeAvailabilityHistory} from "../lib/event-availability.js";
+import "./verify-event-war-organization.mjs";
 const nowMs=Date.parse("2026-10-02T12:00:00Z"),updated_at=new Date(nowMs).toISOString();
 const people=Array.from({length:100},(_,i)=>({name:`Player ${i}`,canonical_member_key:`p${i}`,squad_power_m:100-i/2,squad_power_updated_at:updated_at,squad_type:i%2?"tank":"aircraft",role:"R2",warboost_linked:true}));
 const rows=(type,count=100)=>people.slice(0,count).map(m=>({canonical_member_key:m.canonical_member_key,event_type:type,status:"present",source:"player_self_report",updated_at}));
@@ -100,7 +101,7 @@ const sandbox={state:{alliance:{event_plans:{desert_storm:{}},canyon:{}}},server
 vm.runInNewContext(`${summarySource};globalThis.renderSummary=allianceEventPlanSummary`,sandbox);
 const workspacePlan=sandbox.renderSummary("desert_storm",{rows:rows("desert_storm",32).map((r,i)=>({...r,status:i<20?"present":i<30?"substitute":"unknown"})),totalMembers:32});
 assert.equal((workspacePlan.match(/class="eventStrategyMember"/g)||[]).length,30);
-assert.match(workspacePlan,/2 confirmations à vérifier/);assert.match(workspacePlan,/Player 29/);
+assert.doesNotMatch(workspacePlan,/eventStrategyConfirmCount/);assert.match(workspacePlan,/Player 29/);
 const rowsSource=appSource.slice(appSource.indexOf("function allianceEventRows("),appSource.indexOf("function allianceEventAvailability("));
 sandbox.mergeEventAvailabilities=mergeEventAvailabilities;
 sandbox.state.alliance.event_availability=[...rows("desert_storm",1),
@@ -132,7 +133,7 @@ for(const event_type of ["desert_storm","canyon_storm"]){
   assert.equal(after.substitute_assignments[0].priority,1);
   assert.ok(!after.substitute_assignments.some(r=>r.member_key==="p0"));
   const rendered=renderEventStrategy(after,{locale:"fr"});
-  assert.match(rendered,/Relève proposée pour Player 0/);
+  assert.match(rendered,/Relève proposée[^<]*Player 0/);
   const recalculated=buildEventStrategy({event_type,members:people.slice(0,30),availability:withdrawn,nowMs,
     context:{previous_participants:[...after.assignments,...after.withdrawn_assignments]}});
   assert.equal(recalculated.replacement_proposals[0].substitute_member_key,"p20","recalculate retains the vacancy");
@@ -177,4 +178,18 @@ assert.equal(sandbox.currentPlan("desert_storm",{rows:sandbox.readRows("desert_s
 sandbox.writeStatus(editable[20],"desert_storm","present");
 assert.equal(sandbox.currentPlan("desert_storm",{rows:sandbox.readRows("desert_storm")}).assignments.length,20);
 assert.equal(sandbox.currentPlan("desert_storm",{rows:sandbox.readRows("desert_storm")}).replacement_proposals.length,0);
+// A resolved vacancy must not return when the new starter later withdraws.
+sandbox.writeStatus(editable[20],"desert_storm","absent");
+const repeated=sandbox.currentPlan("desert_storm",{rows:sandbox.readRows("desert_storm")});
+assert.equal(repeated.replacement_proposals.length,1);
+assert.equal(repeated.replacement_proposals[0].departed_member_key,"p20");
+assert.ok(!repeated.withdrawn_assignments.some(p=>p.member_key==="p0"));
+sandbox.recalculate("desert_storm");
+assert.equal(sandbox.currentPlan("desert_storm",{rows:sandbox.readRows("desert_storm")}).replacement_proposals[0].departed_member_key,"p20");
+// An old empty saved plan cannot suppress a current, unsaved starter baseline.
+sandbox.state.alliance.event_plans={desert_storm:{assignments:[],withdrawn_assignments:[]}};
+sandbox.state.alliance.event_availability=rows("desert_storm",32).map((r,i)=>({...r,status:i<20?"present":i<30?"substitute":"unknown"}));
+editable.forEach(m=>{m.event_availability=[];m.availability_history=[]});
+sandbox.writeStatus(editable[0],"desert_storm","absent");
+assert.equal(sandbox.currentPlan("desert_storm",{rows:sandbox.readRows("desert_storm")}).replacement_proposals[0].departed_member_key,"p0");
 console.log("Event strategy knowledge, capacities, uncertainty, evidence, API and safe UI: PASS");
