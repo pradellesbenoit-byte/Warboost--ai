@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "26YUdJDS9SvDpMK7BO67l"
+uri = "file://research/notes.md"
+type = "text"
+title = "Research Notes: Last War Event Strategy"
+description = "Research scope, source standards and coverage checklist for the event strategy update."
+logical_id = "71d857d8-e953-43b2-94a8-dd67aef3772f"
+content_hash = "sha256:d7e35133fadeccc24cadc90fd6af5f988dbe28fec8ca642183464dc6eeb8f405"
+size = 3408
+mtime_ms = 1790974144038
+storage_uri = "gcs://replit-rams-assets-archer/rams/assets/repl:df6f9d14-738b-4159-af63-583fcdd4375b/71d857d8-e953-43b2-94a8-dd67aef3772f/331b56ea-71c7-4984-a6b0-d3add52003d0"
+storage_version_token = "1790974152077345"
+content_type = "text/markdown"
