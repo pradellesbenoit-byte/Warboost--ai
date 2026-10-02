@@ -13,6 +13,7 @@ import {confirmedCompositionForSquad,selectPrimarySquad} from '../lib/squad-iden
 import {scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine} from '../lib/vs-live.js';
 import {LAST_WAR_RULES,LAST_WAR_RULES_VERSION,crystalEventEligibility,crystalBossGuidance,ammoBonanzaGuidance,shopRuleGuidance,lastWarRuleContext,ruleProvenance} from '../lib/last-war-rules.js';
 import {mergeFreshRecord} from "../lib/field-freshness.js";
+import {eventStrategyFromState} from "../lib/event-strategy.js";
 const ENGINE_VERSION="2.5.28";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
@@ -1237,7 +1238,7 @@ function vsLiveCopy(locale){
 }
 function vsFmtDuration(seconds){const n=Number(seconds);if(!Number.isFinite(n)||n<0)return "—";const h=Math.floor(n/3600),m=Math.floor((n%3600)/60);return `${h}h ${String(m).padStart(2,"0")}`}
 
-function buildVsAdvice(state,locale,opts={}){
+function buildVsAdviceCore(state,locale,opts={}){
   const v=state?.vs||{},pack=contextPack(locale).vs,day=Number(v.day),freshness=freshnessInfo(v.updated_at||null,"vs",locale),liveCopy=vsLiveCopy(locale);
   if(day===0){
     const prep=vsPrepText(locale),confidence=Math.max(35,Math.min(82,55+(state?.updated_at||state?.sync?.last_sync?10:0)-(freshness?.confidence_penalty||0))),priorities=[{rank:1,kind:"prep",text:prep.focus},{rank:2,kind:"keep",text:prep.hold},{rank:3,kind:"avoid",text:prep.avoid}];
@@ -1283,7 +1284,7 @@ function staleSeasonRefreshText(lang,name){
   if(lang==="ar")return `${title}بيانات الموسم قديمة أو بلا طابع زمني. أعد المسح لتأكيد الحالة النشطة قبل أي قرار موسمي؛ الهوية المحفوظة هي آخر قيمة معروفة فقط.`;
   return `${title}Season data is stale or has no timestamp. Rescan to confirm the active state before making seasonal decisions; the saved identity is last-known only.`;
 }
-function buildSeasonAdvice(state,locale){
+function buildSeasonAdviceCore(state,locale){
   const s=state?.season||{},pack=contextPack(locale).season,lifecycle=seasonLifecycle(s),day=seasonIsActive(s)?num(s.day):null,total=seasonIsActive(s)?num(s.total_days):null,progress=activeSeasonProgress(s),resistance=seasonIsActive(s)?num(s.resistance):null,freshness=freshnessInfo(s.updated_at||null,"season",locale);
   const player=buildPlayerAnalysis(state,locale),pp=player?.priorities?.[0],pt=pp?`${pp.title}: ${pp.target||pp.reason||""}`.trim():"";
   if(lifecycle==="ended"||lifecycle==="interseason"){
@@ -1312,6 +1313,18 @@ function buildSeasonAdvice(state,locale){
   confidence=Math.max(25,Math.min(92,confidence-(freshness?.confidence_penalty||0)));
   const advice=[pack.head(day,total),progress!==null?pack.progress(progress):pack.progress_unknown,s.profession?pack.profession(s.profession):"",resistance!==null?pack.resistance(resistance):"",s6ctx?.target?`${s6ctx.title} · ${s6ctx.target}: ${s6ctx.text}`:"",s6ctx?.tech_priority?`${s6ctx.tech_priority.label}: ${s6ctx.tech_priority.pct}%`:"",late?pack.late:"",pt?pack.player(pt):"",pack.confidence(confidence)].filter(Boolean).join(" ");
   return {advice,confidence,priorities:priorities.slice(0,4),day,total_days:total,progress_pct:progress,progress_applicable:progress!==null,profession:s.profession||null,resistance,lifecycle:"active",season_active:true,season6_awakening:s6ctx,data_quality:confidence>=75?"high":confidence>=55?"medium":"low",data_freshness:freshness,engine:`warboost-season-ai-v${ENGINE_VERSION}`};
+}
+function buildVsAdvice(state,locale,opts={}){
+  const advice=buildVsAdviceCore(state,locale,opts);
+  return {...advice,event_strategy:eventStrategyFromState(state,"vs",{
+    nowMs:opts.now?new Date(opts.now).getTime():Date.now(),
+    context:{...state?.vs,day:advice.day??null,time_remaining_seconds:advice.time_remaining_seconds,
+      stale:advice.live_decision?.stale===true,refresh_required:!Number.isInteger(advice.day)}
+  })};
+}
+function buildSeasonAdvice(state,locale){
+  const advice=buildSeasonAdviceCore(state,locale);
+  return {...advice,event_strategy:eventStrategyFromState(state,"season",{context:{...state?.season,lifecycle:advice.lifecycle}})};
 }
 function buildSevenDayPlan(state,analysis){
   const priorities=Array.isArray(analysis?.priorities)?analysis.priorities:[],top=priorities[0]||null,second=priorities[1]||null;

@@ -546,3 +546,11 @@ html[dir="rtl"] .acqOptionHead{direction:rtl}
   .supportAdminDetails{padding:10px}
   .supportAdminControls{grid-template-columns:minmax(0,1fr) auto}
 }
+.eventStrategy{margin-top:14px;padding:12px;border:1px solid var(--border,#334155);border-radius:12px;min-width:0}
+.eventStrategy p,.eventStrategy li{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.eventStrategy details{margin-top:10px}
+.eventStrategy summary{padding:12px 0;cursor:pointer;min-height:44px}
+.eventStrategy ul{padding-left:18px}
+.eventStrategy small{display:block;margin:4px 0 10px;color:var(--muted,#a5b4c8)}
+.eventStrategy pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:13px;line-height:1.5;margin:8px 0}
+.eventStrategy a{color:inherit;text-decoration:underline}

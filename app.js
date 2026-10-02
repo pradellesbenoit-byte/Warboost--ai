@@ -21,6 +21,8 @@ import {mergeSharedAllianceRoster} from "./lib/shared-alliance-roster.js";
 import {playerParticipationInsight,allianceParticipationOverview,allianceParticipationByEvent} from "./lib/alliance-participation-insights.js";
 import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine,vsSnapshotFreshness} from "./lib/vs-live.js";
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan.js";
+import {buildEventStrategy} from "./lib/event-strategy.js";
+import {renderEventStrategy,eventStrategyOrders} from "./lib/event-strategy-ui.js";
 import {renderDesertStormPlanInto} from "./lib/desert-storm-plan-ui.js?v=hf8630-desert-storm-plan-r2";
 import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
 import {createIdleLifecycle} from "./lib/idle-lifecycle.js?v=warboost-startup-screen-r1";
@@ -2056,7 +2058,9 @@ function allianceEventRows(eventType){
     ...(Array.isArray(state.alliance?.event_availability)?state.alliance.event_availability:[]),
     ...members.flatMap(member=>Array.isArray(member?.event_availability)?member.event_availability:[])
   ];
-  return mergeEventAvailabilities(sources).filter(row=>row.event_type===eventType);
+  const instance=eventType==="canyon_storm"?(state.alliance?.canyon?.scheduled_at||"current"):"current";
+  const declarations=sources.filter(row=>!((!row.source||row.source==="legacy")&&(!row.status||row.status==="unknown")));
+  return mergeEventAvailabilities(declarations).filter(row=>row.event_type===eventType&&(row.event_instance||"current")===instance);
 }
 function allianceEventAvailability(eventType,member,rows=allianceEventRows(eventType)){
   const keys=new Set([member.canonical_member_key,member.lifecycle_key,member.member_key,member.player_id,member.name].filter(Boolean));
@@ -2069,21 +2073,7 @@ function allianceEventGroups(eventType){
   const classified=members.map(member=>({member,row:allianceEventAvailability(eventType,member,rows)}));
   const present=classified.filter(x=>x.row.status==="present");
   const explicitSubstitutes=classified.filter(x=>x.row.status==="substitute");
-  const saved=state.alliance?.event_plans?.[eventType];
-  const byKey=new Map(members.map(member=>[allianceEventMemberKey(member),member]));
-  const resolvePlanMembers=list=>(Array.isArray(list)?list:[]).map(item=>byKey.get(allianceEventMemberKey(item)||String(item||""))||members.find(member=>rosterNameKey(member.name)===rosterNameKey(typeof item==="string"?item:item?.name))).filter(Boolean);
-  const plannedParticipants=resolvePlanMembers(saved?.participants),plannedSubstitutes=resolvePlanMembers(saved?.substitutes);
-  if(!def.openRoster&&saved&&(plannedParticipants.length||plannedSubstitutes.length)){
-    const plannedKeys=new Set([...plannedParticipants,...plannedSubstitutes].map(allianceEventMemberKey));
-    return {
-      participants:plannedParticipants,
-      substitutes:plannedSubstitutes,
-      confirming:classified.filter(x=>(x.row.status==="unknown"||x.row.status==="uncertain")&&!plannedKeys.has(allianceEventMemberKey(x.member))).map(x=>x.member),
-      absent:classified.filter(x=>x.row.status==="absent").map(x=>x.member),
-      totalMembers:members.length,
-      rows
-    };
-  }
+  // Saved plans are historical proposals, never the source of current attendance.
   if(def.openRoster){
     return {
       participants:present.map(x=>x.member),
@@ -2195,8 +2185,13 @@ function toggleAllianceEventDetail(eventType){
 function allianceEventPlanSummary(eventType,groups){
   const saved=state.alliance?.event_plans?.[eventType],def=allianceEventDefinition(eventType);
   if(!saved)return "";
-  const openRoster=Boolean(def.openRoster),participants=(openRoster?groups.participants:(saved.participants||groups.participants)).map(x=>typeof x==="string"?x:x.name).filter(Boolean),subs=openRoster?[]:(saved.substitutes||groups.substitutes).map(x=>typeof x==="string"?x:x.name).filter(Boolean),denominator=openRoster?groups.totalMembers:def.limit;
-  return `<div class="allianceEventPlan"><div class="allianceEventPlanHead"><b>🧠 ${esc(t("alliance_event_generate_plan"))} · ${esc(def.label)}</b><span class="pill">${esc(participants.length)}/${esc(denominator)}</span></div><div><b>${esc(t("alliance_event_participants"))}</b><span>${esc(participants.join(" · ")||"—")}</span></div>${openRoster?"":`<div><b>${esc(t("alliance_event_substitutes"))}</b><span>${esc(subs.join(" · ")||"—")}</span></div>`}<small>${esc(t("alliance_event_plan_uses"))}</small></div>`;
+  const openRoster=Boolean(def.openRoster),denominator=openRoster?groups.totalMembers:def.limit;
+  const strategy=buildEventStrategy({event_type:eventType,members:activeAllianceRosterMembers(),
+    availability:groups.rows,nowMs:serverNow.getTime(),faction:state.alliance?.canyon?.faction,
+    event_instance:eventType==="canyon_storm"?(state.alliance?.canyon?.scheduled_at||"current"):"current",
+    context:eventType==="vs"?state.vs:eventType==="season"?state.season:{}});
+  const participants=strategy.participants.map(x=>x.name),subs=strategy.substitutes.map(x=>x.name);
+  return `<div class="allianceEventPlan"><div class="allianceEventPlanHead"><b>🧠 ${esc(t("alliance_event_generate_plan"))} · ${esc(def.label)}</b><span class="pill">${esc(participants.length)}/${esc(denominator)}</span></div><div><b>${esc(t("alliance_event_participants"))}</b><span>${esc(participants.join(" · ")||"—")}</span></div>${openRoster?"":`<div><b>${esc(t("alliance_event_substitutes"))}</b><span>${esc(subs.join(" · ")||"—")}</span></div>`}<small>${esc(t("alliance_event_plan_uses"))}</small>${renderEventStrategy(strategy,{locale:lang,escapeHtml:esc})}</div>`;
 }
 function generateAllianceEventPlan(eventType){
   if(!hasDeclaredAllianceCommandRole()){const detail=$("#allianceEventDetail");if(detail)detail.insertAdjacentHTML("afterbegin",`<div class="notice warn">${esc(managerOnlyMessage())}</div>`);return}
@@ -2599,6 +2594,14 @@ function renderDesertStormPlan(planOverride=null,{scrollIntoView=Boolean(planOve
     plan=cached.plan;ds.plan=plan;ds.updated_at=new Date().toISOString();state.alliance.updated_at=ds.updated_at;saveState({renderUi:false});
   }
   const rendered=renderDesertStormPlanInto(box,copyBtn,plan,{translate:t,escapeHtml:esc,missionLabel:dsMissionLabel,warningText:desertStormWarningText,copyText:desertStormCopyText,rulesetDate:DESERT_STORM_RULESET.observed_at,scrollIntoView});
+  if(rendered.ok){
+    const starters=new Set((plan.starters||[]).flatMap(desertStormMemberKeys)),subs=new Set((plan.substitutes||[]).flatMap(desertStormMemberKeys));
+    const members=activeAllianceRosterMembers().filter(m=>desertStormMemberKeys(m).some(k=>starters.has(k)||subs.has(k)));
+    const strategy=buildEventStrategy({event_type:"desert_storm",members,nowMs:serverNow.getTime(),
+      availability:members.map(m=>({canonical_member_key:allianceEventMemberKey(m),event_type:"desert_storm",status:desertStormMemberKeys(m).some(k=>subs.has(k))?"substitute":"present",source:"alliance_manager_manual",updated_at:serverNow.toISOString()})),
+      context:{attendance_basis:"registration_only"}});
+    box.insertAdjacentHTML("beforeend",renderEventStrategy(strategy,{locale:lang,escapeHtml:esc}));
+  }
   if(!rendered.ok)clearDesertStormPlanReadyStatus();
   if(rendered.ok&&copyBtn)copyBtn.onclick=async()=>{try{await navigator.clipboard.writeText(desertStormCopyText(plan));const old=copyBtn.textContent;copyBtn.textContent=t("copy");setTimeout(()=>copyBtn.textContent=old,1200)}catch{}};
   return rendered;
@@ -2748,7 +2751,7 @@ function renderCanyonAvailability(){
 }
 function renderCanyonRules(){
   const objectives=$("#canyonObjectives"),skills=$("#canyonSkills"),faction=ensureCanyonState().faction;
-  if(objectives)objectives.innerHTML=`<div class="notice">Victoire : le camp avec le plus de Points de Champ de Bataille à la fin.</div><div class="canyonObjectiveList">
+  if(objectives)objectives.innerHTML=`<div class="notice warn">Observations du ${esc(CANYON_STORM_RULESET.observed_at)}, non certifiées officielles. Reconfirmer les valeurs et compétences dans le jeu : elles ne calculent pas une victoire.</div><div class="notice">Victoire rapportée : le camp avec le plus de Points de Champ de Bataille à la fin.</div><div class="canyonObjectiveList">
     <div class="canyonRuleCard"><b>Factions et entrée</b><small>Instaurateurs : 1 Force Opérationnelle, moins nombreux, bonus passifs, Judicateur possible. Éclaireurs : 2 Forces Opérationnelles, avantage numérique. Entrée réservée aux participants/remplaçants de l’alliance inscrite, avec une base hors Terres Contaminées près du Capitole. Début dans une zone protégée.</small></div>
     <div class="canyonRuleCard"><b>Laboratoire et points excédentaires</b><small>Le Laboratoire de Virus devient accessible après un certain temps · délai exact à confirmer. Les bâtiments peuvent accumuler des points excédentaires récupérables via les Boîtes de Ravitaillement.</small></div>
     <div class="canyonRuleCard"><b>Phase 1 · production initiale</b><small>Centre de Données I +20/s · Entrepôt d’Échantillons I +15/s · Tour d’Alimentation +50/s.</small></div>
@@ -2757,7 +2760,7 @@ function renderCanyonRules(){
     <div class="canyonRuleCard"><b>Tour d’Alimentation</b><small>Instaurateurs : peut activer le bouclier de la Zone Sûre Centrale et rendre les bases présentes invulnérables aux attaques.</small></div>
     <div class="canyonRuleCard"><b>Système de Défense</b><small>Une fois capturé, attaque automatiquement les bâtiments centraux ennemis et blesse les troupes de garnison.</small></div>
     <div class="canyonRuleCard"><b>Usine de Sérum</b><small>Buff périodique au commandant qui la contrôle · effet exact à confirmer.</small></div></div>`;
-  if(skills)skills.innerHTML=`${faction==="unknown"?`<div class="notice warn">Faction à confirmer : les compétences des deux factions restent visibles.</div>`:""}<div class="canyonSkillList">
+  if(skills)skills.innerHTML=`<p class="activityNote">Observations du ${esc(CANYON_STORM_RULESET.observed_at)} : compétences et valeurs à reconfirmer pour le serveur actuel.</p>${faction==="unknown"?`<div class="notice warn">Faction à confirmer : les compétences des deux factions restent visibles.</div>`:""}<div class="canyonSkillList">
     ${faction!=="scouts"?`<div class="canyonRuleCard"><b>Tour Sismique · Instaurateurs</b><small>30 s · coût 500000 · recharge 300 s · à l’arrivée 1000 dégâts de durabilité, puis toutes les 3 s 300 dégâts + 60 unités gravement blessées.</small></div>`:""}
     <div class="canyonRuleCard"><b>Hôpital de Front · universelle</b><small>30 s · coût 500000 · recharge 300 s · toutes les 3 s restaure 300 durabilité et soigne 150 unités blessées.</small></div>
     ${faction!=="instigators"?`<div class="canyonRuleCard"><b>Tourelle d’Artillerie · Éclaireurs</b><small>30 s · coût 750000 · recharge 300 s · toutes les 2 s 300 dégâts à la base ennemie la plus proche + 60 unités gravement blessées.</small></div>`:""}
@@ -2767,11 +2770,13 @@ function renderCanyonRules(){
 function renderCanyonPlan(){
   const box=$("#canyonPlan"),validate=$("#canyonValidateBtn");if(!box)return;const canyon=ensureCanyonState(),plan=canyon.plan;
   if(!plan){box.innerHTML=`<div class="notice">Renseigne les disponibilités réelles puis génère une proposition. Les données manquantes resteront « à confirmer ».</div>`;validate?.classList.add("hidden");return}
-  const roleWhy={capture:"Sécuriser les objectifs de production confirmés.",defense_garrison:"Tenir les structures et la garnison.",mobile_reaction:"Réagir entre les objectifs sans abandonner la défense.",collection_energy:"Collecter l’énergie et les points excédentaires.",adjudicator:"Utiliser le rôle Judicateur confirmé pour les Instaurateurs."};
-  const phases=(plan.phases||[]).map((phase,index)=>`<div class="canyonPhase"><h4>Phase ${index+1} · ${esc((phase.objectives||[]).map(canyonObjectiveLabel).join(" · "))}</h4>${(phase.assignments||[]).length?(phase.assignments||[]).map(x=>`<div class="canyonAssignment"><b>${esc(x.name)} · ${esc(canyonRoleLabel(x.role))}</b><small>Pourquoi : ${esc(roleWhy[x.role]||"À confirmer")} · Sources : ${esc((x.sources||[]).map(s=>s==="confirmed_rule"?"règle confirmée":s==="player_data"?"donnée joueur":"donnée alliance").join(", "))}</small></div>`).join(""):`<div class="notice">Affectations à confirmer.</div>`}</div>`).join("");
+  const roleWhy={capture:"Proposition : sécuriser les objectifs visibles.",defense_garrison:"Proposition : tenir les structures et la garnison.",mobile_reaction:"Proposition : réagir sans abandonner la défense.",collection_energy:"Collecte conditionnelle aux objectifs visibles.",adjudicator:"Rôle Judicateur proposé, à confirmer en jeu."};
+  const phases=(plan.phases||[]).map((phase,index)=>`<div class="canyonPhase"><h4>Phase ${index+1} · ${esc((phase.objectives||[]).map(canyonObjectiveLabel).join(" · "))}</h4>${(phase.assignments||[]).length?(phase.assignments||[]).map(x=>`<div class="canyonAssignment"><b>${esc(x.name)} · ${esc(canyonRoleLabel(x.role))}</b><small>Pourquoi : ${esc(roleWhy[x.role]||"À confirmer")} · Sources : ${esc((x.sources||[]).map(s=>s==="confirmed_rule"?"observation en jeu datée":s==="player_data"?"donnée joueur":"donnée alliance").join(", "))}</small></div>`).join(""):`<div class="notice">Affectations à confirmer.</div>`}</div>`).join("");
   const subs=Array.isArray(plan.substitutes)?plan.substitutes:[],confirm=(plan.confirmation||[]).length;
   box.innerHTML=`<div class="canyonPlanTop"><b>${canyon.validated_at?"Plan validé R4/R5":"Proposition à valider"}</b><small>${plan.participants?.length||0}/20 titulaires · ${subs.length}/10 remplaçants · ${confirm} disponibilités à confirmer${plan.faction_to_confirm?" · faction à confirmer":""}</small></div>${subs.length?`<div class="dsSubs"><b>Remplaçants</b><small>${esc(subs.join(" · "))}</small></div>`:""}<div class="canyonPhaseList">${phases}</div>`;
   if(validate)validate.classList.toggle("hidden",Boolean(canyon.validated_at));
+  const strategy=buildEventStrategy({event_type:"canyon_storm",members:activeAllianceRosterMembers(),availability:canyon.availability||[],nowMs:serverNow.getTime(),faction:canyon.faction,slot:plan.selected_slot});
+  box.insertAdjacentHTML("beforeend",renderEventStrategy(strategy,{locale:lang,escapeHtml:esc}));
 }
 function renderCanyonPlanner(){
    const section=$("#canyonPlanner");if(!section)return;const canyon=ensureCanyonState(),access=desertStormSelectionAccess(),runtime=runtimeAccessState(),disabled=!runtime.privateVisible||!access.allowed;
@@ -2796,6 +2801,10 @@ function renderAllianceStructured(j){
   const actions=Array.isArray(j?.immediate_actions)?j.immediate_actions:[],fallback=Array.isArray(j?.plan_b)?j.plan_b:[];
   if(immediate){immediate.classList.toggle("hidden",!actions.length);immediate.innerHTML=actions.length?`<b>⚡ ${esc(t("immediate_actions"))}</b>${actions.map(x=>`<div class="warPlanAction"><strong>${esc(t(`alliance_group_${x.kind}`))} · ${esc(String(x.count??0))}</strong><small>${esc(memberNames(x.members))}</small></div>`).join("")}`:""}
   if(planB){planB.classList.toggle("hidden",!fallback.length);planB.innerHTML=fallback.length?`<b>🛡️ ${esc(t("plan_b"))}</b>${fallback.map(x=>{const icon=x.kind==="refresh"?"🟠":x.kind==="defensive"?"🛡️":"✅",label=x.kind==="refresh"?t("refresh"):x.kind==="defensive"?t("alliance_group_defense"):t("ready");return `<div class="warPlanAction"><strong>${icon} ${esc(label)} · ${esc(String(x.count??0))}</strong></div>`}).join("")}`:""}
+}
+function renderEventAdviceText(scope,j){
+  const box=$(scope==="vs"?"#vsPlanText":"#seasonAdviceText");if(!box)return;
+  box.innerHTML=`<div style="white-space:pre-wrap">${esc(structuredAdviceText(scope,j))}</div>${renderEventStrategy(j?.event_strategy,{locale:lang,escapeHtml:esc})}`;
 }
 function structuredAdviceText(scope,j){
   if(!j)return scope==="alliance"?t("war_plan_empty"):scope==="vs"?t("vs_empty"):t("season_empty");
@@ -3474,8 +3483,14 @@ $("#canyonSearch")?.addEventListener("input",e=>{canyonSearchTerm=String(e.targe
   $("#allianceDrawer")?.addEventListener("click",event=>{const button=event.target?.closest?.("#canyonClearBtn");if(!button)return;event.preventDefault();clearCanyonSelection()});
  $("#canyonGenerateBtn")?.addEventListener("click",()=>{const message=$("#canyonStatusMessage");if(!desertStormSelectionAccess().allowed){if(message){message.className="notice warn";message.textContent=managerOnlyMessage();message.classList.remove("hidden")}return}if(!desertStormFeatureAccess())return;const canyon=ensureCanyonState(),members=activeAllianceRosterMembers(),now=new Date().toISOString();canyon.plan=canyonPlanForRoster(canyon,members);canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;canyonActiveTab="plan";saveState();if(message){message.className="notice";message.textContent=canyon.plan.faction_to_confirm?"Plan générique créé · faction à confirmer.":"Plan Canyon créé · validation R4/R5 requise.";message.classList.remove("hidden")}});
 $("#canyonValidateBtn")?.addEventListener("click",()=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState();if(!canyon.plan)return;const now=new Date().toISOString();canyon.validated_at=now;canyon.validated_by=String(state.player?.name||state.player_id||"R4/R5");canyon.updated_at=now;state.alliance.updated_at=now;saveState();const message=$("#canyonStatusMessage");if(message){message.className="notice";message.textContent="Plan Canyon validé par un R4/R5.";message.classList.remove("hidden")}});
-$("#vsPlanBtn").addEventListener("click",async()=>{if(!requirePro())return;const j=await requestAdvice("vs");$("#vsPlanText").textContent=structuredAdviceText("vs",j)});$("#seasonLifecycleSelect")?.addEventListener("change",()=>{const value=$("#seasonLifecycleSelect").value||"unknown",now=new Date().toISOString();state.season=repairSeasonState({...state.season,lifecycle:value,lifecycle_source:"manual",ended_at:(value==="ended"||value==="interseason")?(state.season.ended_at||now):null,updated_at:now});saveState();$("#seasonAdviceText").textContent=t("season_empty")});
-$("#seasonAdviceBtn").addEventListener("click",async()=>{if(!requirePro())return;const j=await requestAdvice("season");$("#seasonAdviceText").textContent=structuredAdviceText("season",j)});
+$("#vsPlanBtn").addEventListener("click",async()=>{if(!requirePro())return;const j=await requestAdvice("vs");renderEventAdviceText("vs",j)});$("#seasonLifecycleSelect")?.addEventListener("change",()=>{const value=$("#seasonLifecycleSelect").value||"unknown",now=new Date().toISOString();state.season=repairSeasonState({...state.season,lifecycle:value,lifecycle_source:"manual",ended_at:(value==="ended"||value==="interseason")?(state.season.ended_at||now):null,updated_at:now});saveState();$("#seasonAdviceText").textContent=t("season_empty")});
+$("#seasonAdviceBtn").addEventListener("click",async()=>{if(!requirePro())return;const j=await requestAdvice("season");renderEventAdviceText("season",j)});
+document.addEventListener("click",async event=>{
+  const button=event.target.closest?.("[data-event-strategy-copy]");if(!button)return;
+  const text=button.closest(".eventStrategy")?.querySelector("pre")?.textContent||"";
+  try{await navigator.clipboard.writeText(text);button.textContent=lang==="fr"?"Copié":"Copied"}
+  catch{button.textContent=lang==="fr"?"Sélectionne le texte pour copier":"Select the text to copy"}
+});
 async function getAdvice(scope){const j=await requestAdvice(scope);return structuredAdviceText(scope,j)}
 
 function currentRosterIdentityContext(){return {server_id:state.player?.server_id||state.alliance?.server_id||"",alliance_tag:state.alliance?.tag||""}}

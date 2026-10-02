@@ -5,6 +5,8 @@ import vm from "node:vm";
 import {fileURLToPath} from "node:url";
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "../lib/desert-storm-plan.js";
 import {renderDesertStormPlanInto} from "../lib/desert-storm-plan-ui.js";
+import {renderEventStrategy} from "../lib/event-strategy-ui.js";
+import {buildEventStrategy} from "../lib/event-strategy.js";
 import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections} from "../lib/desert-storm-selection.js";
 import {desertStormMissionLabel} from "../lib/desert-storm-labels.js";
 import {mergeDesertStormState,desertStormSelectionSignature} from "../lib/cloud-state-recovery.js";
@@ -46,6 +48,7 @@ function extractFunction(name){
 function element(classes=[]){
   const values=new Set(classes);
   return {
+    insertAdjacentHTML(position,html){assert.equal(position,"beforeend");this.innerHTML+=html},
     hidden:values.has("hidden"),innerHTML:"",textContent:"",textContentBefore:"",dataset:{},
     className:"",textContentAfter:"",onclick:null,scrollCalls:0,lastScroll:null,
     classList:{
@@ -102,7 +105,8 @@ function runHandler({throwDuringBuild=false}={}){
     desertStormAvailabilityCapacity:()=>{throw new Error("unexpected availability fallback")},
     desertStormMissionLabel,
     buildDesertStormPlan:throwDuringBuild?()=>{throw new Error("moteur de plan indisponible")}:buildDesertStormPlan,
-    renderDesertStormPlanInto,DESERT_STORM_RULESET,
+    renderDesertStormPlanInto,renderEventStrategy,buildEventStrategy,DESERT_STORM_RULESET,
+    allianceEventMemberKey:member=>member.canonical_member_key,
     hasDeclaredAllianceCommandRole:()=>true,managerOnlyMessage:()=>"Accès réservé R4/R5.",
     desertStormFeatureAccess:()=>true,serverNow:new Date("2026-09-24T12:00:00.000Z"),
     desertStormSelectionSignature,desertStormSearchTerm:"",

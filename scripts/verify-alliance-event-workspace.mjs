@@ -21,7 +21,9 @@ assert.deepEqual(desert.participants.map(x=>x.name),["R3 Desert"]);
 assert.deepEqual(canyon.excluded.map(x=>x.name),["R4 Manual"]);
 assert.deepEqual(canyon.confirmation.map(x=>x.name),["R3 Desert","No Reply"]);
 assert.match(html,/id="allianceEventWorkspace"/);
-assert.doesNotMatch(html,/Suivi détaillé par joueur · 30 jours|id="allianceParticipationTable"/);
+const eventAccordion=html.match(/<details id="allianceEventAccordion"[\s\S]*?<\/details>/)?.[0];
+assert.ok(eventAccordion,"event accordion markup is present");
+assert.doesNotMatch(eventAccordion,/Suivi détaillé par joueur · 30 jours|id="allianceParticipationTable"/,"event workspace must not duplicate the separate alliance activity history");
 for(const group of ["alliance_event_participants","alliance_event_substitutes","alliance_event_confirming","alliance_event_absent"])assert.match(app,new RegExp(group));
 assert.match(app,/data-alliance-player-key/);
 assert.match(app,/data-alliance-player-close/);
@@ -44,5 +46,7 @@ assert.match(css,/allianceEventCards[\s\S]*@media\(max-width:560px\)/);
 assert.match(css,/alliancePlayerModalClose[\s\S]*min-width:48px/);
 assert.match(css,/allianceAccordionSummary/);
 assert.match(css,/allianceEventChevron/);
+assert.match(app,/buildEventStrategy\(\{event_type:eventType/);
+assert.match(app,/renderEventStrategy\(strategy/);
 
 console.log("Alliance event-first workspace verification: PASS");

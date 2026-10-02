@@ -8,3 +8,9 @@ Current Last War rules used by WarBoost recommendations must retain an explicit 
 **Why:** update facts can be region-dependent or community-sourced, and captured shop balances can go stale; treating either as live or comparing unlike currencies would create misleading recommendations. Unverified Tech Center priority advice must not be presented as a confirmed Last War mechanic.
 
 **How to apply:** extend the centralized rule set and preserve prior local/cloud fields during merges; never replace a known eligibility or confirmed shop content with `null` from a partial scan. Keep shop references dated and server/update-caveated. Use a captured wallet balance for ranking only when it is at most 24 hours old, compare prices only within that same currency, and otherwise keep source ordering neutral. For Tech Center guidance, label community sources, rank only branches confirmed by the player's scan, and keep explicit in-game values authoritative. Keep purchases inside the game's own store.
+
+Official support search excerpts establish only the statements visible in the excerpt, not a full current event ruleset.
+
+**Why:** public Last War support links returned sign-in pages even while indexed Canyon excerpts remained available; promoting those excerpts to complete official rules would falsely certify community-derived timers and scores.
+
+**How to apply:** keep excerpt-only evidence separate from full-page evidence, and require in-game or accessible primary confirmation before certifying precise operational numbers.

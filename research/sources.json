@@ -1,0 +1,379 @@
+{
+  "checkedAt": "2026-10-02",
+  "tierPolicy": "Strict research tiers: websites, commercial guides and UGC are Tier 3. Official publisher provenance is separately classified; snippet access never proves full rules.",
+  "sources": [
+    {
+      "key": "lastwar-com",
+      "title": "Official Last War site search result",
+      "url": "http://lastwar.com/",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "official_reference",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/desert-snippets.md"
+    },
+    {
+      "key": "lastcmd-com-docs-desert-storm",
+      "title": "Last Command Docs",
+      "url": "https://www.lastcmd.com/docs/desert-storm",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/desert-snippets.md"
+    },
+    {
+      "key": "lastwargame-online-en-desert-storm-battlefield",
+      "title": "LastWarGame.online guide",
+      "url": "https://www.lastwargame.online/en/desert-storm-battlefield",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/desert-snippets.md"
+    },
+    {
+      "key": "reddit-com-r-lastwarmobilegame-comments-1e8zv47-desert-storm-points",
+      "title": "Reddit discussion",
+      "url": "https://www.reddit.com/r/LastWarMobileGame/comments/1e8zv47/desert_storm_points",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/desert-snippets.md"
+    },
+    {
+      "key": "canyon-official-report",
+      "title": "Official Last War Support — Canyon Storm Battlefield Report",
+      "url": "https://firstfungroup.zendesk.com/hc/en-us/articles/45789138558995-Last-War-Survival-The-Symbol-of-Strategy-and-Unity-Canyon-Storm-Battlefield-Report",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "official_reference",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/canyon-snippets.md"
+    },
+    {
+      "key": "canyon-official-launch",
+      "title": "Official Last War Support — 2V1 Battlefield Discussion",
+      "url": "https://firstfungroup.zendesk.com/hc/en-us/articles/43519832528019--2V1-Battlefield-Discussion",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "official_reference",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/canyon-snippets.md",
+      "updatedDate": "2026-03-30"
+    },
+    {
+      "key": "lwagent-online-guides-canyon-storm",
+      "title": "LW Agent — Canyon Storm strategy guide",
+      "url": "https://lwagent.online/guides/canyon-storm",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/canyon-snippets.md"
+    },
+    {
+      "key": "youtube-com-watch-yhzvfdb_t1e",
+      "title": "YouTube — community video",
+      "url": "https://www.youtube.com/watch?v=yHZvfdB_t1E",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/canyon-snippets.md"
+    },
+    {
+      "key": "vs-vault",
+      "title": "Last War Vault — Alliance Duel VS Guide",
+      "url": "https://lastwarvault.com/guides/general/vs-guide",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/vs-season-snippets.md"
+    },
+    {
+      "key": "lastwarvault-com-vs-planner",
+      "title": "Last War Vault — VS Points Planner",
+      "url": "https://lastwarvault.com/vs-planner",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/vs-season-snippets.md"
+    },
+    {
+      "key": "lw-spy-com-blog-last-war-vs-days-schedule",
+      "title": "LW Spy — Last War VS Days Schedule (Mon-Sat Point Guide 2026)",
+      "url": "https://lw-spy.com/blog/last-war-vs-days-schedule",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/vs-season-snippets.md"
+    },
+    {
+      "key": "packsify-com-blogs-last-war-survival-game-tips-and-tricks",
+      "title": "Packsify — Last War: Survival Strategy Guide for Alliance Leaders (7 Tips That Actually Matter)",
+      "url": "https://www.packsify.com/blogs/last-war-survival-game-tips-and-tricks",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/vs-season-snippets.md"
+    },
+    {
+      "key": "lastwar-csmit195-com-arms-race",
+      "title": "Last War Tools — Calculators & Alliance VS Guide",
+      "url": "https://lastwar.csmit195.com/arms-race",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/vs-season-snippets.md"
+    },
+    {
+      "key": "event-calendar",
+      "title": "Last War Handbook — Event Calendar",
+      "url": "https://lastwarhandbook.com/guides/event-calendar-reset-times",
+      "publishedDate": "2026-01-20",
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "full_page",
+      "evidencePath": "research/sources/gap-vs-01-reset-calendar.md",
+      "updatedDate": "2026-06"
+    },
+    {
+      "key": "lastwargame-online-en-doomsday-event",
+      "title": "Last War: The Doomsday in Last War: Survival Game — Event Guide",
+      "url": "https://www.lastwargame.online/en/doomsday-event",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/vs-season-snippets.md"
+    },
+    {
+      "key": "lastwarvault-com-guides",
+      "title": "Last War Vault",
+      "url": "https://lastwarvault.com/guides",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/community-snippets.md"
+    },
+    {
+      "key": "lastwarsurvival-com-tools",
+      "title": "Last War Survival Tools",
+      "url": "https://lastwarsurvival.com/tools",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/community-snippets.md"
+    },
+    {
+      "key": "lastwarsurvival-com",
+      "title": "Last War Survival maps",
+      "url": "https://lastwarsurvival.com/",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/community-snippets.md"
+    },
+    {
+      "key": "reddit-com-r-lastwarmobilegame-comments-1va4fke-need-sample-canyon-storm-battlefield",
+      "title": "Reddit: Canyon Storm coordination",
+      "url": "https://www.reddit.com/r/LastWarMobileGame/comments/1va4fke/need_sample_canyon_storm_battlefield",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/community-snippets.md"
+    },
+    {
+      "key": "reddit-com-r-lastwarmobilegame-comments-1rbreji-canyon-storm",
+      "title": "Reddit: Canyon Storm Judicator role",
+      "url": "https://www.reddit.com/r/LastWarMobileGame/comments/1rbreji/canyon_storm",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/community-snippets.md"
+    },
+    {
+      "key": "reddit-com-r-lastwarmobilegame-comments-1mi6m3i-canyon-storm-battlefield",
+      "title": "Reddit: Canyon Storm battlefield skills",
+      "url": "https://www.reddit.com/r/LastWarMobileGame/comments/1mi6m3i/canyon_storm_battlefield",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/community-snippets.md"
+    },
+    {
+      "key": "reddit-com-r-lastwarmobilegame-comments-1i3w9t2-how-are-the-alliances-picked-for-desert-storm",
+      "title": "Reddit: Desert Storm matchmaking",
+      "url": "https://www.reddit.com/r/LastWarMobileGame/comments/1i3w9t2/how_are_the_alliances_picked_for_desert_storm",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/community-snippets.md"
+    },
+    {
+      "key": "reddit-com-r-lastwarmobilegame-comments-1o4gmfp-last-war-survival-canyon-event-guide-step-by-step",
+      "title": "Reddit: Canyon event guide video",
+      "url": "https://www.reddit.com/r/LastWarMobileGame/comments/1o4gmfp/last_war_survival_canyon_event_guide_step_by_step",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/community-snippets.md"
+    },
+    {
+      "key": "lastwar-com-en-home-html",
+      "title": "Official Last War website",
+      "url": "https://www.lastwar.com/en/home.html?1775714020309",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "official_reference",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/freshness-snippets.md"
+    },
+    {
+      "key": "official-regional",
+      "title": "Official Last War website (regional / ID domain)",
+      "url": "https://id.lastwar.com/",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "official_reference",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/freshness-snippets.md"
+    },
+    {
+      "key": "discord-com-servers-last-war-survival-game-1141583924468908043",
+      "title": "Official Discord listing",
+      "url": "https://discord.com/servers/last-war-survival-game-1141583924468908043",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "official_reference",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/freshness-snippets.md"
+    },
+    {
+      "key": "discord-com-invite-lastwarsurvival",
+      "title": "Official Discord invite listing",
+      "url": "https://discord.com/invite/lastwarsurvival",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "official_reference",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/freshness-snippets.md"
+    },
+    {
+      "key": "third-party-api",
+      "title": "Third-party API docs",
+      "url": "https://api.lastwar.tools/docs",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/freshness-snippets.md"
+    },
+    {
+      "key": "lastwargame-online-en-game-events",
+      "title": "Third-party event reference",
+      "url": "https://www.lastwargame.online/en/game-events",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/freshness-snippets.md"
+    },
+    {
+      "key": "ldshop-gg-blog-last-war-survival-goldvein-war-guide-html",
+      "title": "Third-party Goldvein guide",
+      "url": "https://www.ldshop.gg/blog/last-war-survival/goldvein-war-guide.html",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/freshness-snippets.md"
+    },
+    {
+      "key": "lastwarhandbook-com-guides-events-guide",
+      "title": "Third-party event guide",
+      "url": "https://lastwarhandbook.com/guides/events-guide",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "snippet_only",
+      "evidencePath": "research/sources/freshness-snippets.md"
+    },
+    {
+      "key": "canyon-handbook",
+      "title": "Last War Handbook — Canyon Storm",
+      "url": "https://lastwarhandbook.com/guides/canyon-storm-battlefield-guide",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "full_page",
+      "evidencePath": "research/sources/canyon-03-community-handbook.md",
+      "updatedDate": "2026-05"
+    },
+    {
+      "key": "desert-tutorial",
+      "title": "Last War Tutorial — Desert Storm",
+      "url": "https://www.lastwartutorial.com/desert-storm",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "full_page",
+      "evidencePath": "research/sources/desert-02-lastwar-tutorial.md"
+    },
+    {
+      "key": "desert-ldshop",
+      "title": "LDShop — Desert Storm",
+      "url": "https://www.ldshop.gg/blog/last-war-survival/desert-storm.html",
+      "publishedDate": "2025-08-27",
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "full_page",
+      "evidencePath": "research/sources/desert-03-ldshop-guide.md"
+    },
+    {
+      "key": "vs-guide",
+      "title": "LastWarGame — Alliance Duel",
+      "url": "https://www.lastwargame.online/en/game-alliance-duel",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "full_page",
+      "evidencePath": "research/sources/vs-season-01-alliance-duel.md"
+    },
+    {
+      "key": "season-guide",
+      "title": "LastWarHub — Seasons",
+      "url": "https://lastwarhub.com/en/seasons",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "full_page",
+      "evidencePath": "research/sources/vs-season-03-seasons.md"
+    },
+    {
+      "key": "vs-tutorial",
+      "title": "Last War Tutorial — Duel VS",
+      "url": "https://www.lastwartutorial.com/duel-vs",
+      "publishedDate": null,
+      "tier": 3,
+      "sourceKind": "community",
+      "access": "full_page",
+      "evidencePath": "research/sources/gap-vs-01-duel-vs.md"
+    }
+  ]
+}
