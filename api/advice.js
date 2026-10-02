@@ -12,6 +12,7 @@ import {buildAdaptiveContext,applyAdaptiveScoring,technologyOpportunity} from '.
 import {confirmedCompositionForSquad,selectPrimarySquad} from '../lib/squad-identity.js';
 import {scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine} from '../lib/vs-live.js';
 import {LAST_WAR_RULES,LAST_WAR_RULES_VERSION,crystalEventEligibility,crystalBossGuidance,ammoBonanzaGuidance,shopRuleGuidance,lastWarRuleContext,ruleProvenance} from '../lib/last-war-rules.js';
+import {mergeFreshRecord} from "../lib/field-freshness.js";
 const ENGINE_VERSION="2.5.28";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
@@ -51,14 +52,15 @@ function squadHeroesForAnalysis(squad={}){
     const name=canonicalHeroName(names[index]||"");
     if(!name)return {name:""};
     const slot=raw.find(hero=>heroKey(hero?.name||hero?.hero_name)===heroKey(name))||{};
-    return {...slot,name};
+     return {...slot,name,updated_at:slot.updated_at||squad?.updated_at||null};
   });
 }
 const HERO_MEMORY_FIELDS=["level","stars","power","exclusive","gear","awakening"];
 function heroKey(v){return canonicalHeroName(v).toLowerCase()}
-function mergeHeroKnown(base={},extra={}){
-  const out={...base};
-  for(const f of HERO_MEMORY_FIELDS){const v=extra?.[f];if(v!==null&&v!==undefined&&v!=="")out[f]=v;}
+function mergeHeroKnown(base={},extra={},options={}){
+  const incoming={...(extra||{})};
+  if(num(incoming.power)===null||num(incoming.power)<=0)delete incoming.power;
+  const out=mergeFreshRecord(base,incoming,HERO_MEMORY_FIELDS,options);
   if(extra?.name)out.name=canonicalHeroName(extra.name);
   return out;
 }
@@ -69,13 +71,16 @@ function newestByHero(list,name,nameFn){
 function heroProfileByName(state,name){return newestByHero(state?.hero_profiles,name,x=>x?.hero_name||x?.name)}
 function heroProgressionByName(state,name){return newestByHero(state?.hero_progression,name,x=>x?.hero_name||x?.name)}
 function heroWeaponByName(state,name){return newestByHero(state?.exclusive_weapons,name,x=>x?.hero_name)}
-function hydrateHeroFromMemory(state,raw={}){
+export function hydrateHeroFromMemory(state,raw={}){
   const name=canonicalHeroName(raw?.name||raw?.hero_name);if(!name)return {...raw};
   const profile=heroProfileByName(state,name),progress=heroProgressionByName(state,name),weapon=heroWeaponByName(state,name);
-  let out=mergeHeroKnown({name},profile||{});
-  out=mergeHeroKnown(out,{...raw,name});
-  if(progress)out=mergeHeroKnown(out,{stars:progress.stars,exclusive:progress.exclusive,awakening:progress.awakening});
-  if(weapon&&num(weapon.level)!==null)out=mergeHeroKnown(out,{exclusive:String(num(weapon.level))});
+  let out=mergeHeroKnown({name},profile||{},{incomingFallbackAt:profile?.updated_at,incomingSource:"hero_profile"});
+  out=mergeHeroKnown(out,{...raw,name},{baseFallbackAt:out.updated_at,incomingFallbackAt:raw?.updated_at,incomingSource:"squad",baseSource:"hero_profile"});
+  if(progress)out=mergeHeroKnown(out,progress,{baseFallbackAt:out.updated_at,incomingFallbackAt:progress.updated_at,incomingSource:"hero_progression",baseSource:"squad"});
+  if(weapon&&num(weapon.level)!==null){
+    const weaponRecord={...weapon,exclusive:String(num(weapon.level)),field_updated_at:{...(weapon.field_updated_at||{}),exclusive:weapon.field_updated_at?.exclusive||weapon.field_updated_at?.level||weapon.updated_at||null},field_source:{...(weapon.field_source||{}),exclusive:weapon.field_source?.exclusive||weapon.field_source?.level||weapon.source||"exclusive_weapon"}};
+    out=mergeHeroKnown(out,weaponRecord,{baseFallbackAt:out.updated_at,incomingFallbackAt:weapon.updated_at,incomingSource:"exclusive_weapon",baseSource:"hero_profile"});
+  }
   out.name=name;return out;
 }
 function heroMemoryUpdatedAt(state,name,fallback=null){

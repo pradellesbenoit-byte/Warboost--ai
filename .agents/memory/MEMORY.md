@@ -1,4 +1,5 @@
 - [Cloud-verified rank access](cloud-rank-authorization.md) — rank controls require verified cloud membership; self-role repair is uniquely linked, CAS-protected, and self-only.
+- [Field freshness boundary](field-freshness-boundary.md) — per-field provenance outranks normalized envelope timestamps; missing fields never erase confirmed observations.
 - [Mobile search rendering](mobile-search-rendering.md) — mobile search fields must filter sibling results asynchronously and preserve focus/selection across access-sensitive repaints.
 - [Cloud-gated roster controls](cloud-gated-roster-controls.md) — visible alliance controls must use the verified cloud predicate, with self-only canonical-role repair before enabling mutations.
 - [Roster source diagnostics](roster-source-diagnostics.md) — a roster count of 100 is ambiguous; distinguish canonical cloud data from legacy capped imports using read-only evidence.

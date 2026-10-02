@@ -139,7 +139,7 @@ assert.match(app,/scrollIntoView\(\{behavior:"smooth",block:"nearest"\}\)/);
 assert.match(app,/scan_exclusive_result_ready/);
 assert.match(app,/scan_exclusive_no_data/);
 assert.match(app,/scan_exclusive_analysis_failed/);
-assert.match(app,/mergeStateProtected\(state,\{exclusive_weapons:confirmed\}/);
+assert.match(app,/mergeStateProtected\(state,\{exclusive_weapons:observed\},\{preferBase:false\}\)/);
 assert.match(app,/openSquadCaptureHelp\(true\)/);
 assert.match(app,/scan_wrong_squad_capture/);
 assert.doesNotMatch(analysis,/saveState\(\)/);

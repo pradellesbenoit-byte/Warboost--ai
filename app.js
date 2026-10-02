@@ -49,6 +49,8 @@ import {buildScanReviewGroups,serializeScanReviewGear} from "./lib/scan-review-p
 import {renderScanReviewMarkup} from "./lib/scan-review-markup.js";
 import {mergeTechnologyBranches,finalizeTechnologyReview} from "./lib/technology-scan.js";
 import {buildTechnologyAdvice} from "./lib/technology-advisor.js";
+import {mergeFreshRecord,stampConfirmedRecord} from "./lib/field-freshness.js";
+import {playerAdviceInputSignature} from "./lib/player-advice-signature.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.32";
@@ -106,6 +108,7 @@ function canonicalStoredExclusiveHeroName(row={}){return canonicalExclusiveWeapo
 function mergeExclusiveWeapons(baseList,incomingList){
   const out=Array.isArray(baseList)?baseList.map(x=>({...x,hero_name:canonicalStoredExclusiveHeroName(x)})):[];
   if(!Array.isArray(incomingList))return out;
+  const fields=["weapon_name","level","power","power_raw","power_parse_status","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
   const keyOf=x=>String(canonicalStoredExclusiveHeroName(x)||x?.weapon_name||"").trim().toLowerCase();
   for(const item of incomingList){
     if(!item||typeof item!=="object")continue;
@@ -113,16 +116,8 @@ function mergeExclusiveWeapons(baseList,incomingList){
     if(!key)continue;
     const idx=out.findIndex(x=>keyOf(x)===key);
     const normalized={...item,hero_name:canonicalStoredExclusiveHeroName(item)};
-    if(idx>=0){
-      const old=out[idx],oldAt=Date.parse(old?.updated_at||"")||0,newAt=Date.parse(normalized?.updated_at||"")||0;
-      const merged=newAt>=oldAt?{...old,...normalized}:{...normalized,...old};
-      for(const field of ["weapon_name","level","power","power_raw","power_parse_status","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level","updated_at"]){
-        if(normalized[field]===null||normalized[field]===undefined||normalized[field]==="")merged[field]=old[field];
-      }
-      if(confirmedHeroPower(old?.power)&&(!confirmedHeroPower(normalized.power)||oldAt>newAt))merged.power=old.power;
-      merged.hero_name=canonicalStoredExclusiveHeroName(merged);
-      out[idx]=merged;
-    }
+    if(!confirmedHeroPower(normalized.power))delete normalized.power;
+    if(idx>=0)out[idx]={...mergeFreshRecord(out[idx],normalized,fields,{baseSource:"exclusive_weapon",incomingSource:"exclusive_weapon"}),hero_name:canonicalStoredExclusiveHeroName(normalized)||canonicalStoredExclusiveHeroName(out[idx])};
     else out.push(normalized);
   }
   return out.slice(0,24);
@@ -130,20 +125,21 @@ function mergeExclusiveWeapons(baseList,incomingList){
 function mergeHeroProgression(baseList,incomingList){
   const out=Array.isArray(baseList)?baseList.map(x=>({...x,hero_name:canonicalStoredHeroName(x?.hero_name||x?.name),awakening:x?.awakening?{...x.awakening}:null})):[];
   if(!Array.isArray(incomingList))return out;
+  const fields=["stars","exclusive","awakening"];
   const keyOf=x=>String(canonicalStoredHeroName(x?.hero_name||x?.name)||"").trim().toLowerCase();
   for(const item of incomingList){
     if(!item||typeof item!=="object")continue;const key=keyOf(item);if(!key)continue;const idx=out.findIndex(x=>keyOf(x)===key);
-    const normalized={...item,hero_name:canonicalStoredHeroName(item?.hero_name||item?.name),awakening:item?.awakening?{...(idx>=0?out[idx]?.awakening||{}:{}),...item.awakening}:idx>=0?out[idx]?.awakening||null:null};
-    if(idx>=0)out[idx]={...out[idx],...normalized};else out.push(normalized);
+    const normalized={...item,hero_name:canonicalStoredHeroName(item?.hero_name||item?.name)};
+    if(idx>=0)out[idx]=mergeFreshRecord(out[idx],normalized,fields,{baseSource:"hero_progression",incomingSource:"hero_progression"});
+    else out.push(normalized);
   }
   return out.slice(0,40);
 }
-function heroProfileFieldStamp(x,f){const n=Date.parse(x?.field_updated_at?.[f]||x?.updated_at||"");return Number.isFinite(n)?n:0}
 function mergeHeroProfiles(baseList,incomingList){
   const fields=["level","stars","power","exclusive","gear","awakening"],out=new Map();
   const normalize=x=>{const hero_name=canonicalStoredHeroName(x?.hero_name||x?.name);if(!hero_name)return null;return {...x,hero_name,field_updated_at:{...(x?.field_updated_at||{})},field_source:{...(x?.field_source||{})}}};
   for(const raw of Array.isArray(baseList)?baseList:[]){const x=normalize(raw);if(x)out.set(x.hero_name.toLowerCase(),x)}
-  for(const raw of Array.isArray(incomingList)?incomingList:[]){const n=normalize(raw);if(!n)continue;const key=n.hero_name.toLowerCase(),cur=out.get(key)||normalize({hero_name:n.hero_name});for(const f of fields){const nv=n?.[f];if(!hasValue(nv)||(f==="power"&&!confirmedHeroPower(nv)))continue;if(!hasValue(cur?.[f])||heroProfileFieldStamp(n,f)>=heroProfileFieldStamp(cur,f)){cur[f]=typeof structuredClone==="function"?structuredClone(nv):JSON.parse(JSON.stringify(nv));cur.field_updated_at[f]=n?.field_updated_at?.[f]||n.updated_at||cur.field_updated_at?.[f]||cur.updated_at||null;if(n?.field_source?.[f])cur.field_source[f]=n.field_source[f]}}if((Date.parse(n.updated_at||"")||0)>=(Date.parse(cur.updated_at||"")||0))cur.updated_at=n.updated_at||cur.updated_at||null;out.set(key,cur)}
+  for(const raw of Array.isArray(incomingList)?incomingList:[]){const n=normalize(raw);if(!n)continue;const key=n.hero_name.toLowerCase(),cur=out.get(key)||normalize({hero_name:n.hero_name});if(!confirmedHeroPower(n.power))delete n.power;out.set(key,mergeFreshRecord(cur,n,fields,{baseSource:"hero_profile",incomingSource:"hero_profile"}))}
   return [...out.values()].sort((a,b)=>a.hero_name.localeCompare(b.hero_name)).slice(0,40);
 }
 
@@ -170,17 +166,16 @@ function mergeShopState(baseShop={},incomingShop){
   current.snapshots=snapshots.slice(0,36);
   return current;
 }
-function mergeHeroSlotIdentitySafe(baseHero={},incomingHero,{preferBase=false}={}){
+function mergeHeroSlotIdentitySafe(baseHero={},incomingHero,{preferBase=false,baseFallbackAt=null,incomingFallbackAt=null}={}){
   const b={...emptyHero(),...(baseHero||{}),name:canonicalStoredHeroName(baseHero?.name)};
   if(!incomingHero||typeof incomingHero!=="object")return b;
   const incomingName=canonicalStoredHeroName(incomingHero?.name),baseName=canonicalStoredHeroName(b.name);
   // V2.4.5: attributes never jump from the previous slot occupant to a new hero.
   if(incomingName&&baseName&&incomingName.toLowerCase()!==baseName.toLowerCase())return {...emptyHero(),...incomingHero,name:incomingName,power:confirmedHeroPower(incomingHero.power)};
   if(!incomingName)return b;
-  const merged=preferBase?{...b,...safeFields(b,incomingHero,true)}:{...b,...incomingHero};
-  merged.name=incomingName;
-  const basePower=confirmedHeroPower(b.power),incomingPower=confirmedHeroPower(incomingHero.power);
-  merged.power=preferBase?(basePower??incomingPower):(incomingPower??basePower);
+   const merged=mergeFreshRecord(b,incomingHero,["level","stars","power","exclusive","gear","awakening"],{baseFallbackAt,incomingFallbackAt,baseSource:"squad",incomingSource:"squad"});
+   merged.name=incomingName;
+   if(!confirmedHeroPower(merged.power))merged.power=confirmedHeroPower(b.power)??confirmedHeroPower(incomingHero.power);
   return merged;
 }
 function mergeSquadComposition(baseSquad={},incomingSquad={},preferBase=false){
@@ -191,16 +186,17 @@ function mergeSquadPayload(baseSquad={},incomingSquad,id,{preferBase=false}={}){
   const b=baseSquad||emptySquad(id);
   if(!incomingSquad)return normalizeSquadSlots({...b,power:canonicalPowerMillions(b.power),heroes:fixedHeroSlots(b.heroes)},id,{inferLegacy:true});
   const incomingPower=incomingSquad.power_m??incomingSquad.power,basePending=b.power_sync_status==="pending";
+  const freshSquad=mergeFreshRecord(b,{...incomingSquad,power:canonicalPowerMillions(incomingPower)},["power","last_confirmed_power"],{baseFallbackAt:b.updated_at,incomingFallbackAt:incomingSquad.updated_at,baseSource:"squad",incomingSource:"squad"});
   const composition=mergeSquadComposition(b,incomingSquad,preferBase);
   const merged={
     ...b,...incomingSquad,id:Number(id),name:`Squad ${id}`,
-    power:preferBase||basePending?b.power:canonicalPowerMillions(incomingPower),
-    last_confirmed_power:canonicalPowerMillions(incomingSquad.last_confirmed_power??b.last_confirmed_power),
+     power:basePending?b.power:freshSquad.power,
+     last_confirmed_power:canonicalPowerMillions(freshSquad.last_confirmed_power),
     power_sync_status:basePending?"pending":(incomingSquad.power_sync_status==="pending"?"pending":(heroPowerIsConfirmed(incomingPower)?(incomingSquad.power_sync_status||"confirmed"):b.power_sync_status||"unknown")),
     needs_rescan:preferBase?b.needs_rescan===true:incomingSquad.needs_rescan===true,
     composition_changed_at:(preferBase?b.composition_changed_at:null)||incomingSquad.composition_changed_at||b.composition_changed_at||null,
     confirmed_composition:composition||Array.from({length:5},()=>""),
-    heroes:Array.from({length:5},(_,j)=>mergeHeroSlotIdentitySafe(b.heroes?.[j],incomingSquad.heroes?.[j],{preferBase}))
+     heroes:Array.from({length:5},(_,j)=>mergeHeroSlotIdentitySafe(b.heroes?.[j],incomingSquad.heroes?.[j],{preferBase,baseFallbackAt:b.updated_at,incomingFallbackAt:incomingSquad.updated_at}))
   };
   return normalizeSquadSlots(merged,id,{inferLegacy:false});
 }
@@ -221,7 +217,7 @@ function adoptCanonicalPendingAccounts(target,source,{available=false}={}){
   const unlinked_accounts=available?rebuildCanonicalPendingAccounts(source,{currentPlayerId:playerId,currentPlayerAliases:aliases}):[];
   return {...target,alliance:{...(target?.alliance||{}),unlinked_accounts}};
 }
-function mergeState(base,incoming){if(!incoming||typeof incoming!=="object")return base;const out={...base,...incoming};out.player={...base.player,...incoming.player};out.player.power_m=canonicalPowerMillions(out.player.power_m);out.player_context={...(base.player_context||{}),...(incoming.player_context||{})};out.activity_events=mergeActivityEvents(base.activity_events,incoming.activity_events);out.player_availability=mergeEventAvailabilities(base.player_availability,incoming.player_availability);out.availability_history=mergeAvailabilityHistory(base.availability_history,incoming.availability_history);out.drone={...base.drone,...incoming.drone};out.drone.power_m=canonicalPowerMillions(out.drone.power_m);out.shop=mergeShopState(base.shop,incoming.shop);out.alliance={...base.alliance,...incoming.alliance};out.alliance.members=mergeAllianceMembersProtected(base.alliance?.members,incoming.alliance?.members,false);out.alliance.unlinked_accounts=normalizeUnlinkedAccounts(out.alliance.unlinked_accounts,out.alliance.members,{serverId:out.alliance.server_id||out.player?.server_id,allianceTag:out.alliance.tag,currentPlayerId:out.player_id,currentPlayerName:out.player?.name,currentPlayerAliases:String(base.player_id||"")===String(out.player_id||"")?[base.player?.name]:[],identityLinkStatus:out.alliance.identity_link_status});out.alliance.former_members=[];out.alliance.roster_removal_tombstones=normalizeRosterRemovalTombstones([...(base.alliance?.roster_removal_tombstones||[]),...(incoming.alliance?.roster_removal_tombstones||[]),...(base.alliance?.former_members||[]),...(incoming.alliance?.former_members||[])]);out.alliance.event_availability=mergeEventAvailabilities(base.alliance?.event_availability,incoming.alliance?.event_availability,...out.alliance.members.map(x=>x.event_availability||[]));out.alliance.availability_history=mergeAvailabilityHistory(base.alliance?.availability_history,incoming.alliance?.availability_history,...out.alliance.members.map(x=>x.availability_history||[]));out.alliance.desert_storm=mergeDesertStormState(base.alliance?.desert_storm,incoming.alliance?.desert_storm);out.alliance.canyon=mergeCanyonState(base.alliance?.canyon,incoming.alliance?.canyon);out.vs=mergeVsState(base.vs,incoming.vs);out.season=repairSeasonState({...base.season,...incoming.season});out.technology={...(base.technology||{}),...(incoming.technology||{}),branches:mergeTechnologyBranches(base.technology?.branches,incoming.technology?.branches)};out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);out.sync={...base.sync,...incoming.sync,sources:{...base.sync.sources,...incoming.sync?.sources}};out.squads=Array.from({length:4},(_,i)=>mergeSquadPayload(base.squads?.[i]||emptySquad(i+1),incoming.squads?.[i],i+1));out.version=APP_VERSION;return out}
+function mergeState(base,incoming){if(!incoming||typeof incoming!=="object")return base;const out={...base,...incoming};const playerFields=Object.keys({...base.player,...incoming.player}).filter(key=>!["field_updated_at","field_source","updated_at","source"].includes(key));out.player=mergeFreshRecord(base.player,incoming.player,playerFields,{baseFallbackAt:base.player?.updated_at,incomingFallbackAt:incoming.player?.updated_at||incoming.updated_at,baseSource:"player",incomingSource:"player"});out.player.power_m=canonicalPowerMillions(out.player.power_m);out.player_context={...(base.player_context||{}),...(incoming.player_context||{})};out.activity_events=mergeActivityEvents(base.activity_events,incoming.activity_events);out.player_availability=mergeEventAvailabilities(base.player_availability,incoming.player_availability);out.availability_history=mergeAvailabilityHistory(base.availability_history,incoming.availability_history);out.drone=mergeFreshRecord(base.drone,incoming.drone,["level","power_m","boostCombat"],{baseFallbackAt:base.drone?.updated_at,incomingFallbackAt:incoming.drone?.updated_at||incoming.updated_at,baseSource:"drone",incomingSource:"drone"});out.drone.power_m=canonicalPowerMillions(out.drone.power_m);out.shop=mergeShopState(base.shop,incoming.shop);out.alliance={...base.alliance,...incoming.alliance};out.alliance.members=mergeAllianceMembersProtected(base.alliance?.members,incoming.alliance?.members,false);out.alliance.unlinked_accounts=normalizeUnlinkedAccounts(out.alliance.unlinked_accounts,out.alliance.members,{serverId:out.alliance.server_id||out.player?.server_id,allianceTag:out.alliance.tag,currentPlayerId:out.player_id,currentPlayerName:out.player?.name,currentPlayerAliases:String(base.player_id||"")===String(out.player_id||"")?[base.player?.name]:[],identityLinkStatus:out.alliance.identity_link_status});out.alliance.former_members=[];out.alliance.roster_removal_tombstones=normalizeRosterRemovalTombstones([...(base.alliance?.roster_removal_tombstones||[]),...(incoming.alliance?.roster_removal_tombstones||[]),...(base.alliance?.former_members||[]),...(incoming.alliance?.former_members||[])]);out.alliance.event_availability=mergeEventAvailabilities(base.alliance?.event_availability,incoming.alliance?.event_availability,...out.alliance.members.map(x=>x.event_availability||[]));out.alliance.availability_history=mergeAvailabilityHistory(base.alliance?.availability_history,incoming.alliance?.availability_history,...out.alliance.members.map(x=>x.availability_history||[]));out.alliance.desert_storm=mergeDesertStormState(base.alliance?.desert_storm,incoming.alliance?.desert_storm);out.alliance.canyon=mergeCanyonState(base.alliance?.canyon,incoming.alliance?.canyon);out.vs=mergeVsState(base.vs,incoming.vs);out.season=mergeFreshRecord(base.season,incoming.season,Object.keys({...base.season,...incoming.season}).filter(key=>!["field_updated_at","field_source","updated_at","source"].includes(key)),{baseFallbackAt:base.season?.updated_at,incomingFallbackAt:incoming.season?.updated_at||incoming.updated_at,baseSource:"season",incomingSource:"season"});out.technology=mergeFreshRecord(base.technology,incoming.technology,Object.keys({...base.technology,...incoming.technology}).filter(key=>!["field_updated_at","field_source","updated_at","source","branches"].includes(key)),{baseFallbackAt:base.technology?.updated_at,incomingFallbackAt:incoming.technology?.updated_at||incoming.updated_at,baseSource:"technology",incomingSource:"technology"});out.technology.branches=mergeTechnologyBranches(base.technology?.branches,incoming.technology?.branches);out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);out.sync={...base.sync,...incoming.sync,sources:{...base.sync.sources,...incoming.sync?.sources}};out.squads=Array.from({length:4},(_,i)=>mergeSquadPayload(base.squads?.[i]||emptySquad(i+1),incoming.squads?.[i],i+1));out.version=APP_VERSION;return out}
 function hasValue(v){return !(v===null||v===undefined||v===""||(Array.isArray(v)&&v.length===0))}
 function safeFields(base={},incoming={},preferBase=false){const out={...base};for(const [k,v] of Object.entries(incoming||{})){if(!hasValue(v))continue;if(preferBase&&hasValue(out[k]))continue;out[k]=v}return out}
 function allianceMemberKey(m){const id=String(m?.player_id||"").trim();if(id)return `id:${id}`;const name=String(m?.name||"").trim().toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");return name?`name:${name}`:""}
@@ -230,19 +226,17 @@ function mergeAllianceMembersProtected(baseList,incomingList,preferBase=false){c
 function mergeStateProtected(base,incoming,{preferBase=false}={}){
   if(!incoming||typeof incoming!=="object")return mergeState(initialState(),base);
   const out=mergeState(base,incoming);
-  out.player=safeFields(base.player,incoming.player,preferBase);
+  out.player=mergeFreshRecord(base.player,incoming.player,Object.keys({...base.player,...incoming.player}).filter(key=>!["hq_level","hq_level_source","hq_level_confirmed_at","rank_confirmed_at","rank_confirmed_source","field_updated_at","field_source","updated_at","source"].includes(key)),{baseFallbackAt:base.player?.updated_at,incomingFallbackAt:incoming.player?.updated_at||incoming.updated_at,baseSource:"player",incomingSource:"player"});
   const baseOwner=String(base?.player_id||"").trim(),incomingOwner=String(incoming?.player_id||"").trim();
   out.player={...out.player,...mergePlayerHqFields(base?.player,incoming?.player,{sameAccount:!(baseOwner&&incomingOwner&&baseOwner!==incomingOwner)})};
   out.player_context=safeFields(base.player_context||{},incoming.player_context||{},preferBase);
   out.player_availability=mergeEventAvailabilities(base.player_availability,incoming.player_availability);
   out.availability_history=mergeAvailabilityHistory(base.availability_history,incoming.availability_history);
   out.activity_events=mergeActivityEvents(base.activity_events,incoming.activity_events);
-  out.drone=safeFields(base.drone,incoming.drone,preferBase);
-  if(base.drone?.boostCombat||incoming.drone?.boostCombat)
-    out.drone.boostCombat=safeFields(base.drone?.boostCombat,incoming.drone?.boostCombat,preferBase);
+  out.drone=mergeFreshRecord(base.drone,incoming.drone,["level","power_m","boostCombat"],{baseSource:"drone",incomingSource:"drone"});
   out.shop=mergeShopState(base.shop,incoming.shop);if(preferBase){out.shop={...out.shop,...base.shop,offers:base.shop?.offers||[],snapshots:out.shop.snapshots||base.shop?.snapshots||[]};}
    out.alliance=safeFields(base.alliance,incoming.alliance,preferBase);out.alliance.event_availability=mergeEventAvailabilities(base.alliance?.event_availability,incoming.alliance?.event_availability,...(out.alliance.members||[]).map(x=>x.event_availability||[]));out.alliance.availability_history=mergeAvailabilityHistory(base.alliance?.availability_history,incoming.alliance?.availability_history,...(out.alliance.members||[]).map(x=>x.availability_history||[]));out.alliance.desert_storm=mergeDesertStormState(base.alliance?.desert_storm,incoming.alliance?.desert_storm);out.alliance.canyon=mergeCanyonState(base.alliance?.canyon,incoming.alliance?.canyon);out.alliance.members=mergeAllianceMembersProtected(base.alliance?.members,incoming.alliance?.members,preferBase);out.alliance.unlinked_accounts=normalizeUnlinkedAccounts(out.alliance.unlinked_accounts,out.alliance.members,{serverId:out.alliance.server_id||out.player?.server_id,allianceTag:out.alliance.tag,currentPlayerId:out.player_id,currentPlayerName:out.player?.name,currentPlayerAliases:String(base.player_id||"")===String(out.player_id||"")?[base.player?.name]:[],identityLinkStatus:out.alliance.identity_link_status});
-   out.vs=mergeVsState(base.vs,incoming.vs);if(preferBase)out.vs={...out.vs,...safeFields(incoming.vs,base.vs,false),snapshots:out.vs.snapshots||base.vs?.snapshots||[]};out.season=safeFields(base.season,incoming.season,preferBase);out.technology=safeFields(base.technology||{},incoming.technology||{},preferBase);out.technology.branches=mergeTechnologyBranches(base.technology?.branches,incoming.technology?.branches);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);
+   out.vs=mergeVsState(base.vs,incoming.vs);if(preferBase)out.vs={...out.vs,...safeFields(incoming.vs,base.vs,false),snapshots:out.vs.snapshots||base.vs?.snapshots||[]};out.season=mergeFreshRecord(base.season,incoming.season,Object.keys({...base.season,...incoming.season}).filter(key=>!["field_updated_at","field_source","updated_at","source"].includes(key)),{baseSource:"season",incomingSource:"season"});out.technology=mergeFreshRecord(base.technology||{},incoming.technology||{},Object.keys({...base.technology,...incoming.technology}).filter(key=>!["field_updated_at","field_source","updated_at","source","branches"].includes(key)),{baseSource:"technology",incomingSource:"technology"});out.technology.branches=mergeTechnologyBranches(base.technology?.branches,incoming.technology?.branches);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);
   out.sync={...base.sync,...safeFields(base.sync,incoming.sync,preferBase),sources:{...base.sync?.sources,...incoming.sync?.sources}};
   out.squads=Array.from({length:4},(_,i)=>{
     const b=base.squads?.[i]||emptySquad(i+1),n=incoming.squads?.[i];
@@ -347,6 +341,7 @@ function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,cloudRetryTimer=null,cloudPullRetryTimer=null,cloudDirty=false,localStateRevision=0,cloudRevision=null,suppressPush=false,cloudHydrationPending=false,cloudProfileVerified=false,canonicalRosterReady=false,cloud=null,cloudSession=null,cloudRecoveryRedirect="",cloudDataConfig={url:"",key:""},sessionApplyInFlight=null,lastAppliedSessionKey="",runtimeReconcileInFlight=null,lastRuntimeReconcileAt=0,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false,payments_enabled:false,commercial_preview:false,subscription:null},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null,scanImageName="capture.jpg",supportTicketsState=[],supportBusy=false;
 let currentPlayerAdviceAnalysis=null,currentAcquisitionViews=[],activeAcquisitionShopView=null;
+let playerAdviceGeneration=0,playerAdvicePendingSignature="",playerAdviceRenderedSignature="",playerAdviceHasRun=false;
 let foregroundClockInterval=null,foregroundServerTimeInterval=null,foregroundPausedAt=null,idleResumeInFlight=null,idleLifecycle=null;
 let loadingScreen=null,returnViewController=null,activeLoadingOperations=0,serviceWorkerReloadListenerInstalled=false;
 let runtimeReconcileInFlightForce=false;
@@ -576,12 +571,12 @@ function saveConfirmedExclusiveScan(){
   const confirmed=collectExclusiveConfirmation(),status=$("#scanStatus");
   if(exclusivePowerNeedsVerification()){if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?"Puissance détectée à vérifier. Corrige la valeur avant l’enregistrement.":t("scan_exclusive_power_verify")}return false}
   if(!confirmed.some(w=>w.hero_name||w.weapon_name||w.level!==undefined||w.power!==undefined)){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_required")}return false}
-  const now=new Date().toISOString();
-  const staged=mergeStateProtected(state,{exclusive_weapons:confirmed},{preferBase:false});
-  state=mergeConfirmedExclusiveWeaponPowers(staged,{weapons:confirmed,updatedAt:now}).state;
+  const now=new Date().toISOString(),observed=confirmed.map(row=>stampConfirmedRecord(row,{at:now,source:"confirmed_scan"}));
+  const staged=mergeStateProtected(state,{exclusive_weapons:observed},{preferBase:false});
+  state=mergeConfirmedExclusiveWeaponPowers(staged,{weapons:observed,updatedAt:now}).state;
   state=repairLegacySquadIdentity(state,{now}).state;
   state.sync.last_scan=state.sync.last_scan||now;state.sync.sources={...state.sync.sources,scan:true};recordProgressionSnapshot("scan_exclusive",state.sync.last_scan);saveState();
-  pendingExclusiveScan=[];$("#exclusiveConfirmPanel")?.classList.add("hidden");
+  pendingExclusiveScan=[];$("#exclusiveConfirmPanel")?.classList.add("hidden");invalidatePlayerAdvice({autoRefresh:true});
   if(status){status.className="notice";status.textContent=t("scan_exclusive_confirmed")}
   return true;
 }
@@ -612,6 +607,7 @@ async function saveHeroConfirmation(){
   }
   showConfirmedScanStatus(st,"hero_confirm_saved");
   closeHeroConfirmation(false);
+  invalidatePlayerAdvice({autoRefresh:true});
 }
 async function skipHeroConfirmation(){
   if(!pendingHeroSquadId){closeHeroConfirmation(true);return}
@@ -623,6 +619,7 @@ async function skipHeroConfirmation(){
   state=next;
   try{if(!saveState())throw new Error("local_squad_save_failed")}
   catch{if(btn){btn.disabled=false;btn.textContent=t("hero_skip")}st.className="notice warn";st.textContent=t("hero_save_failed");return}
+  invalidatePlayerAdvice({autoRefresh:true});
   st.className="notice";st.textContent=t("hero_confirm_skipped");
   closeHeroConfirmation(false);
 }
@@ -1201,8 +1198,8 @@ async function pullDirectOwnProfile(loginSeed=null){
   const hqNeedsPush=playerHqNeedsCloudSync(state.player,remote.player,{sameAccount:String(state.player_id||"")===userId&&String(remote.player_id||"")===userId});
   const squadConflict=squadResult.conflicts.length>0,needsPush=preferLocal||squadResult.localNewer.length>0||hqNeedsPush;
   state.sync={...state.sync,status:squadConflict||needsPush?"waiting":"ok",last_sync:out.updated_at||new Date().toISOString(),last_error:squadConflict?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(squadConflict||needsPush)};
-  safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-direct-rls-pull");rememberAccountState(userId,state);
-  suppressPush=false;render();renderBeta();renderProvider();
+   safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-direct-rls-pull");rememberAccountState(userId,state);
+   refreshPlayerAdviceIfChanged();suppressPush=false;render();renderBeta();renderProvider();
   if(squadConflict)cloudDirty=false;
   else if(needsPush&&hasMeaningfulCore(state)){cloudDirty=true;scheduleCloudRetry(750)}
   else if((heroPowerBackfillChanged||pendingCleanupChanged)&&hasMeaningfulCore(state))scheduleServerSave(350);
@@ -1272,8 +1269,8 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     const hqNeedsPush=playerHqNeedsCloudSync(state.player,remote.player,{sameAccount:String(state.player_id||"")===userId&&String(remote.player_id||"")===userId});
     const squadConflict=squadResult.conflicts.length>0,needsPush=preferLocal||squadResult.localNewer.length>0||hqNeedsPush;
     state.sync={...state.sync,status:squadConflict||needsPush?"waiting":"ok",last_sync:j.updated_at||new Date().toISOString(),last_error:squadConflict?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(squadConflict||needsPush)};
-    safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull");rememberAccountState(userId,state);
-    cloudProfileVerified=true;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;cloudHydrationPending=false;pushBootstrapStage("PROFILE_HYDRATE",bootstrapNow()-hydrateStarted,"ok");render();renderBeta();suppressPush=false;
+     safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull");rememberAccountState(userId,state);
+     refreshPlayerAdviceIfChanged();cloudProfileVerified=true;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;cloudHydrationPending=false;pushBootstrapStage("PROFILE_HYDRATE",bootstrapNow()-hydrateStarted,"ok");render();renderBeta();suppressPush=false;
     // If an unsent local state is newer (for example because an oversized keepalive write was
     // deferred), push it normally in the foreground after the authoritative pull/merge.
     if(squadConflict)cloudDirty=false;
@@ -3127,7 +3124,7 @@ function confirmScanReview(){
   const result=applyOwnedScanReview(draft,pendingScanOwner(),edits);
   if(!result)return discardScanReviewDraft();
   if(result.errors.length){const error=result.errors[0];setScanReviewError(error.reason==="negative_number"?"scan_review_negative_number":error.reason==="invalid_boolean"?"scan_review_invalid_boolean":"scan_review_invalid_number");return}
-  const reviewed=result.patch;
+  let reviewed=result.patch;
   const hqConfirmedAt=new Date().toISOString();
   if(draft.type==="profile"&&reviewed.player&&Object.prototype.hasOwnProperty.call(reviewed.player,"hq_level")){
     const hqLevel=normalizePlayerHqLevel(reviewed.player.hq_level);
@@ -3155,10 +3152,11 @@ function confirmScanReview(){
      if(!Object.keys(reviewed.technology.branches||{}).length)delete reviewed.technology;
    }
     if(draft.type==="season"&&!reviewed.technology&&!reviewed.season||draft.type==="technology"&&!reviewed.technology){setScanReviewError("scan_review_apply_failed");return}
-  const pendingPowerPaths=[];
+   reviewed=stampConfirmedRecord(reviewed,{at:hqConfirmedAt,source:draft.type==="secret_mobile_squad"?"owner_confirmed_scan":"confirmed_scan"});
+   const pendingPowerPaths=[];
   for(const edit of edits)if(/^(power|power_m)$/i.test(String(edit.path.at(-1)))){if(edit.path[0]==="drone")continue;if(!String(edit.value??"").trim())continue;if(!confirmedHeroPower(edit.value)){let target=reviewed;for(const part of edit.path.slice(0,-1))target=target?.[part];if(target)delete target[edit.path.at(-1)];pendingPowerPaths.push(edit.path)}}
   const sm=draft.type.match(/^squad([1-4])$/),squadIndex=sm?Number(sm[1])-1:null,heroSlots=sm?(reviewed.squads?.[squadIndex]?.heroes||[]):[];
-  const previousState=state,now=draft.scannedAt||hqConfirmedAt;let merged;
+   const previousState=state,now=hqConfirmedAt;let merged;
   try{
     if(sm){reviewed.squads??=[];const incoming=reviewed.squads[squadIndex]||{},base=previousState.squads?.[squadIndex]||emptySquad(squadIndex+1);reviewed.squads[squadIndex]=incoming;for(const key of ["power","power_m","power_sync_status","last_confirmed_power"])if(incoming[key]===undefined)incoming[key]=base[key];if(pendingPowerPaths.some(path=>path[0]==="squads"&&path[1]===squadIndex)){incoming.power_sync_status="pending";incoming.last_confirmed_power=base.last_confirmed_power??base.power}delete incoming.heroes;for(let i=0;i<5;i++)heroSlots[i]={...(heroSlots[i]||{}),name:String(draft.heroNames?.[i]||"").trim()}}
     merged=repairLegacySquadIdentity(mergeStateProtected(safeClone(previousState),reviewed,{preferBase:false})).state;
@@ -3168,7 +3166,7 @@ function confirmScanReview(){
     state=merged;saveState();updateSquadCaptureHelp($("#scanType")?.value||"profile");
   }catch{state=previousState;setScanReviewError("scan_review_apply_failed");return}
   const type=draft.type,squadId=sm?Number(sm[1]):null,names=draft.heroNames||[];
-  discardScanReviewDraft();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden");
+   discardScanReviewDraft();$("#playerSyncInfo")?.classList.remove("hidden");invalidatePlayerAdvice({autoRefresh:!squadId});
   if(squadId)startHeroConfirmation(squadId,names,heroSlots,now);
   else{const status=$("#scanStatus");if(status){if(pendingPowerPaths.length){status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_power_pending";status.textContent=t("scan_review_power_pending")}else showConfirmedScanStatus(status,"scan_saved")}if(type==="vs"){render();openDrawer("vs");if(proFeatureAllowed())void requestAdvice("vs").then(live=>{$("#vsPlanText").textContent=structuredAdviceText("vs",live)})}}
 }
@@ -3294,8 +3292,76 @@ $("#collapseAllSquadsBtn")?.addEventListener("click",e=>{e.preventDefault();docu
 $("#squadCaptureHelpBtn")?.addEventListener("click",()=>openSquadCaptureHelp(false));
 $("#squadCaptureAckBtn")?.addEventListener("click",closeSquadCaptureHelp);
 
-async function requestAdvice(scope){if(scope==="vs"){state.vs.week=currentVsWeek();state.vs.day=currentVsDay()}try{const {response:r,json:j}=await fetchJsonBounded("/api/advice",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({scope,state,locale:lang})},25000);if(r.ok)return j}catch{}return null}
-async function runPlayerAdvice(scrollShop=false){if(!requirePro())return;const ready=playerOnboardingStatus(),note=$("#playerSyncInfo");if(!ready.mainReady){if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("onboarding_need_squad")}renderPlayerOnboarding();$("#playerOnboarding")?.scrollIntoView({behavior:"smooth",block:"center"});return}const buttons=[$("#playerAdviceBtn"),$("#shopAdviceBtn")].filter(Boolean),panel=$("#proPriorityPanel"),labels=buttons.map(b=>b.textContent);buttons.forEach(b=>{b.disabled=true;b.textContent=t("pro_analyzing")});if(note){note.classList.remove("hidden");note.textContent=t("pro_analyzing")}if(panel)panel.classList.add("hidden");const j=await requestAdvice("player");if(j?.analysis){renderProPriority(j.analysis);if(scrollShop)setTimeout(()=>$("#proShopList")?.scrollIntoView({behavior:"smooth",block:"start"}),120)}else if(note)note.textContent=j?.advice||t("player_sync_note");buttons.forEach((b,i)=>{b.disabled=false;b.textContent=labels[i]})}
+async function requestAdvice(scope,stateForRequest=state){
+  if(scope==="vs"){state.vs.week=currentVsWeek();state.vs.day=currentVsDay()}
+  try{
+    const {response:r,json:j}=await fetchJsonBounded("/api/advice",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({scope,state:stateForRequest,locale:lang})},25000);
+    if(r.ok)return j;
+  }catch{}
+  return null;
+}
+function resetPlayerAdviceButtons(){
+  for(const button of [$("#playerAdviceBtn"),$("#shopAdviceBtn")].filter(Boolean)){
+    if(button.dataset.playerAdviceIdleText===undefined)button.dataset.playerAdviceIdleText=button.textContent;
+    button.disabled=false;
+    button.textContent=button.dataset.playerAdviceIdleText;
+  }
+}
+function invalidatePlayerAdvice({autoRefresh=true}={}){
+  playerAdviceGeneration++;
+  playerAdvicePendingSignature="";
+  playerAdviceRenderedSignature="";
+  currentPlayerAdviceAnalysis=null;
+  currentAcquisitionViews=[];
+  activeAcquisitionShopView=null;
+  $("#proPriorityPanel")?.classList.add("hidden");
+  resetPlayerAdviceButtons();
+  const shouldRefresh=autoRefresh&&playerAdviceHasRun&&proFeatureAllowed()&&playerOnboardingStatus().mainReady;
+  if(shouldRefresh)queueMicrotask(()=>{void runPlayerAdvice(false)});
+  return shouldRefresh;
+}
+function refreshPlayerAdviceIfChanged({autoRefresh=true}={}){
+  if(!playerAdviceRenderedSignature&&!playerAdvicePendingSignature)return false;
+  const latest=playerAdviceInputSignature(state);
+  if((playerAdviceRenderedSignature&&latest!==playerAdviceRenderedSignature)||(playerAdvicePendingSignature&&latest!==playerAdvicePendingSignature)){
+    invalidatePlayerAdvice({autoRefresh});
+    return true;
+  }
+  return false;
+}
+async function runPlayerAdvice(scrollShop=false){
+  if(!requirePro())return;
+  const ready=playerOnboardingStatus(),note=$("#playerSyncInfo");
+  if(!ready.mainReady){
+    if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("onboarding_need_squad")}
+    renderPlayerOnboarding();$("#playerOnboarding")?.scrollIntoView({behavior:"smooth",block:"center"});return;
+  }
+  const buttons=[$("#playerAdviceBtn"),$("#shopAdviceBtn")].filter(Boolean),panel=$("#proPriorityPanel"),labels=buttons.map(button=>{if(button.dataset.playerAdviceIdleText===undefined)button.dataset.playerAdviceIdleText=button.textContent;return button.dataset.playerAdviceIdleText});
+  const generation=++playerAdviceGeneration,requestState=typeof structuredClone==="function"?structuredClone(state):JSON.parse(JSON.stringify(state)),signature=playerAdviceInputSignature(requestState);
+  playerAdvicePendingSignature=signature;playerAdviceHasRun=true;
+  buttons.forEach(button=>{button.disabled=true;button.textContent=t("pro_analyzing")});
+  if(note){note.classList.remove("hidden");note.textContent=t("pro_analyzing")}
+  if(panel)panel.classList.add("hidden");
+  try{
+    const response=await requestAdvice("player",requestState);
+    if(generation!==playerAdviceGeneration)return;
+    if(signature!==playerAdviceInputSignature(state)){
+      playerAdvicePendingSignature="";
+      invalidatePlayerAdvice({autoRefresh:true});
+      return;
+    }
+    if(response?.analysis){
+      playerAdviceRenderedSignature=signature;
+      renderProPriority(response.analysis);
+      if(scrollShop)setTimeout(()=>$("#proShopList")?.scrollIntoView({behavior:"smooth",block:"start"}),120);
+    }else if(note)note.textContent=response?.advice||t("player_sync_note");
+  }finally{
+    if(generation===playerAdviceGeneration){
+      playerAdvicePendingSignature="";
+      buttons.forEach((button,index)=>{button.disabled=false;button.textContent=labels[index]});
+    }
+  }
+}
 $("#playerAvailabilityEvent")?.addEventListener("change",renderPlayerAvailability);
 $("#playerAvailabilityDate")?.addEventListener("change",renderPlayerAvailability);
 $("#playerAvailabilitySaveBtn")?.addEventListener("click",savePlayerAvailability);
