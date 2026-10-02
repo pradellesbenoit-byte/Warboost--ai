@@ -22,6 +22,21 @@ WarBoost does not connect to a live official Last War event-rules feed.
 - Opponent strength is optional and must be explicitly confirmed, sourced and recent. Otherwise every matchup response is conditional.
 - Confidence describes input coverage, never a chance of winning.
 
+## Compact operational UI and reserves
+
+Keep knowledge, provenance, freshness and conditional orders internal. The Alliance
+event screen shows starters and reserves with short roles/statuses, reserve priority
+and the recalculation button, not strategy/source/order accordions.
+
+Reserves must be explicitly declared, never inferred from absence or overflow.
+Match a confirmed withdrawal against recent squad strength, known type/formation
+and confirmed participation history. Insufficient evidence yields a useful generic
+mobile reserve with “limited data”, not an unassigned role or an invented weakness.
+Keep the previous lineup only as a withdrawal baseline; current declarations always
+define the current roster. A proposal does not promote a reserve: the manager must
+confirm its availability as a starter. Recalculation retains an unresolved vacancy;
+once filled, it must not propose a second replacement for the same gap.
+
 ## Adding an event
 
 Add its definition and sourced claims to `lib/event-knowledge.js`, then its label and availability mapping where the UI needs them. Unsupported newly announced events use the generic coordination plan until their mechanics are actually established. Do not reuse Storm capacities for an open-roster event.

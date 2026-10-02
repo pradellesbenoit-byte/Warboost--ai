@@ -26,7 +26,7 @@
 - [Named Technology scan evidence](named-technology-scan.md) — never infer a branch from its grid position or map a scanned percentage into an unrelated legacy category.
 - [Hybrid event availability](event-availability-hybrid.md) — player declarations sync only to their exact linked roster row; alliance views aggregate sources without replacing unlinked members.
 - [Shared roster view](shared-roster-view.md) — hydrate alliance screens from the canonical cloud roster; local player state may enrich but never replace or truncate it.
-- [Behavior-oriented UI checks](behavior-oriented-ui-checks.md) — render tests should assert the intended ordering helper/behavior, not brittle exact loop syntax.
+- [Behavior-oriented UI checks](behavior-oriented-ui-checks.md) — assert behavior, not loop syntax; roster tests exercise the status writer and recalculation together.
 - [Alliance player modal lifecycle](mobile-player-modal-close.md) — use delegated close actions, a temporary history entry for Android back, and replace-state cleanup for rapid reopen cycles.
 - [Event workspace capacities](event-workspace-capacities.md) — only Desert/Canyon use 20 participants plus 10 substitutes; VS, Season, and generic alliance events use the active roster total.
 - [Explicit storm substitutes](explicit-storm-substitutes.md) — only Desert/Canyon expose substitute status; explicit replacements override legacy present-overflow fallback.
@@ -34,3 +34,4 @@
 - [Exact roster association reconciliation](exact-roster-association-reconciliation.md) — active links require exact nickname/server/alliance; stale or duplicate links are deactivated without deleting roster history.
 - [Node VM cross-realm tests](node-vm-cross-realm-tests.md) — VM-created objects can fail strict deep equality across realms; assert scalar fields or normalize before comparing.
 - [Squad cloud freshness](squad-cloud-freshness.md) — account-scoped squad confirmations and explicit swap-to-empty operations outrank profile-wide timestamps during sync.
+- [Compact event organization](compact-event-organization.md) — Alliance plans show lineups and concrete reserve roles; strategy/orders/source blocks stay out of the UI.

@@ -5,9 +5,10 @@ import {buildEventStrategy,eventStrategyFromState} from "../lib/event-strategy.j
 import {eventKnowledge,EVENT_RULES,EVENT_SOURCES,eventDefinition} from "../lib/event-knowledge.js";
 import {renderEventStrategy,eventStrategyOrders} from "../lib/event-strategy-ui.js";
 import {buildDesertStormPlan} from "../lib/desert-storm-plan.js";
+import {desertStormMemberKeys} from "../lib/desert-storm-selection.js";
 import {buildCanyonPlan} from "../lib/canyon-storm-plan.js";
 import {buildVsAdvice,buildSeasonAdvice} from "../api/advice.js";
-import {mergeEventAvailabilities} from "../lib/event-availability.js";
+import {mergeEventAvailabilities,normalizeEventAvailability,upsertEventAvailability,mergeAvailabilityHistory} from "../lib/event-availability.js";
 const nowMs=Date.parse("2026-10-02T12:00:00Z"),updated_at=new Date(nowMs).toISOString();
 const people=Array.from({length:100},(_,i)=>({name:`Player ${i}`,canonical_member_key:`p${i}`,squad_power_m:100-i/2,squad_power_updated_at:updated_at,squad_type:i%2?"tank":"aircraft",role:"R2",warboost_linked:true}));
 const rows=(type,count=100)=>people.slice(0,count).map(m=>({canonical_member_key:m.canonical_member_key,event_type:type,status:"present",source:"player_self_report",updated_at}));
@@ -85,19 +86,21 @@ assert.ok(!offSeason.phases.some(p=>p.id==="active"));
 const dangerous={...full,assignments:[{...full.assignments[0],name:'<img src=x onerror="boom">'}]};
 const html=renderEventStrategy(dangerous,{locale:"fr"});
 assert.ok(html.includes("&lt;img"));assert.ok(!html.includes("<img"));
-assert.match(html,/data-event-strategy-copy/);assert.match(html,/Mise à jour curatée/);
+assert.doesNotMatch(html,/data-event-strategy-copy|Stratégie proposée|Ordres à copier|Règles et sources|Rôle à confirmer|<details|<pre/);
+assert.match(html,/Titulaires/);assert.match(html,/Remplaçants/);
 assert.match(eventStrategyOrders(full,"fr"),/B ·/);
 // Exercise the real workspace-to-engine boundary, not only the library independently.
 const appSource=fs.readFileSync("app.js","utf8");
-const summarySource=appSource.slice(appSource.indexOf("function allianceEventPlanSummary("),appSource.indexOf("function generateAllianceEventPlan("));
+const summarySource=appSource.slice(appSource.indexOf("function allianceEventCurrentStrategy("),appSource.indexOf("function generateAllianceEventPlan("));
 const sandbox={state:{alliance:{event_plans:{desert_storm:{}},canyon:{}}},serverNow:new Date(nowMs),
   activeAllianceRosterMembers:()=>people.slice(0,32),
   allianceEventDefinition:()=>({label:"Desert",limit:20,openRoster:false}),
-  buildEventStrategy,renderEventStrategy,lang:"fr",esc:String,t:key=>key};
+  buildEventStrategy,renderEventStrategy,lang:"fr",esc:String,t:key=>key,
+  allianceEventMemberKey:m=>m.canonical_member_key,hasDeclaredAllianceCommandRole:()=>false};
 vm.runInNewContext(`${summarySource};globalThis.renderSummary=allianceEventPlanSummary`,sandbox);
 const workspacePlan=sandbox.renderSummary("desert_storm",{rows:rows("desert_storm",32).map((r,i)=>({...r,status:i<20?"present":i<30?"substitute":"unknown"})),totalMembers:32});
-assert.match(workspacePlan,/20\/20/);assert.match(workspacePlan,/Couverture des données 20\/20/);
-assert.match(workspacePlan,/À confirmer: 2/);assert.match(workspacePlan,/Player 29/);
+assert.equal((workspacePlan.match(/class="eventStrategyMember"/g)||[]).length,30);
+assert.match(workspacePlan,/2 confirmations à vérifier/);assert.match(workspacePlan,/Player 29/);
 const rowsSource=appSource.slice(appSource.indexOf("function allianceEventRows("),appSource.indexOf("function allianceEventAvailability("));
 sandbox.mergeEventAvailabilities=mergeEventAvailabilities;
 sandbox.state.alliance.event_availability=[...rows("desert_storm",1),
@@ -106,4 +109,72 @@ sandbox.state.alliance.event_availability=[...rows("desert_storm",1),
 vm.runInNewContext(`${rowsSource};globalThis.readRows=allianceEventRows`,sandbox);
 assert.equal(sandbox.readRows("desert_storm").length,1);
 assert.equal(sandbox.readRows("desert_storm")[0].status,"present");
+// Storm reserves get useful roles even without power; withdrawals produce a
+// suggestion, not an implicit promotion or a manufactured reserve.
+for(const event_type of ["desert_storm","canyon_storm"]){
+  const declared=rows(event_type,30).map((r,i)=>({...r,status:i<20?"present":"substitute"}));
+  const before=buildEventStrategy({event_type,members:people.slice(0,30),availability:declared,nowMs});
+  assert.equal(before.assignments.length,20);assert.equal(before.substitute_assignments.length,10);
+  assert.ok(before.substitute_assignments.every((r,i)=>r.role&&r.priority===i+1&&r.attendance_status==="substitute"));
+  const weak=[...people.slice(0,29),{...people[29],squad_power_m:null,power_m:null,squad_power_updated_at:null,squad_type:null}];
+  const cautious=buildEventStrategy({event_type,members:weak,availability:declared,nowMs});
+  const generic=cautious.substitute_assignments.find(r=>r.member_key==="p29");
+  assert.equal(generic.role,"mobile_reserve");assert.equal(generic.reason,"limited_data");
+  const cautiousHtml=renderEventStrategy(cautious,{locale:"fr"});
+  assert.match(cautiousHtml,/Réserve mobile/);assert.match(cautiousHtml,/Données limitées/);
+  assert.doesNotMatch(cautiousHtml,/Rôle à confirmer|Stratégie proposée|Ordres à copier|Règles et sources|alliance_manager_manual|player_self_report|<details/);
+  const withdrawn=declared.map(r=>r.canonical_member_key==="p0"?{...r,status:"absent"}:r);
+  const after=buildEventStrategy({event_type,members:people.slice(0,30),availability:withdrawn,nowMs,context:{previous_participants:before.assignments}});
+  assert.equal(after.assignments.length,19);assert.equal(after.substitute_assignments.length,10);
+  assert.equal(after.replacement_proposals.length,1);
+  assert.equal(after.replacement_proposals[0].substitute_member_key,"p20","best fresh same-type reserve covers the departed anchor");
+  assert.equal(after.replacement_proposals[0].departed_member_key,"p0");
+  assert.equal(after.substitute_assignments[0].priority,1);
+  assert.ok(!after.substitute_assignments.some(r=>r.member_key==="p0"));
+  const rendered=renderEventStrategy(after,{locale:"fr"});
+  assert.match(rendered,/Relève proposée pour Player 0/);
+  const recalculated=buildEventStrategy({event_type,members:people.slice(0,30),availability:withdrawn,nowMs,
+    context:{previous_participants:[...after.assignments,...after.withdrawn_assignments]}});
+  assert.equal(recalculated.replacement_proposals[0].substitute_member_key,"p20","recalculate retains the vacancy");
+  const accepted=withdrawn.map(r=>r.canonical_member_key==="p20"?{...r,status:"present"}:r);
+  const filled=buildEventStrategy({event_type,members:people.slice(0,30),availability:accepted,nowMs,
+    context:{previous_participants:[...after.assignments,...after.withdrawn_assignments]}});
+  assert.equal(filled.assignments.length,20);assert.equal(filled.replacement_proposals.length,0);
+  const reserveAbsent=withdrawn.map(r=>r.canonical_member_key==="p20"?{...r,status:"absent"}:r);
+  const next=buildEventStrategy({event_type,members:people.slice(0,30),availability:reserveAbsent,nowMs,context:{previous_participants:before.assignments}});
+  assert.equal(next.replacement_proposals[0].substitute_member_key,"p22");
+  assert.ok(!next.substitute_assignments.some(r=>r.member_key==="p20"));
+  const staleBench=people.slice(0,30).map(m=>m.canonical_member_key==="p20"?{...m,squad_power_updated_at:"2026-08-01",squad_power_m:9999}:m);
+  assert.equal(buildEventStrategy({event_type,members:staleBench,availability:withdrawn,nowMs,context:{previous_participants:before.assignments}}).replacement_proposals[0].substitute_member_key,"p22");
+  const formations=people.slice(0,30).map(m=>({...m,squad_heroes:["p0","p22"].includes(m.canonical_member_key)?["Kim","Murphy"]:[]}));
+  assert.equal(buildEventStrategy({event_type,members:formations,availability:withdrawn,nowMs,context:{previous_participants:before.assignments}}).replacement_proposals[0].substitute_member_key,"p22");
+  const tied=people.slice(0,30).map(m=>({...m,
+    squad_power_m:["p20","p22"].includes(m.canonical_member_key)?100:m.squad_power_m,
+    activity_events:m.canonical_member_key==="p22"?[{event_type,event_date:"2026-10-01",participation_status:"participated",updated_at}]:[]}));
+  assert.equal(buildEventStrategy({event_type,members:tied,availability:withdrawn,nowMs,context:{previous_participants:before.assignments}}).replacement_proposals[0].substitute_member_key,"p22");
+}
+// Exercise the actual manager status writer and recalculation against local state.
+const editable=people.slice(0,32).map(m=>({...m,warboost_linked:false}));
+sandbox.activeAllianceRosterMembers=()=>editable;
+sandbox.hasDeclaredAllianceCommandRole=()=>true;
+sandbox.allianceEventDefinition=()=>({label:"Desert",limit:20,subLimit:10,openRoster:false});
+sandbox.state.alliance.event_plans={};
+sandbox.state.alliance.event_availability=rows("desert_storm",32).map((r,i)=>({...r,status:i<20?"present":i<30?"substitute":"unknown"}));
+Object.assign(sandbox,{normalizeEventAvailability,upsertEventAvailability,mergeAvailabilityHistory,desertStormMemberKeys,buildDesertStormPlan,
+  rosterLifecycleKey:m=>m.canonical_member_key,ensureDesertStormState:()=>sandbox.state.alliance.desert||=( {}),
+  saveState:()=>{},renderAllianceEventWorkspace:()=>{},$:()=>null,
+  Date:class extends Date{constructor(...args){super(...(args.length?args:[nowMs]))}}});
+const captureSource=appSource.slice(appSource.indexOf("function captureAllianceEventBaseline("),appSource.indexOf("function allianceEventCurrentStrategy("));
+const groupingSource=appSource.slice(appSource.indexOf("function allianceEventAvailability("),appSource.indexOf("function allianceEventStatus("));
+const writerSource=appSource.slice(appSource.indexOf("function saveAllianceEventStatus("),appSource.indexOf("function allianceEventPlayerProfile("));
+const generatorSource=appSource.slice(appSource.indexOf("function generateAllianceEventPlan("),appSource.indexOf("function renderAllianceEventWorkspace("));
+vm.runInNewContext(`${groupingSource}\n${captureSource}\n${writerSource}\n${generatorSource};globalThis.writeStatus=saveAllianceEventStatus;globalThis.recalculate=generateAllianceEventPlan;globalThis.currentPlan=allianceEventCurrentStrategy`,sandbox);
+sandbox.writeStatus(editable[0],"desert_storm","absent");
+assert.equal(sandbox.state.alliance.event_plans.desert_storm.assignments.length,20,"first edit captures an unsaved baseline");
+assert.equal(sandbox.currentPlan("desert_storm",{rows:sandbox.readRows("desert_storm")}).replacement_proposals[0].substitute_member_key,"p20");
+sandbox.recalculate("desert_storm");
+assert.equal(sandbox.currentPlan("desert_storm",{rows:sandbox.readRows("desert_storm")}).replacement_proposals[0].substitute_member_key,"p20","real recalculation keeps the proposed replacement");
+sandbox.writeStatus(editable[20],"desert_storm","present");
+assert.equal(sandbox.currentPlan("desert_storm",{rows:sandbox.readRows("desert_storm")}).assignments.length,20);
+assert.equal(sandbox.currentPlan("desert_storm",{rows:sandbox.readRows("desert_storm")}).replacement_proposals.length,0);
 console.log("Event strategy knowledge, capacities, uncertainty, evidence, API and safe UI: PASS");
