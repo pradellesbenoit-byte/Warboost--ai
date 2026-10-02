@@ -9,7 +9,7 @@
 </head>
 <body>
   <main class="app">
-    <div class="topbar"><div class="brand"><img class="logo" src="/warboost-icon-192.png" alt="WarBoost"/><div class="brandText"><h1>WarBoost · Administration</h1><small>V2.5.28 HF8.6.7 · accès bêta + service client</small></div></div></div>
+    <div class="topbar"><div class="brand"><img class="logo" src="/warboost-icon-192.png" alt="WarBoost"/><div class="brandText"><h1>WarBoost · Administration</h1><small>V2.5.32 HF8.6.34 · accès bêta + service client</small></div></div></div>
 
     <section class="heroCard adminInviteManager">
       <div class="eyebrow">🔐 BÊTA SUR INVITATION</div>
@@ -33,6 +33,23 @@
       <h2 class="heroTitle">Tickets joueurs</h2>
       <p class="heroText">Cette page n’affiche les tickets et les invitations qu’aux comptes présents dans <code>WARBOOST_SUPPORT_ADMINS</code>.</p>
       <button id="adminRefresh" class="primaryAction" type="button">Actualiser</button>
+    </section>
+    <section class="supportAdminToolbar" aria-label="Filtres des tickets">
+      <div id="supportTicketSummary" class="supportAdminNewCount" role="status" aria-live="polite">Chargement des tickets…</div>
+      <label class="supportAdminFilter">Statut
+        <select id="adminTicketStatusFilter">
+          <option value="all">Tous les tickets</option>
+          <option value="new">Nouveaux</option>
+          <option value="in_progress">En cours</option>
+          <option value="resolved">Résolus</option>
+        </select>
+      </label>
+      <label class="supportAdminFilter">Date
+        <select id="adminTicketDateSort">
+          <option value="recent">Plus récents d’abord</option>
+          <option value="oldest">Plus anciens d’abord</option>
+        </select>
+      </label>
     </section>
     <div id="adminStatus" class="notice">Vérification de la session WarBoost…</div>
     <div id="adminTickets" class="supportAdminTable" style="margin-top:12px"></div>

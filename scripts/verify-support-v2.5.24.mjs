@@ -39,3 +39,4 @@ try{
   assert.ok(calls.some(c=>c.u.includes('player_id=eq.u1')),'Player GET must be scoped to authenticated player_id');
   console.log('WarBoost V2.5.24 support API simulated flow: PASS');
 } finally {globalThis.fetch=originalFetch}
+await import("./verify-support-experience.mjs");

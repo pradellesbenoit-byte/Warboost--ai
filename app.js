@@ -833,7 +833,32 @@ async function fetchSessionCritical(input,init={},timeoutMs=10000){
   catch(error){if(error?.name==="AbortError")throw Object.assign(new Error("WarBoost request timed out"),{name:"TimeoutError",code:"request_timeout",timeout_ms:Math.max(1500,Number(timeoutMs)||10000)});throw error}
   finally{clearTimeout(timer)}
 }
-async function fetchJsonBounded(input,init={},timeoutMs=12000){const response=await fetchSessionCritical(input,init,timeoutMs),json=await response.json().catch(()=>({}));return {response,json}}
+async function fetchJsonBounded(input,init={},timeoutMs=12000){
+  let request=init,supportTicketCreate=false;
+  if(String(input)==="/api/support"&&String(init.method||"GET").toUpperCase()==="POST"&&typeof init.body==="string"){
+    try{
+      const payload=JSON.parse(init.body);
+      if(payload?.action==="create"){
+        supportTicketCreate=true;
+        const diagnosticsConsent=$("#supportDiagnostics")?.checked===true,screen=String($("#supportScreen")?.value||"").trim();
+        payload.diagnostics_consent=diagnosticsConsent;
+        payload.nickname=canonicalPlayerDisplayName()||state?.player?.name||"";
+        payload.server_id=state?.player?.server_id||state?.alliance?.server_id||"";
+        payload.alliance_name=state?.alliance?.name||"";
+        payload.alliance_tag=state?.alliance?.tag||"";
+        payload.screen=screen;
+        if(diagnosticsConsent){
+          payload.app_version=APP_VERSION;payload.locale=lang;
+          payload.diagnostics={...(payload.diagnostics&&typeof payload.diagnostics==="object"?payload.diagnostics:{}),app_version:APP_VERSION,release:RELEASE_LABEL,locale:lang,screen,platform:navigator.platform||"",online:navigator.onLine};
+        }else{payload.app_version=null;payload.locale=null;payload.diagnostics={}}
+        request={...init,body:JSON.stringify(payload)};
+      }
+    }catch{}
+  }
+  const response=await fetchSessionCritical(input,request,timeoutMs),json=await response.json().catch(()=>({}));
+  if(supportTicketCreate&&response.ok){for(const id of ["supportCategory","supportSubject","supportDescription","supportScreen","supportAttachment"])if($("#"+id))$("#"+id).value="";for(const id of ["supportDiagnostics","supportConsent"])if($("#"+id))$("#"+id).checked=false}
+  return {response,json}
+}
 
 async function initCloudAuth(){
   cloud=null;cloudSession=null;cloudRecoveryRedirect="";cloudDataConfig={url:"",key:""};cloudProfileVerified=false;canonicalRosterReady=false;cloudInit={status:"loading-config",configured:false,transport:"direct-supabase-auth-api",error:null};renderAuth();
@@ -3533,7 +3558,7 @@ function renderSupportTickets(){
   const box=$("#supportTickets");if(!box)return;renderSupportAccess();if(!cloudSession?.user)return;
   if(!supportTicketsState.length){box.innerHTML=`<div class="privacyText">${esc(t("support_history_empty"))}</div>`;return}
   box.innerHTML=supportTicketsState.map(ticket=>{
-    const msgs=(ticket.messages||[]).slice(-6).map(m=>`<div class="supportMessage ${m.author_kind==="support"?"support":""}"><b>${esc(m.author_kind==="support"?t("support_team"):t("support_you"))} · ${esc(supportTicketDate(m.created_at))}</b>${esc(m.body)}</div>`).join("");
+    const msgs=(ticket.messages||[]).map(m=>`<div class="supportMessage ${m.author_kind==="support"?"support":""}"><b>${esc(m.author_kind==="support"?t("support_team"):t("support_you"))} · ${esc(supportTicketDate(m.created_at))}</b>${esc(m.body)}</div>`).join("");
     const attachment=ticket.attachment_path?`<button class="smallBtn supportAttachmentBtn" type="button" data-support-attachment="${esc(ticket.id)}">📎 ${esc(ticket.attachment_name||t("support_attachment_view"))}</button>`:"";
     return `<article class="supportTicket"><div class="supportTicketHead"><div><div class="supportTicketNo">${esc(ticket.ticket_no)}</div><div class="supportTicketSubject">${esc(ticket.subject)}</div><div class="supportTicketMeta">${esc(t(`support_cat_${ticket.category}`))} · ${esc(supportTicketDate(ticket.created_at))}</div></div><span class="supportStatus ${esc(ticket.status)}">${esc(supportStatusLabel(ticket.status))}</span></div>${attachment}<div class="supportMessages">${msgs}</div><div class="supportReplyRow"><input data-support-reply-input="${esc(ticket.id)}" maxlength="5000" placeholder="${esc(t("support_reply_placeholder"))}"/><button class="smallBtn" type="button" data-support-reply="${esc(ticket.id)}">${esc(t("support_reply"))}</button></div></article>`;
   }).join("");
@@ -3553,8 +3578,8 @@ async function supportImageData(file){
 }
 async function submitSupportTicket(){
   if(supportBusy)return;if(!cloudSession?.access_token){openDrawer("account");return}
-  const subject=String($("#supportSubject")?.value||"").trim(),description=String($("#supportDescription")?.value||"").trim(),consent=$("#supportConsent")?.checked===true;
-  if(subject.length<3||description.length<8)return supportMessage(t("support_fields_required"));if(!consent)return supportMessage(t("support_consent_required"));
+  const category=String($("#supportCategory")?.value||"").trim(),subject=String($("#supportSubject")?.value||"").trim(),description=String($("#supportDescription")?.value||"").trim(),consent=$("#supportConsent")?.checked===true;
+  if(!category||subject.length<3||description.length<30)return supportMessage(t("support_fields_required"));if(!consent)return supportMessage(t("support_consent_required"));
   supportBusy=true;const btn=$("#supportSubmitBtn");if(btn){btn.disabled=true;btn.textContent=t("support_sending")}
   try{const file=$("#supportAttachment")?.files?.[0]||null,attachment=await supportImageData(file),drawer=document.querySelector(".drawer.open")?.id||"supportDrawer",diagnostics=$("#supportDiagnostics")?.checked!==false?{app_version:APP_VERSION,release:RELEASE_LABEL,locale:lang,screen:drawer.replace(/Drawer$/,""),platform:navigator.platform||"",online:navigator.onLine,ui_consistency:{coach_title:Boolean($("#adviceTitle")?.textContent),provider_status:Boolean($("#providerStatus")?.textContent),player_activity_status:Boolean($("#playerActivityStatus")?.textContent)},bootstrap:compactBootstrapDiagnostics()}:{};const {response:r,json:j}=await fetchJsonBounded("/api/support",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action:"create",category:$("#supportCategory")?.value||"other",subject,description,nickname:state?.player?.name||"",app_version:APP_VERSION,locale:lang,screen:drawer.replace(/Drawer$/,""),diagnostics,attachment_data_url:attachment?.data_url||null,attachment_name:attachment?.name||null})},30000);if(!r.ok)throw new Error(j.message||j.error||t("support_error"));supportMessage(t("support_sent",{ticket:j.ticket?.ticket_no||""}),true);if($("#supportSubject"))$("#supportSubject").value="";if($("#supportDescription"))$("#supportDescription").value="";if($("#supportAttachment"))$("#supportAttachment").value="";await refreshSupportTickets()}catch(e){supportMessage(supportUserError(e))}finally{supportBusy=false;if(btn){btn.disabled=false;btn.textContent=t("support_send")}}
 }

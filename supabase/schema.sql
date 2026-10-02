@@ -117,7 +117,8 @@ notify pgrst, 'reload schema';
 -- === V2.5.24 Support joueurs ===
 create table if not exists public.wb1_support_tickets (
   id uuid primary key default gen_random_uuid(), ticket_no text not null unique, player_id text not null,
-  email text, nickname text, category text not null default 'other', subject text not null, description text not null,
+  email text, nickname text, server_id text, alliance_name text, alliance_tag text,
+  category text not null default 'other', subject text not null, description text not null,
   status text not null default 'received', app_version text, locale text, screen text,
   diagnostics jsonb not null default '{}'::jsonb, attachment_path text, attachment_name text,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now(),

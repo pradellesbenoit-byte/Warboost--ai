@@ -1,27 +1,41 @@
 import {createWarBoostSupabaseAuthClient} from "./lib/browser-auth.js";
-const $=s=>document.querySelector(s);let cloud=null,session=null,tickets=[],invites=[];
+import {countNewSupportTickets,filterAndSortSupportTickets,renderSupportAdminTicket,renderSupportAdminThread} from "./lib/support-admin-view.js";
+const $=s=>document.querySelector(s);let cloud=null,session=null,tickets=[],invites=[];const threadCache=new Map(),openTicketIds=new Set();
 async function boundedFetch(input,init={},ms=20000){const c=new AbortController(),timer=setTimeout(()=>c.abort(),ms);try{return await fetch(input,{...init,signal:c.signal})}finally{clearTimeout(timer)}}
-const STATUS_LABELS={received:"Reçu",in_progress:"En cours",waiting_player:"Attente joueur",resolved:"Résolu"};
-const CATEGORY_LABELS={login:"Connexion / compte",scan:"Scan / capture",data:"Données / escouades",ai:"IA / diagnostic",alliance:"Alliance R5/R4",bug:"Bug",suggestion:"Suggestion",other:"Autre"};
 const INVITE_LABELS={pending:"En attente",accepted:"Accepté",revoked:"Révoqué"};
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
-function statusLabel(v){return STATUS_LABELS[String(v||"")]||String(v||"—")}
-function categoryLabel(v){return CATEGORY_LABELS[String(v||"")]||String(v||"Autre")}
 function inviteLabel(v){return INVITE_LABELS[String(v||"")]||String(v||"—")}
 function status(text,warn=false){const el=$("#adminStatus");el.className=`notice${warn?" warn":""}`;el.textContent=text}
 function inviteMessage(text,warn=false){const el=$("#inviteStatus");if(!el)return;el.className=`notice${warn?" warn":""}`;el.textContent=text;el.classList.remove("hidden")}
 function authHeaders(extra={}){return {...extra,...(session?.access_token?{authorization:`Bearer ${session.access_token}`}:{})}}
 function fmt(iso){if(!iso)return "—";try{return new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"short"}).format(new Date(iso))}catch{return iso||""}}
 function renderTickets(){
-  const box=$("#adminTickets");if(!tickets.length){box.innerHTML='<div class="privacyText">Aucun ticket.</div>';return}
-  box.innerHTML=tickets.map(t=>{
-    const msgs=(t.messages||[]).map(m=>`<div class="supportMessage ${m.author_kind==="support"?"support":""}"><b>${m.author_kind==="support"?"Support":"Joueur"} · ${esc(fmt(m.created_at))}</b>${esc(m.body)}</div>`).join("");
-    const attachment=t.attachment_path?`<button class="smallBtn supportAttachmentBtn" data-admin-attachment="${esc(t.id)}">📎 ${esc(t.attachment_name||"Capture")}</button>`:"";
-    return `<article class="supportAdminTicket"><div class="supportTicketHead"><div><div class="supportTicketNo">${esc(t.ticket_no)}</div><div class="supportTicketSubject">${esc(t.subject)}</div><div class="supportTicketMeta">${esc(categoryLabel(t.category))} · ${esc(t.nickname||"—")} · ${esc(t.email||"—")} · ${esc(fmt(t.created_at))}</div></div><span class="supportStatus ${esc(t.status)}">${esc(statusLabel(t.status))}</span></div><div class="notice" style="margin-top:8px">${esc(t.description)}</div>${attachment}<div class="supportMessages">${msgs}</div><div class="supportAdminControls"><select data-admin-status="${esc(t.id)}"><option value="received"${t.status==="received"?" selected":""}>Reçu</option><option value="in_progress"${t.status==="in_progress"?" selected":""}>En cours</option><option value="waiting_player"${t.status==="waiting_player"?" selected":""}>Attente joueur</option><option value="resolved"${t.status==="resolved"?" selected":""}>Résolu</option></select><button class="smallBtn" data-admin-save-status="${esc(t.id)}">Enregistrer</button></div><div class="supportReplyRow"><input data-admin-reply-input="${esc(t.id)}" maxlength="5000" placeholder="Réponse au joueur…"/><button class="smallBtn" data-admin-reply="${esc(t.id)}">Répondre</button></div></article>`
-  }).join("");
+  const box=$("#adminTickets");if(!box)return;
+  const statusFilter=$("#adminTicketStatusFilter")?.value||"all",dateOrder=$("#adminTicketDateSort")?.value||"recent";
+  const newCount=countNewSupportTickets(tickets),visible=filterAndSortSupportTickets(tickets,statusFilter,dateOrder),summary=$("#supportTicketSummary");
+  if(summary)summary.textContent=`${newCount} nouveau(x) non traité(s) · ${tickets.length} ticket(s) au total`;
+  if(!visible.length){box.innerHTML=`<div class="privacyText">${tickets.length?"Aucun ticket pour ce filtre.":"Aucun ticket reçu."}</div>`;return}
+  box.innerHTML=visible.map(ticket=>renderSupportAdminTicket({...ticket,messages:threadCache.get(String(ticket.id))},{open:openTicketIds.has(String(ticket.id))})).join("");
+  box.querySelectorAll("[data-admin-ticket]").forEach(details=>{
+    details.addEventListener("toggle",()=>{const id=String(details.dataset.adminTicket||"");if(!id)return;if(details.open){openTicketIds.add(id);if(!threadCache.has(id))loadTicketThread(id)}else openTicketIds.delete(id)});
+    if(details.open&&!threadCache.has(String(details.dataset.adminTicket||"")))loadTicketThread(details.dataset.adminTicket);
+  });
   box.querySelectorAll("[data-admin-save-status]").forEach(b=>b.addEventListener("click",()=>saveTicketStatus(b.dataset.adminSaveStatus)));
   box.querySelectorAll("[data-admin-reply]").forEach(b=>b.addEventListener("click",()=>reply(b.dataset.adminReply)));
   box.querySelectorAll("[data-admin-attachment]").forEach(b=>b.addEventListener("click",()=>attachment(b.dataset.adminAttachment)));
+}
+async function loadTicketThread(id){
+  const ticketId=String(id||"");if(!ticketId)return;
+  const thread=[...document.querySelectorAll("[data-admin-thread]")].find(el=>el.dataset.adminThread===ticketId);
+  if(thread)thread.textContent="Chargement du fil complet…";
+  try{
+    const r=await boundedFetch(`/api/support?admin=1&ticket_id=${encodeURIComponent(ticketId)}`,{cache:"no-store",headers:authHeaders()},20000),j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ticket)throw new Error(j.message||j.error||"Impossible de charger le fil.");
+    const messages=Array.isArray(j.ticket.messages)?j.ticket.messages:[];
+    threadCache.set(ticketId,messages);
+    const target=[...document.querySelectorAll("[data-admin-thread]")].find(el=>el.dataset.adminThread===ticketId);
+    if(target)target.innerHTML=renderSupportAdminThread(messages);
+  }catch(error){const target=[...document.querySelectorAll("[data-admin-thread]")].find(el=>el.dataset.adminThread===ticketId);if(target)target.textContent=error.message||"Impossible de charger le fil."}
 }
 function renderInvites(){
   const box=$("#inviteList");if(!box)return;
@@ -62,7 +76,7 @@ async function addInvites(){
 async function changeInvite(action,id){try{const j=await post({action,invite_id:id});invites=Array.isArray(j.invites)?j.invites:invites;renderInvites();inviteMessage(action==="invite_revoke"?"Accès révoqué.":"Accès réactivé.")}catch(e){inviteMessage(e.message||"Impossible de modifier l’invitation.",true)}}
 async function copyBetaLink(){const url=location.origin.replace(/\/support-admin\.html(?:\?.*)?$/i,"/");try{await navigator.clipboard.writeText(url);inviteMessage("Lien de la bêta copié.")}catch{inviteMessage("Copie impossible sur ce navigateur.",true)}}
 async function saveTicketStatus(id){const sel=[...document.querySelectorAll("[data-admin-status]")].find(x=>x.dataset.adminStatus===String(id));try{await post({action:"status",ticket_id:id,status:sel?.value||"received"});await load()}catch(e){status(e.message,true)}}
-async function reply(id){const input=[...document.querySelectorAll("[data-admin-reply-input]")].find(x=>x.dataset.adminReplyInput===String(id)),body=String(input?.value||"").trim();if(body.length<2)return;try{await post({action:"reply",ticket_id:id,body,as_support:true});if(input)input.value="";await load()}catch(e){status(e.message,true)}}
+async function reply(id){const input=[...document.querySelectorAll("[data-admin-reply-input]")].find(x=>x.dataset.adminReplyInput===String(id)),body=String(input?.value||"").trim();if(body.length<2)return;try{await post({action:"reply",ticket_id:id,body,as_support:true});if(input)input.value="";threadCache.delete(String(id));await load()}catch(e){status(e.message,true)}}
 async function attachment(id){try{const j=await post({action:"attachment",ticket_id:id,as_support:true});if(j.url)window.open(j.url,"_blank","noopener,noreferrer")}catch(e){status(e.message,true)}}
 async function init(){try{const r=await boundedFetch("/api/cloud-config",{cache:"no-store"},8000),cfg=await r.json();if(!r.ok||!cfg?.configured)throw new Error("Cloud WarBoost non configuré.");cloud=createWarBoostSupabaseAuthClient({url:cfg.url,key:cfg.key,requestTimeoutMs:12000});const got=await cloud.auth.getSession();session=got.data?.session||null;cloud.auth.onAuthStateChange((_e,s)=>{session=s||null;load()});await load()}catch(e){status(e.message||"Impossible d’ouvrir la console administrateur.",true)}}
-$("#adminRefresh")?.addEventListener("click",load);$("#inviteAddBtn")?.addEventListener("click",addInvites);$("#copyBetaLinkBtn")?.addEventListener("click",copyBetaLink);init();
+$("#adminRefresh")?.addEventListener("click",load);$("#adminTicketStatusFilter")?.addEventListener("change",renderTickets);$("#adminTicketDateSort")?.addEventListener("change",renderTickets);$("#inviteAddBtn")?.addEventListener("click",addInvites);$("#copyBetaLinkBtn")?.addEventListener("click",copyBetaLink);init();

@@ -506,3 +506,43 @@ html[dir="rtl"] .acqOptionHead{direction:rtl}
   .dsRosterPicker{max-height:none;overflow:visible}
   .canyonAvailabilityList{max-height:none;overflow:visible}
 }
+
+/* Support ticket triage */
+.supportAdminToolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end;margin:12px 0}
+.supportAdminNewCount{grid-column:1/-1;border:1px solid #744e24;background:#241a10;color:#ffdda6;border-radius:12px;padding:11px 13px;font-weight:850}
+.supportAdminFilter{display:grid;gap:5px;color:var(--muted);font-size:11px;font-weight:750}
+.supportAdminFilter select{width:100%;border:1px solid #283855;background:#0c1421;color:#fff;border-radius:12px;padding:11px}
+.supportAdminTicket{padding:0;overflow:hidden}
+.supportAdminSummary{display:block;cursor:pointer;list-style:none;padding:13px}
+.supportAdminSummary::-webkit-details-marker{display:none}
+.supportAdminSummary::after{content:"Ouvrir le ticket ↓";display:block;color:#9bdfff;font-size:10px;font-weight:800;margin-top:9px}
+.supportAdminTicket[open]>.supportAdminSummary::after{content:"Réduire le ticket ↑"}
+.supportAdminSummary:focus-visible{outline:2px solid #79c9f0;outline-offset:-3px}
+.supportAdminSummaryHead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.supportAdminPreview{margin-top:7px;color:#d4e0f1;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+.supportAdminDetails{border-top:1px solid #263855;padding:13px}
+.supportAdminFactGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}
+.supportAdminFact{min-width:0;border:1px solid #263855;background:#0a1320;border-radius:10px;padding:9px}
+.supportAdminFact dt{color:var(--muted);font-size:10px;font-weight:800;margin-bottom:4px}
+.supportAdminFact dd{margin:0;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+.supportAdminFactFull{grid-column:1/-1}
+.supportAdminDescription,.supportAdminMessageBody{white-space:pre-wrap;overflow-wrap:anywhere}
+.supportAdminDiagnostics{margin-top:10px;border:1px solid #263855;border-radius:10px;padding:10px}
+.supportAdminDiagnostics>summary{cursor:pointer;font-size:12px;font-weight:800}
+.supportAdminDiagnosticsBody{margin-top:8px}
+.supportAdminDiagStages{margin:8px 0 0;padding-left:20px;color:#d4e0f1;font-size:11px;line-height:1.5}
+.supportAdminConversation{margin-top:14px}
+.supportAdminConversation h3{font-size:13px;margin:0 0 8px}
+.supportAdminConversation .supportMessages{margin-top:0}
+.supportAdminControls{align-items:end}
+.supportAdminControls .adminFieldLabel{grid-column:1/-1;margin:3px 0 -3px}
+.supportAdminControls select{grid-column:1;grid-row:2}
+.supportAdminControls button{grid-column:2;grid-row:2;white-space:nowrap}
+@media(max-width:640px){
+  .supportAdminToolbar{grid-template-columns:1fr 1fr}
+  .supportAdminNewCount{grid-column:1/-1}
+  .supportAdminFactGrid{grid-template-columns:1fr}
+  .supportAdminFactFull{grid-column:1}
+  .supportAdminDetails{padding:10px}
+  .supportAdminControls{grid-template-columns:minmax(0,1fr) auto}
+}

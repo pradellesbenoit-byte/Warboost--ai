@@ -48,7 +48,7 @@ function safeDiagnostics(value){
   const encoded=JSON.stringify(out);
   return Buffer.byteLength(encoded,"utf8")<=8192?out:{app_version:out.app_version,release:out.release,locale:out.locale,screen:out.screen,platform:out.platform,online:out.online,truncated:true};
 }
-function cleanCategory(v){const x=String(v||"").toLowerCase();return ["login","scan","data","ai","alliance","bug","suggestion","other"].includes(x)?x:"other"}
+function cleanCategory(v){const x=String(v||"").trim().toLowerCase();return ["login","scan","data","ai","alliance","bug","suggestion","other"].includes(x)?x:""}
 function cleanStatus(v){const x=String(v||"").toLowerCase();return ["received","in_progress","waiting_player","resolved"].includes(x)?x:"received"}
 function cleanEmail(v){return safeText(v,254).toLowerCase()}
 function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail(v))}
@@ -88,6 +88,15 @@ function validAttachmentPath(path){return /^WB-\d{8}-[A-F0-9]{6}\/\d{10,}-[a-f0-
 async function deleteAttachment(path){if(!validAttachmentPath(path))return false;try{const r=await fetchWithTimeout(`${sbUrl()}/storage/v1/object/warboost-support/${path}`,{method:"DELETE",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`}},7000,{code:"ATTACHMENT_DELETE_TIMEOUT",message:"Support attachment cleanup timed out"});return r.ok}catch{return false}}
 async function signedAttachment(path){if(!validAttachmentPath(path))return null;const r=await fetchWithTimeout(`${sbUrl()}/storage/v1/object/sign/warboost-support/${path}`,{method:"POST",headers:{apikey:serviceKey(),authorization:`Bearer ${serviceKey()}`,"content-type":"application/json"},body:JSON.stringify({expiresIn:300})},7000,{code:"ATTACHMENT_SIGN_TIMEOUT",message:"Support attachment link timed out"});if(!r.ok)return null;const j=await r.json().catch(()=>({}));const p=j?.signedURL||j?.signedUrl;return p?`${sbUrl()}/storage/v1${p.startsWith("/")?p:`/${p}`}`:null}
 async function messagesFor(ticketIds){if(!ticketIds.length)return [];const ids=ticketIds.map(x=>`"${String(x).replace(/"/g,"")}"`).join(",");return await rest(`wb1_support_messages?ticket_id=in.(${encodeURIComponent(ids)})&select=id,ticket_id,author_kind,author_player_id,author_email,body,created_at&order=created_at.asc&limit=1000`).catch(()=>[])}
+async function messagesForTicket(ticketId){
+  const rows=[],pageSize=1000;
+  for(let offset=0;offset<100000;offset+=pageSize){
+    const page=await rest(`wb1_support_messages?ticket_id=eq.${encodeURIComponent(ticketId)}&select=id,ticket_id,author_kind,author_player_id,author_email,body,created_at&order=created_at.asc&limit=${pageSize}`,{headers:{Range:`${offset}-${offset+pageSize-1}`}});
+    rows.push(...(Array.isArray(page)?page:[]));
+    if(!Array.isArray(page)||page.length<pageSize)break;
+  }
+  return rows;
+}
 function enrich(tickets,messages){const map=new Map();for(const m of messages||[]){if(!map.has(m.ticket_id))map.set(m.ticket_id,[]);map.get(m.ticket_id).push(m)}return (tickets||[]).map(t=>({...t,messages:map.get(t.id)||[]}))}
 async function ownTicket(id,playerId){const rows=await rest(`wb1_support_tickets?id=eq.${encodeURIComponent(id)}&player_id=eq.${encodeURIComponent(playerId)}&select=*&limit=1`);return rows?.[0]||null}
 async function anyTicket(id){const rows=await rest(`wb1_support_tickets?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);return rows?.[0]||null}
@@ -141,10 +150,16 @@ export default async function handler(req,res){
       const wantAdmin=String(req.query?.admin||"")==="1",wantInvites=String(req.query?.invites||"")==="1";
       if((wantAdmin||wantInvites)&&!admin)return res.status(403).json({error:"SUPPORT_ADMIN_REQUIRED"});
       if(wantAdmin||wantInvites){
-        const tickets=wantAdmin?await rest("wb1_support_tickets?select=*&order=updated_at.desc&limit=250"):[],messages=wantAdmin?await messagesFor((tickets||[]).map(x=>x.id)):[];
+        const ticketId=safeText(req.query?.ticket_id,80);
+        if(wantAdmin&&ticketId){
+          const ticket=await anyTicket(ticketId);
+          if(!ticket)return res.status(404).json({error:"SUPPORT_TICKET_NOT_FOUND"});
+          return res.status(200).json({ok:true,admin:true,ticket:{...ticket,messages:await messagesForTicket(ticket.id)}});
+        }
+        const tickets=wantAdmin?await rest("wb1_support_tickets?select=*&order=updated_at.desc&limit=250"):[];
         let invites=[],invite_error=null;
         if(wantInvites){try{invites=await listInvites()}catch(e){if(e.code==="BETA_INVITES_SCHEMA_MISSING")invite_error=e.code;else throw e}}
-        return res.status(200).json({ok:true,admin:true,tickets:enrich(tickets,messages),invites,invite_error,support_admin_configured:adminEmails().length>0,beta_access:beta.access_status});
+        return res.status(200).json({ok:true,admin:true,tickets:enrich(tickets,[]),invites,invite_error,support_admin_configured:adminEmails().length>0,beta_access:beta.access_status});
       }
       const tickets=await rest(`wb1_support_tickets?player_id=eq.${encodeURIComponent(user.id)}&select=*&order=updated_at.desc&limit=100`),messages=await messagesFor((tickets||[]).map(x=>x.id));
       return res.status(200).json({ok:true,admin:false,tickets:enrich(tickets,messages),support_admin_configured:adminEmails().length>0,beta_access:beta.access_status});
@@ -172,10 +187,11 @@ export default async function handler(req,res){
     if(action==="create"){
       if(!beta.configured)return res.status(503).json({error:"BETA_INVITES_NOT_CONFIGURED"});
       if(!beta.allowed)return res.status(403).json({error:"BETA_INVITE_REQUIRED"});
-      const category=cleanCategory(req.body?.category),subject=safeText(req.body?.subject,140),description=safeText(req.body?.description,6000);
-      if(subject.length<3||description.length<8)return res.status(400).json({error:"SUPPORT_FIELDS_REQUIRED"});
+      const category=cleanCategory(req.body?.category),subject=safeText(req.body?.subject,140),description=safeText(req.body?.description,6000),diagnosticsConsented=req.body?.diagnostics_consent===true;
+      if(!category)return res.status(400).json({error:"SUPPORT_CATEGORY_REQUIRED"});
+      if(subject.length<3||description.length<30)return res.status(400).json({error:"SUPPORT_FIELDS_REQUIRED"});
       const tn=ticketNo(),attachment=await uploadAttachment({ticketNo:tn,dataUrl:req.body?.attachment_data_url,name:req.body?.attachment_name});
-      const row={ticket_no:tn,player_id:user.id,email:safeText(user.email,220),nickname:safeText(req.body?.nickname,100),category,subject,description,status:"received",app_version:safeText(req.body?.app_version,30),locale:safeText(req.body?.locale,20),screen:safeText(req.body?.screen,80),diagnostics:safeDiagnostics(req.body?.diagnostics),attachment_path:attachment?.path||null,attachment_name:attachment?.name||null,updated_at:new Date().toISOString()};
+      const row={ticket_no:tn,player_id:user.id,email:safeText(user.email,220),nickname:safeText(req.body?.nickname,100)||null,server_id:safeText(req.body?.server_id,40)||null,alliance_name:safeText(req.body?.alliance_name,120)||null,alliance_tag:safeText(req.body?.alliance_tag,40)||null,category,subject,description,status:"received",app_version:diagnosticsConsented?safeText(req.body?.app_version,30)||null:null,locale:diagnosticsConsented?safeText(req.body?.locale,20)||null:null,screen:safeText(req.body?.screen,80)||null,diagnostics:diagnosticsConsented?safeDiagnostics(req.body?.diagnostics):{},attachment_path:attachment?.path||null,attachment_name:attachment?.name||null,updated_at:new Date().toISOString()};
       let ticket;
       try{
         const created=await rest("wb1_support_tickets",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify(row)});ticket=created?.[0];

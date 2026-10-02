@@ -32,16 +32,16 @@ const log=msg=>console.log(`✓ ${msg}`);
 
 // Player/support identity separation and status lifecycle.
 {
-  const support=read('api/support.js'),app=read('app.js'),admin=read('support-admin.js');
+  const support=read('api/support.js'),app=read('app.js'),admin=read('support-admin.js'),adminView=read('lib/support-admin-view.js');
   assert.match(support,/req\.body\?\.as_support===true/);
   assert.match(support,/asSupport\?await anyTicket\(id\):await ownTicket\(id,user\.id\)/);
   assert.match(support,/const author_kind=asSupport\?"support":"player"/);
   assert.match(support,/const nextStatus=author_kind==="support"\?"waiting_player":"in_progress"/);
   assert.match(app,/action:"reply",ticket_id:ticketId,body,as_support:false/);
   assert.match(admin,/action:"reply",ticket_id:id,body,as_support:true/);
-  assert.match(admin,/waiting_player:"Attente joueur"/);
-  assert.match(admin,/in_progress:"En cours"/);
-  assert.match(admin,/CATEGORY_LABELS/);
+  assert.match(adminView,/waiting_player:"Attente joueur"/);
+  assert.match(adminView,/in_progress:"En cours"/);
+  assert.match(adminView,/CATEGORY_LABELS/);
   log('Player replies cannot be mislabeled as Support and admin badges are localized');
 }
 
