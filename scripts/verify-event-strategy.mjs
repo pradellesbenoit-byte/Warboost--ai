@@ -1,4 +1,5 @@
 import "./verify-event-research.mjs";
+import "./verify-event-roster-disclosures.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";

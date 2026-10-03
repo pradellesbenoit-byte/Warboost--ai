@@ -22,7 +22,7 @@ import {playerParticipationInsight,allianceParticipationOverview,alliancePartici
 import {mergeVsState,scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine,vsSnapshotFreshness} from "./lib/vs-live.js";
 import {buildDesertStormPlan,DESERT_STORM_RULESET} from "./lib/desert-storm-plan.js";
 import {buildEventStrategy} from "./lib/event-strategy.js";
-import {renderEventStrategy,eventStrategyOrders} from "./lib/event-strategy-ui.js";
+import {renderEventStrategy,eventStrategyOrders,toggleEventStrategyGroup} from "./lib/event-strategy-ui.js";
 import {renderDesertStormPlanInto} from "./lib/desert-storm-plan-ui.js?v=hf8630-desert-storm-plan-r2";
 import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
 import {createIdleLifecycle} from "./lib/idle-lifecycle.js?v=warboost-startup-screen-r1";
@@ -3420,6 +3420,8 @@ $("#managerAvailabilityDate")?.addEventListener("change",renderAllianceAvailabil
 $("#managerAvailabilitySearch")?.addEventListener("input",renderAllianceAvailability);
 $("#alliancePlayerModal")?.addEventListener("click",event=>{if(event.target?.closest?.("[data-alliance-player-close]")){event.preventDefault();closeAlliancePlayerProfile()}});
 $("#allianceEventWorkspace")?.addEventListener("click",event=>{
+  const disclosure=event.target?.closest?.("[data-event-roster-toggle]");
+  if(disclosure){event.preventDefault();toggleEventStrategyGroup(disclosure);return}
   const card=event.target?.closest?.("[data-alliance-event]");
   if(card){event.preventDefault();toggleAllianceEventDetail(card.dataset.allianceEvent||"desert_storm");return}
   const player=event.target?.closest?.("[data-alliance-player-key]");

@@ -58,7 +58,7 @@ for(const event_type of ["desert_storm","canyon_storm"]){
   assert.ok(plan.tactics?.checked_at);
   assert.ok(plan.substitute_assignments.every(r=>r.task.kind==="cover_starter"&&r.task.target_name&&r.task.objective));
   const html=renderEventStrategy(plan,{locale:"fr"});
-  const starterHtml=html.slice(0,html.indexOf("<h4>Remplaçants"));
+  const starterHtml=html.slice(0,html.indexOf('data-event-roster-toggle="'+event_type+':reserves"'));
   assert.ok(!/Renfort polyvalent|Présent confirmé|Défense objectif|Attaque principale|eventStrategyReserveEntry/.test(starterHtml));
   assert.ok(html.includes("Titulaires")&&html.includes("Remplaçants")&&html.includes("Priorité 10"));
   assert.ok(!/Renfort polyvalent|Réserve mobile|Règles et sources|Stratégie proposée/.test(html));
