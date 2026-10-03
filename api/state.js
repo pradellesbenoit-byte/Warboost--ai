@@ -6,6 +6,7 @@ import {requireUser} from "../lib/auth.js";
 import {mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers,preserveVerifiedR5} from "../lib/alliance-roster-lifecycle.js";
+import {protectCanonicalRosterNames} from "../lib/alliance-member-rename.js";
 import {isManagerRole} from "../lib/alliance-scope.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
 import {canonicalAllianceAuthorization} from "../lib/alliance-authorization.js";
@@ -46,6 +47,7 @@ async function canonicalizeAllianceState(input,playerId){
     const row={...raw,server_id:normalizeServerId(raw?.server_id)||authoritativeServer,alliance_tag:normalizeAllianceTag(raw?.alliance_tag)||authoritativeTag};
     return {...row,canonical_member_key:canonicalRosterMemberKey(row,context)};
   });
+   state.alliance.members=protectCanonicalRosterNames(canonicalWithKeys,state.alliance.members||[],context);
    const identityLink=resolveCanonicalIdentity(canonicalWithKeys,{
     playerId,
     name:identity.name,

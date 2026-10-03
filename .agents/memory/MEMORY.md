@@ -36,3 +36,4 @@
 - [Squad cloud freshness](squad-cloud-freshness.md) — account-scoped squad confirmations and explicit swap-to-empty operations outrank profile-wide timestamps during sync.
 - [Compact event organization](compact-event-organization.md) — balanced lineups, reserve role/target/priority/trigger and short Plan B; no analytical panels or automatic push/publication.
 - [Event web evidence](event-web-evidence.md) — real provider compatibility and event-specific independent corroboration matter; preserve cautious dated fallback.
+- [Canonical nickname changes](canonical-nickname-changes.md) — mutable names preserve stable identity; canonical audit evidence wins stale profiles; uncertain aliases never transfer accounts.

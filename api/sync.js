@@ -7,6 +7,7 @@ import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceT
 import {allianceScopeFromState,sanitizeCanonicalRoster,joinProofForAlliance,isManagerRole,mergeCanonicalRoster,replaceCanonicalRosterFromCompleteSnapshot} from "../lib/alliance-scope.js";
 import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers,preserveVerifiedR5} from "../lib/alliance-roster-lifecycle.js";
 import {canonicalRosterMemberKey} from "../lib/alliance-rank-management.js";
+import {protectCanonicalRosterNames,applyCanonicalRenames} from "../lib/alliance-member-rename.js";
 import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/alliance-authorization.js";
 import {mergePlayerAvailabilityIntoRoster,mergeEventAvailabilities,mergeAvailabilityHistory} from "../lib/event-availability.js";
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
@@ -44,6 +45,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
           if(ctx){
           const targetServer=normalizeServerId(ctx.alliance?.server_id),targetTag=normalizeAllianceTag(ctx.alliance?.tag);
           let canonical=markCanonicalRosterPresence(Array.isArray(ctx.roster)?ctx.roster:[],ctx.alliance?.roster_updated_at).map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:targetServer,allianceTag:targetTag})}));
+          merged.alliance.members=protectCanonicalRosterNames(canonical,merged.alliance.members||[],{serverId:targetServer,allianceTag:targetTag});
            const identityLink=resolveCanonicalIdentity(canonical,{playerId,name:merged.player?.name,serverId:targetServer,allianceTag:targetTag,role:merged.player?.role,rank_confirmed_source:merged.player?.rank_confirmed_source,rank_confirmed_at:merged.player?.rank_confirmed_at,activityEvents:merged.activity_events,updatedAt:now});
           let membership=ctx.membership,linkPersisted=false;
           if(identityLink.persist_link){
@@ -111,6 +113,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
             const message=!currentAuthorization.allowed?authorizationMessage(currentAuthorization):"Le roster candidat ne correspond pas au serveur et à l’alliance canoniques, ou sa révision cloud a changé.";
             return res.status(409).json({error:"roster_canonical_persist_required",message,authorization:currentAuthorization,canonical_count:Array.isArray(ctx.alliance?.roster)?ctx.alliance.roster.length:0,candidate_count:Array.isArray(merged.alliance?.members)?merged.alliance.members.length:0});
           }
+        merged=applyCanonicalRenames(merged);
         const written=await saveProfileIfUnchanged(playerId,merged,saved?.updated_at||null);saved=written||saved;await insertSnapshot(playerId,merged,provider);
       }else if(userMode){
         const ownLink=linkCurrentPlayerIdentityIntoRoster(merged.alliance?.members,{playerId,name:merged.player?.name,serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag,activityEvents:merged.activity_events,updatedAt:now});

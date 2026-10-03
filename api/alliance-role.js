@@ -5,6 +5,8 @@ import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLin
 import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/alliance-authorization.js";
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
 import {normalizeRosterRemovalTombstones,rosterLifecycleKey} from "../lib/alliance-roster-lifecycle.js";
+import {prepareRosterRename} from "../lib/alliance-member-rename.js";
+import {randomUUID} from "node:crypto";
 
 function role(v){return normalizeAllianceRank(v)}
 function clean(v,max=120){return String(v??"").trim().slice(0,max)}
@@ -89,6 +91,26 @@ export default async function handler(req,res){
       authorization=canonicalAllianceAuthorization({playerId:user.id,membership:actorContext?.membership||actor,alliance:actorContext?.alliance||alliance,roster:actorRoster,identity:actorIdentity});
       access={allowed:authorization.allowed,owner:authorization.owner,cloud_role:authorization.effective_role};
       actorRole=authorization.effective_role;isOwner=authorization.owner;
+
+      if(req.body?.action==="rename_member"){
+        if(!access.allowed)return res.status(403).json({error:"r4_r5_required"});
+        if(req.body.confirmed!==true)return res.status(400).json({error:"confirmation_required"});
+        const context={serverId:normalizeServerId(alliance.server_id),allianceTag:normalizeAllianceTag(alliance.tag)};
+        if(String(req.body.alliance_id||"")!==String(alliance.id)||
+          normalizeServerId(req.body.server_id)!==context.serverId||
+          normalizeAllianceTag(req.body.alliance_tag)!==context.allianceTag)
+          return res.status(403).json({error:"alliance_scope_mismatch"});
+        const current=(Array.isArray(actorContext?.alliance?.roster)?actorContext.alliance.roster:[]).filter(row=>!row?.__warboost_type)
+          .map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,context)}));
+        const target=current.find(row=>row.canonical_member_key===req.body.member_key);
+        const result=prepareRosterRename(current,{...req.body,lifecycle_key:target?rosterLifecycleKey(target):null},
+          {...context,actorId:user.id,memberId:randomUUID(),now:new Date().toISOString(),extraRows:actorContext?.cloud_roster||[]});
+        const saved=await updateAllianceScopeRoster({alliance_id:alliance.id,roster:result.roster,
+          roster_tombstones:actorContext?.roster_tombstones,expected_updated_at:actorContext.alliance.updated_at});
+        return res.status(200).json({ok:true,mode:"member_renamed",member:result.member,
+          roster:saved.roster.filter(row=>!row?.__warboost_type),alliance_updated_at:saved.updated_at,
+          roster_updated_at:saved.roster_updated_at});
+      }
 
      if(req.body?.action==="remove_roster_members"){
        if(!access.allowed)return res.status(403).json({error:"management_role_required"});
