@@ -1,3 +1,4 @@
+import "./verify-event-research.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
@@ -122,7 +123,8 @@ for(const event_type of ["desert_storm","canyon_storm"]){
   const generic=cautious.substitute_assignments.find(r=>r.member_key==="p29");
   assert.equal(generic.role,"mobile_reserve");assert.equal(generic.reason,"limited_data");
   const cautiousHtml=renderEventStrategy(cautious,{locale:"fr"});
-  assert.match(cautiousHtml,/Réserve mobile/);assert.match(cautiousHtml,/Données limitées/);
+  assert.match(cautiousHtml,/Remplace Player/);
+  assert.doesNotMatch(cautiousHtml,/Renfort polyvalent|Réserve mobile|Présent confirmé/);
   assert.doesNotMatch(cautiousHtml,/Rôle à confirmer|Stratégie proposée|Ordres à copier|Règles et sources|alliance_manager_manual|player_self_report|<details/);
   const withdrawn=declared.map(r=>r.canonical_member_key==="p0"?{...r,status:"absent"}:r);
   const after=buildEventStrategy({event_type,members:people.slice(0,30),availability:withdrawn,nowMs,context:{previous_participants:before.assignments}});
@@ -133,7 +135,7 @@ for(const event_type of ["desert_storm","canyon_storm"]){
   assert.equal(after.substitute_assignments[0].priority,1);
   assert.ok(!after.substitute_assignments.some(r=>r.member_key==="p0"));
   const rendered=renderEventStrategy(after,{locale:"fr"});
-  assert.match(rendered,/Relève proposée[^<]*Player 0/);
+  assert.match(rendered,/Remplace Player 0/);
   const recalculated=buildEventStrategy({event_type,members:people.slice(0,30),availability:withdrawn,nowMs,
     context:{previous_participants:[...after.assignments,...after.withdrawn_assignments]}});
   assert.equal(recalculated.replacement_proposals[0].substitute_member_key,"p20","recalculate retains the vacancy");

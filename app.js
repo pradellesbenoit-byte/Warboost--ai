@@ -2194,10 +2194,11 @@ function captureAllianceEventBaseline(eventType){
 function allianceEventCurrentStrategy(eventType,groups){
   const saved=state.alliance?.event_plans?.[eventType];
   return buildEventStrategy({event_type:eventType,members:activeAllianceRosterMembers(),
-    availability:groups.rows,nowMs:serverNow.getTime(),faction:state.alliance?.canyon?.faction,
+    availability:groups.rows,nowMs:Math.max(serverNow.getTime(),Date.parse(state.alliance?.event_research?.[eventType]?.received_at)||0),faction:state.alliance?.canyon?.faction,
     opponent:state.alliance?.event_opponents?.[eventType]||null,
     event_instance:eventType==="canyon_storm"?(state.alliance?.canyon?.scheduled_at||"current"):"current",
     context:{...(eventType==="vs"?state.vs:eventType==="season"?state.season:{}),
+      research:state.alliance?.event_research?.[eventType]||null,
       previous_participants:[...(saved?.assignments||saved?.participants||[]),...(saved?.withdrawn_assignments||[])]}});
 }
 function allianceEventMemberControl(item,eventType){
@@ -2226,6 +2227,32 @@ function generateAllianceEventPlan(eventType){
   }
   state.alliance.updated_at=new Date().toISOString();saveState({renderUi:false});renderAllianceEventWorkspace();
   const detail=$("#allianceEventDetail");detail?.scrollIntoView?.({behavior:"smooth",block:"nearest"});
+}
+const eventResearchPending=new Set();
+async function recalculateAllianceEventPlan(eventType){
+  if(!hasDeclaredAllianceCommandRole()||eventResearchPending.has(eventType))return;
+  if(!["desert_storm","canyon_storm","vs","season"].includes(eventType)){generateAllianceEventPlan(eventType);return}
+  const actor=cloudSession?.user?.id,scope=state.alliance?.id;
+  const button=$("#allianceEventDetail")?.querySelector("[data-alliance-event-plan]");
+  eventResearchPending.add(eventType);
+  if(button){button.disabled=true;button.textContent=lang==="fr"?"Recalcul en cours…":"Recalculating…"}
+  let research={status:"unavailable",event_type:eventType,error:"research_request_failed"};
+  try{
+    const response=await fetchSessionCritical("/api/advice?action=event_research",{
+      method:"POST",headers:authHeaders({"content-type":"application/json"}),
+      body:JSON.stringify({event_type:eventType})
+    },50000);
+    const result=await response.json().catch(()=>({}));
+    if(response.ok&&result.research)research={...result.research,received_at:result.server_time||null};
+  }catch{}
+  finally{
+    eventResearchPending.delete(eventType);
+    if(button){button.disabled=false;button.textContent=lang==="fr"?"Recalculer le plan":"Recalculate plan"}
+  }
+  // Never apply a delayed response to another account/alliance.
+  if(actor!==cloudSession?.user?.id||scope!==state.alliance?.id||!hasDeclaredAllianceCommandRole())return;
+  state.alliance.event_research={...(state.alliance.event_research||{}),[eventType]:research};
+  generateAllianceEventPlan(eventType);
 }
 function renderAllianceEventWorkspace(){
   const cards=$("#allianceEventCards"),detail=$("#allianceEventDetail");if(!cards||!detail)return;
@@ -3398,7 +3425,7 @@ $("#allianceEventWorkspace")?.addEventListener("click",event=>{
   const player=event.target?.closest?.("[data-alliance-player-key]");
   if(player){event.preventDefault();openAlliancePlayerProfile(player.dataset.alliancePlayerKey,allianceEventActive);return}
   const plan=event.target?.closest?.("[data-alliance-event-plan]");
-  if(plan){event.preventDefault();generateAllianceEventPlan(allianceEventActive)}
+  if(plan){event.preventDefault();recalculateAllianceEventPlan(allianceEventActive)}
 });
 $("#allianceEventWorkspace")?.addEventListener("change",event=>{
   const select=event.target?.closest?.("[data-alliance-event-status]");if(!select)return;

@@ -65,7 +65,7 @@ for(const type of ["desert_storm","canyon_storm"]){
   const stale=buildEventStrategy({...input,members:oldProfile});
   const staleChanged=buildEventStrategy({...input,members:oldProfile.map(m=>({...m,squad_type:"missile",squad_heroes:["invented"]}))});
   assert.deepEqual(stale.assignments.map(p=>[p.member_key,p.role]),staleChanged.assignments.map(p=>[p.member_key,p.role]),"stale types/formations cannot change role decisions");
-  const html=renderEventStrategy({...plan,substitute_assignments:[{...plan.substitute_assignments[0],replacement_for:{name:'<script>alert(1)</script>',role:"main_attack"}}]},{locale:"fr"});
+  const html=renderEventStrategy({...plan,substitute_assignments:[{...plan.substitute_assignments[0],task:{...plan.substitute_assignments[0].task,target_name:'<script>alert(1)</script>'},replacement_for:{name:'<script>alert(1)</script>',role:"main_attack"}}]},{locale:"fr"});
   assert.match(html,/Priorité 1/);assert.match(html,/place libre/);assert.match(html,/Plan B/);
   assert.ok(html.includes("&lt;script&gt;"));assert.ok(!html.includes("<script>"));
   assert.doesNotMatch(html,/Rôle à confirmer|Stratégie proposée|Ordres à copier|Règles et sources|<details/);

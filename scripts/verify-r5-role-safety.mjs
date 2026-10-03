@@ -68,7 +68,9 @@ const member=(name,role,extra={})=>({name,role,server_id:"884",alliance_tag:"ALL
       ()=>updateAllianceScopeRoster({alliance_id:"a1",roster:[member("Surplus R5","R3")],expected_updated_at:"2026-09-19T10:00:00.000Z"}),
       error=>error?.status===409&&error?.code==="alliance_write_conflict"
     );
-    assert.match(calls[0].url,/updated_at=eq\.2026-09-19T10%3A00%3A00\.000Z/);
+    const casWrite=calls.find(call=>call.options.method==="PATCH");
+    assert.ok(casWrite,"the conditional write must actually be attempted");
+    assert.match(casWrite.url,/updated_at=eq\.2026-09-19T10%3A00%3A00\.000Z/);
     console.log("PASS: concurrent alliance revision is rejected by the CAS write");
   }finally{
     globalThis.fetch=previous.fetch;

@@ -35,3 +35,4 @@
 - [Node VM cross-realm tests](node-vm-cross-realm-tests.md) — VM-created objects can fail strict deep equality across realms; assert scalar fields or normalize before comparing.
 - [Squad cloud freshness](squad-cloud-freshness.md) — account-scoped squad confirmations and explicit swap-to-empty operations outrank profile-wide timestamps during sync.
 - [Compact event organization](compact-event-organization.md) — balanced lineups, reserve role/target/priority/trigger and short Plan B; no analytical panels or automatic push/publication.
+- [Event web evidence](event-web-evidence.md) — real provider compatibility and event-specific independent corroboration matter; preserve cautious dated fallback.

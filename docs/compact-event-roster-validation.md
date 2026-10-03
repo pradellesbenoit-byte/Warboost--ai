@@ -1,5 +1,8 @@
 # Compact Alliance event roster — validation 2026-10-02
 
+Historical record: current reserve-only rendering and runtime research are
+described in `event-war-organization-validation.md` (2026-10-03).
+
 ## Scope
 
 Only `public-beta-safe-launch`. No push or deployment performed for this task.

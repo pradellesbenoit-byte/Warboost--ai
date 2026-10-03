@@ -3,11 +3,17 @@ name: Compact event organization
 description: User-facing Alliance event plans must stay operational; evidence remains internal.
 ---
 
-The user wants the Alliance R5/R4 event screen strongly simplified: no “Stratégie proposée”, detailed proposed-strategy accordion, “Ordres à copier” or “Règles et sources” blocks. Show starters with roles, reserves with roles/priorities/coverage targets/conditional entry instructions, one very short Plan B and recalculation instead.
+The user wants the Alliance R5/R4 event screen strongly simplified: no “Stratégie proposée”, detailed proposed-strategy accordion, “Ordres à copier” or “Règles et sources” blocks. Show simple starters, separate reserves with one precise task and replacement priority, one optional very short Plan B and recalculation.
 
 **Why:** the user found the previous analytical blocks useless and too crowded on mobile.
 
-**How to apply:** keep provenance/freshness safeguards in the engine but do not reintroduce their technical display on this screen. Reserves need concrete useful roles; insufficient data calls for “Réserve mobile” or “Renfort polyvalent” with “données limitées”, never “Rôle à confirmer” or an invented specialization.
+**How to apply:** keep provenance/freshness safeguards internal. Do not add artificial roles or repeated presence badges to starters. Never fill lists with “Renfort polyvalent”. Reserves need an event/need-specific task; if information is insufficient, use a prudent named-player cover or “rôle à définir selon le plan”, without invented specialization.
+
+The user explicitly requested that WarBoost itself research internet strategies, not just have its developer research once. Keep verification dates, cross-check event-specific sources and distinguish official rules, game observations and community advice; do not display source blocks.
+
+**Why:** the user repeated: “Je t'ai demandé juste d'intégrer les remplaçants de leur donner une tâche et de faire en sorte que l'IA cherche sur internet, les meilleures stratégies des plans de guerre”.
+
+**How to apply:** preserve actual server-side web research with cautious cached/dated fallback. Never claim live game data without an official API or let external advice fabricate opponents, faction, timers or current objective ownership.
 
 Unit type may guide organizational mission preferences, not certify combat superiority or official multipliers. “Best plan” means balancing essential coverage with confirmed evidence, not guaranteeing a win.
 

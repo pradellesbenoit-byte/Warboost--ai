@@ -14,6 +14,7 @@ import {scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine} from
 import {LAST_WAR_RULES,LAST_WAR_RULES_VERSION,crystalEventEligibility,crystalBossGuidance,ammoBonanzaGuidance,shopRuleGuidance,lastWarRuleContext,ruleProvenance} from '../lib/last-war-rules.js';
 import {mergeFreshRecord} from "../lib/field-freshness.js";
 import {eventStrategyFromState} from "../lib/event-strategy.js";
+import {researchForAllianceManager} from "../lib/event-research-api.js";
 const ENGINE_VERSION="2.5.28";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
@@ -1353,6 +1354,12 @@ function buildCrossDomain(state,locale,player){
 export default async function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   let betaUser=null;try{({user:betaUser}=await requireBetaUser(req,{consent:true}));}catch(e){return res.status(e?.status||500).json({ok:false,error:e?.code||"beta_access_failed",message:e?.message||"Beta access failed"});}
+  if(req.query?.action==="event_research"){
+    res.setHeader("Cache-Control","no-store");
+    try{const research=await researchForAllianceManager(betaUser,req.body?.event_type);
+      return res.status(200).json({ok:research.status!=="unavailable",research,server_time:new Date().toISOString()});
+    }catch(e){return res.status(e.status||500).json({error:e.code||"event_research_failed"})}
+  }
   const scope=String(req.body?.scope||"player"),s=req.body?.state||{},loc=String(req.body?.locale||"en-GB");
   if(scope==="player"){
     const analysis=buildPlayerAnalysis(s,loc);

@@ -1,4 +1,4 @@
-# War organization validation — 2026-10-02
+# War organization validation — 2026-10-03
 
 ## Scope and limits
 
@@ -24,9 +24,11 @@ current official ruleset.
 - Real vacancies receive the first priorities; joint matching avoids greedily
   consuming another vacancy's only suitable reserve. Next priorities cover role
   deficits and diversified contingency missions/individual starters.
-- Every reserve has a mission, priority, covered starter role, an individual target
-  when one exists, and a conditional entry trigger requiring a free slot.
-- Limited evidence yields a mobile reserve with a useful conditional coverage task.
+- Starters render names and existing availability controls only. Each separate
+  reserve renders one task, priority and conditional entry requiring a free slot.
+- Fresh targets have an event-specific planned objective; missing evidence yields
+  a prudent named-player cover without inferred specialization. Without a target,
+  the task is “rôle à définir selon le plan”.
   No implicit promotion, invented specialization or absent player in the reserve pool.
 - Saved assignments preserve withdrawal evidence, not current attendance. The
   current declarations define the roster; recalculation stores the new organization.
@@ -53,7 +55,52 @@ and freshness/lifecycle guards.
 The Supabase variables were unset only in the isolated verification subprocess;
 workspace configuration/secrets were not read or modified.
 
+## Runtime web research
+
+The existing authenticated, consent-checked advice endpoint handles
+`POST /api/advice?action=event_research`, keeping the existing twelve-function
+deployment budget. Canonical membership/owner authorization is checked before
+the provider call; client-declared ranks or player profiles are not accepted.
+
+Recalculation requests only an event type (Desert, Canyon, VS or Season). The
+provider receives no player/account/roster data. Domain-filtered web search uses
+a compatible model; its actual retrieved citations must support an allowed
+event-specific objective across two independent publishers. Generic combat
+guides, invented citations/objectives and same-publisher pairs are rejected.
+
+Accepted advice changes reserve need order and conditional objective assignment,
+not official rules, current ownership, timers, opponent knowledge or joining.
+VS remains bound to actually visible daily tasks; Season remains bound to
+confirmed active season context, with no combat substitutes added to either.
+
+Successes are cached six hours and failures fifteen minutes, with simultaneous
+requests deduplicated and a bounded timeout. Rejected/unavailable research retains
+dated community fallback internally; no source/technical panel is added.
+Delayed frontend results are discarded after an account/alliance or permission change.
+
+A real provider call for Desert returned validated cross-checked recommendations
+on 2026-10-03, citing Last War Tutorial and Last War Survival Tools. A real Canyon
+call lacked sufficient surviving corroboration and correctly returned unavailable;
+the dated fallback remains usable. This is not certification of current official
+rules or access to private Discord/login-only support.
+
+Added regression checks cover source normalization/independence/scope, stale and
+wrong-event advice, provider dedup/cache/failure backoff, private-payload exclusion,
+permission guard order, account-switch races, named cautious tasks and starter UI.
+An inherited CAS test now locates the actual PATCH rather than assuming it is the
+first request, because preserving roster-removal history requires a preceding GET.
+
 ## Mobile validation
+
+Current reserve-only pass (2026-10-03): synthetic 390×844 rendered UI verified
+20+10, native withdrawal to 19+10, recalculation retaining the priority-one named
+cover, manual acceptance to 20+9, Canyon-specific targets, and VS/Season 32/32
+without combat reserves. No horizontal overflow or unresolved application error.
+Representative controls worked; an exhaustive per-control hit-test timed out.
+The stricter unknown-reserve fallback and authoritative response-time freshness
+guard added afterward were confirmed by targeted regression tests.
+
+The previous rendering's historical results follow:
 
 A 390×844 browser-only synthetic journey passed: six main mission types, all ten
 reserve instruction fields, useful limited-data fallback, native withdrawal,
