@@ -98,7 +98,8 @@ const context={$:node,t:k=>k,lang:"fr",scanInputRevision:0,scanFileSelectionRevi
   rosterScanFiles:[],rosterScanDraft:[],pendingExclusiveScan:[],pendingExclusiveScannedAt:now,
   PLAYER_SCAN_BATCH_LIMIT:3,esc:String,aiUsesNativeCopy:()=>true,aiUiText:()=>({}),currentPlayerAdviceAnalysis:null,
   activeAcquisitionShopView:null,renderTechnologyAdvicePanel(){},renderGlobalDiagnostic,
-  state,buildDiagnosticShop,renderDiagnosticShop};
+  state,buildDiagnosticShop,renderDiagnosticShop,
+  diagnosticDisclosures:{capture(){},restore(){}}};
 vm.runInNewContext(`${functionSource("updateTechnologyScanPreview")}\n${functionSource("resetPendingScanUi")}\n${functionSource("renderProPriority")}\nresetPendingScanUi();renderProPriority({global_diagnostic:${JSON.stringify(diagnostic)}});`,context);
 assert.equal(node("#scanImageBatchList").innerHTML,"","actual account-reset handler removes foreign filenames");
 assert.equal(node("#scanStatus").textContent,"scan_wait","actual handler clears stale progress");

@@ -19,6 +19,7 @@
   <!-- Legacy HF8.6.19: WarBoost V2.5.28 HF8.6.19 · /app.js?v=hf8619 · /publisher-ui.js?v=hf8619 -->
 <link rel="stylesheet" href="/player-global-diagnostic.css" />
 <link rel="stylesheet" href="/diagnostic-shop.css?v=diagnostic-shop-r1" />
+<link rel="stylesheet" href="/diagnostic-disclosures.css?v=diagnostic-disclosures-r1" />
 </head>
 <body>
   <div id="loadingScreen" class="loadingScreen" role="dialog" tabindex="-1" aria-modal="true" aria-live="polite" aria-label="WarBoost" aria-hidden="false" data-loading-mode="open" data-loading-stage="profile">
@@ -178,7 +179,9 @@
     <button id="playerAdviceBtn" class="secondaryBtn wideBtn" data-i18n="ai_priority">Priorité IA PRO</button>
     <div id="playerSyncInfo" class="notice" style="margin-top:10px" data-i18n="player_sync_note">Tes valeurs manuelles restent protégées. Un scan plus récent remplace uniquement les champs qu'il peut lire avec confiance.</div>
     <section id="proPriorityPanel" class="section proPriorityPanel hidden" style="margin-top:10px">
-      <div class="sectionTitle"><h3 data-i18n="pro_diagnostic">Diagnostic PRO</h3><span id="proConfidence" class="pill">—</span></div>
+      <details id="proDiagnosticDisclosure" class="proDisclosure" data-pro-disclosure="diagnostic" open>
+      <summary class="sectionTitle proDisclosureHeader"><h3 data-i18n="pro_diagnostic">Diagnostic PRO</h3><span id="proConfidence" class="pill">—</span><span class="proDisclosureChevron" aria-hidden="true">›</span></summary>
+      <div class="proDisclosureContent">
       <p id="proPrioritySummary" class="heroText" style="margin:0 0 10px"></p><div id="proAdaptiveContext" class="notice proContextSummary" style="margin:0 0 12px"></div>
       <div class="proSubTitle" data-i18n="pro_top_actions">Priorités d'action</div>
       <div id="proPriorityList" class="priorityList"></div><section id="proTechnologyAdvice" class="proTechAdvice hidden" aria-live="polite"></section><div id="proAvoidList" class="avoidList"></div>
@@ -190,6 +193,7 @@
       <button id="scanShopBtn" class="secondaryBtn wideBtn" data-i18n="scan_shop_button">📷 Scanner une boutique du jeu</button></details>
       <div class="proSubTitle plan7Header"><span>📅</span> <span data-i18n="seven_day_plan">Plan Joueur 7 jours</span></div>
       <div id="player7DayPlan" class="sevenDayPlan"></div>
+      </div></details>
       <div id="proDiagnosticShop" class="hidden" aria-live="polite"></div>
     </section>
   </section>

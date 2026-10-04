@@ -6,7 +6,9 @@ import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} 
 import {canonicalShopStore} from "./lib/shop-catalog.js?v=shop-observations-v2-5-32-hf8-6-34-r2";
 import {resourceAcquisitionForPriority,formatAcquisitionCost} from "./lib/resource-acquisition.js?v=shop-observations-v2-5-32-hf8-6-34-r2";
 import {buildDiagnosticShop} from "./lib/diagnostic-shop.js?v=diagnostic-shop-r1";
-import {renderDiagnosticShop} from "./lib/diagnostic-shop-ui.js?v=diagnostic-shop-r1";
+import {renderDiagnosticShop} from "./lib/diagnostic-shop-ui.js?v=diagnostic-disclosures-r1";
+import {createDiagnosticDisclosures} from "./lib/diagnostic-disclosures.js?v=diagnostic-disclosures-r1";
+const diagnosticDisclosures=createDiagnosticDisclosures({root:document});
 import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad} from "./lib/squad-identity.js";
 import {reconcileCloudSquads} from "./lib/squad-freshness.js";
 import {recoverHeroData} from "./lib/hero-history.js";
@@ -1938,11 +1940,13 @@ function renderProPriority(analysis){
   if(!panel||!analysis)return;
   if(currentPlayerAdviceAnalysis!==analysis)activeAcquisitionShopView=null;
   currentPlayerAdviceAnalysis=analysis;
+  diagnosticDisclosures.capture(panel);
   const diagnosticShop=$("#proDiagnosticShop");
   if(diagnosticShop){
     diagnosticShop.innerHTML=renderDiagnosticShop(buildDiagnosticShop(analysis,state,lang),{locale:lang});
     diagnosticShop.classList.toggle("hidden",!diagnosticShop.innerHTML);
   }
+  diagnosticDisclosures.restore(panel);
   renderTechnologyAdvicePanel(analysis.global_diagnostic?null:analysis.technology_advice||buildTechnologyAdvice(state,{mainType:analysis.composition?.main_type||null}));
   if(note)note.classList.add("hidden");panel.classList.remove("hidden");
   if(analysis.global_diagnostic){
@@ -3466,6 +3470,7 @@ function resetPlayerAdviceButtons(){
   }
 }
 function invalidatePlayerAdvice({autoRefresh=true}={}){
+  diagnosticDisclosures.capture($("#proPriorityPanel"));
   playerAdviceGeneration++;
   playerAdvicePendingSignature="";
   playerAdviceRenderedSignature="";
