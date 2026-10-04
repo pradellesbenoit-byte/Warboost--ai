@@ -9,6 +9,9 @@ import {buildDiagnosticShop} from "./lib/diagnostic-shop.js?v=diagnostic-shop-r1
 import {renderDiagnosticShop} from "./lib/diagnostic-shop-ui.js?v=diagnostic-disclosures-r1";
 import {createDiagnosticDisclosures} from "./lib/diagnostic-disclosures.js?v=diagnostic-disclosures-r1";
 const diagnosticDisclosures=createDiagnosticDisclosures({root:document});
+import {profileIdentity,applyIdentityProfile} from "./lib/identity-onboarding.js";
+import {createIdentityOnboardingController} from "./lib/identity-onboarding-controller.js";
+let identityOnboardingController=null;
 import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad} from "./lib/squad-identity.js";
 import {reconcileCloudSquads} from "./lib/squad-freshness.js";
 import {recoverHeroData} from "./lib/hero-history.js";
@@ -706,7 +709,7 @@ function safeLaunchBetaMode(){return Boolean(proState?.beta!==false||(betaState?
 function safeLaunchBetaProIncluded(){return Boolean(safeLaunchBetaMode()&&cloudSession?.user&&betaAccessAllowed()&&betaConsentAccepted())}
 function proFeatureAllowed(){return safeLaunchBetaProIncluded()||Boolean(!safeLaunchBetaMode()&&proState?.active)}
 function betaAccessMessage(){const access=runtimeAccessState();if(!access.logged)return t("beta_signin_required");if(!betaState.enforced)return t("beta_allowlist_setup");if(access.phase==="syncing")return t("syncing");if(betaState.restore_error&&access.consented&&!cloudProfileVerified&&!access.privateVisible)return `${t("beta_restore_failed")}${lastBootstrapFailure()?.stage?` · ${lastBootstrapFailure().stage}`:""}`;if(access.phase==="access-denied"){if(betaState.access_status==="revoked")return t("beta_access_revoked");if(betaState.access_status==="expired")return t("beta_access_expired");return t("beta_code_required")}if(access.phase==="consent-required")return t("beta_consent_required");if(access.phase==="ready")return state?.sync?.pending_cloud_save?t("offline_keep"):t("safe_sync_done");return t("syncing")}
-function requireBetaAccess(){if(betaAccessAllowed())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);return false}
+function requireBetaAccess(){if(identityOnboardingController?.isRequired()){identityOnboardingController.sync();return false}if(betaAccessAllowed())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);return false}
 function requireBetaConsent(){if(betaConsentAccepted())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);const el=$("#betaAccessStatus");if(el){el.className="notice warn";el.textContent=t("beta_consent_required")}return false}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
 function tpl(key,vars={}){return t(key,vars)}
@@ -1664,6 +1667,7 @@ function maskPlayerPrivateSummary(){if($("#pName"))$("#pName").textContent="—"
 function maskAlliancePrivateSummary(){if($("#aTag"))$("#aTag").textContent="—";if($("#aCount"))$("#aCount").textContent="0";if($("#aRole"))$("#aRole").textContent="—";if($("#inviteCode"))$("#inviteCode").textContent="—";if($("#shareInviteBtn"))$("#shareInviteBtn").disabled=true}
 function render(){
   state=applyCanonicalRenames(state);
+  identityOnboardingController?.sync();
   const p=state.player,a=state.alliance,v=state.vs,s=state.season,d=state.drone||{},reveal=betaPrivateDataVisible();
   if(!$("#playerMeta"))return;
 
@@ -3781,7 +3785,7 @@ $("#eventImportBtn")?.addEventListener("click",async()=>{
 });
 
 $("#shareInviteBtn").addEventListener("click",async()=>{const btn=$("#shareInviteBtn");if(!requireBetaAccess()||!requireBetaConsent())return;if(!["R4","R5"].includes(normalizedRole(state.player?.role))){inviteMessage(t("alliance_invite_manager_only"));return}if(!cloudSession?.access_token){inviteMessage(t("alliance_invite_connect"));openDrawer("account");return}const original=btn?.textContent;if(btn){btn.disabled=true;btn.textContent="…"}try{const saved=await pushServerState();if(!saved?.ok)throw Object.assign(new Error("cloud_save_required"),{code:"cloud_save_required"});const {response:rr,json:jj}=await fetchJsonBounded("/api/invite",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({name:state.alliance.name||state.alliance.tag||"WarBoost"})},18000);if(!rr.ok||!jj.invite_code)throw Object.assign(new Error(jj.message||jj.error||"invite_failed"),{code:jj.error||"invite_failed"});const code=jj.invite_code;state.alliance.id=jj.alliance?.id||state.alliance.id;state.alliance.server_id=jj.alliance?.server_id||state.player?.server_id||state.alliance.server_id;state.alliance.tag=jj.alliance?.tag||state.alliance.tag;state.alliance.name=jj.alliance?.name||state.alliance.name;state.alliance.invite_code=code;state.alliance.role=jj.role||state.alliance.role;state.alliance.management_verified=jj.scope_verified===true&&["R4","R5"].includes(normalizedRole(jj.role));state.vs.our_alliance=state.alliance.tag;state.sync.sources={...state.sync.sources,alliance:true};saveState();inviteMessage(t("alliance_invite_ready_scoped",{server:state.alliance.server_id||state.player?.server_id||"—",alliance:state.alliance.tag||"—"}),true);const url=`${location.origin}${location.pathname}?join=${encodeURIComponent(code)}`,text=`WarBoost · ${t("server")} ${state.alliance.server_id||state.player?.server_id||"—"} · ${state.alliance.tag||"—"} · ${code}`;try{if(navigator.share)await navigator.share({title:`WarBoost · ${t("alliance")}`,text,url});else{await navigator.clipboard.writeText(`${text}\n${url}`);if(btn){btn.textContent=t("copy");setTimeout(()=>{btn.textContent=t("share")},1400)}}}catch{}}catch(e){const key={manager_role_required:"alliance_invite_manager_only",manager_roster_match_required:"alliance_manager_roster_match_required",manager_roster_role_required:"alliance_invite_manager_only",alliance_roster_identity_ambiguous:"alliance_roster_identity_ambiguous",lastwar_nickname_required:"lastwar_nickname_required",lastwar_server_required:"lastwar_server_required",lastwar_alliance_required:"lastwar_alliance_required",alliance_space_exists_invitation_required:"alliance_space_exists_invitation_required",alliance_owner_scope_conflict:"alliance_owner_scope_conflict",alliance_scope_ambiguous_admin_required:"alliance_scope_ambiguous_admin_required",cloud_save_required:"offline_keep"}[e.code]||"alliance_invite_failed";inviteMessage(t(key))}finally{if(btn){btn.disabled=false;if(btn.textContent==="…")btn.textContent=original||t("share")}}});
-async function joinPendingAlliance(){const code=String(pendingJoinCode()||state.alliance.invite_code||"").trim();if(!code||!state.player.name||!cloudSession?.access_token||!betaAccessAllowed()||!betaConsentAccepted())return false;try{const {response:r,json:j}=await fetchJsonBounded("/api/join",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({invite_code:code})},18000);if(!r.ok){const key={alliance_owner_switch_blocked:"alliance_owner_switch_blocked",invite_not_found:"alliance_invite_not_found",lastwar_identity_required:"lastwar_identity_required",lastwar_nickname_required:"lastwar_nickname_required",lastwar_server_required:"lastwar_server_required",lastwar_alliance_required:"lastwar_alliance_required",alliance_scope_not_ready:"alliance_scope_not_ready",alliance_server_mismatch:"alliance_server_mismatch",alliance_tag_mismatch:"alliance_tag_mismatch",alliance_roster_not_ready:"alliance_roster_not_ready",player_not_in_alliance_roster:"player_not_in_alliance_roster",alliance_roster_identity_ambiguous:"alliance_roster_identity_ambiguous",alliance_scope_ambiguous_admin_required:"alliance_scope_ambiguous_admin_required"}[j?.error]||"alliance_join_failed";inviteMessage(t(key));return false}if(j.alliance){state.alliance.id=j.alliance.id||state.alliance.id;state.alliance.server_id=j.alliance.server_id||state.player?.server_id||state.alliance.server_id;state.alliance.tag=j.alliance.tag||state.alliance.tag;state.alliance.name=j.alliance.name||state.alliance.name;state.alliance.role=j.membership?.role||"R1";state.alliance.management_verified=j.scope_verified===true&&["R4","R5"].includes(normalizedRole(state.alliance.role));state.vs.our_alliance=state.alliance.tag;state.sync.sources={...state.sync.sources,alliance:true};clearPendingJoinCode();saveState();inviteMessage(t(j.already_member?"alliance_already_joined":"alliance_joined_scoped",{server:state.alliance.server_id||"—",alliance:state.alliance.tag||"—"}),true);return true}}catch{inviteMessage(t("alliance_join_failed"))}return false}
+async function joinPendingAlliance(){const code=String(pendingJoinCode()||state.alliance.invite_code||"").trim(),ownerId=String(cloudSession?.user?.id||"");if(!code||!state.player.name||!cloudSession?.access_token||!betaAccessAllowed()||!betaConsentAccepted())return false;try{const {response:r,json:j}=await fetchJsonBounded("/api/join",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({invite_code:code})},18000);if(String(cloudSession?.user?.id||"")!==ownerId||String(state.player_id||"")!==ownerId)return false;if(!r.ok){const key={alliance_owner_switch_blocked:"alliance_owner_switch_blocked",invite_not_found:"alliance_invite_not_found",lastwar_identity_required:"lastwar_identity_required",lastwar_nickname_required:"lastwar_nickname_required",lastwar_server_required:"lastwar_server_required",lastwar_alliance_required:"lastwar_alliance_required",alliance_scope_not_ready:"alliance_scope_not_ready",alliance_server_mismatch:"alliance_server_mismatch",alliance_tag_mismatch:"alliance_tag_mismatch",alliance_roster_not_ready:"alliance_roster_not_ready",player_not_in_alliance_roster:"player_not_in_alliance_roster",alliance_roster_identity_ambiguous:"alliance_roster_identity_ambiguous",alliance_scope_ambiguous_admin_required:"alliance_scope_ambiguous_admin_required"}[j?.error]||"alliance_join_failed";inviteMessage(t(key));return false}if(j.alliance){state.alliance.id=j.alliance.id||state.alliance.id;state.alliance.server_id=j.alliance.server_id||state.player?.server_id||state.alliance.server_id;state.alliance.tag=j.alliance.tag||state.alliance.tag;state.alliance.name=j.alliance.name||state.alliance.name;state.alliance.role=j.membership?.role||"R1";state.alliance.management_verified=j.scope_verified===true&&["R4","R5"].includes(normalizedRole(state.alliance.role));state.vs.our_alliance=state.alliance.tag;state.sync.sources={...state.sync.sources,alliance:true};clearPendingJoinCode();saveState();inviteMessage(t(j.already_member?"alliance_already_joined":"alliance_joined_scoped",{server:state.alliance.server_id||"—",alliance:state.alliance.tag||"—"}),true);return true}}catch{if(String(cloudSession?.user?.id||"")===ownerId)inviteMessage(t("alliance_join_failed"))}return false}
 function handleJoinLink(){const raw=new URLSearchParams(location.search).get("join");if(!raw)return;const code=rememberPendingJoinCode(raw);if(!code)return;state.alliance.invite_code=code;safeLocalSet(STORE_KEY,JSON.stringify(state));setTimeout(()=>openDrawer("account"),500)}
 
 
@@ -3988,6 +3992,33 @@ $("#loadingRetry")?.addEventListener("click",async()=>{
   await loadingScreen?.hide();
 });
 async function initializeWarBoost(){
+  identityOnboardingController=createIdentityOnboardingController({
+    document,
+    getContext:()=>({userId:String(cloudSession?.user?.id||""),ownerId:String(state?.player_id||""),
+      betaAllowed:betaAccessAllowed(),consentAccepted:betaConsentAccepted(),hydrating:cloudHydrationPending,
+      identity:profileIdentity(state),locale:lang}),
+    translate:translator,
+    request:async(method,payload)=>{
+      if(method==="POST")clearTimeout(pushTimer);
+      const {response,json}=await fetchJsonBounded("/api/state?identity=1",{method,cache:"no-store",
+        headers:authHeaders({"content-type":"application/json"}),...(payload?{body:JSON.stringify(payload)}:{})},25000);
+      if(!response.ok)throw Object.assign(new Error(json.error||"IDENTITY_CHECK_UNAVAILABLE"),{
+        code:json.error||"IDENTITY_CHECK_UNAVAILABLE",authority:json.authority});
+      return json;
+    },
+    onProfile:(result,{saved,ownerId})=>{
+      if(String(cloudSession?.user?.id||"")!==ownerId||String(state.player_id||"")!==ownerId)return;
+      if(result.state){
+        if(result.state.player_id&&String(result.state.player_id)!==ownerId)return;
+        const canonical=canonicalSelfRosterMember();
+        state=applyIdentityProfile(state,result,{saved,preserveRank:Boolean(canonical?.role)});
+      }
+      cloudProfileVerified=true;cloudRevision=result.updated_at||cloudRevision;
+      betaState={...betaState,restore_error:null};
+      if(saved){saveState();if(pendingJoinCode())void joinPendingAlliance()}
+      else{safeLocalSet(STORE_KEY,JSON.stringify(state));rememberAccountState(ownerId,state);render()}
+    }
+  });
   let mode="open";
   try{if(sessionStorage.getItem(STARTUP_MODE_STORAGE_KEY)==="update")mode="update";sessionStorage.removeItem(STARTUP_MODE_STORAGE_KEY)}catch{}
   loadingScreen?.show(mode,"profile");

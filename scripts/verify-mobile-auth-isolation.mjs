@@ -33,7 +33,9 @@ assert.match(app,/function bindAuthControls\(\)/);
 for(const id of ["loginBtn","signupBtn","forgotPasswordBtn","verifyOtpBtn","resendOtpBtn"]){
   assert.match(app,new RegExp(`\\$\\("#${id}"\\)\\?\\.addEventListener`),`${id} must be rebound after auth form mount`);
 }
-assert.match(app,/function closeDrawers\(\)\{unmountAuthControls\(\)/);
+const closeStart=app.indexOf("function closeDrawers(");
+const closeDrawers=app.slice(closeStart,app.indexOf("\n\n",closeStart));
+assert.match(closeDrawers,/unmountAuthControls\(\)/,"closing drawers must remove mounted auth inputs");
 assert.match(app,/d\.classList\.add\("open"\)[\s\S]{0,220}safeRenderStep\("ACCOUNT_OPEN_AUTH",renderAuth\)/);
 
 assert.match(reset,/id="newPassword" type="password" autocomplete="new-password"/);

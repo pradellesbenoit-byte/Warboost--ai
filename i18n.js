@@ -1,4 +1,5 @@
 import technologyI18nWest from "./lib/technology-i18n-west.js";
+import {IDENTITY_ONBOARDING_COPY,IDENTITY_ONBOARDING_KEYS} from "./lib/identity-onboarding-copy.js";
 import technologyI18nCjk from "./lib/technology-i18n-cjk.js";
 import technologyI18nEast from "./lib/technology-i18n-east.js";
 import technologyI18nRest from "./lib/technology-i18n-rest.js";
@@ -2778,3 +2779,8 @@ const LOADING_SCREEN_COPY={
   }
 };
 for(const [code,copy] of Object.entries(LOADING_SCREEN_COPY))Object.assign(packs[code],copy);
+for(const [code,copy] of Object.entries(IDENTITY_ONBOARDING_COPY)){
+  if(!packs[code]||copy.length!==IDENTITY_ONBOARDING_KEYS.length)throw new Error(`Invalid identity onboarding translations for ${code}`);
+  Object.assign(packs[code],Object.fromEntries(IDENTITY_ONBOARDING_KEYS.map((key,index)=>[key,copy[index]])));
+}
+Object.assign(EN,Object.fromEntries(IDENTITY_ONBOARDING_KEYS.map((key,index)=>[key,IDENTITY_ONBOARDING_COPY["en-GB"][index]])));

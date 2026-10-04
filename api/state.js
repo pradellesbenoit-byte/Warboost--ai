@@ -13,6 +13,7 @@ import {canonicalAllianceAuthorization} from "../lib/alliance-authorization.js";
 import {mergePlayerHqFields} from "../lib/player-hq.js";
 import {mergeEventAvailabilities,mergeAvailabilityHistory,mergePlayerAvailabilityIntoRoster} from "../lib/event-availability.js";
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
+import identityOnboardingHandler from "../lib/identity-onboarding-handler.js";
 
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 function recoverySummary(r){return {changed:Boolean(r?.changed),recovered_fields:Number(r?.recovered_fields||0),recovered_heroes:Array.isArray(r?.recovered_heroes)?r.recovered_heroes:[],conflicts:Array.isArray(r?.conflicts)?r.conflicts:[],sources:Array.isArray(r?.sources)?r.sources:[]}}
@@ -186,6 +187,7 @@ async function canonicalizeAllianceState(input,playerId){
 }
 
 export default async function handler(req,res){
+  if(String(req.query?.identity||"")==="1")return identityOnboardingHandler(req,res);
   res.setHeader("Cache-Control","no-store");
   const restoreTrace=[],trace=entry=>{if(entry&&restoreTrace.length<12)restoreTrace.push(entry)};
   try{
