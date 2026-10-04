@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {sanitize,usefulState} from "../api/scan.js";
+import {sanitize,usefulState,promptFor} from "../api/scan.js";
 import {classifyDroneScreen,parseDronePowerUnits} from "../lib/drone-scan.js";
 import {createScanReviewDraft,applyOwnedScanReview} from "../lib/scan-review.js";
 import {buildScanReviewGroups} from "../lib/scan-review-presentation.js";
 import {renderScanReviewMarkup} from "../lib/scan-review-markup.js";
 import {normalizeState,mergeNewest} from "../lib/normalize.js";
+import {mergeDroneFacts} from "../lib/player-known-facts.js";
 
 const now="2026-09-29T12:00:00.000Z";
 const visiblePower={power_raw:"9 057 163",power_label:"Puissance du Drone",power_evidence:"visible_drone_power",power_confidence:0.96};
@@ -27,6 +28,48 @@ assert.equal(usefulState("drone",boostOnly),true,"Boost level alone remains revi
 const attributes=sanitize({screen_type:"attributes",drone:{level:150,...visiblePower}},now,"drone");
 assert.equal(attributes.drone.level,150);
 assert.equal(attributes.drone.boostCombat,undefined);
+// These are regression fixtures, never defaults or game-data rules.
+const header=(text,extras={})=>({text,region:"drone_power_header",anchor:"above_drone_attributes",
+  evidence:"visible_drone_power",confidence:0.97,...extras});
+const attributesCapture=candidates=>({screen_type:"unknown",screen_title:"Attributs du Drone",
+  drone:{level:164,power_candidates:candidates}});
+for(const text of ["9215521","9 215 521","9\u202f215\u202f521","9.215.521","9,215,521","9  215\t521"]){
+  const parsed=sanitize(attributesCapture([header(text)]),now,"drone");
+  assert.equal(parsed.drone.level,164,"general level is separate from header power");
+  assert.equal(parsed.drone.power_m,9.215521,"an icon-only power header needs no printed label");
+  const groups=buildScanReviewGroups("drone",createScanReviewDraft("drone",parsed));
+  const row=groups.flatMap(g=>g.rows).find(r=>r.kind==="dronePower");
+  assert.equal(row.status,"pending","readable value still requires the normal owner confirmation");assert.equal(row.value,9215521);
+  const markup=renderScanReviewMarkup(groups,key=>key,String).html;
+  assert.match(markup,/value="9215521"/);assert.doesNotMatch(markup,/<p[^>]*>scan_review_drone_power_missing/);
+}
+for(const text of ["9057163","9 057 163"])assert.equal(sanitize(attributesCapture([header(text)]),now,"drone").drone.power_m,9.057163);
+for(const text of ["0,907","0.907","164","+949001","+17660","20,5 %","120000/240000","Lv.164","0"]){
+  assert.equal(sanitize(attributesCapture([header(text)]),now,"drone").drone.power_m,undefined,`invalid header ${text} omitted`);
+}
+for(const [region,label,text] of [["drone_attributes","PV","949001"],["drone_attributes","ATQ","17660"],
+  ["resources","Or","9215521"],["progression","XP","9215521"]]){
+  const parsed=sanitize(attributesCapture([header(text,{region,label})]),now,"drone");
+  assert.equal(parsed.drone.power_m,undefined,"non-header numeric zones never become power");
+}
+for(const label of ["+PV","+ATQ","+DEF","+PVtotal","20,5 %","20/30","Ressources","Progression","Food","Iron"]){
+  assert.equal(sanitize(attributesCapture([header("9215521",{label})]),now,"drone").drone.power_m,undefined);
+  assert.equal(sanitize({screen_type:"attributes",drone:{...visiblePower,power_label:label}},now,"drone").drone?.power_m,undefined);
+}
+const preferred=attributesCapture([header("9215521",{confidence:0.91}),header("949001",{region:"drone_attributes",confidence:1})]);
+Object.assign(preferred.drone,visiblePower,{power_confidence:0.99});
+assert.equal(sanitize(preferred,now,"drone").drone.power_m,9.215521,"header location outranks a labelled fallback");
+assert.equal(sanitize(attributesCapture([header("9215521"),header("9057163")]),now,"drone").drone.power_m,undefined,"ambiguous headers stay pending");
+assert.equal(sanitize(attributesCapture([header("9215521",{confidence:0.5})]),now,"drone").drone.power_m,undefined);
+const recent={power_m:10,source:"confirmed_scan",updated_at:now,field_source:{power_m:"confirmed_scan"},field_updated_at:{power_m:now}};
+const uncertain=sanitize(attributesCapture([header("9215521",{confidence:0.5})]),now,"drone").drone;
+assert.equal(mergeDroneFacts(recent,uncertain).power_m,10,"uncertainty cannot replace a recent confirmation");
+assert.equal(mergeDroneFacts(recent,{power_m:9.215521,source:"confirmed_scan",updated_at:"2020-01-01T00:00:00Z"}).power_m,10);
+assert.equal(parseDronePowerUnits("150.234"),150234,"positive grouped integers remain accepted at lower supported scales");
+assert.equal(parseDronePowerUnits("10 000 000 000"),parseDronePowerUnits("10000000000"));
+const implementation=fs.readFileSync(new URL("../lib/drone-scan.js",import.meta.url),"utf8"),prompt=promptFor("drone","fr","");
+assert.doesNotMatch(implementation+prompt,/9[\s.,]*215[\s.,]*521|9[\s.,]*057[\s.,]*163/,"no target power constant or example in business logic/prompt");
+assert.match(prompt,/above_drone_attributes/);assert.match(prompt,/ICON without any printed power label/);
 for(const screen_type of ["components","skill_chip","unknown"]){
   const ignored=sanitize({screen_type,drone:{level:400,boostCombat:{level:400},power_m:0.907}},now,"drone");
   assert.equal(ignored.drone,undefined,`${screen_type} cannot claim a Drone level or ambiguous power`);
