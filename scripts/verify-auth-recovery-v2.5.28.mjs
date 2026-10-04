@@ -119,7 +119,8 @@ const mem=()=>{const m=new Map();return {getItem:k=>m.has(k)?m.get(k):null,setIt
   assert.doesNotMatch(inviteMigration,/\bdrop\s+table\b|\btruncate\b|\bdelete\s+from\b/i);
   assert.match(support,/WARBOOST_SUPPORT_ADMINS/);
   assert.match(provider,/Safe Launch hard lock/i);
-  assert.doesNotMatch(pro,/stripe|paypal|checkout\.session/i);
+  assert.match(pro,/commerce\.mode!=="test"/,"Only TEST can reach payment routes; LIVE stays disabled");
+  assert.doesNotMatch(pro,/sk_(?:test|live)_|whsec_/,"No provider credentials in API source");
   assert.match(health,/password_recovery_requires_recovery_session:true/);
   assert.match(health,/password_recovery_stable_preview_branch_redirect:true/);
   assert.match(health,/password_never_stored_by_warboost:true/);

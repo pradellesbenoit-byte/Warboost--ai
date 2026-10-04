@@ -28,7 +28,7 @@ const releaseContract=assertCurrentReleaseContract({
 }
 
 {
-  const pro=read('api/pro.js'),commerce=read('lib/commercial-pro.js'),html=read('index.html'),app=read('app.js'),health=read('api/health.js'),manifest=JSON.parse(read('manifest.webmanifest')),pkg=JSON.parse(read('package.json'));
+  const pro=read('api/pro.js'),commerce=read('lib/commercial-pro.js')+read('lib/stripe-test.js'),html=read('index.html'),app=read('app.js'),health=read('api/health.js'),manifest=JSON.parse(read('manifest.webmanifest')),pkg=JSON.parse(read('package.json'));
   assert.match(html,/id="proCommercialPreview"/);
   assert.match(app,/function formatProPrice/);
   assert.match(app,/commercial_preview_note/);
@@ -86,7 +86,7 @@ const releaseContract=assertCurrentReleaseContract({
   process.env.SUPABASE_URL='https://example.supabase.co';
   process.env.SUPABASE_SERVICE_ROLE_KEY='service-example';
   const cfg=commercialConfig();
-  assert.equal(cfg.live,true);assert.equal(cfg.stable_domain,false);assert.equal(cfg.configured,false);assert.equal(cfg.payments_enabled,false);
+  assert.equal(cfg.live,false);assert.equal(cfg.stable_domain,false);assert.equal(cfg.configured,false);assert.equal(cfg.payments_enabled,false);
   process.env={...old};
   log('A temporary Vercel preview domain cannot accidentally enable live billing');
 }
@@ -105,14 +105,12 @@ const releaseContract=assertCurrentReleaseContract({
     if(u.includes('/v1/checkout/sessions'))return new Response(JSON.stringify({url:'https://checkout.stripe.com/c/pay/test'}),{status:200,headers:{'content-type':'application/json'}});
     return new Response(JSON.stringify({error:{message:'unmatched'}}),{status:500,headers:{'content-type':'application/json'}});
   };
-  const out=await createCheckoutForUser({id:'00000000-0000-4000-8000-000000000001',email:'player@example.test'});
-  assert.equal(out.plan.amount,499);assert.match(out.url,/^https:\/\//);
-  assert.ok(calls.some(c=>c.url.includes('/v1/prices/price_pro_499')));
-  assert.ok(calls.some(c=>c.url.includes('/v1/checkout/sessions')));
+  await assert.rejects(createCheckoutForUser({id:'00000000-0000-4000-8000-000000000001',email:'player@example.test'}),{code:'SAFE_LAUNCH_PAYMENT_DISABLED'});
+  assert.equal(calls.length,0,'LIVE configuration must never reach Stripe, even with test keys');
   globalThis.fetch=oldFetch;
   for(const k of Object.keys(process.env))if(!(k in oldEnv))delete process.env[k];
   for(const [k,v] of Object.entries(oldEnv))process.env[k]=v;
-  log('Live checkout can start only after the provider price is verified as 4.99 EUR monthly');
+  log('LIVE is hard-blocked; positive TEST price/checkout coverage is in verify-stripe-test.mjs');
 }
 
 {

@@ -29,6 +29,7 @@ globalThis.fetch=async(url,opts={})=>{
     if(auth.includes('player-token'))return json(200,{id:'player-u',email:'player@example.fr'});
     return json(401,{message:'bad token'});
   }
+  if(u.includes('/rest/v1/warboost_'))return json(404,{code:'PGRST205'});
   if(u.includes('/rest/v1/wb1_beta_invites')){
     const email=queryValue(u,'email'),id=queryValue(u,'id');
     if(method==='GET'){
@@ -78,7 +79,8 @@ try{
   r=await call(supportHandler,{method:'POST',body:{action:'invite_revoke',invite_id:invites[0].id}});
   assert.equal(r.statusCode,200);assert.equal(invites[0].status,'revoked');
   r=await call(proHandler,{method:'GET',token:'player-token'});
-  assert.equal(r.statusCode,200);assert.equal(r.body.allowed,false);assert.equal(r.body.access_status,'revoked');
+  assert.equal(r.statusCode,200);assert.equal(r.body.allowed,true);assert.equal(r.body.alliance_beta_allowed,false);
+  assert.equal(r.body.active,false);assert.equal(r.body.entitlement.source,'free');
 
   r=await call(supportHandler,{method:'POST',body:{action:'invite_restore',invite_id:invites[0].id}});
   assert.equal(r.statusCode,200);assert.equal(invites[0].status,'accepted');

@@ -1,5 +1,5 @@
 import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
-import {requireBetaUser} from "../lib/beta-access.js";
+import {requireProductUser} from "../lib/pro-access.js";
 import {configured} from "../lib/supabase.js";
 import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
 import {canonicalHeroName,heroType} from '../lib/heroes.js';
@@ -1354,7 +1354,7 @@ function buildCrossDomain(state,locale,player){
 }
 export default async function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
-  let betaUser=null;try{({user:betaUser}=await requireBetaUser(req,{consent:true}));}catch(e){return res.status(e?.status||500).json({ok:false,error:e?.code||"beta_access_failed",message:e?.message||"Beta access failed"});}
+  let betaUser=null;try{({user:betaUser}=await requireProductUser(req,{consent:true,pro:true}));}catch(e){return res.status(e?.status||500).json({ok:false,error:e?.code||"beta_access_failed",message:e?.message||"Access failed"});}
   if(req.query?.action==="event_research"){
     res.setHeader("Cache-Control","no-store");
     try{const research=await researchForAllianceManager(betaUser,req.body?.event_type);

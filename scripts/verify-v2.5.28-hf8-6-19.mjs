@@ -20,7 +20,7 @@ assert.match(pkg.description,/HF8\.6\.34/);
 assert.match(i18n,/target\.tagline=`V2\.5\.32 HF8\.6\.34/);
 
 // Server outbound network calls are bounded. Raw fetch is allowed only inside the timeout helper.
-for(const f of ['lib/auth.js','lib/beta-access.js','lib/supabase.js','lib/commercial-pro.js','api/support.js','api/scan.js']){
+for(const f of ['lib/auth.js','lib/beta-access.js','lib/supabase.js','lib/billing-store.js','lib/stripe-test.js','api/support.js','api/scan.js']){
   const src=read(f);assert.match(src,/fetchWithTimeout/);assert.doesNotMatch(src,/\bfetch\s*\(/,`${f} has an unbounded raw fetch`);
 }
 assert.match(auth,/AUTH_UPSTREAM_TIMEOUT/);
@@ -28,7 +28,7 @@ assert.match(beta,/BETA_INVITES_TIMEOUT/);
 assert.match(beta,/BETA_ACCEPT/);
 assert.match(beta,/1800/,'pending invite acceptance must never block first login for long');
 assert.match(supabase,/fetchWithTimeout/);
-assert.match(commercial,/10000/);
+assert.match(read('lib/stripe-test.js'),/10000/);
 assert.match(support,/15000/);
 const scanTimeout=Number(scan.match(/const REQUEST_TIMEOUT_MS=(\d+)/)?.[1]||0);
 assert.ok(scanTimeout>0&&scanTimeout<50000,`scan provider timeout ${scanTimeout}ms must remain bounded below the serverless request limit`);

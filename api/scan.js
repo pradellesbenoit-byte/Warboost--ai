@@ -1,4 +1,4 @@
-import {requireBetaUser} from "../lib/beta-access.js";
+import {requireProductUser} from "../lib/pro-access.js";
 import {canonicalHeroName,catalogHeroName,canonicalExclusiveWeaponHeroName} from "../lib/heroes.js";
 import {sanitizeGear} from "../lib/gear.js";
 import {normalizeSeasonLifecycle} from "../lib/season-lifecycle.js";
@@ -299,7 +299,7 @@ export default async function handler(req,res){
   let releaseGuard=()=>{},scanTypeForLog="unknown";
   const startedAt=Date.now();
   try{
-    const {user}=await requireBetaUser(req,{consent:true});
+    const {user}=await requireProductUser(req,{consent:true,pro:true});
     const scanType=String(req.body?.scan_type||"profile").toLowerCase(),locale=String(req.body?.locale||"fr"),currentState=req.body?.current_state&&typeof req.body.current_state==="object"?req.body.current_state:null;
     const scanTypeValid=/^(profile|squad[1-4]|drone|exclusive|awakening|shop|vs|season|technology|alliance_roster|secret_mobile_squad)$/.test(scanType);
     scanTypeForLog=scanTypeValid?scanType:"invalid";

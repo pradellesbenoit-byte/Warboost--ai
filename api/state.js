@@ -2,6 +2,7 @@ import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnch
 import {normalizeState} from "../lib/normalize.js";
 import {recoverHeroData,heroDataSignature} from "../lib/hero-history.js";
 import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../lib/beta-access.js";
+import {requireProductUser} from "../lib/pro-access.js";
 import {requireUser} from "../lib/auth.js";
 import {mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
@@ -208,7 +209,8 @@ export default async function handler(req,res){
         .catch(error=>{trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"error",error:String(error?.code||error?.name||"profile_read_failed")});throw error});
       const betaPromise=betaAccessForUserAsync(user,{trace,inviteTimeoutMs:3500,acceptTimeoutMs:900});
       const [beta,row]=await Promise.all([betaPromise,profilePromise]);
-      const accessError=betaAccessError(beta);if(accessError)return res.status(accessError.status).json({error:accessError.code,message:accessError.message,restore_trace:orderedRestoreTrace(restoreTrace)});
+      // Personal restore is authenticated and consent-bound, not invitation-bound.
+      // The beta lookup remains diagnostic only; canonical alliance authorization below is unchanged.
       if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
       const current=normalizeState({...row.state,player_id:playerId});
       let rosterRepair;
@@ -218,7 +220,7 @@ export default async function handler(req,res){
       return res.status(200).json({ok:true,state:finalState,updated_at:row?.updated_at||finalState.updated_at,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
     }
 
-    const {user}=await requireBetaUser(req,{consent:true,trace}),playerId=user.id,userMode=userConfigured()&&Boolean(access);
+    const {user}=await requireProductUser(req,{consent:true,trace}),playerId=user.id,userMode=userConfigured()&&Boolean(access);
     const getOwn=()=>userMode?getProfileForUser(playerId,access):getProfile(playerId);
     const saveOwn=(state,expectedUpdatedAt)=>userMode?saveProfileForUserIfUnchanged(playerId,state,access,expectedUpdatedAt):saveProfileIfUnchanged(playerId,state,expectedUpdatedAt);
     const snapshotOwn=(state,source)=>userMode?insertSnapshotForUser(playerId,state,access,source):insertSnapshot(playerId,state,source);

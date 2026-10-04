@@ -2,6 +2,8 @@ import {mergeNewest,normalizeState} from "../lib/normalize.js";
 import {reconcileCloudSquads} from "../lib/squad-freshness.js";
 import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,getAllianceRoster,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
+import {requireProductUser} from "../lib/pro-access.js";
+import {betaAccessForUserAsync} from "../lib/beta-access.js";
 import {mergeCloudRosterPreservingManual,mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {allianceScopeFromState,sanitizeCanonicalRoster,joinProofForAlliance,isManagerRole,mergeCanonicalRoster,replaceCanonicalRosterFromCompleteSnapshot} from "../lib/alliance-scope.js";
@@ -15,7 +17,10 @@ void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remai
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   try{
-    const {user}=await requireBetaUser(req,{consent:true}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,rosterPersisted=false,alliancePendingCanonical=false;
+    const {user}=await requireProductUser(req,{consent:true}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,rosterPersisted=false,alliancePendingCanonical=false;
+    // Personal synchronization has no legacy code requirement. Alliance paths retain their beta gate.
+    const allianceBeta=await betaAccessForUserAsync(user);
+    if(requestedRosterSync&&!allianceBeta.allowed)return res.status(403).json({error:"BETA_INVITE_REQUIRED"});
     if(configured()||userMode){
       saved=userMode?await getProfileForUser(playerId,access):await getProfile(playerId);
       const baseUpdatedAt=req.body?.base_updated_at===null?null:String(req.body?.base_updated_at||"").trim()||null;
@@ -39,7 +44,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
     const now=new Date().toISOString();
     merged.sync={...merged.sync,provider,provider_kind:providerKind,access_status:"safe-launch-external-disabled",capabilities,status:"ok",last_sync:now,last_error:null,auto_ready:true,sources:{...merged.sync?.sources,official:false,public:false,scan:Boolean(merged.sync?.last_scan),alliance:false}};
     if(configured()||userMode){
-      if(configured()){
+      if(configured()&&allianceBeta.allowed){
         let ctx=await getAllianceRoster(playerId,{serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag}).catch(()=>null);
         alliancePendingCanonical=Boolean(ctx?.alliance&&Array.isArray(ctx.cloud_roster));
           if(ctx){

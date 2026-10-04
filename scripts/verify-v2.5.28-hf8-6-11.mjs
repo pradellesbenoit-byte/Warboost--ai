@@ -27,7 +27,8 @@ const requirePro=app.match(/function requirePro\(\)\{[^\n]+\}/)?.[0]||'';
 assert.ok(requirePro);
 assert.match(requirePro,/if\(safeLaunchBetaMode\(\)\).*requireBetaAccess\(\).*requireBetaConsent\(\).*return true/);
 assert.doesNotMatch(requirePro,/if\(proState\.active\)return true;openDrawer\("account"\).*beta_invite_required/);
-assert.match(pro,/pro_included:Boolean\(beta\.allowed\)/);
+assert.match(pro,/pro_included:entitlement\.source==="beta"/);
+assert.match(pro,/alliance_beta_allowed:beta\.allowed/,"Personal PRO never substitutes for alliance invitation rights");
 assert.match(pro,/payments_enabled:false/);
 
 // 3) Server-canonical state must come back into the phone after save/pull.

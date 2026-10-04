@@ -115,7 +115,7 @@ export default async function handler(req,res){
     previous_ui_revision:"hf8.5-final-alliance-desert-storm",
     superseded_draft_ui_revision:"hf8.5-vs-freshness-guard",
     mode:"public-beta-invite-safe-launch",
-    commercial:{mode:commerce.mode,ready:commerce.configured,payments_enabled:commerce.payments_enabled,plan:commerce.plan,activation_requirements:commerce.activation_requirements},
+    commercial:{mode:commerce.mode,ready:commerce.configured,payments_enabled:false,test_payments_enabled:commerce.test_payments_enabled,live_blocked:true,plan:commerce.plan,activation_requirements:commerce.activation_requirements},
 
     // Heure serveur + VS : fusion de l'ancien /api/time
     now:now.toISOString(),

@@ -111,7 +111,7 @@ for(const [code] of LANGUAGES.filter(([code])=>code!=="auto")){
 }
 assert.equal(translator("unsupported")("identity_onboarding_continue"),"Continue","English fallback");
 const api=fs.readFileSync(new URL("../lib/identity-onboarding-handler.js",import.meta.url),"utf8");
-assert.match(api,/requireBetaUser\(req,\{consent:true\}\)/);
+assert.match(api,/requireProductUser\(req,\{consent:true\}\)/);
 assert.match(api,/service.complete\(String\(user.id\)/,"actor comes from auth, not payload");
 assert.ok(!api.includes("req.body.player_id"));
 assert.equal(fs.readdirSync(new URL("../api/",import.meta.url)).filter(name=>name.endsWith(".js")).length,12);
