@@ -39,9 +39,9 @@ const log=msg=>console.log(`✓ ${msg}`);
   assert.match(support,/const nextStatus=author_kind==="support"\?"waiting_player":"in_progress"/);
   assert.match(app,/action:"reply",ticket_id:ticketId,body,as_support:false/);
   assert.match(admin,/action:"reply",ticket_id:id,body,as_support:true/);
-  assert.match(admin,/waiting_player:"Attente joueur"/);
-  assert.match(admin,/in_progress:"En cours"/);
-  assert.match(admin,/CATEGORY_LABELS/);
+  const {renderSupportAdminTicket}=await import('../lib/support-admin-view.js');
+  assert.ok(renderSupportAdminTicket({id:"fixture",status:"waiting_player"}).includes("Attente joueur"));
+  assert.ok(renderSupportAdminTicket({id:"fixture",status:"in_progress"}).includes("En cours"));
   log('Player replies cannot be mislabeled as Support and admin badges are localized');
 }
 
@@ -82,10 +82,11 @@ const log=msg=>console.log(`✓ ${msg}`);
     if(method==='PATCH'){
       const id=decodeURIComponent((u.match(/id=eq\.([^&]+)/)||[])[1]||'');
       const patch=JSON.parse(opts.body||'{}');rows=rows.map(r=>r.id===id?{...r,...patch}:r);
-      return new Response('',{status:204});
+      return new Response(JSON.stringify(rows.filter(r=>r.id===id)),{status:200});
     }
     const emailRaw=(u.match(/email=eq\.([^&]+)/)||[])[1];
-    const body=emailRaw?rows.filter(r=>r.email===decodeURIComponent(emailRaw)):rows;
+    const ownerRaw=(u.match(/accepted_user_id=eq\.([^&]+)/)||[])[1];
+    const body=emailRaw?rows.filter(r=>r.email===decodeURIComponent(emailRaw)):ownerRaw?rows.filter(r=>r.accepted_user_id===decodeURIComponent(ownerRaw)):rows;
     return new Response(JSON.stringify(body),{status:200,headers:{'content-type':'application/json'}});
   };
 
@@ -112,15 +113,17 @@ const log=msg=>console.log(`✓ ${msg}`);
 // Version and Safe Launch invariants.
 {
   const pkg=JSON.parse(read('package.json')),health=read('api/health.js'),manifest=read('manifest.webmanifest'),sw=read('sw.js');
-  assert.equal(pkg.version,'2.5.27');
-  assert.equal(pkg.name,'warboost-v2-safe-launch-scan-reliability');
-  assert.match(health,/version:"2\.5\.27"/);
+  assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
+  const {default:healthHandler}=await import('../api/health.js');let current;
+  await healthHandler({method:"GET"},{setHeader(){},status(){return this},json(value){current=value}});
+  assert.equal(current.version,pkg.version);
   assert.match(health,/beta_database_invitation_registry:true/);
   assert.match(health,/beta_admin_invite_manager:true/);
   assert.match(health,/safe_launch_external_game_access_hard_disabled:true/);
   assert.match(health,/safe_launch_payments_code_disabled:true/);
-  assert.match(manifest,/V2\.5\.27/);
-  assert.match(sw,/warboost-v2-5-27-scan-reliability/);
+  assert.ok(JSON.parse(manifest).name.includes(`V${pkg.version}`));
+  const {verifySwResources}=await import('./lib/verify-sw-resources.mjs');
+  await verifySwResources(["app.js","support-admin.js"]);
   log('V2.5.27 versioning and Safe Launch payment/game-access locks remain explicit');
 }
 

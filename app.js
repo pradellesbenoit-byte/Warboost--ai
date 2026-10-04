@@ -11,6 +11,7 @@ import {createDiagnosticDisclosures} from "./lib/diagnostic-disclosures.js?v=dia
 const diagnosticDisclosures=createDiagnosticDisclosures({root:document});
 import {profileIdentity,applyIdentityProfile} from "./lib/identity-onboarding.js";
 import {createIdentityOnboardingController} from "./lib/identity-onboarding-controller.js";
+import {betaCodeVisible,betaActivationErrorKey,betaActivationSucceeded} from "./lib/beta-activation-ui.js";
 let identityOnboardingController=null;
 import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad} from "./lib/squad-identity.js";
 import {reconcileCloudSquads} from "./lib/squad-freshness.js";
@@ -708,7 +709,7 @@ function betaPrivateDataVisible(){return runtimeAccessState().privateVisible}
 function safeLaunchBetaMode(){return proState?.entitlement?.source==="beta"||proState?.beta!==false}
 function safeLaunchBetaProIncluded(){return Boolean(safeLaunchBetaMode()&&cloudSession?.user&&betaAccessAllowed()&&betaConsentAccepted())}
 function proFeatureAllowed(){return safeLaunchBetaProIncluded()||Boolean(!safeLaunchBetaMode()&&proState?.active)}
-function betaAccessMessage(){const access=runtimeAccessState();if(!access.logged)return t("beta_signin_required");if(!betaState.enforced)return t("beta_allowlist_setup");if(access.phase==="syncing")return t("syncing");if(betaState.restore_error&&access.consented&&!cloudProfileVerified&&!access.privateVisible)return `${t("beta_restore_failed")}${lastBootstrapFailure()?.stage?` · ${lastBootstrapFailure().stage}`:""}`;if(access.phase==="access-denied"){if(betaState.access_status==="revoked")return t("beta_access_revoked");if(betaState.access_status==="expired")return t("beta_access_expired");return t("beta_code_required")}if(access.phase==="consent-required")return t("beta_consent_required");if(access.phase==="ready")return state?.sync?.pending_cloud_save?t("offline_keep"):t("safe_sync_done");return t("syncing")}
+function betaAccessMessage(){const access=runtimeAccessState();if(!access.logged)return t("beta_signin_required");if(!betaState.enforced)return t("beta_allowlist_setup");if(access.phase==="syncing")return t("syncing");if(betaState.restore_error&&access.consented&&!cloudProfileVerified&&!access.privateVisible)return `${t("beta_restore_failed")}${lastBootstrapFailure()?.stage?` · ${lastBootstrapFailure().stage}`:""}`;if(betaState.beta_access_status==="revoked")return t("beta_access_revoked");if(betaState.beta_access_status==="expired")return t("beta_access_expired");if(betaState.beta_access_status==="owner-mismatch")return t("beta_invitation_other_account");if(betaCodeVisible(betaState,{logged:true,betaGranted:proState?.beta===true}))return t("beta_code_required");if(access.phase==="access-denied"){if(betaState.access_status==="revoked")return t("beta_access_revoked");if(betaState.access_status==="expired")return t("beta_access_expired");return t("beta_code_required")}if(access.phase==="consent-required")return t("beta_consent_required");if(access.phase==="ready")return state?.sync?.pending_cloud_save?t("offline_keep"):t("safe_sync_done");return t("syncing")}
 function requireBetaAccess(){if(identityOnboardingController?.isRequired()){identityOnboardingController.sync();return false}if(betaAccessAllowed())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);return false}
 function requireBetaConsent(){if(betaConsentAccepted())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);const el=$("#betaAccessStatus");if(el){el.className="notice warn";el.textContent=t("beta_consent_required")}return false}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
@@ -935,8 +936,46 @@ async function initCloudAuth(){
     });
   }catch(error){cloudInit={status:"auth-unreachable",configured:true,transport:"direct-supabase-auth-api",error:error?.code||"auth_unreachable"};renderAuth();renderBeta()}
 }
-async function refreshBeta(){if(!cloudSession?.access_token){betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};renderBeta();render();return betaState}const previouslyVerified=betaState?.allowed===true;try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok&&j.ok){betaState={...betaState,release:j.release!==false,enforced:Boolean(j.enforced??j.beta_enforced),configured:Boolean(j.beta_configured??j.enforced??j.beta_enforced),allowed:Boolean(j.allowed??j.active),access_status:j.access_status||j.beta_access||(j.active?"invited":"invite-required"),consent_version:j.consent_version||BETA_CONSENT_VERSION,payments_enabled:false,pro_included:Boolean(j.pro_included),alliance_beta_allowed:Boolean(j.alliance_beta_allowed)};proState={...proState,...j,entitlement:j.entitlement||null};renderPro()}else{const code=String(j?.error||"").toUpperCase(),definitive=r.status===403||["BETA_INVITE_REQUIRED","BETA_INVITE_REVOKED","BETA_INVITE_EXPIRED"].includes(code);betaState={...betaState,allowed:definitive?false:preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true}),access_status:definitive?(code==="BETA_INVITE_REVOKED"?"revoked":code==="BETA_INVITE_EXPIRED"?"expired":"invite-required"):(preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true})?((betaState.access_status&&betaState.access_status!=="checking")?betaState.access_status:"accepted"):(j.access_status||j.beta_access||j.error||"beta-status-error"))}}}catch{const keep=preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true});betaState={...betaState,allowed:keep,access_status:keep?((betaState.access_status&&betaState.access_status!=="checking")?betaState.access_status:"accepted"):"beta-status-error"}}renderBeta();render();return betaState}
-async function activateBetaCode(){const input=$("#betaAccessCode"),status=$("#betaCodeStatus"),btn=$("#betaCodeActivateBtn"),code=String(input?.value||"").trim();if(!cloudSession?.access_token){if(status){status.className="notice warn";status.textContent=t("beta_signin_required");status.classList.remove("hidden")}return}if(!code){if(status){status.className="notice warn";status.textContent=t("beta_code_enter");status.classList.remove("hidden")}return}if(btn){btn.disabled=true;btn.textContent=t("beta_code_activating")}try{const {response:r,json:j}=await fetchJsonBounded("/api/support",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action:"beta_code_activate",code})},15000);if(!r.ok){const key=j.error==="BETA_CODE_INVALID"?"beta_code_invalid":j.error==="BETA_CODE_EXPIRED"?"beta_code_expired":j.error==="BETA_CODE_FULL"?"beta_code_full":j.error==="BETA_ACCESS_REVOKED"?"beta_access_revoked":"beta_code_error";throw Object.assign(new Error(t(key)),{code:j.error||"BETA_CODE_ERROR"})}await refreshBeta();if(input)input.value="";if(status){status.className="notice";status.textContent=t("beta_code_success");status.classList.remove("hidden")}setTimeout(()=>{if(betaAccessAllowed())status?.classList.add("hidden")},2200)}catch(e){if(status){status.className="notice warn";status.textContent=e.message||t("beta_code_error");status.classList.remove("hidden")}}finally{if(btn){btn.disabled=false;btn.textContent=t("beta_code_activate")}}}
+async function refreshBeta(){
+  if(!cloudSession?.access_token){betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};renderBeta();render();return betaState}
+  const requestKey=sessionApplyKey(cloudSession);
+  const previouslyVerified=betaState?.allowed===true;
+  try{
+    const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));
+    if(requestKey!==sessionApplyKey(cloudSession))return betaState;
+    if(r.ok&&j.ok){
+      betaState={...betaState,release:j.release!==false,enforced:Boolean(j.enforced??j.beta_enforced),configured:Boolean(j.beta_configured??j.enforced??j.beta_enforced),allowed:Boolean(j.allowed??j.active),access_status:j.access_status||j.beta_access||(j.active?"invited":"invite-required"),consent_version:j.consent_version||BETA_CONSENT_VERSION,payments_enabled:false,pro_included:Boolean(j.pro_included),alliance_beta_allowed:Boolean(j.alliance_beta_allowed),beta_access_status:j.beta_access_status||j.beta_access||"invite-required",beta_code_eligible:j.beta_code_eligible===true};
+      proState={...proState,...j,entitlement:j.entitlement||null};renderPro();
+    }else{
+      const code=String(j?.error||"").toUpperCase(),definitive=r.status===403||["BETA_INVITE_REQUIRED","BETA_INVITE_REVOKED","BETA_INVITE_EXPIRED"].includes(code);
+      betaState={...betaState,allowed:definitive?false:preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true}),access_status:definitive?(code==="BETA_INVITE_REVOKED"?"revoked":code==="BETA_INVITE_EXPIRED"?"expired":"invite-required"):(preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true})?((betaState.access_status&&betaState.access_status!=="checking")?betaState.access_status:"accepted"):(j.access_status||j.beta_access||j.error||"beta-status-error"))};
+    }
+  }catch{
+    if(requestKey!==sessionApplyKey(cloudSession))return betaState;
+    const keep=preserveAllowedAfterTransient({previouslyVerified,currentAllowed:betaState?.allowed===true});
+    betaState={...betaState,allowed:keep,access_status:keep?((betaState.access_status&&betaState.access_status!=="checking")?betaState.access_status:"accepted"):"beta-status-error"};
+  }
+  renderBeta();render();return betaState;
+}
+async function activateBetaCode(){
+  const input=$("#betaAccessCode"),status=$("#betaCodeStatus"),btn=$("#betaCodeActivateBtn"),code=String(input?.value||"").trim();
+  const owner=String(cloudSession?.user?.id||""),stillOwner=()=>owner&&String(cloudSession?.user?.id||"")===owner;
+  if(!cloudSession?.access_token){if(status){status.className="notice warn";status.textContent=t("beta_signin_required");status.classList.remove("hidden")}return}
+  if(!code){if(status){status.className="notice warn";status.textContent=t("beta_code_enter");status.classList.remove("hidden")}return}
+  if(btn){btn.disabled=true;btn.textContent=t("beta_code_activating")}
+  try{
+    const {response:r,json:j}=await fetchJsonBounded("/api/support",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action:"beta_code_activate",code})},15000);
+    if(!stillOwner())return;
+    if(!betaActivationSucceeded(r,j))throw Object.assign(new Error(t(betaActivationErrorKey(j.error))),{code:j.error||"BETA_CODE_ERROR"});
+    // Only the invitation state is confirmed here. PRO and ranks are never inferred from this success.
+    betaState={...betaState,alliance_beta_allowed:true,beta_code_eligible:false,beta_access_status:"accepted"};
+    renderBeta();await refreshBeta();
+    if(!stillOwner())return;
+    if(input)input.value="";
+    if(status){status.className="notice";status.textContent=t("beta_code_success");status.classList.remove("hidden")}
+  }catch(e){if(stillOwner()&&status){status.className="notice warn";status.textContent=e.message||t("beta_code_error");status.classList.remove("hidden")}}
+  finally{if(btn){btn.disabled=false;btn.textContent=t("beta_code_activate")}}
+}
 function sessionApplyKey(session){return session?.access_token?`${String(session?.user?.id||"")}|${String(session.access_token).slice(-24)}`:"signed-out"}
 async function applySession(session){
   const key=sessionApplyKey(session);
@@ -961,7 +1000,7 @@ async function applySessionCore(session){
   const preSessionState=safeClone(state);
   cloudSession=session||null;
   const nextUserId=String(cloudSession?.user?.id||"");
-  if(previousUserId!==nextUserId){cloudProfileVerified=false;canonicalRosterReady=false;cloudRevision=null}
+  if(previousUserId!==nextUserId){cloudProfileVerified=false;canonicalRosterReady=false;cloudRevision=null;betaState={...betaState,alliance_beta_allowed:false,beta_code_eligible:false,beta_access_status:"checking"};if($("#betaAccessCode"))$("#betaAccessCode").value="";$("#betaCodeStatus")?.classList.add("hidden");if($("#betaCodeActivateBtn"))$("#betaCodeActivateBtn").disabled=false}
   const nextPendingOwner=pendingScanOwner(cloudSession);
 
   // HF8.6.15 keeps HF8.6.14 immediate session rendering and additionally bounds every foreground auth/cloud write.
@@ -1099,7 +1138,19 @@ function renderAuth(){
   if(!logged&&msg&&["config-missing","config-unreachable","client-error","auth-unreachable"].includes(cloudInit.status)){msg.className="notice warn";msg.textContent=cloudAuthFailureMessage()}
   renderBeta();renderPro();
 }
-function renderBeta(){const pill=$("#betaAccessPill"),status=$("#betaAccessStatus"),row=$("#betaConsentRow"),checkbox=$("#betaConsent"),codeBox=$("#betaCodeBox"),retry=$("#betaRestoreRetryBtn"),checking=Boolean(cloudSession?.user&&betaState.access_status==="checking"),restoreFailed=Boolean(cloudSession?.user&&betaConsentAccepted()&&!cloudProfileVerified&&betaState.restore_error);if(pill){const invited=Boolean(cloudSession?.user&&betaAccessAllowed());pill.textContent=!cloudSession?.user?t("beta_signin_short"):checking?t("syncing"):restoreFailed?t("update"):betaState.enforced&&!betaState.allowed?t("beta_code_short"):betaState.enforced?t("beta_invited_short"):t("beta_setup_short");pill.className=`pill ${invited&&!restoreFailed?"active":"warn"}`}if(status){status.className=`notice${cloudSession?.user&&betaAccessAllowed()&&!restoreFailed?"":" warn"}`;status.textContent=betaAccessMessage()}if(retry){retry.classList.toggle("hidden",!restoreFailed);retry.disabled=cloudHydrationPending}const canUseCode=Boolean(cloudSession?.user&&betaState.enforced&&!betaState.allowed&&betaState.access_status==="invite-required");if(codeBox)codeBox.classList.toggle("hidden",!canUseCode);if(row)row.classList.toggle("hidden",!cloudSession?.user||!betaAccessAllowed());if(checkbox)checkbox.checked=betaConsentAccepted();$$('.moduleCard').forEach(x=>{const locked=Boolean(checking||!cloudSession?.user||(betaState.enforced&&!betaState.allowed)||(restoreFailed&&!betaPrivateDataVisible()));x.classList.toggle("betaLocked",locked);x.setAttribute("aria-disabled",locked?"true":"false")});const fab=$("#betaFeedbackBtn");if(fab)fab.classList.toggle("hidden",Boolean(!cloudSession?.user||(betaState.enforced&&!betaState.allowed)))}
+function renderBeta(){
+  const pill=$("#betaAccessPill"),status=$("#betaAccessStatus"),row=$("#betaConsentRow"),checkbox=$("#betaConsent"),codeBox=$("#betaCodeBox"),retry=$("#betaRestoreRetryBtn"),checking=Boolean(cloudSession?.user&&betaState.access_status==="checking"),restoreFailed=Boolean(cloudSession?.user&&betaConsentAccepted()&&!cloudProfileVerified&&betaState.restore_error);
+  const canUseCode=betaCodeVisible(betaState,{logged:Boolean(cloudSession?.user),betaGranted:proState?.beta===true});
+  const invited=Boolean(cloudSession?.user&&betaState.alliance_beta_allowed===true);
+  if(pill){pill.textContent=!cloudSession?.user?t("beta_signin_short"):checking?t("syncing"):restoreFailed?t("update"):invited?t("beta_invited_short"):canUseCode?t("beta_code_short"):proState?.beta===true?"PRO β":"FREE";pill.className=`pill ${invited&&!restoreFailed?"active":"warn"}`}
+  if(status){status.className=`notice${invited&&!restoreFailed?"":" warn"}`;status.textContent=betaAccessMessage()}
+  if(retry){retry.classList.toggle("hidden",!restoreFailed);retry.disabled=cloudHydrationPending}
+  if(codeBox)codeBox.classList.toggle("hidden",!canUseCode);
+  if(row)row.classList.toggle("hidden",!cloudSession?.user||!betaAccessAllowed());
+  if(checkbox)checkbox.checked=betaConsentAccepted();
+  $$('.moduleCard').forEach(x=>{const locked=Boolean(checking||!cloudSession?.user||(betaState.enforced&&!betaState.allowed)||(restoreFailed&&!betaPrivateDataVisible()));x.classList.toggle("betaLocked",locked);x.setAttribute("aria-disabled",locked?"true":"false")});
+  const fab=$("#betaFeedbackBtn");if(fab)fab.classList.toggle("hidden",Boolean(!cloudSession?.user||(betaState.enforced&&!betaState.allowed)));
+}
 function authMessage(text,ok=false){const el=$("#authMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
 
 function pendingAuthEmail(){return String(localStorage.getItem(PENDING_AUTH_EMAIL_KEY)||"").trim().toLowerCase()}

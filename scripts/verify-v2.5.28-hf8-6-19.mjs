@@ -122,8 +122,11 @@ for(const required of ['state.js','sync.js','scan.js','advice.js','alliance-role
   globalThis.fetch=async(url,init={})=>{
     const u=String(url),method=String(init.method||'GET').toUpperCase();calls.push(`${method} ${u}`);
     if(u.includes('/auth/v1/user'))return new Response(JSON.stringify({id:'user-123',email:'player@example.com'}),{status:200,headers:{'content-type':'application/json'}});
-    if(u.includes('/rest/v1/wb1_beta_invites?')&&method==='GET')return new Response(JSON.stringify([{id:'invite-1',email:'player@example.com',status:inviteStatus,accepted_at:null,accepted_user_id:null}]),{status:200,headers:{'content-type':'application/json'}});
-    if(u.includes('/rest/v1/wb1_beta_invites?')&&method==='PATCH')return new Response('',{status:204});
+    if(u.includes('/rest/v1/wb1_beta_invites?')&&method==='GET')return new Response(JSON.stringify([{id:'invite-1',email:'player@example.com',status:inviteStatus,accepted_at:null,accepted_user_id:inviteStatus==="accepted"?"user-123":null}]),{status:200,headers:{'content-type':'application/json'}});
+    if(u.includes('/rest/v1/wb1_beta_invites?')&&method==='PATCH'){
+      inviteStatus="accepted";
+      return new Response(JSON.stringify([{id:'invite-1',email:'player@example.com',status:"accepted",accepted_user_id:"user-123"}]),{status:200,headers:{'content-type':'application/json'}});
+    }
     if(u.includes('/rest/v1/wb1_profiles?')&&method==='GET')return new Response(JSON.stringify(profileRows),{status:200,headers:{'content-type':'application/json'}});
     throw new Error(`unexpected fetch ${method} ${u}`);
   };

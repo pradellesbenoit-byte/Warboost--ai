@@ -4,16 +4,8 @@ import {createWarBoostSupabaseAuthClient} from "../lib/browser-auth.js";
 import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "../lib/auth-ui.js";
 
 const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
-const coreStart=app.indexOf("async function applySessionCore(session)");
-const coreEnd=app.indexOf("function cloudAuthFailureMessage()",coreStart);
-assert.ok(coreStart>=0&&coreEnd>coreStart,"applySessionCore must exist");
-const core=app.slice(coreStart,coreEnd);
-const signedInStart=core.indexOf("if(cloudSession?.user?.id)");
-const signedOutMarker="    }else{\n      cloudProfileVerified=false;";
-const signedOutStart=core.indexOf(signedOutMarker,signedInStart);
-assert.ok(signedInStart>=0&&signedOutStart>signedInStart,"session branches must remain explicit");
-assert.doesNotMatch(core.slice(signedInStart,signedOutStart),/clearSignedOutAuthUi\(\)/,"valid sessions must not clear auth UI");
-assert.match(core.slice(signedOutStart),/clearSignedOutAuthUi\(\)/,"session-absent branch must clear auth UI");
+// SDK session/logout and account-scoped storage are exercised below.
+// Do not infer logout behavior from the indentation of applySessionCore.
 assert.match(app,/logoutBtn[\s\S]*?cloud\.auth\.signOut\(\);clearSignedOutAuthUi\(\)/,"manual logout must clear auth UI after Supabase signOut");
 assert.doesNotMatch(app,/localStorage\.clear\(\)/,"logout must not clear all WarBoost local data");
 
@@ -77,7 +69,14 @@ const expiredStorage=new Map([
   [PENDING_AUTH_EMAIL_KEY,"expired@example.com"],
   ["warboost_v1_client_id","device-123"]
 ]);
-const expiredFetch=async()=>{throw Object.assign(new Error("refresh unavailable"),{code:"auth_network_unavailable"})};
+// A transient network failure must preserve a restorable session; a rejected refresh must sign out.
+const transientClient=createWarBoostSupabaseAuthClient({
+  url:"https://abc123.supabase.co",key:"publishable",
+  storage:{getItem:key=>expiredStorage.get(key)||null,setItem:(key,value)=>expiredStorage.set(key,String(value)),removeItem:key=>expiredStorage.delete(key)},
+  fetchImpl:async()=>{throw new Error("Synthetic offline")}
+});
+assert.ok((await transientClient.auth.getSession()).data.session,"temporary offline must not erase a stored session");
+const expiredFetch=async()=>new Response(JSON.stringify({error_code:"refresh_token_not_found",msg:"Synthetic rejected refresh"}),{status:400});
 const expiredClient=createWarBoostSupabaseAuthClient({
   url:"https://abc123.supabase.co",
   key:"publishable",

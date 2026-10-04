@@ -56,7 +56,7 @@ assert.match(health,/fast_restore_browser_timeout_ms:14000|fast_restore_browser_
   globalThis.fetch=async(url,init={})=>{
     const u=String(url),method=String(init.method||'GET').toUpperCase();
     if(u.includes('/auth/v1/user')){starts.auth=Date.now();await delay(70);return new Response(JSON.stringify({id:'user-123',email:'player@example.com'}),{status:200,headers:{'content-type':'application/json'}})}
-    if(u.includes('/rest/v1/wb1_beta_invites?')&&method==='GET'){starts.invite=Date.now();await delay(90);return new Response(JSON.stringify([{id:'invite-1',email:'player@example.com',status:inviteStatus,accepted_at:null,accepted_user_id:null}]),{status:200,headers:{'content-type':'application/json'}})}
+    if(u.includes('/rest/v1/wb1_beta_invites?')&&method==='GET'){starts.invite=Date.now();await delay(90);return new Response(JSON.stringify([{id:'invite-1',email:'player@example.com',status:inviteStatus,accepted_at:null,accepted_user_id:inviteStatus==="accepted"?"user-123":null}]),{status:200,headers:{'content-type':'application/json'}})}
     if(u.includes('/rest/v1/wb1_beta_invites?')&&method==='PATCH'){starts.accept=Date.now();await delay(20);return new Response('',{status:204})}
     if(u.includes('/rest/v1/wb1_profiles?')&&method==='GET'){starts.profile=Date.now();await delay(90);return new Response(JSON.stringify(profileRows),{status:200,headers:{'content-type':'application/json'}})}
     throw new Error(`unexpected fetch ${method} ${u}`);

@@ -2,6 +2,7 @@ import {createHash,randomBytes,timingSafeEqual} from "node:crypto";
 import {requireUser} from "../lib/auth.js";
 import {betaAccessForUserAsync} from "../lib/beta-access.js";
 import {fetchWithTimeout} from "../lib/http-timeout.js";
+import {activateBetaInvitationAtomic,betaInvitationError} from "../lib/beta-invitation-store.js";
 
 function pick(...names){for(const n of names){const v=process.env[n];if(typeof v==="string"&&v.trim())return v.trim()}return ""}
 const sbUrl=()=>pick("SUPABASE_URL","NEXT_PUBLIC_SUPABASE_URL","VITE_SUPABASE_URL").replace(/\/$/,"");
@@ -103,20 +104,16 @@ async function anyTicket(id){const rows=await rest(`wb1_support_tickets?id=eq.${
 async function inviteByEmail(email){const rows=await rest(`wb1_beta_invites?email=eq.${encodeURIComponent(cleanEmail(email))}&select=*&limit=1`);return rows?.[0]||null}
 async function inviteById(id){const rows=await rest(`wb1_beta_invites?id=eq.${encodeURIComponent(id)}&select=*&limit=1`);return rows?.[0]||null}
 async function listInvites(){return await rest("wb1_beta_invites?select=*&order=updated_at.desc&limit=1000")}
-async function betaCodeUserCount(){const rows=await rest(`wb1_beta_invites?invited_by_user_id=eq.${encodeURIComponent(BETA_CODE_SOURCE)}&status=in.(pending,accepted)&select=id&limit=1000`);return Array.isArray(rows)?rows.length:0}
-async function activateByBetaCode({code,user}){
+async function activateByBetaCode({code,user,beta}){
   const email=cleanEmail(user?.email);if(!validEmail(email))throw Object.assign(new Error("BETA_ACCESS_EMAIL_REQUIRED"),{status:400,code:"BETA_ACCESS_EMAIL_REQUIRED"});
-  const existing=await inviteByEmail(email),now=new Date().toISOString();
-  if(existing?.status==="revoked")throw Object.assign(new Error("Cet accès bêta a été révoqué."),{status:403,code:"BETA_ACCESS_REVOKED"});
-  if(existing&&["pending","accepted"].includes(String(existing.status||"").toLowerCase())){
-    await rest(`wb1_beta_invites?id=eq.${encodeURIComponent(existing.id)}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status:"accepted",accepted_at:existing.accepted_at||now,accepted_user_id:String(user?.id||"")||existing.accepted_user_id||null,updated_at:now})});
-    return {allowed:true,already_allowed:true};
-  }
-  if(Date.now()>BETA_CODE_ACCEPT_UNTIL)throw Object.assign(new Error("Ce code bêta n’accepte plus de nouveaux comptes."),{status:403,code:"BETA_CODE_EXPIRED"});
-  if(!betaCodeMatches(code))throw Object.assign(new Error("Code d’accès bêta incorrect."),{status:403,code:"BETA_CODE_INVALID"});
-  const count=await betaCodeUserCount();if(count>=BETA_CODE_MAX_USERS)throw Object.assign(new Error("La limite de testeurs de ce code bêta est atteinte."),{status:403,code:"BETA_CODE_FULL"});
-  await rest("wb1_beta_invites",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({email,status:"accepted",note:"Accès par code bêta privé HF8.6.5",invited_by_user_id:BETA_CODE_SOURCE,invited_by_email:null,invited_at:now,accepted_at:now,accepted_user_id:String(user?.id||"")||null,updated_at:now})});
-  return {allowed:true,already_allowed:false,remaining:Math.max(0,BETA_CODE_MAX_USERS-count-1)};
+  const refused={revoked:"BETA_ACCESS_REVOKED",expired:"BETA_INVITE_EXPIRED","owner-mismatch":"BETA_INVITE_OWNER_MISMATCH","invite-check-unavailable":"BETA_ACTIVATION_DATABASE_ERROR"};
+  if(refused[beta.access_status])throw betaInvitationError(refused[beta.access_status]);
+  // Existing owned/legacy beta access is idempotent and remains free, even after the code deadline.
+  if(beta.allowed)return {allowed:true,already_allowed:true};
+  if(Date.now()>BETA_CODE_ACCEPT_UNTIL)throw betaInvitationError("BETA_CODE_EXPIRED");
+  if(!betaCodeMatches(code))throw betaInvitationError("BETA_CODE_INVALID");
+  // No count + INSERT fallback: a missing RPC must fail closed until the manual migration.
+  return await activateBetaInvitationAtomic(user,{codeVerified:true});
 }
 function splitInviteEmails(body){
   const raw=Array.isArray(body?.emails)?body.emails:[body?.email||""];
@@ -167,7 +164,7 @@ export default async function handler(req,res){
     if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
     const action=safeText(req.body?.action,40)||"create";
 
-    if(action==="beta_code_activate"){const result=await activateByBetaCode({code:req.body?.code,user});return res.status(200).json({ok:true,...result})}
+    if(action==="beta_code_activate"){const result=await activateByBetaCode({code:req.body?.code,user,beta});return res.status(200).json({ok:true,...result})}
 
     if(action==="invite_add"){
       if(!admin)return res.status(403).json({error:"SUPPORT_ADMIN_REQUIRED"});

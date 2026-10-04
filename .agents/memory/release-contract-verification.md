@@ -8,3 +8,9 @@ Release verification should compare the package version with the health API vers
 **Why:** During a release update, older HF verifiers contained pinned build and tagline values. Broad source matching could be satisfied by retained historical markers even while the visible release label had moved, and an earlier test passing did not prove later gates were current.
 
 **How to apply:** Reuse the shared release-contract assertion in historical release gates, and run the full verification chain before release changes are considered ready.
+
+An obsolete first assertion does not prove the rest of a historical verifier is harmless. Restore the intended behavior checks and execute the entire script before classifying it as obsolete.
+
+**Why:** Early source/version assertions hid a later genuine rejected-session cleanup problem, alongside fixture mismatches.
+
+**How to apply:** Distinguish a stale assertion, an inaccurate provider fixture, and an actual functional failure. Keep transient network recovery separate from definitive authentication rejection.

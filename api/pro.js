@@ -29,6 +29,7 @@ export default async function handler(req,res){
         ok:true,beta:entitlement.source==="beta",release:true,safe_launch:true,commercial:true,
         configured:commerce.configured&&entitlement.schema_ready,enforced:true,allowed:true,
         beta_configured:beta.configured,alliance_beta_allowed:beta.allowed,
+         beta_access_status:beta.access_status,beta_code_eligible:beta.code_eligible===true&&entitlement.source!=="beta",
         consent_version:beta.consent_version,access_status:entitlement.source==="beta"?"beta-granted":"account",
         active:entitlement.active,status:entitlement.source==="beta"?"beta":entitlement.subscription?.status||"free",
         plan:commerce.plan,payments_enabled:false,test_payments_enabled:commerce.test_payments_enabled&&entitlement.schema_ready,

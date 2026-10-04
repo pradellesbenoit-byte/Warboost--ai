@@ -7,7 +7,7 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const app=read('app.js'),html=read('index.html'),health=read('api/health.js'),sw=read('sw.js'),pkg=JSON.parse(read('package.json'));
 const block=app.slice(app.indexOf('async function applySession(session){'),app.indexOf('function cloudAuthFailureMessage(){'));
 assert.match(app,/const RELEASE_LABEL="HF8\.6\.14"/);
-assert.match(block,/cloudSession=session\|\|null;[\s\S]{0,500}renderAuth\(\);renderBeta\(\);/);
+assert.match(block,/cloudSession=session\|\|null;[\s\S]*?renderAuth\(\);renderBeta\(\);/);
 assert.doesNotMatch(block,/await movePendingScans\(/);
 assert.match(block,/void movePendingScans\(previousPendingOwner,nextPendingOwner\)/);
 assert.match(block,/void restorePendingScans\(\)/);

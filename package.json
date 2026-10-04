@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "test:billing": "node --check lib/billing-store.js && node --check lib/stripe-test.js && node --check lib/pro-access.js && node --check lib/commercial-pro.js && node scripts/verify-stripe-test.mjs",
+    "test:beta-activation": "node --check lib/beta-invitation-store.js && node --check lib/beta-activation-ui.js && node --check lib/beta-invitation-copy.js && node scripts/verify-beta-activation-atomic.mjs",
+    "test:auth-beta-current": "node scripts/verify-auth-logout-v2.5.28.mjs && node scripts/verify-auth-recovery-v2.5.25.mjs && node scripts/verify-auth-recovery-v2.5.26.mjs && node scripts/verify-auth-recovery-v2.5.27.mjs && node scripts/verify-beta-invites-v2.5.26.mjs && node scripts/verify-beta-invites-v2.5.27.mjs",
     "test:player-scan-diagnostic": "node scripts/verify-player-scan-diagnostic.mjs",
     "test:diagnostic-shop": "node --check lib/diagnostic-shop.js && node --check lib/diagnostic-shop-ui.js && node scripts/verify-diagnostic-shop.mjs",
     "test:diagnostic-disclosures": "node --check lib/diagnostic-disclosures.js && node scripts/verify-diagnostic-disclosures.mjs",
@@ -56,7 +58,7 @@
     "test:current-game-updates": "node scripts/verify-last-war-current-updates.mjs",
     "test:event-strategy": "node scripts/verify-event-strategy.mjs",
     "postcheck": "node --check lib/event-knowledge.js && node --check lib/event-war-organization.js && node --check lib/event-strategy.js && node --check lib/event-strategy-ui.js && node --check scripts/verify-event-strategy.mjs && node --check scripts/verify-event-war-organization.mjs && node --check scripts/render-event-research.mjs && node --check lib/alliance-member-rename.js && node --check lib/member-rename-ui.js && node --check scripts/verify-member-rename.mjs",
-    "postverify": "npm run test:event-strategy && npm run test:member-rename && npm run test:diagnostic-shop && npm run test:diagnostic-disclosures && npm run test:identity-onboarding && npm run test:billing",
+    "postverify": "npm run test:event-strategy && npm run test:member-rename && npm run test:diagnostic-shop && npm run test:diagnostic-disclosures && npm run test:identity-onboarding && npm run test:billing && npm run test:auth-beta-current",
     "test:identity-onboarding": "node --check lib/identity-onboarding-handler.js && node --check lib/identity-onboarding-controller.js && node --check lib/identity-onboarding-ui.js && node scripts/verify-identity-onboarding.mjs",
     "test:member-rename": "node --check lib/alliance-member-rename.js && node --check lib/member-rename-ui.js && node scripts/verify-member-rename.mjs",
     "dev": "node server.mjs",

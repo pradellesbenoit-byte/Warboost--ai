@@ -82,10 +82,11 @@ const log=msg=>console.log(`✓ ${msg}`);
     if(method==='PATCH'){
       const id=decodeURIComponent((u.match(/id=eq\.([^&]+)/)||[])[1]||'');
       const patch=JSON.parse(opts.body||'{}');rows=rows.map(r=>r.id===id?{...r,...patch}:r);
-      return new Response('',{status:204});
+      return new Response(JSON.stringify(rows.filter(r=>r.id===id)),{status:200});
     }
     const emailRaw=(u.match(/email=eq\.([^&]+)/)||[])[1];
-    const body=emailRaw?rows.filter(r=>r.email===decodeURIComponent(emailRaw)):rows;
+    const ownerRaw=(u.match(/accepted_user_id=eq\.([^&]+)/)||[])[1];
+    const body=emailRaw?rows.filter(r=>r.email===decodeURIComponent(emailRaw)):ownerRaw?rows.filter(r=>r.accepted_user_id===decodeURIComponent(ownerRaw)):rows;
     return new Response(JSON.stringify(body),{status:200,headers:{'content-type':'application/json'}});
   };
 

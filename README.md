@@ -1,3 +1,13 @@
+## Activation bêta atomique — correctif local
+
+Les nouvelles activations nécessitent **avant mise en service** la migration manuelle
+`supabase/migration_v2_5_32_beta_activation_atomic.sql`.
+Elle est préparée, pas appliquée sur Supabase distant. Aucun push ou déploiement automatique.
+Consignes et tests : [Préparation de l’activation bêta](docs/beta-activation-readiness.md).
+
+Les notes ci-dessous décrivent des correctifs historiques ; leurs indications
+« aucune nouvelle migration » ne s’appliquent pas à l’activation atomique actuelle.
+
 ## HF8.6.8 — Association Keeps Roster Identity
 
 Corrige un cas réel observé après « Vérifier l’association » : un compte WarBoost pouvait avoir un ancien rang déclaré (ex. `[ALL4]ToyN` = R5) alors que le roster canonique Last War contenait `ToyN` = R4. L’association enrichit désormais le membre sans jamais remplacer son pseudo canonique, son rang de roster ni son historique de présence. Le joueur reste visible dans son grade actuel après association. Aucune migration Supabase.

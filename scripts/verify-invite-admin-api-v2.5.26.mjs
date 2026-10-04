@@ -31,11 +31,12 @@ globalThis.fetch=async(url,opts={})=>{
   }
   if(u.includes('/rest/v1/warboost_'))return json(404,{code:'PGRST205'});
   if(u.includes('/rest/v1/wb1_beta_invites')){
-    const email=queryValue(u,'email'),id=queryValue(u,'id');
+    const email=queryValue(u,'email'),id=queryValue(u,'id'),owner=queryValue(u,'accepted_user_id');
     if(method==='GET'){
       let rows=invites;
       if(email!=null)rows=rows.filter(x=>x.email===decodeURIComponent(email));
       if(id!=null)rows=rows.filter(x=>x.id===decodeURIComponent(id));
+      if(owner!=null)rows=rows.filter(x=>x.accepted_user_id===decodeURIComponent(owner));
       return json(200,rows);
     }
     if(method==='POST'){
@@ -45,7 +46,10 @@ globalThis.fetch=async(url,opts={})=>{
     }
     if(method==='PATCH'){
       const patch=JSON.parse(opts.body||'{}'),target=decodeURIComponent(id||'');
-      invites=invites.map(x=>x.id===target?{...x,...patch}:x);return json(204,null);
+      const compareAndSet=u.includes("accepted_user_id=is.null");
+      const matched=invites.filter(x=>x.id===target&&(!compareAndSet||x.accepted_user_id==null));
+      invites=invites.map(x=>matched.includes(x)?{...x,...patch}:x);
+      return opts.headers?.Prefer==="return=representation"?json(200,invites.filter(x=>matched.some(m=>m.id===x.id))):json(204,null);
     }
   }
   if(u.includes('/rest/v1/wb1_support_tickets')){
