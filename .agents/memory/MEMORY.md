@@ -38,3 +38,4 @@
 - [Event web evidence](event-web-evidence.md) — real provider compatibility and event-specific independent corroboration matter; preserve cautious dated fallback.
 - [Canonical nickname changes](canonical-nickname-changes.md) — mutable names preserve stable identity; canonical audit evidence wins stale profiles; uncertain aliases never transfer accounts.
 - [Player beta work scope](player-beta-work-scope.md) — public-beta-safe-launch only; never touch demo-lastwar-presentation, and no automatic push or deployment.
+- [Approved diagnostic scope](diagnostic-shop-scope.md) — preserve Diagnostic PRO style and priorities; Boutique IA is compact, contextual, and cautious about acquisitions.

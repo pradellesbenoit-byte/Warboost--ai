@@ -4,6 +4,8 @@ import vm from "node:vm";
 import {mergePlayerScanBatch,analyzePlayerCaptureBatch} from "../lib/player-scan-batch.js";
 import {buildGlobalDiagnostic,resolveDiagnosticState} from "../lib/player-global-diagnostic.js";
 import {renderGlobalDiagnostic} from "../lib/player-global-diagnostic-ui.js";
+import {buildDiagnosticShop} from "../lib/diagnostic-shop.js";
+import {renderDiagnosticShop} from "../lib/diagnostic-shop-ui.js";
 import {createScanReviewDraft,scanReviewEntries,applyOwnedScanReview,scanRequestMatches} from "../lib/scan-review.js";
 import {buildScanReviewGroups} from "../lib/scan-review-presentation.js";
 import {sanitizeDroneScan} from "../lib/drone-scan.js";
@@ -95,7 +97,8 @@ const context={$:node,t:k=>k,lang:"fr",scanInputRevision:0,scanFileSelectionRevi
   pendingHeroSquadId:1,pendingHeroSuggestions:[],pendingHeroScanSlots:[],pendingHeroScannedAt:now,pendingHeroOwner:"A",
   rosterScanFiles:[],rosterScanDraft:[],pendingExclusiveScan:[],pendingExclusiveScannedAt:now,
   PLAYER_SCAN_BATCH_LIMIT:3,esc:String,aiUsesNativeCopy:()=>true,aiUiText:()=>({}),currentPlayerAdviceAnalysis:null,
-  activeAcquisitionShopView:null,renderTechnologyAdvicePanel(){},renderGlobalDiagnostic};
+  activeAcquisitionShopView:null,renderTechnologyAdvicePanel(){},renderGlobalDiagnostic,
+  state,buildDiagnosticShop,renderDiagnosticShop};
 vm.runInNewContext(`${functionSource("updateTechnologyScanPreview")}\n${functionSource("resetPendingScanUi")}\n${functionSource("renderProPriority")}\nresetPendingScanUi();renderProPriority({global_diagnostic:${JSON.stringify(diagnostic)}});`,context);
 assert.equal(node("#scanImageBatchList").innerHTML,"","actual account-reset handler removes foreign filenames");
 assert.equal(node("#scanStatus").textContent,"scan_wait","actual handler clears stale progress");

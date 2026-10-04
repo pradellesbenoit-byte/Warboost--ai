@@ -7,7 +7,7 @@
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization
 // Scan request restore: keep server-side scan completion authoritative; browser no longer aborts /api/scan at 60 s.
-const CACHE="warboost-v2-5-32-player-batch-diagnostic-r1";
+const CACHE="warboost-v2-5-32-player-batch-diagnostic-shop-r1";
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-25-player-launch-integrity
 // Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
@@ -28,6 +28,7 @@ SHELL.push("/lib/player-hq.js","/app.js?v=player-hq-confirmation-r1");
 SHELL.push("/lib/player-scan-types.js");
 SHELL.push("/lib/technology-scan.js","/lib/technology-advisor.js","/technology-advice.css");
 SHELL.push("/assets/warboost-loading-scene.webp");
+SHELL.push("/lib/diagnostic-shop.js?v=diagnostic-shop-r1","/lib/diagnostic-shop-ui.js?v=diagnostic-shop-r1","/diagnostic-shop.css?v=diagnostic-shop-r1");
 self.addEventListener("message",e=>{if(e.data?.type==="WARBOOST_ACTIVATE")self.skipWaiting()});
 SHELL.push("/lib/alliance-member-rename.js","/lib/member-rename-ui.js");
 SHELL.push("/lib/player-scan-batch.js","/lib/player-global-diagnostic.js","/lib/player-global-diagnostic-ui.js","/player-global-diagnostic.css");

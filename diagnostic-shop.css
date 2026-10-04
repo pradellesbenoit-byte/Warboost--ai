@@ -1,0 +1,37 @@
+.diagnosticShop{--ds-bg:#0b1320;--ds-panel:#111d2d;--ds-line:#2a4058;--ds-text:#edf4fc;--ds-muted:#a4b4c8;--ds-cyan:#70e5f2;--ds-gold:#f1cb72;box-sizing:border-box;min-width:0;color:var(--ds-text);font:inherit}
+.diagnosticShop *{box-sizing:border-box;min-width:0}
+.diagnosticShop h2,.diagnosticShop h3,.diagnosticShop p,.diagnosticShop span{overflow-wrap:anywhere}
+.diagnosticShopHead{margin:0 0 10px}
+.diagnosticShopEyebrow{display:block;margin-bottom:4px;color:var(--ds-cyan);font-size:10px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+.diagnosticShopHead h2{margin:0;font-size:19px;line-height:1.2}
+.diagnosticShopCards{display:grid;gap:8px}
+.diagnosticShopCard{padding:10px 11px;border:1px solid var(--ds-line);border-radius:12px;background:linear-gradient(145deg,#162338,var(--ds-bg) 76%)}
+.diagnosticShopCardHead h3{margin:0;font-size:13px;line-height:1.35}
+.diagnosticShopNote{margin:5px 0 8px;color:#d5e1ee;font-size:11px;line-height:1.45}
+.diagnosticShopOptions{display:grid;gap:0;margin:0;padding:0;list-style:none}
+.diagnosticShopOption{padding:8px 0;border-top:1px solid rgba(164,180,200,.15)}
+.diagnosticShopOption:first-child{border-top:0}
+.diagnosticShopOptionMain{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;align-items:baseline}
+.diagnosticShopItem{color:var(--ds-text);font-size:12px;font-weight:750;line-height:1.35}
+.diagnosticShopStore{color:var(--ds-muted);font-size:11px;line-height:1.35}
+.diagnosticShopCost{grid-column:2;grid-row:1 / span 2;color:var(--ds-gold);font-size:12px;font-weight:850;text-align:right}
+.diagnosticShopCostNote{display:block;margin-top:2px;color:var(--ds-muted);font-size:9px;font-weight:600;line-height:1.3}
+.diagnosticShopOptionMeta{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:5px}
+.diagnosticShopBadge{display:inline-flex;align-items:center;min-height:19px;padding:2px 7px;border:1px solid var(--ds-line);border-radius:999px;color:#dce8f5;font-size:9px;font-weight:800;line-height:1.2}
+.diagnosticShopBadge--free{border-color:#3e796c;color:#a9e4d2}
+.diagnosticShopBadge--internal{border-color:#3b6375;color:#a9dce5}
+.diagnosticShopBadge--paid{border-color:#776344;color:#efd9a5}
+.diagnosticShopBadge--unknown{border-color:#6a5864;color:#e0c4d0}
+.diagnosticShopAvailability{color:#efd9a5;font-size:10px;line-height:1.35}
+.diagnosticShopProvenance{margin-top:7px;border-top:1px solid rgba(164,180,200,.15);padding-top:6px}
+.diagnosticShopProvenance summary{width:fit-content;color:var(--ds-cyan);cursor:pointer;font-size:10px;font-weight:750;list-style:none}
+.diagnosticShopProvenance summary::-webkit-details-marker{display:none}
+.diagnosticShopProvenance summary:focus-visible{outline:2px solid var(--ds-cyan);outline-offset:3px;border-radius:3px}
+.diagnosticShopProvenance summary::after{content:" +";color:var(--ds-muted)}
+.diagnosticShopProvenance[open] summary::after{content:" −"}
+.diagnosticShopProvenanceBody{padding-top:5px;color:var(--ds-muted);font-size:10px;line-height:1.4}
+.diagnosticShopProvenanceBody p{margin:0 0 4px}
+.diagnosticShopProvenanceBody ul{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+.diagnosticShopProvenanceBody li{display:grid;gap:2px}
+.diagnosticShopProvenanceBody strong{color:var(--ds-text)}
+@media(max-width:420px){.diagnosticShopHead h2{font-size:18px}.diagnosticShopCard{padding:9px 10px}.diagnosticShopOptionMain{grid-template-columns:1fr}.diagnosticShopCost{grid-column:1;grid-row:auto;text-align:left}}
