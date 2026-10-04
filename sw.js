@@ -7,7 +7,7 @@
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization
 // Scan request restore: keep server-side scan completion authoritative; browser no longer aborts /api/scan at 60 s.
-const CACHE="warboost-loading-startup-screen-r2";
+const CACHE="warboost-v2-5-32-player-batch-diagnostic-r1";
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-25-player-launch-integrity
 // Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
@@ -30,6 +30,8 @@ SHELL.push("/lib/technology-scan.js","/lib/technology-advisor.js","/technology-a
 SHELL.push("/assets/warboost-loading-scene.webp");
 self.addEventListener("message",e=>{if(e.data?.type==="WARBOOST_ACTIVATE")self.skipWaiting()});
 SHELL.push("/lib/alliance-member-rename.js","/lib/member-rename-ui.js");
+SHELL.push("/lib/player-scan-batch.js","/lib/player-global-diagnostic.js","/lib/player-global-diagnostic-ui.js","/player-global-diagnostic.css");
+SHELL.push("/lib/player-known-facts.js");
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener("fetch",e=>{const u=new URL(e.request.url);if(e.request.method==="HEAD"&&!u.pathname.startsWith("/api/")){e.respondWith(fetch(e.request).catch(()=>caches.open(CACHE).then(async c=>{const cached=await c.match(new Request(e.request.url,{method:"GET"}));return cached?new Response(null,{status:cached.status,statusText:cached.statusText,headers:cached.headers}):new Response("",{status:504})})));return}if(e.request.method!=="GET"||u.pathname.startsWith("/api/"))return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.open(CACHE).then(async c=>{const cached=await c.match(e.request);if(cached)return cached;if(e.request.mode==="navigate")return(await c.match("/")||await c.match("/index.html"))||new Response("Offline",{status:503});return new Response("",{status:504})})))});

@@ -25,6 +25,8 @@ import {buildEventStrategy} from "./lib/event-strategy.js";
 import {renderEventStrategy,eventStrategyOrders,toggleEventStrategyGroup} from "./lib/event-strategy-ui.js";
 import {applyCanonicalRenames} from "./lib/alliance-member-rename.js";
 import {showMemberRenameDialog} from "./lib/member-rename-ui.js";
+import {PLAYER_SCAN_BATCH_LIMIT,analyzePlayerCaptureBatch} from "./lib/player-scan-batch.js";
+import {renderGlobalDiagnostic} from "./lib/player-global-diagnostic-ui.js";
 import {renderDesertStormPlanInto} from "./lib/desert-storm-plan-ui.js?v=hf8630-desert-storm-plan-r2";
 import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
 import {createIdleLifecycle} from "./lib/idle-lifecycle.js?v=warboost-startup-screen-r1";
@@ -264,6 +266,16 @@ function mergeStateProtected(base,incoming,{preferBase=false}={}){
      }
    }
    out.alliance.members=mergeAllianceMembersProtected([],out.alliance.members,preferBase);
+   out.drone.boostCombat=mergeFreshRecord(base.drone?.boostCombat,incoming.drone?.boostCombat,["level"],{baseSource:"drone",incomingSource:"drone"});
+   for(const field of ["components","skill_chips"]){
+     const parts=new Map();
+     for(const row of [...(base.drone?.[field]||[]),...(incoming.drone?.[field]||[])]){
+       const key=String(row?.name||"").trim().toLowerCase();if(!key)continue;
+       parts.set(key,mergeFreshRecord(parts.get(key)||{},row,["name","level"],{baseSource:"drone",incomingSource:"drone"}));
+     }
+     out.drone[field]=[...parts.values()];
+   }
+   out.resources=mergeFreshRecord(base.resources,incoming.resources,Object.keys(incoming.resources||{}).filter(k=>typeof incoming.resources[k]==="number"&&incoming.resources[k]>=0),{baseSource:"resources",incomingSource:"resources"});
    out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);const restored=backfillConfirmedHeroPowers(out,{now:new Date().toISOString()});restored.state.version=APP_VERSION;return restored.state
 }
 function preservePendingRoster(local={},remote={}){
@@ -489,12 +501,17 @@ const ROSTER_SCAN_FILE_LIMIT=DEFAULT_ROSTER_SCAN_FILE_LIMIT;
 reconcileCurrentPlayerAllianceIdentity();
 let voiceGreetedSections=new Set(),availableVoices=[];
 const openRosterRoles=new Set();
-let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pendingHeroScannedAt=null,pendingHeroOwner="",pendingExclusiveScan=[],pendingExclusiveScannedAt=null,scanInputRevision=0,scanFileSelectionRevision=0;
+let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pendingHeroScannedAt=null,pendingHeroOwner="",pendingExclusiveScan=[],pendingExclusiveScannedAt=null,scanInputRevision=0,scanFileSelectionRevision=0,pendingExclusiveRequest=null;
 let pendingScanReview=null;
 let pendingScanRestoreInFlight=null,pendingScanRestoreOwner="";
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
 function discardScanReviewDraft(){pendingScanReview=null;$("#scanReviewPanel")?.classList.add("hidden");const rows=$("#scanReviewRows");if(rows)rows.replaceChildren()}
-function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft()}
+function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft();
+  pendingExclusiveRequest=null;updateTechnologyScanPreview([]);
+  const status=$("#scanStatus"),button=$("#analyzeScanBtn");
+  if(status){delete status.dataset.scanReviewStatusKey;status.className="notice";status.textContent=t("scan_wait")}
+  if(button){button.disabled=false;button.textContent=t("analyze")}
+}
 async function restorePendingScans(){
   const owner=pendingScanOwner();
   if(pendingScanRestoreInFlight&&pendingScanRestoreOwner===owner)return pendingScanRestoreInFlight;
@@ -514,9 +531,9 @@ async function restorePendingScans(){
         const clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(clear)clear.classList.remove("hidden");
         if(status){status.className="notice";status.textContent=t("scan_ready")}
       }else if(pending?.image_data_url){
-        scanImageData=pending.image_data_url;scanImageDataList=[scanImageData];scanImageName=pending.name||"capture.jpg";
+        scanImageData=pending.image_data_url;scanImageDataList=pending.image_data_urls?.length?pending.image_data_urls:[scanImageData];scanImageName=pending.name||"capture.jpg";
         renderScanTypeOptions();const type=$("#scanType");if(type&&[...type.options].some(o=>o.value===pending.scan_type))type.value=pending.scan_type;
-        updateSquadCaptureHelp(type?.value||"profile");updateScanCaptureMode();updateTechnologyScanPreview([scanImageName]);
+        updateSquadCaptureHelp(type?.value||"profile");updateScanCaptureMode();updateTechnologyScanPreview(scanImageName.split(", "));
         const clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(clear)clear.classList.remove("hidden");
         if(status){status.className="notice";status.textContent=t("scan_ready")}
       }
@@ -535,7 +552,7 @@ function beginNewScanFileSelection(){
   const owner=pendingScanOwner(),revision=++scanInputRevision;scanFileSelectionRevision++;scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";pendingExclusiveScan=[];pendingExclusiveScannedAt=null;pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";discardScanReviewDraft();$("#heroConfirmPanel")?.classList.add("hidden");$("#exclusiveConfirmPanel")?.classList.add("hidden");const preview=$("#scanPreview"),clear=$("#clearScanCaptureBtn");if(preview){preview.removeAttribute("src");preview.classList.add("hidden")}if(clear)clear.classList.add("hidden");updateTechnologyScanPreview([]);
   return {owner,revision,fileRevision:scanFileSelectionRevision,clearPending:Promise.all([clearPendingSingleScan(owner),clearPendingTechnologyFiles(owner)])};
 }
-function scanCaptureFingerprint(scanType=$("#scanType")?.value||"profile"){return scanType==="technology"?scanImageDataList.join("\n"):scanImageData}
+function scanCaptureFingerprint(scanType=$("#scanType")?.value||"profile"){return scanImageDataList.length?scanImageDataList.join("\n"):scanImageData}
 function scanRequestIsCurrent(request){return scanRequestMatches(request,{owner:pendingScanOwner(),scanType:$("#scanType")?.value||"profile",imageFingerprint:scanCaptureFingerprint(),revision:scanInputRevision})}
 function exclusiveNumber(value){const text=String(value??"").trim().replace(",",".");if(!text)return null;const n=Number(text);return Number.isFinite(n)?n:null}
 function exclusivePower(value){const parsed=parseHeroPower(value);return parsed===null?null:parsed}
@@ -588,14 +605,20 @@ function exclusivePowerNeedsVerification(){
   return invalid;
 }
 function saveConfirmedExclusiveScan(){
-  const confirmed=collectExclusiveConfirmation(),status=$("#scanStatus");
+  const confirmed=collectExclusiveConfirmation(),status=$("#scanStatus"),previousState=state;
+  if(!pendingExclusiveRequest||!scanRequestIsCurrent(pendingExclusiveRequest))return false;
+  if(JSON.stringify(pendingExclusiveRequest.baseReview)!==JSON.stringify(createScanReviewDraft("exclusive",state))){
+    if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?"Les armes ont changé depuis le début du scan. Relance l’analyse.":"Weapons changed after scanning started. Analyze again."}return false;
+  }
   if(exclusivePowerNeedsVerification()){if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?"Puissance détectée à vérifier. Corrige la valeur avant l’enregistrement.":t("scan_exclusive_power_verify")}return false}
   if(!confirmed.some(w=>w.hero_name||w.weapon_name||w.level!==undefined||w.power!==undefined)){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_required")}return false}
   const now=new Date().toISOString(),observed=confirmed.map(row=>stampConfirmedRecord(row,{at:now,source:"confirmed_scan"}));
   const staged=mergeStateProtected(state,{exclusive_weapons:observed},{preferBase:false});
   state=mergeConfirmedExclusiveWeaponPowers(staged,{weapons:observed,updatedAt:now}).state;
   state=repairLegacySquadIdentity(state,{now}).state;
-  state.sync.last_scan=state.sync.last_scan||now;state.sync.sources={...state.sync.sources,scan:true};recordProgressionSnapshot("scan_exclusive",state.sync.last_scan);saveState();
+  state.sync.last_scan=state.sync.last_scan||now;state.sync.sources={...state.sync.sources,scan:true};recordProgressionSnapshot("scan_exclusive",state.sync.last_scan);
+  if(!saveState()){state=previousState;if(status){status.className="notice warn";status.textContent=t("scan_review_apply_failed")}return false}
+  pendingExclusiveRequest=null;
   pendingExclusiveScan=[];$("#exclusiveConfirmPanel")?.classList.add("hidden");invalidatePlayerAdvice({autoRefresh:true});
   if(status){status.className="notice";status.textContent=t("scan_exclusive_confirmed")}
   return true;
@@ -823,7 +846,7 @@ function ensureExtendedObjectives(){
 ensureExtendedObjectives();
 function updateTechnologyScanPreview(names=scanImageDataList.map((_,index)=>scanImageName.split(", ")[index]||`${t("scan_technology")} ${index+1}`)){
   const list=$("#scanImageBatchList"),isTechnology=$("#scanType")?.value==="technology",items=Array.isArray(names)?names:[];
-  if(list){list.classList.toggle("hidden",!isTechnology||!items.length);list.innerHTML=items.length?`<b>${esc(t("scan_technology_capture_count",{count:items.length}))}</b><ul>${items.map(name=>`<li>${esc(name)}</li>`).join("")}</ul>`:""}
+  if(list){list.classList.toggle("hidden",!items.length);list.innerHTML=items.length?`<b>${esc(lang.startsWith("fr")?`${items.length} capture(s) · maximum ${PLAYER_SCAN_BATCH_LIMIT}`:`${items.length} screenshot(s) · maximum ${PLAYER_SCAN_BATCH_LIMIT}`)}</b><ul>${items.map(name=>`<li>${esc(name)}</li>`).join("")}</ul>`:""}
   const preview=$("#scanPreview");
   if(preview){
     const first=scanImageDataList[0]||scanImageData;
@@ -832,9 +855,9 @@ function updateTechnologyScanPreview(names=scanImageDataList.map((_,index)=>scan
 }
 function updateScanCaptureMode(){
   const isTechnology=$("#scanType")?.value==="technology",input=$("#scanFile"),label=$("#scanCaptureLabel"),help=$("#technologyScanHelp");
-  if(input)input.multiple=isTechnology;
-  if(label){label.dataset.i18n=isTechnology?"scan_choose_multiple":"choose_capture";label.textContent=t(label.dataset.i18n)}
-  if(help)help.classList.toggle("hidden",!isTechnology);
+  if(input)input.multiple=true;
+  if(label){delete label.dataset.i18n;label.textContent=lang.startsWith("fr")?"Choisir 1 à 3 captures":"Choose 1 to 3 screenshots"}
+  if(help){help.classList.remove("hidden");delete help.dataset.i18n;help.textContent=lang.startsWith("fr")?"Même type de données, même escouade si applicable. Les captures sont réunies dans une seule vérification.":"Use the same data type and squad. Overlapping screenshots are combined into one review."}
   updateTechnologyScanPreview();
 }
 function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(lang);t=translator(lang);document.documentElement.lang=lang;document.documentElement.dir=dirFor(lang);$$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});$$('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));$$('[data-i18n-alt]').forEach(el=>el.setAttribute('alt',t(el.dataset.i18nAlt)));$$('[data-i18n-placeholder]').forEach(el=>{const text=t(el.dataset.i18nPlaceholder);el.setAttribute('placeholder',text);if(el.isContentEditable)el.setAttribute('data-placeholder',text)});const sel=$("#languageSelect");if(sel){sel.innerHTML=LANGUAGES.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=languageChoice}renderScanTypeOptions();renderClock();render();renderAuth();renderBeta();renderPro();renderVoiceSettings();renderSupportAccess();renderSupportTickets();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden")}
@@ -1913,8 +1936,16 @@ function renderProPriority(analysis){
   if(!panel||!analysis)return;
   if(currentPlayerAdviceAnalysis!==analysis)activeAcquisitionShopView=null;
   currentPlayerAdviceAnalysis=analysis;
-  renderTechnologyAdvicePanel(analysis.technology_advice||buildTechnologyAdvice(state,{mainType:analysis.composition?.main_type||null}));
+  renderTechnologyAdvicePanel(analysis.global_diagnostic?null:analysis.technology_advice||buildTechnologyAdvice(state,{mainType:analysis.composition?.main_type||null}));
   if(note)note.classList.add("hidden");panel.classList.remove("hidden");
+  if(analysis.global_diagnostic){
+    if(summary)summary.textContent=lang.startsWith("fr")?"Tes priorités, à partir de tes données confirmées.":"Your priorities, based on your confirmed data.";
+    if(list)list.innerHTML=renderGlobalDiagnostic(analysis.global_diagnostic,{locale:lang});
+    for(const element of [contextBox,compare,exCompare,metaSources,confidence,avoid,$("#player7DayPlan"),$("#proShopList"),shopConfidence,shopCatalogPill])if(element){element.innerHTML="";element.classList.add("hidden")}
+    for(const element of [$("#proExclusiveCompareDetails"),$("#proMetaSourcesDetails"),$("#proShopDetails")])if(element){element.open=false;element.classList.add("hidden");element.style.display="none"}
+    return;
+  }
+  for(const element of [$("#proExclusiveCompareDetails"),$("#proMetaSourcesDetails"),$("#proShopDetails")])if(element){element.classList.remove("hidden");element.style.removeProperty("display")}
   const top=Array.isArray(analysis.priorities)?analysis.priorities[0]:null;
   const vsObjective=String(state?.player_context?.objective||"").toLowerCase()==="vs",vsFresh=vsSnapshotFreshness(state?.vs||{},{now:serverNow}),vsContextWarning=vsObjective&&!vsFresh.current?`⚠️ ${t("vs_stale_notice")} · `:"";
   if(summary){
@@ -3222,6 +3253,9 @@ function showConfirmedScanStatus(status,messageKey){
 function confirmScanReview(){
   const draft=pendingScanReview;if(!draft||draft.owner!==pendingScanOwner())return discardScanReviewDraft();
   if(!scanRequestIsCurrent(draft.request)){discardScanReviewDraft();return}
+  if(draft.request?.baseReview!==undefined&&JSON.stringify(draft.request.baseReview)!==JSON.stringify(createScanReviewDraft(draft.type,state,{includeHeroNames:true}))){
+    const error=$("#scanReviewError");if(error){error.classList.remove("hidden");error.textContent=lang.startsWith("fr")?"Ces données ont changé depuis le début du scan. Relance l’analyse pour garder les confirmations les plus récentes.":"These data changed after scanning started. Analyze again to preserve the latest confirmations."}return;
+  }
   const form=scanReviewFormEdits(draft);
   if(form.error){setScanReviewError(form.error);return}
   const edits=form.edits;
@@ -3262,16 +3296,23 @@ function confirmScanReview(){
   const sm=draft.type.match(/^squad([1-4])$/),squadIndex=sm?Number(sm[1])-1:null,heroSlots=sm?(reviewed.squads?.[squadIndex]?.heroes||[]):[];
    const previousState=state,now=hqConfirmedAt;let merged;
   try{
-    if(sm){reviewed.squads??=[];const incoming=reviewed.squads[squadIndex]||{},base=previousState.squads?.[squadIndex]||emptySquad(squadIndex+1);reviewed.squads[squadIndex]=incoming;for(const key of ["power","power_m","power_sync_status","last_confirmed_power"])if(incoming[key]===undefined)incoming[key]=base[key];if(pendingPowerPaths.some(path=>path[0]==="squads"&&path[1]===squadIndex)){incoming.power_sync_status="pending";incoming.last_confirmed_power=base.last_confirmed_power??base.power}delete incoming.heroes;for(let i=0;i<5;i++)heroSlots[i]={...(heroSlots[i]||{}),name:String(draft.heroNames?.[i]||"").trim()}}
+    if(sm){reviewed.squads??=[];const incoming=reviewed.squads[squadIndex]||{},base=previousState.squads?.[squadIndex]||emptySquad(squadIndex+1);reviewed.squads[squadIndex]=incoming;for(const key of ["power","power_m","power_sync_status","last_confirmed_power"])if(incoming[key]===undefined)incoming[key]=base[key];if(pendingPowerPaths.some(path=>path[0]==="squads"&&path[1]===squadIndex)){incoming.power_sync_status="pending";incoming.last_confirmed_power=base.last_confirmed_power??base.power}delete incoming.heroes;for(let i=0;i<5;i++)heroSlots[i]={...(heroSlots[i]||{}),name:String(heroSlots[i]?.name||draft.heroNames?.[i]||"").trim()}}
     merged=repairLegacySquadIdentity(mergeStateProtected(safeClone(previousState),reviewed,{preferBase:false})).state;
     merged.sync.last_scan=now;merged.sync.sources={...merged.sync.sources,scan:true};
     if(["profile","drone","awakening"].includes(draft.type))state=merged,recordProgressionSnapshot(`scan_${draft.type}`,now),merged=state;
-    if(sm){const sq=merged.squads?.[Number(sm[1])-1];if(sq){sq.needs_rescan=true;sq.composition_changed_at=now}}
-    state=merged;saveState();updateSquadCaptureHelp($("#scanType")?.value||"profile");
+    if(sm){
+      const names=heroSlots.map(h=>canonicalStoredHeroName(h?.name)).filter(Boolean);
+      if(names.length!==5||new Set(names.map(name=>name.toLowerCase())).size!==5)throw new Error("hero_identity_incomplete");
+      merged=reconcileConfirmedSquad(merged,{squadId:squadIndex+1,names,incomingHeroes:heroSlots,updatedAt:now}).state;
+    }
+    state=merged;
+    if(sm)recordProgressionSnapshot(`scan_squad${squadIndex+1}`,now);
+    if(!saveState())throw new Error("local_scan_save_failed");
+    updateSquadCaptureHelp($("#scanType")?.value||"profile");
   }catch{state=previousState;setScanReviewError("scan_review_apply_failed");return}
   const type=draft.type,squadId=sm?Number(sm[1]):null,names=draft.heroNames||[];
-   discardScanReviewDraft();$("#playerSyncInfo")?.classList.remove("hidden");invalidatePlayerAdvice({autoRefresh:!squadId});
-  if(squadId)startHeroConfirmation(squadId,names,heroSlots,now);
+   discardScanReviewDraft();$("#playerSyncInfo")?.classList.remove("hidden");invalidatePlayerAdvice({autoRefresh:true});
+  if(squadId){showConfirmedScanStatus($("#scanStatus"),"scan_saved")}
   else{const status=$("#scanStatus");if(status){if(pendingPowerPaths.length){status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_power_pending";status.textContent=t("scan_review_power_pending")}else showConfirmedScanStatus(status,"scan_saved")}if(type==="vs"){render();openDrawer("vs");if(proFeatureAllowed())void requestAdvice("vs").then(live=>{$("#vsPlanText").textContent=structuredAdviceText("vs",live)})}}
 }
 $("#confirmScanReviewBtn")?.addEventListener("click",confirmScanReview);
@@ -3304,37 +3345,39 @@ async function imageToDataUrlLimited(file,maxDataUrlLength){
 $("#scanFile").addEventListener("change",async e=>{
   const scanType=$("#scanType")?.value||"profile",files=Array.from(e.target.files||[]);
   if(!files.length)return;
-  if(scanType==="technology"&&files.length>3){const status=$("#scanStatus");if(status){status.className="notice warn";status.textContent=t("scan_technology_limit")}return}
+  if(files.length>PLAYER_SCAN_BATCH_LIMIT){const status=$("#scanStatus");if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?"Choisis au maximum 3 captures.":"Choose at most 3 screenshots."}e.target.value="";return}
   const selection=beginNewScanFileSelection();
   try{
     await selection.clearPending;if(selection.fileRevision!==scanFileSelectionRevision)return;
-    const multi=scanType==="technology",selected=multi?files:files.slice(0,1);
+    const multi=scanType==="technology",selected=files;
     const images=[];for(const file of selected)images.push(await imageToDataUrlLimited(file,multi?1_900_000:3_900_000));
     if(selection.fileRevision!==scanFileSelectionRevision)return;
     scanImageDataList=images;scanImageData=images[0]||null;
     const names=selected.map(file=>String(file.name||"capture.jpg"));scanImageName=names.join(", ");
     updateTechnologyScanPreview(names);$("#clearScanCaptureBtn")?.classList.remove("hidden");
     const kept=multi?await savePendingTechnologyFiles(selection.owner,selected):
-      await savePendingSingleScan(selection.owner,{scan_type:scanType,image_data_url:scanImageData,name:names[0]});
+      await savePendingSingleScan(selection.owner,{scan_type:scanType,image_data_url:scanImageData,image_data_urls:images,name:scanImageName});
     if(selection.fileRevision!==scanFileSelectionRevision)return;
     $("#scanStatus").className=kept?"notice":"notice warn";$("#scanStatus").textContent=t(kept?"scan_ready":"scan_pending_local_failed");
   }catch{if(selection.fileRevision===scanFileSelectionRevision){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_error")}}
 });
 $("#scanType")?.addEventListener("change",()=>{
-  scanInputRevision++;const scanType=$("#scanType")?.value||"profile";updateScanCaptureMode();
-  if(scanType==="technology"&&scanImageData)void savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName});
-  else if(scanType!=="technology"){void clearPendingTechnologyFiles(pendingScanOwner());if(scanImageData)void savePendingSingleScan(pendingScanOwner(),{scan_type:scanType,image_data_url:scanImageData,name:scanImageName})}
+  clearScanImage();updateScanCaptureMode();
 });
 $("#clearScanCaptureBtn")?.addEventListener("click",()=>{clearScanImage();const st=$("#scanStatus");if(st){st.className="notice";st.textContent=t("scan_wait")}});
 async function analyzeExclusiveScan(){
-  const btn=$("#analyzeScanBtn"),status=$("#scanStatus"),scanType=$("#scanType")?.value||"profile",owner=pendingScanOwner(),image=scanImageData,request={owner,scanType,imageFingerprint:image,revision:scanInputRevision};
+  const btn=$("#analyzeScanBtn"),status=$("#scanStatus"),scanType=$("#scanType")?.value||"profile",owner=pendingScanOwner(),image=scanImageData,request={owner,scanType,imageFingerprint:scanCaptureFingerprint(scanType),revision:scanInputRevision,baseReview:createScanReviewDraft(scanType,state)};
   if(scanType!=="exclusive")return;
   if(!scanImageData){status.className="notice warn";status.textContent=t("scan_wait");return}
   if(!requireBetaAccess()||!requireBetaConsent())return;
   if(!cloudSession?.access_token){openDrawer("account");authMessage(t("connect_pro"));return}
   btn.disabled=true;btn.textContent=t("scan_processing");status.className="notice";status.textContent=t("scan_processing");
   try{
-    const {response:r,json:j}=await fetchWarBoostScan({scan_type:scanType,locale:lang,image_data_url:image,current_state:state});
+    const j=await analyzePlayerCaptureBatch({type:scanType,images:scanImageDataList.length?scanImageDataList:[image],
+      isCurrent:()=>scanRequestIsCurrent(request),onProgress:(n,total)=>{status.textContent=`${t("scan_processing")} ${n}/${total}`},
+      request:payload=>fetchWarBoostScan({scan_type:scanType,locale:lang,...payload,current_state:state})});
+    if(!j)return;
+    const r={ok:true};
     if(!scanRequestIsCurrent(request))return;
     if(!r.ok){
       const message=j?.message||j?.error||t("scan_error");
@@ -3346,6 +3389,7 @@ async function analyzeExclusiveScan(){
     }
     pendingExclusiveScannedAt=j.scanned_at||new Date().toISOString();
     const rendered=renderExclusiveConfirmation(rows);
+     pendingExclusiveRequest=rendered?request:null;
     if(!rendered){
       status.className="notice warn";status.textContent=t("scan_exclusive_no_data");return;
     }
@@ -3360,24 +3404,27 @@ async function analyzeExclusiveScan(){
   finally{btn.disabled=false;btn.textContent=t("analyze")}
 }
 async function analyzeReviewedScan(){
-  const btn=$("#analyzeScanBtn"),status=$("#scanStatus"),scanType=$("#scanType")?.value||"profile",owner=pendingScanOwner(),image=scanImageData,images=scanType==="technology"?(scanImageDataList.length?scanImageDataList:[image].filter(Boolean)):[image].filter(Boolean),request={owner,scanType,imageFingerprint:scanCaptureFingerprint(scanType),revision:scanInputRevision};
+  const btn=$("#analyzeScanBtn"),status=$("#scanStatus"),scanType=$("#scanType")?.value||"profile",owner=pendingScanOwner(),image=scanImageData,images=scanImageDataList.length?scanImageDataList:[image].filter(Boolean),request={owner,scanType,imageFingerprint:scanCaptureFingerprint(scanType),revision:scanInputRevision,baseReview:createScanReviewDraft(scanType,state,{includeHeroNames:true})};
   if(!images.length||scanType==="technology"&&images.length>3){status.className="notice warn";status.textContent=t("scan_wait");return}
   if(!requireBetaAccess()||!requireBetaConsent())return;
   if(!cloudSession?.access_token){openDrawer("account");authMessage(t("connect_pro"));return}
   btn.disabled=true;btn.textContent=t("scan_processing");status.className="notice";status.textContent=t("scan_processing");
   try{
-    const payload={scan_type:scanType,locale:lang,...(scanType==="technology"?{image_data_urls:images}:{image_data_url:image,current_state:state})};
-    const {response:r,json:j}=await fetchWarBoostScan(payload);
+    const j=await analyzePlayerCaptureBatch({type:scanType,images,isCurrent:()=>scanRequestIsCurrent(request),
+      onProgress:(n,total)=>{status.textContent=`${t("scan_processing")} ${n}/${total}`},
+      request:payload=>fetchWarBoostScan({scan_type:scanType,locale:lang,...payload,current_state:state})});
+    if(!j)return;
+    const r={ok:true};
     if(!scanRequestIsCurrent(request))return;
     if(r.ok&&j.state){
       if(!scanResultHasUsefulData(scanType,j.state)&&!(scanType==="drone"&&j.state?.drone?.boostCombat?.level!=null)){status.className="notice warn";status.textContent=t("scan_error");return}
-      const patch=createScanReviewDraft(scanType,j.state),match=scanType.match(/^squad([1-4])$/),rawHeroes=match?j.state.squads?.[Number(match[1])-1]?.heroes:[];
+      const patch=createScanReviewDraft(scanType,j.state,{includeHeroNames:true}),match=scanType.match(/^squad([1-4])$/),rawHeroes=match?j.state.squads?.[Number(match[1])-1]?.heroes:[];
       if(!patch){status.className="notice warn";status.textContent=t("scan_error");return}
       const draft={owner,type:scanType,request,patch,scannedAt:j.scanned_at||new Date().toISOString(),heroNames:Array.from({length:5},(_,i)=>String(rawHeroes?.[i]?.name||"").trim())};
       if(!scanReviewEntries(patch).length&&match){startHeroConfirmation(Number(match[1]),draft.heroNames,rawHeroes,draft.scannedAt);return}
       if(!renderScanReview(draft)){status.className="notice warn";status.textContent=t("scan_error");return}
        if(scanType==="technology"){void clearPendingTechnologyFiles(owner);void clearPendingSingleScan(owner)}
-      status.className="notice";status.dataset.scanReviewStatusKey="scan_review_ready";status.textContent=t("scan_review_ready");
+      status.className="notice";status.dataset.scanReviewStatusKey="scan_review_ready";status.textContent=t("scan_review_ready")+(j.conflicts?.length?(lang.startsWith("fr")?" Des valeurs diffèrent entre captures : vérifie les champs réunis.":" Some screenshots disagree: check the combined fields."):"");
     }else{status.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){status.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else if(scanType==="drone"&&j.error==="drone_no_supported_fields"){const key=j.drone_screen_type==="skill_chip"?"scan_drone_skill_chip_no_fields":"scan_drone_components_no_fields";status.dataset.scanReviewStatusKey=key;status.textContent=t(key)}else status.textContent=j.code==="SCAN_NOT_CONFIGURED"?t("scan_unconfigured"):(j.message||t("scan_error"))}
   }catch(e){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}
   finally{btn.disabled=false;btn.textContent=t("analyze")}

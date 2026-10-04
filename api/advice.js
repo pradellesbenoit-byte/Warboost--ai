@@ -13,6 +13,7 @@ import {confirmedCompositionForSquad,selectPrimarySquad} from '../lib/squad-iden
 import {scoreKnown,vsSituation,vsTrend,personalVsPosition,vsDecisionEngine} from '../lib/vs-live.js';
 import {LAST_WAR_RULES,LAST_WAR_RULES_VERSION,crystalEventEligibility,crystalBossGuidance,ammoBonanzaGuidance,shopRuleGuidance,lastWarRuleContext,ruleProvenance} from '../lib/last-war-rules.js';
 import {mergeFreshRecord} from "../lib/field-freshness.js";
+import {resolveDiagnosticState,buildGlobalDiagnostic} from "../lib/player-global-diagnostic.js";
 import {eventStrategyFromState} from "../lib/event-strategy.js";
 import {researchForAllianceManager} from "../lib/event-research-api.js";
 const ENGINE_VERSION="2.5.28";
@@ -1360,7 +1361,7 @@ export default async function handler(req,res){
       return res.status(200).json({ok:research.status!=="unavailable",research,server_time:new Date().toISOString()});
     }catch(e){return res.status(e.status||500).json({error:e.code||"event_research_failed"})}
   }
-  const scope=String(req.body?.scope||"player"),s=req.body?.state||{},loc=String(req.body?.locale||"en-GB");
+  const scope=String(req.body?.scope||"player"),s=scope==="player"?resolveDiagnosticState(req.body?.state||{}):(req.body?.state||{}),loc=String(req.body?.locale||"en-GB");
   if(scope==="player"){
     const analysis=buildPlayerAnalysis(s,loc);
      analysis.shop=buildShopAdvice(s,loc,analysis);
@@ -1368,6 +1369,7 @@ export default async function handler(req,res){
     analysis.seven_day_plan=buildSevenDayPlan(s,analysis);
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
     analysis.technology_advice=buildTechnologyAdvice(s,{mainType:analysis.composition?.main_type||null});
+    analysis.global_diagnostic=buildGlobalDiagnostic(s,analysis,loc);
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }

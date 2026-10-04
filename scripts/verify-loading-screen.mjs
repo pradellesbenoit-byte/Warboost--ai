@@ -253,7 +253,7 @@ assert.match(app,/finishOperation\(\)/);
 assert.match(index,/loading-screen\.css\?v=warboost-startup-screen-r2/);
 assert.match(index,/app\.js\?v=player-hq-confirmation-r1/);
 assert.match(app,/lib\/loading-screen\.js\?v=warboost-startup-screen-r2/);
-assert.match(sw,/warboost-loading-startup-screen-r2/);
+assert.match(sw,/const CACHE="warboost-v\d[^"]*";/,"active cache is versioned for the current shell while loading assets remain present");
 assert.match(sw,/lib\/loading-screen\.js\?v=warboost-startup-screen-r2/);
 assert.match(sw,/loading-screen\.css\?v=warboost-startup-screen-r2/);
 assert.match(sw,/SHELL\.push\("\/assets\/warboost-loading-scene\.webp"\)/);

@@ -14,3 +14,9 @@ Any human-readable OCR editor that hides an internal encoding must round-trip an
 **Why:** A readable equipment editor can silently lose a second rarity, and a broad "technical text" filter can erase a shop description when the player confirms the form unchanged.
 
 **How to apply:** Test untouched and corrected submissions separately for multi-valued fields, plus OCR text that resembles an internal key. A live language change must retranslate the review without resetting its inputs or replacing its current scan status.
+
+Account isolation also applies to transient media labels and progress, not only to saved facts and pending responses.
+
+**Why:** Suppressing a late result and clearing image references can still leave the previous account’s filename and progress visible in an existing drawer.
+
+**How to apply:** Account transitions must invalidate request bindings and clear the rendered capture list, preview, review status and busy controls before restoring the new owner’s pending captures.

@@ -301,7 +301,7 @@ assert.match(app,/loadingScreen\?\.show\(mode,"profile"\)/);
 assert.match(app,/function beginActiveLoadingOperation\(\)/);
 assert.match(app,/fetchWarBoostScan\(payload\)[\s\S]*finishOperation\(\)/);
 assert.match(index,/app\.js\?v=player-hq-confirmation-r1/);
-assert.match(sw,/warboost-loading-startup-screen-r2/);
+assert.match(sw,/const CACHE="warboost-v\d[^"]*";/,"active cache is versioned for the current player shell");
 assert.doesNotMatch(fs.readFileSync(new URL("../lib/idle-lifecycle.js",import.meta.url),"utf8"),/signOut|removeItem/);
 
 console.log("WarBoost 15-minute inactivity suspension and safe resume: PASS (10 scenarios)");

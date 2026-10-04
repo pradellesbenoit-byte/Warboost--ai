@@ -98,6 +98,6 @@ assert.notEqual(playerAdviceInputSignature({...apiState,hero_profiles:[{...curre
 const appSource=await readFile(new URL("../app.js",import.meta.url),"utf8");
 assert.match(appSource,/stampConfirmedRecord\(reviewed,\{at:hqConfirmedAt/,"scan review must stamp data at player confirmation time");
 assert.match(appSource,/signature!==playerAdviceInputSignature\(state\)/,"late Diagnostic PRO responses must be rejected after player data changes");
-assert.match(appSource,/invalidatePlayerAdvice\(\{autoRefresh:!squadId\}\)/,"confirmed scans must invalidate and refresh the derived diagnosis");
+assert.match(appSource,/invalidatePlayerAdvice\(\{autoRefresh:true\}\)/,"single-review confirmed scans must immediately invalidate and refresh the derived diagnosis");
 
 console.log("Field freshness, persistence, cloud restore, account isolation, and Diagnostic PRO checks passed.");

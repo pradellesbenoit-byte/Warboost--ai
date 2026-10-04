@@ -10,3 +10,9 @@ Do not use a normalized top-level state timestamp as evidence for a field when t
 **Why:** A generated envelope timestamp can make an old or partial record appear newer than explicitly reviewed field data, while a whole-profile timestamp can also hide a newer confirmation on just one field.
 
 **How to apply:** Preserve field provenance through local normalization, cloud hydration, API advice assembly, and restoration. Compare provenance first and field time second; keep account scope in derived-analysis inputs and ignore transport-only timestamps there.
+
+For multi-capture proposals, narrow incoming records to selected scalar fields and their evidence before applying a generic freshness merge. Complete nested-array reconciliation separately.
+
+**Why:** A generic record merge can copy non-selected keys without arbitration, silently replacing a reconciled nested record or reintroducing a low-confidence field that the caller intentionally skipped.
+
+**How to apply:** Treat capture fusion as a bounded proposal, not a confirmed state update. Require owner/capture-bound review; refuse confirmation when the affected facts changed while analysis was in progress.
