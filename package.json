@@ -47,6 +47,7 @@
     "test:availability-capacity": "node scripts/verify-availability-capacity.mjs",
     "test:event-availability": "node scripts/verify-event-availability.mjs",
     "test:shared-alliance-roster": "node scripts/verify-shared-alliance-roster.mjs",
+    "test:canonical-roster-count": "node scripts/verify-canonical-roster-count.mjs",
     "test:idle-resume": "node scripts/verify-idle-resume.mjs",
     "test:loading-screen": "node scripts/verify-loading-screen.mjs",
     "test:linked-account-render": "node scripts/verify-linked-account-render.mjs",

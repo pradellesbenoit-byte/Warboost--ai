@@ -53,8 +53,8 @@ assert.equal(mergeRosterLifecycleMetadata([], [staleCloud],{removal_tombstones:l
 assert.equal(mergeCloudRosterWithIdentity([], [staleCloud],{serverId:'884',allianceTag:'ALL4',removal_tombstones:life.removal_tombstones}).roster.length,0,'cloud merge accepted a stale row after rejoin');
 assert.equal(mergeCloudRosterWithIdentity([], [{...staleCloud,server_id:'884',alliance_tag:'OTHER'}],{serverId:'884',allianceTag:'ALL4'}).roster.length,0,'cloud roster crossed alliance scope');
 assert.equal(currentActiveRosterMembers(life.members,life.review,life.former,life.removal_tombstones).length,1);
-assert.match(sync,/preserveVerifiedR5\(merged\.alliance\?\.members,rosterMerged,\{removal_tombstones:ctx\.roster_tombstones\}\)/);
-assert.match(sync,/currentActiveRosterMembers\(preservedR5\.rows,merged\.alliance\?\.roster_review,merged\.alliance\?\.former_members,ctx\.roster_tombstones\)/);
+assert.match(sync,/preserveVerifiedR5\(merged\.alliance\?\.members,rosterMerged,\{removal_tombstones:ctx\.roster_tombstones,authoritative:true\}\)/);
+assert.match(sync,/mergeSharedAllianceRoster\(currentActiveRosterMembers\(canonical,\[\],\[\],ctx\.roster_tombstones\),preservedR5\.rows,context\)/);
 
 // A current canonical snapshot wins over stale lifecycle blockers without deleting lifecycle history.
 const roster94=markCanonicalRosterPresence(Array.from({length:94},(_,i)=>({

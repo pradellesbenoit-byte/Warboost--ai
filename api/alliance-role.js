@@ -6,6 +6,7 @@ import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/allian
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
 import {normalizeRosterRemovalTombstones,rosterLifecycleKey} from "../lib/alliance-roster-lifecycle.js";
 import {prepareRosterRename} from "../lib/alliance-member-rename.js";
+import {sanitizeCanonicalRoster} from "../lib/alliance-scope.js";
 import {randomUUID} from "node:crypto";
 
 function role(v){return normalizeAllianceRank(v)}
@@ -52,10 +53,10 @@ export default async function handler(req,res){
     if(req.method==="GET"&&String(req.query?.action||"")==="roster_diagnostic"){
        const profile=await getProfile(user.id),identity=profileIdentity(profile),membership=await getAllianceMembership(user.id),ctx=await getAllianceRoster(user.id,{serverId:identity.server_id,allianceTag:identity.alliance_tag});
       if(!ctx?.alliance)return res.status(404).json({error:"alliance_not_found"});
-      const canonical=Array.isArray(ctx.alliance.roster)?ctx.alliance.roster:[];
+      const canonical=sanitizeCanonicalRoster(ctx.alliance.roster,{serverId:ctx.alliance.server_id,allianceTag:ctx.alliance.tag});
       const cloudMembers=Array.isArray(ctx.cloud_roster)?ctx.cloud_roster:[];
        const exactPreview=previewSelfIdentityLink(canonical,{userId:user.id,name:identity.name,serverId:identity.server_id,allianceTag:identity.alliance_tag}),resolution=resolveCanonicalIdentity(canonical,{playerId:user.id,name:identity.name,serverId:identity.server_id,allianceTag:identity.alliance_tag,role:identity.role,rank_confirmed_source:identity.rank_confirmed_source,rank_confirmed_at:identity.rank_confirmed_at}),resolutionReady=["linked_exact","linked_existing"].includes(resolution.status),preview=exactPreview.matches?.length?exactPreview:(resolutionReady?{code:"ready",matches:[resolution.member]}:{code:resolution.status==="ambiguous"?"member_identity_ambiguous":resolution.status==="no_match"?"self_identity_no_match":resolution.status,matches:[]}),authorization=canonicalAllianceAuthorization({playerId:user.id,membership:ctx.membership||membership,alliance:ctx.alliance,roster:ctx.roster,identity});
-       return res.status(200).json({ok:true,source:canonical.length?"canonical":"cloud_members",canonical_count:canonical.length,cloud_member_count:cloudMembers.length,canonical_updated_at:ctx.alliance.roster_updated_at||null,alliance:{id:ctx.alliance.id||membership.alliance_id,tag:normalizeAllianceTag(ctx.alliance.tag),name:clean(ctx.alliance.name,100),server_id:normalizeServerId(ctx.alliance.server_id),owner_player_id:ctx.alliance.owner_player_id||null,updated_at:ctx.alliance.updated_at||null},roster:(canonical.length?canonical:cloudMembers),link_status:preview.code||"ready",account_identity:identity,authorization,link_candidates:(preview.matches||[]).map(row=>publicIdentityRow(row,user.id))});
+       return res.status(200).json({ok:true,source:"canonical",canonical_count:canonical.length,cloud_member_count:cloudMembers.length,canonical_updated_at:ctx.alliance.roster_updated_at||null,alliance:{id:ctx.alliance.id||membership.alliance_id,tag:normalizeAllianceTag(ctx.alliance.tag),name:clean(ctx.alliance.name,100),server_id:normalizeServerId(ctx.alliance.server_id),owner_player_id:ctx.alliance.owner_player_id||null,updated_at:ctx.alliance.updated_at||null},roster:canonical,link_status:preview.code||"ready",account_identity:identity,authorization,link_candidates:(preview.matches||[]).map(row=>publicIdentityRow(row,user.id))});
     }
     if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
      const actor=await getAllianceMembership(user.id),actorProfile=await getProfile(user.id),actorIdentity=profileIdentity(actorProfile),actorContext=await getAllianceRoster(user.id,{serverId:actorIdentity.server_id,allianceTag:actorIdentity.alliance_tag}),alliance=actorContext?.alliance||(actor?await getAllianceById(actor.alliance_id):null);

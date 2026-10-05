@@ -14,3 +14,9 @@ For a linked account, the canonical roster nickname is the only display authorit
 **Why:** A successful cloud identity link can coexist briefly with an older local profile or pending alias, especially after OCR correction. Rendering either value makes one player appear twice and undermines rank-management trust.
 
 **How to apply:** Resolve the current user's linked canonical row by `player_id`, hydrate the local display name from that row, and filter only the matching stale pending alias. Keep roster participation data and detailed player history unchanged.
+
+Current canonical membership must survive every later personal-profile, pending-save, cache, and backup restoration. Enrichment must not append local-only members, including an old R5; local lifecycle archives do not determine membership once the current canonical list is available. An explicitly empty canonical roster is not a reason to fall back to account profiles.
+
+**Why:** The user reported phones retaining more roster rows than Last War permits. Last War alliances have a maximum of 100 active unique members; stale personal state must never inflate that count.
+
+**How to apply:** Keep canonical membership separate from enrichment through restoration and synchronization. All Alliance views count unique active canonical members, excluding deletion markers, and never exceed 100. Preserve ambiguity checks for authorization even when display counts deduplicate identities.

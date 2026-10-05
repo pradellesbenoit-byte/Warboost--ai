@@ -60,9 +60,9 @@ const target=member("Target R3","R3",{player_id:"target",warboost_linked:true,ac
   const hundred=mergeCanonicalRoster(existing,added,context);
   assert.equal(hundred.length,100);
   const partial=mergeCanonicalRoster(hundred,[added[0],member("New 101","R1")],context);
-  assert.equal(partial.length,101,"a later partial import must not remove existing members");
+  assert.equal(partial.length,100,"a later partial import preserves existing members without exceeding the game maximum");
   const duplicate=mergeCanonicalRoster(partial,[{...added[0],power_m:42}],context);
-  assert.equal(duplicate.length,101,"an exact duplicate must not increase the roster");
+  assert.equal(duplicate.length,100,"an exact duplicate must not increase the roster");
 }
 
 const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");

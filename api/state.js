@@ -5,6 +5,7 @@ import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../li
 import {requireProductUser} from "../lib/pro-access.js";
 import {requireUser} from "../lib/auth.js";
 import {mergeCloudRosterWithIdentity,mergeCurrentPlayerActivityIntoRoster} from "../lib/alliance-roster-merge.js";
+import {mergeSharedAllianceRoster} from "../lib/shared-alliance-roster.js";
 import {linkCurrentPlayerIdentityIntoRoster,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {markCanonicalRosterPresence,mergeRosterLifecycleMetadata,currentActiveRosterMembers,preserveVerifiedR5} from "../lib/alliance-roster-lifecycle.js";
 import {protectCanonicalRosterNames} from "../lib/alliance-member-rename.js";
@@ -38,6 +39,10 @@ async function canonicalizeAllianceState(input,playerId){
   const ctx=await getAllianceRoster(playerId,{serverId:state.player?.server_id,allianceTag:state.alliance?.tag}).catch(()=>null);
   if(!ctx?.alliance)return {state,changed:false,status:"no_alliance"};
   let canonical=Array.isArray(ctx.roster)?ctx.roster:[];
+  if(!canonical.length&&Array.isArray(ctx.alliance.roster)){
+    state.alliance={...state.alliance,server_id:ctx.alliance.server_id,tag:ctx.alliance.tag,members:[],canonical_roster:[],roster_updated_at:ctx.alliance.roster_updated_at||null};
+    return {state,changed:true,status:"canonical_roster_applied"};
+  }
   if(!canonical.length)return {state,changed:false,status:"no_canonical_roster"};
 
   const authoritativeTag=normalizeAllianceTag(ctx.alliance.tag||state.alliance?.tag);
@@ -156,9 +161,9 @@ async function canonicalizeAllianceState(input,playerId){
     activityEvents:state.activity_events,
     updatedAt:stableStamp
   });
-  const rosterWithLifecycle=mergeRosterLifecycleMetadata(state.alliance?.members,rosterWithActivity,{removal_tombstones:ctx.roster_tombstones});
-  const preservedR5=preserveVerifiedR5(state.alliance?.members,rosterWithLifecycle,{removal_tombstones:ctx.roster_tombstones});
-  const activeRoster=currentActiveRosterMembers(preservedR5.rows,state.alliance?.roster_review,state.alliance?.former_members,ctx.roster_tombstones);
+  const rosterWithLifecycle=mergeRosterLifecycleMetadata(state.alliance?.members,rosterWithActivity,{removal_tombstones:ctx.roster_tombstones,authoritative:true});
+  const preservedR5=preserveVerifiedR5(state.alliance?.members,rosterWithLifecycle,{removal_tombstones:ctx.roster_tombstones,authoritative:true});
+  const activeRoster=mergeSharedAllianceRoster(currentActiveRosterMembers(canonicalWithKeys,[],[],ctx.roster_tombstones),preservedR5.rows,context);
 
   const nextAlliance={
     ...state.alliance,
@@ -175,6 +180,7 @@ async function canonicalizeAllianceState(input,playerId){
     management_verified:authorization.allowed,
     identity_link_status:identityLink.status,
     members:activeRoster,
+    canonical_roster:activeRoster,
     r5_sync_required:Boolean(preservedR5.preserved),
     event_availability:mergeEventAvailabilities(state.alliance?.event_availability,activeRoster.flatMap(row=>row.event_availability||[])),
     availability_history:mergeAvailabilityHistory(state.alliance?.availability_history,activeRoster.flatMap(row=>row.availability_history||[])),
