@@ -10,6 +10,7 @@
     "mobile:sync": "npm run build && npx cap sync",
     "mobile:doctor": "npx cap doctor",
     "test:mobile-wrapper": "node --check lib/mobile-runtime.js && node scripts/verify-mobile-wrapper.mjs",
+    "test:android-debug-ci": "node scripts/verify-android-debug-ci.mjs",
     "test:account-deletion": "node --check lib/account-deletion-handler.js && node --check lib/account-deletion.js && node --check lib/account-deletion-ui.js && node --check delete-account-page.js && node scripts/verify-account-deletion.mjs && node scripts/verify-security-migrations.mjs",
     "test:billing": "node --check lib/billing-store.js && node --check lib/stripe-test.js && node --check lib/pro-access.js && node --check lib/commercial-pro.js && node scripts/verify-stripe-test.mjs",
     "test:beta-activation": "node --check lib/beta-invitation-store.js && node --check lib/beta-activation-ui.js && node --check lib/beta-invitation-copy.js && node scripts/verify-beta-activation-atomic.mjs",

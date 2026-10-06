@@ -1,5 +1,8 @@
 import {readdir,readFile,writeFile,mkdir,cp,rm} from "node:fs/promises";
 import {build} from "esbuild";
+import {execFileSync} from "node:child_process";
+const sourceCommit=execFileSync("git",["rev-parse","--short=12","HEAD"],{encoding:"utf8"}).trim();
+if(!/^[a-f0-9]{12}$/.test(sourceCommit))throw new Error("Invalid source commit for native build");
 const out="mobile-dist";
 await rm(out,{recursive:true,force:true});await mkdir(out,{recursive:true});
 // Explicit public inputs: never copy api/, server modules, SQL, secrets or repository metadata.
@@ -24,6 +27,7 @@ await cp("mobile/native.css",`${out}/native.css`);
 for(const file of pages){
   let html=await readFile(file,"utf8");
   html=html.replace("<html ", '<html class="warboost-native" ');
+  html=html.replace("</head>",`<meta name="warboost-source-commit" content="${sourceCommit}"></head>`);
   html=html.replace("</head>",`<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://localhost capacitor://localhost; connect-src 'self' https://beta.warboost.fr https://*.supabase.co https://*.supabase.in; object-src 'none'; base-uri 'self'"><link rel="stylesheet" href="/native.css"><script type="module" src="/lib/mobile-runtime.js"></script></head>`);
   await writeFile(`${out}/${file}`,html);
 }

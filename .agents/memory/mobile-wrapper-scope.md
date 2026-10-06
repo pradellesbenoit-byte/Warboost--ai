@@ -5,10 +5,13 @@ description: User constraints for Capacitor preparation and separation of web/st
 
 Préparer Android/iOS avec Capacitor sans réécrire le web ni casser la PWA.
 L'identifiant proposé est fr.warboost.app, à valider avant soumission.
-Ne pas générer de clé de signature, certificat, provisioning, achat développeur ou soumission.
+Ne pas générer de clé de signature release, certificat iOS, provisioning, achat développeur ou soumission.
+Pour les APK de test demandés par l'utilisateur, la signature debug automatique et éphémère
+du runner est autorisée, mais aucun keystore n'est committé ou livré comme artifact.
 Les icônes/splash doivent provenir des assets WarBoost existants, jamais de Last War/FUNFLY.
 
-**Why:** L'utilisateur a explicitement limité la demande à la préparation des stores.
+**Why:** L'utilisateur a limité la préparation stores puis demandé explicitement un APK
+debug installable, avec interdiction de générer/committer un keystore release.
 
 **How to apply:** Continuer à travailler uniquement sur public-beta-safe-launch, sans push,
 déploiement ni changement de production ; distinguer projets générés, simulations et vrais builds.
