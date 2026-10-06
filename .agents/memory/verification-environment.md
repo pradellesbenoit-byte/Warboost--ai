@@ -29,3 +29,11 @@ renforcer les contrôles n'a pas supprimé automatiquement son signal.
 
 **How to apply:** Tester la traversée et les cibles de liens symboliques avec des fichiers synthétiques,
 documenter le signal résiduel et sa revue ; ne pas le masquer ou annoncer zéro alerte sans preuve.
+
+Un résultat positif Android de Capacitor Doctor ne prouve ni la présence du JDK/SDK ni
+la compilation native ; la synchronisation iOS peut réussir sous Linux sans Xcode.
+
+**Why:** La préparation des wrappers a obtenu ces résultats avec aucun outil de compilation natif disponible.
+
+**How to apply:** Distinguer cohérence/sync des projets, simulations et builds signés réellement produits,
+et vérifier explicitement le toolchain avant d'annoncer un AAB ou une archive iOS.

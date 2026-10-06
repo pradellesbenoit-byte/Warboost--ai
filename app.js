@@ -21,6 +21,7 @@ import {parseRosterImport,rosterNameKey} from "./lib/roster-import.js";
 import {applyRosterImportLifecycle,confirmRosterDeparture,restoreRosterReviewMember,removeActiveRosterMember,rosterLifecycleKey,currentActiveRosterMembers as lifecycleActiveRosterMembers,normalizeRosterRemovalTombstones} from "./lib/alliance-roster-lifecycle.js";
 import {repairSeasonState,seasonLifecycle,seasonIsActive,activeSeasonProgress} from "./lib/season-lifecycle.js";
 import {createWarBoostSupabaseAuthClient} from "./lib/browser-auth.js";
+import {isNativeWarBoost,mobileSessionStorage,configureMobileAuth} from "./lib/mobile-runtime.js";
 import {formatGearSummary} from "./lib/gear.js";
 import {ACTIVITY_EVENT_TYPES,PLAYER_ACTIVITY_EVENT_TYPES,activityEventId,mergeActivityEvents,confirmedActivityEvents,eventCountsByType,participationEventRecords,participationSummaryByType,parseParticipationImport} from "./lib/activity-events.js";
 import {AVAILABILITY_EVENT_TYPES,normalizeEventAvailability,mergeEventAvailabilities,mergeAvailabilityHistory,availabilityForMember,upsertEventAvailability} from "./lib/event-availability.js";
@@ -935,7 +936,8 @@ async function initCloudAuth(){
   cloudDataConfig={url:String(cfg.url||""),key:String(cfg.key||"")};
   cloudInit={status:"client-starting",configured:true,transport:"direct-supabase-auth-api",error:null};
   try{
-    cloud=createWarBoostSupabaseAuthClient({url:cfg.url,key:cfg.key,requestTimeoutMs:12000});
+    configureMobileAuth(cfg.url);
+    cloud=createWarBoostSupabaseAuthClient({url:cfg.url,key:cfg.key,requestTimeoutMs:12000,...(isNativeWarBoost?{storage:mobileSessionStorage}:{})});
   }catch(error){cloud=null;cloudInit={status:"client-error",configured:true,transport:"direct-supabase-auth-api",error:error?.code||"client_error"};renderAuth();renderBeta();return}
   try{
     const {data,error}=await cloud.auth.getSession();
@@ -3905,10 +3907,17 @@ $("#supportSubmitBtn")?.addEventListener("click",submitSupportTicket);
 $("#supportRefreshBtn")?.addEventListener("click",refreshSupportTickets);
 
 function proMessage(text,ok=false){const el=$("#proMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
-function renderCommercialPreview(){const box=$("#proCommercialPreview"),price=$("#commercialPreviewPrice"),note=$("#commercialPreviewNote");if(!box)return;box.classList.remove("hidden");if(price)price.textContent=formatProPrice(proState.plan||{amount:499,currency:"eur"});if(note)note.textContent=proState.mode==="test"?"STRIPE TEST uniquement — aucun paiement réel. Abonnement mensuel, renouvellement automatique, résiliation en fin de période dans le portail client. TVA, factures et CGV à finaliser avant toute vente réelle.":t("commercial_preview_note")}
+function renderCommercialPreview(){const box=$("#proCommercialPreview"),price=$("#commercialPreviewPrice"),note=$("#commercialPreviewNote");if(!box)return;if(isNativeWarBoost){box.classList.add("hidden");return}box.classList.remove("hidden");if(price)price.textContent=formatProPrice(proState.plan||{amount:499,currency:"eur"});if(note)note.textContent=proState.mode==="test"?"STRIPE TEST uniquement — aucun paiement réel. Abonnement mensuel, renouvellement automatique, résiliation en fin de période dans le portail client. TVA, factures et CGV à finaliser avant toute vente réelle.":t("commercial_preview_note")}
 function renderPro(){
   const pill=$("#proPill"),btn=$("#proActionBtn"),title=$("#proTitle"),price=$("#proPrice"),section=$("#proSection");
   if(!pill||!btn)return;
+  if(isNativeWarBoost){
+    $("#proCommercialPreview")?.classList.add("hidden");
+    btn.classList.add("hidden");$("#proPortalBtn")?.classList.add("hidden");
+    pill.textContent=proState.active?"PRO · BÊTA":"BÊTA";title.textContent="WarBoost PRO";
+    price.textContent=proState.active?"Accès PRO bêta conservé. Aucun paiement dans l’app.":"Abonnements mobiles non disponibles pendant la bêta.";
+    return;
+  }
   let portalBtn=$("#proPortalBtn");
   if(portalBtn&&!portalBtn.dataset.billingBound){portalBtn.addEventListener("click",()=>openProAction(true));portalBtn.dataset.billingBound="true"}
   if(portalBtn){portalBtn.classList.toggle("hidden",!proState.can_manage_billing||safeLaunchBetaMode()||Boolean(proState.subscription));portalBtn.disabled=!proState.test_payments_enabled}
@@ -3963,7 +3972,7 @@ $("#forgotPasswordBtn")?.addEventListener("click",async()=>{
   if(!email)return authMessage(t("password_reset_enter_email"));
   setAuthBusy(true);
   try{
-    const redirectTo=cloudRecoveryRedirect||new URL("/reset-password.html",location.origin).toString();
+    const redirectTo=isNativeWarBoost?"https://beta.warboost.fr/reset-password.html":cloudRecoveryRedirect||new URL("/reset-password.html",location.origin).toString();
     const {error}=await cloud.auth.resetPasswordForEmail(email,{redirectTo});
     if(error){authMessage(authFriendlyError(error));return}
     authMessage(t("password_reset_sent"),true);
@@ -4058,7 +4067,7 @@ window.addEventListener("pagehide",()=>{returnViewController?.capture();if(cloud
 const STARTUP_MODE_STORAGE_KEY="warboost-startup-mode";
 const STARTUP_SCAN_RESTORE_WAIT_MS=5000;
 let serviceWorkerUpdatePromise=Promise.resolve({ok:false,skipped:true});
-if("serviceWorker" in navigator){
+if("serviceWorker" in navigator&&!isNativeWarBoost){
   serviceWorkerUpdatePromise=new Promise(resolve=>{
     window.addEventListener("load",async()=>{
       try{

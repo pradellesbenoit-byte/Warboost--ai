@@ -1,0 +1,15 @@
+{
+  "appId": "fr.warboost.app",
+  "appName": "WarBoost",
+  "webDir": "mobile-dist",
+  "backgroundColor": "#090e1a",
+  "loggingBehavior": "none",
+  "server": {"hostname": "localhost", "androidScheme": "https", "cleartext": false, "allowNavigation": []},
+  "android": {"allowMixedContent": false, "webContentsDebuggingEnabled": false},
+  "ios": {"contentInset": "automatic", "preferredContentMode": "mobile"},
+  "plugins": {
+    "SplashScreen": {"launchShowDuration": 1200, "backgroundColor": "#090e1a", "showSpinner": false},
+    "StatusBar": {"style": "LIGHT", "backgroundColor": "#090e1a"},
+    "CapacitorHttp": {"enabled": false}
+  }
+}

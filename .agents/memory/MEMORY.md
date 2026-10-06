@@ -41,3 +41,4 @@
 - [Approved diagnostic scope](diagnostic-shop-scope.md) — preserve Diagnostic PRO style and priorities; Boutique IA is compact, contextual, and cautious about acquisitions.
 - [Mandatory Last War identity](mandatory-lastwar-identity.md) — gate incomplete beta profiles without changing invitations, roles or account isolation; canonical identity remains authoritative.
 - [Billing user boundaries](billing-user-boundaries.md) — existing testers keep free PRO; paid PRO never grants alliance roles; TEST approval is not LIVE approval.
+- [Mobile wrapper scope](mobile-wrapper-scope.md) — Capacitor reuses web/PWA; mobile sales OFF, Stripe web-only; no signing, submissions or production changes.

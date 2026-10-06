@@ -5,6 +5,11 @@
   "description": "WarBoost V2.5.32 HF8.6.34 — dated in-game shop observations and currency-aware acquisition guidance.",
   "type": "module",
   "scripts": {
+    "build": "node scripts/build-mobile-web.mjs",
+    "mobile:assets": "node scripts/generate-mobile-assets.mjs",
+    "mobile:sync": "npm run build && npx cap sync",
+    "mobile:doctor": "npx cap doctor",
+    "test:mobile-wrapper": "node --check lib/mobile-runtime.js && node scripts/verify-mobile-wrapper.mjs",
     "test:account-deletion": "node --check lib/account-deletion-handler.js && node --check lib/account-deletion.js && node --check lib/account-deletion-ui.js && node --check delete-account-page.js && node scripts/verify-account-deletion.mjs && node scripts/verify-security-migrations.mjs",
     "test:billing": "node --check lib/billing-store.js && node --check lib/stripe-test.js && node --check lib/pro-access.js && node --check lib/commercial-pro.js && node scripts/verify-stripe-test.mjs",
     "test:beta-activation": "node --check lib/beta-invitation-store.js && node --check lib/beta-activation-ui.js && node --check lib/beta-invitation-copy.js && node scripts/verify-beta-activation-atomic.mjs",
@@ -67,6 +72,20 @@
     "verify": "node scripts/verify-v2.5.28.mjs && node scripts/verify-v2.5.28-hf3.mjs && node scripts/verify-scan-reliability-v2.5.28.mjs && node scripts/verify-exclusive-scan-v2.5.28.mjs && node scripts/verify-activity-events-v2.5.28.mjs && node scripts/verify-support-v2.5.24.mjs && node scripts/verify-auth-recovery-v2.5.28.mjs && node scripts/verify-beta-invites-v2.5.28.mjs && node scripts/verify-invite-admin-api-v2.5.26.mjs && node scripts/verify-v2.5.28-hf4.mjs && node scripts/verify-v2.5.28-hf5.mjs && node scripts/verify-v2.5.28-hf6.mjs && node scripts/verify-v2.5.28-hf7.mjs && node scripts/verify-v2.5.28-hf8.mjs && node scripts/verify-v2.5.28-hf8-1.mjs && node scripts/verify-v2.5.28-hf8-2.mjs && node scripts/verify-v2.5.28-hf8-3.mjs && node scripts/verify-v2.5.28-hf8-4.mjs && node scripts/verify-v2.5.28-hf8-5.mjs && node scripts/verify-v2.5.28-hf8-5-final.mjs && node scripts/verify-v2.5.28-hf8-6.mjs && node scripts/verify-v2.5.28-hf8-6-1.mjs && node scripts/verify-v2.5.28-hf8-6-2.mjs && node scripts/verify-v2.5.28-hf8-6-3.mjs && node scripts/verify-v2.5.28-hf8-6-4.mjs && node scripts/verify-v2.5.28-hf8-6-5.mjs && node scripts/verify-v2.5.28-hf8-6-6.mjs && node scripts/verify-v2.5.28-hf8-6-7.mjs && node scripts/verify-v2.5.28-hf8-6-8.mjs && node scripts/verify-hf8-6-10.mjs && node scripts/verify-v2.5.28-hf8-6-11.mjs && node scripts/verify-v2.5.28-hf8-6-12.mjs && node scripts/verify-v2.5.28-hf8-6-13.mjs && node scripts/verify-v2.5.28-hf8-6-14.mjs && node scripts/verify-v2.5.28-hf8-6-15.mjs && node scripts/verify-v2.5.28-hf8-6-16.mjs && node scripts/verify-v2.5.28-hf8-6-17.mjs && node scripts/verify-v2.5.28-hf8-6-18.mjs && node scripts/verify-v2.5.28-hf8-6-19.mjs && node scripts/verify-v2.5.28-hf8-6-20.mjs && node scripts/verify-v2.5.28-hf8-6-21.mjs && node scripts/verify-v2.5.28-hf8-6-22.mjs && node scripts/verify-v2.5.28-hf8-6-23.mjs && node scripts/verify-v2.5.28-hf8-6-24.mjs && node scripts/verify-v2.5.28-hf8-6-25.mjs && node scripts/verify-v2.5.28-hf8-6-26.mjs && node scripts/verify-v2.5.28-hf8-6-27.mjs && node scripts/verify-v2.5.28-hf8-6-28.mjs && node scripts/verify-v2.5.28-hf8-6-28-integrity.mjs && node scripts/verify-rank-canonical-resolution.mjs && node scripts/verify-field-freshness.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8"
+    "@capacitor/cli": "8.4.3",
+    "@electric-sql/pglite": "^0.5.8",
+    "esbuild": "^0.28.2",
+    "sharp": "^0.35.5"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/camera": "^8.2.5",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4"
   }
 }
