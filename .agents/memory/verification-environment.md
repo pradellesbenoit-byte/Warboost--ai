@@ -20,3 +20,12 @@ The public beta hostname may be served outside the current Replit deployment. Wo
 **Why:** The current workspace can report no associated Replit deployment while the public beta continues serving an earlier release.
 
 **How to apply:** Treat workspace and public beta as separate until verified; after the actual hosting path is updated, confirm the public health endpoint reports the intended build before saying phones will receive it.
+
+Le scan statique générique de lecture de fichiers peut conserver une alerte HIGH malgré des
+contrôles de racine, de realpath et de liens symboliques effectivement vérifiés.
+
+**Why:** Le détecteur ne reconnaît pas nécessairement le résolveur validé comme frontière de nettoyage ;
+renforcer les contrôles n'a pas supprimé automatiquement son signal.
+
+**How to apply:** Tester la traversée et les cibles de liens symboliques avec des fichiers synthétiques,
+documenter le signal résiduel et sa revue ; ne pas le masquer ou annoncer zéro alerte sans preuve.

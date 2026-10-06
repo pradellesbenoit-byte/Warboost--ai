@@ -1,4 +1,5 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
+import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
 import {buildPlayerScanOptions,normalizePlayerScanType} from "./lib/player-scan-types.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
@@ -4015,6 +4016,28 @@ $("#resendOtpBtn")?.addEventListener("click",async()=>{
 $("#betaCodeActivateBtn")?.addEventListener("click",activateBetaCode);
 $("#betaAccessCode")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();activateBetaCode()}});
 $("#logoutBtn")?.addEventListener("click",async()=>{const signedOutUserId=String(cloudSession?.user?.id||"");if(signedOutUserId&&String(state?.player_id||"")===signedOutUserId)rememberAccountState(signedOutUserId,state);if(cloud)await cloud.auth.signOut();clearSignedOutAuthUi();cloudSession=null;cloudRevision=null;proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};betaState={...betaState,allowed:false,access_status:"sign-in-required"};render();renderAuth();renderBeta()});
+mountAccountDeletion({
+  getSession:()=>cloudSession,
+  onDeleting:()=>{suppressPush=true;clearTimeout(pushTimer);clearTimeout(cloudRetryTimer);cloudRetryTimer=null},
+  onFailure:()=>{suppressPush=false},
+  onDeleted:async(userId,localClean)=>{
+    if(cloudSession?.user?.id!==userId){
+      suppressPush=false;
+      return location.replace(`/delete-account.html?deleted=1${localClean?"":"&local_cleanup=required"}`);
+    }
+    // Reset memory before sign-out callbacks can save the removed profile again.
+    suppressPush=true;state=initialState();cloudDirty=false;cloudRevision=null;
+    await cloud?.auth.signOut({scope:"local"}).catch(()=>{});
+    cloudSession=null;
+    location.replace(`/delete-account.html?deleted=1${localClean?"":"&local_cleanup=required"}`);
+  }
+});
+if(new URLSearchParams(location.search).has("account")||new URLSearchParams(location.search).has("support")){
+  setTimeout(()=>{
+    if(new URLSearchParams(location.search).has("support")&&cloudSession?.user?.id)$("#supportBtn")?.click();
+    else openDrawer("account");
+  },600);
+}
 
 document.addEventListener("click",e=>{const btn=e.target.closest?.("[data-inline-hero-save]");if(!btn)return;e.preventDefault();e.stopPropagation();const container=btn.closest?.("[data-inline-confirm]");saveInlineHeroNames(btn.dataset.inlineHeroSave,container,btn)});
 document.addEventListener("click",e=>{const btn=e.target.closest?.(".heroConfirmAction[data-hero-confirm]");if(!btn)return;e.preventDefault();e.stopPropagation();startHeroConfirmation(btn.dataset.heroConfirm)});

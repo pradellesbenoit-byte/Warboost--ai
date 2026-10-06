@@ -3,6 +3,7 @@ import {requireUser} from "../lib/auth.js";
 import {betaAccessForUserAsync} from "../lib/beta-access.js";
 import {fetchWithTimeout} from "../lib/http-timeout.js";
 import {activateBetaInvitationAtomic,betaInvitationError} from "../lib/beta-invitation-store.js";
+import accountDeletionHandler from "../lib/account-deletion-handler.js";
 
 function pick(...names){for(const n of names){const v=process.env[n];if(typeof v==="string"&&v.trim())return v.trim()}return ""}
 const sbUrl=()=>pick("SUPABASE_URL","NEXT_PUBLIC_SUPABASE_URL","VITE_SUPABASE_URL").replace(/\/$/,"");
@@ -139,6 +140,10 @@ async function addInvites({emails,note,user}){
 }
 
 export default async function handler(req,res){
+  // Dedicated self-service actions, before beta/PRO/support gates. Existing actions stay unchanged.
+  if(["account_delete_prepare","account_delete_confirm"].includes(req.body?.action)){
+    return accountDeletionHandler({method:req.method,headers:req.headers,query:req.query,body:{...req.body,action:req.body.action==="account_delete_prepare"?"prepare":"delete"}},res);
+  }
   res.setHeader("Cache-Control","no-store");
   if(!configured())return res.status(503).json({error:"SUPPORT_NOT_CONFIGURED",message:"Le stockage support WarBoost n'est pas encore configuré."});
   try{

@@ -5,6 +5,7 @@
   "description": "WarBoost V2.5.32 HF8.6.34 — dated in-game shop observations and currency-aware acquisition guidance.",
   "type": "module",
   "scripts": {
+    "test:account-deletion": "node --check lib/account-deletion-handler.js && node --check lib/account-deletion.js && node --check lib/account-deletion-ui.js && node --check delete-account-page.js && node scripts/verify-account-deletion.mjs && node scripts/verify-security-migrations.mjs",
     "test:billing": "node --check lib/billing-store.js && node --check lib/stripe-test.js && node --check lib/pro-access.js && node --check lib/commercial-pro.js && node scripts/verify-stripe-test.mjs",
     "test:beta-activation": "node --check lib/beta-invitation-store.js && node --check lib/beta-activation-ui.js && node --check lib/beta-invitation-copy.js && node scripts/verify-beta-activation-atomic.mjs",
     "test:auth-beta-current": "node scripts/verify-auth-logout-v2.5.28.mjs && node scripts/verify-auth-recovery-v2.5.25.mjs && node scripts/verify-auth-recovery-v2.5.26.mjs && node scripts/verify-auth-recovery-v2.5.27.mjs && node scripts/verify-beta-invites-v2.5.26.mjs && node scripts/verify-beta-invites-v2.5.27.mjs",

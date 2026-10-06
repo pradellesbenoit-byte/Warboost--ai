@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WarBoost — Sécurité & confidentialité</title><link rel="stylesheet" href="/trust-pages.css"></head>
+<body><main>
+<nav aria-label="Navigation"><a href="/">WarBoost</a><a href="/privacy.html">Confidentialité</a><a href="/legal.html">Mentions</a><a href="/delete-account.html">Suppression du compte</a></nav>
+<h1>Sécurité & confidentialité</h1><p class="muted">Informations publiques, accessibles sans compte — mise à jour du 6 octobre 2026.</p>
+<div class="box"><strong>Ton compte Last War reste séparé de WarBoost.</strong><ul>
+<li>WarBoost ne demande jamais ton mot de passe Last War, ni un code de connexion au jeu.</li>
+<li>WarBoost n’accède pas directement à ton compte Last War.</li>
+<li>WarBoost n’utilise pas d’API Last War non autorisée, ni de scraping ou d’automatisation de gameplay.</li>
+<li>Les données de jeu enregistrées viennent de saisies, captures et confirmations volontairement fournies par toi ou les responsables d’alliance. Les résultats OCR non confirmés restent à vérifier.</li>
+</ul><p>Le mot de passe demandé à la connexion est celui de ton <strong>compte WarBoost</strong>, géré par Supabase. N’y réutilise pas ton mot de passe Last War.</p></div>
+<h2>Où vont les données ?</h2>
+<table><thead><tr><th>Sur ton appareil</th><th>Dans le cloud</th></tr></thead><tbody><tr>
+<td>Profil et sauvegardes locales par compte, préférences, consentement, session, cache de l’application et captures de scan en attente.</td>
+<td>Compte Supabase, profil synchronisé et historiques, roster partagé, liens d’alliance, invitations et droits d’accès, tickets et pièces jointes de support. Les autres joueurs ne reçoivent pas ton e-mail comme identité de roster.</td>
+</tr></tbody></table>
+<p>Les captures de scan en attente expirent après <strong>48 heures</strong> dans le stockage local : elles deviennent inutilisables et sont nettoyées lors d’un accès au stockage. Un navigateur fermé ne peut pas exécuter un nettoyage à heure fixe. Les images brutes de scan ne sont pas enregistrées dans le profil cloud WarBoost. Les captures de support sont différentes : elles restent dans un bucket privé jusqu’à leur suppression ou celle du compte.</p>
+<h2>Fournisseurs techniques</h2>
+<ul><li><strong>Supabase</strong> : authentification, base de données et stockage privé du support.</li><li><strong>OpenAI</strong> : analyse des captures et fonctions IA qui l’utilisent ; le contenu envoyé est traité selon les règles de conservation du fournisseur. WarBoost ne promet pas une rétention nulle chez OpenAI.</li><li><strong>Vercel / Replit</strong> : environnement d’hébergement et de développement selon l’environnement utilisé, avec journaux techniques.</li><li><strong>Stripe</strong> : préparation TEST seulement, si activée. Cette passe ne change aucun paiement ; pas d’accès au compte Last War.</li></ul>
+<h2>Tes choix et tes droits</h2>
+<p>Tu peux corriger les champs de jeu et confirmer les résultats de scan. L’export JSON disponible dans l’application couvre ton état de jeu ; pour un export complet du compte ou une correction inaccessible, utilise le <a href="/?support=1">Service client WarBoost</a>. Retirer le consentement bloque les nouveaux envois depuis cet appareil, sans effacer rétroactivement les données cloud.</p>
+<p>Le compte propose <strong>« Supprimer mon compte et mes données »</strong> avec deux confirmations. Consulte la <a href="/delete-account.html">page publique de suppression</a> pour les étapes, les exceptions et le support.</p>
+<h2>Protection et limites</h2>
+<p>Les opérations personnelles utilisent l’identité authentifiée côté serveur. Les droits Alliance sont vérifiés séparément des droits PRO. Ces mesures réduisent les risques mais ne garantissent pas une sécurité absolue. Évite d’envoyer des captures contenant des conversations privées, coordonnées ou identifiants.</p>
+<p>WarBoost est un compagnon indépendant, <strong>non affilié, non sponsorisé et non approuvé par Last War ou FUNFLY</strong>.</p>
+<footer><a href="/privacy.html">Politique détaillée et conservation</a> · <a href="/legal.html">Mentions & indépendance</a></footer>
+</main></body></html>
