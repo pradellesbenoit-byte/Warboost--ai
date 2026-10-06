@@ -9,7 +9,10 @@ soumission, achat de compte, certificat ou clé de signature dans cette passe.
   Identifiant proposé conformément au domaine, **À VALIDER** (propriété du domaine,
   disponibilité et comptes développeurs) avant première soumission.
 - Capacitor 8, Android + iOS, sans réécriture. `app.js` et ses modules restent la source
-  de vérité. `npm run build` produit `mobile-dist` depuis les fichiers publics existants.
+  de vérité. `npm run build:mobile` produit `mobile-dist` depuis les fichiers publics existants.
+  `npm run mobile:sync` utilise ce build natif avant la synchronisation Capacitor.
+  Le build web (`npm run build` / `npm run build:web`) produit séparément `web-dist`,
+  déclaré dans `vercel.json`, sans adaptations natives et avec la PWA originale.
   Aucun serveur, SQL, secret, fichier Git ou module serveur Supabase dans le bundle.
 - **Assets embarqués**, pas de `server.url`, pas de navigation distante dans la WebView.
   API WarBoost exclusivement `https://beta.warboost.fr/api/*` ; Auth/REST uniquement le

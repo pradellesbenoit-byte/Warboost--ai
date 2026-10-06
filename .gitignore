@@ -1,4 +1,5 @@
 node_modules/
+web-dist/
 mobile-dist/
 android/.gradle/
 android/local.properties

@@ -23,3 +23,12 @@ proposé par le natif tant que StoreKit / Google Play Billing ne sont pas intég
 
 **How to apply:** Préserver les droits PRO des testeurs et l'indépendance des rangs Alliance.
 Ne pas confondre suppression du compte et résiliation d'un abonnement externe.
+
+La sortie de publication web doit rester distincte du bundle natif, même si les deux
+utilisent les mêmes sources.
+
+**Why:** Le build mobile transforme les pages et désactive les comportements réservés
+au web ; l'utiliser comme sortie Vercel risquerait de modifier la bêta/PWA.
+
+**How to apply:** Vérifier les deux builds et garder la synchronisation Capacitor liée
+au build natif lors des modifications des commandes de publication.
