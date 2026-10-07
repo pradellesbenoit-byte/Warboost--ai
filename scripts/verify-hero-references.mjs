@@ -14,8 +14,8 @@ let checks=0;
 const test=(label,fn)=>{fn();checks++;console.log(`PASS ${label}`)};
 const visual=(ref,score=.95)=>({portrait:{candidate_name:ref.canonicalName,variant:ref.variant,
   reference_id:ref.id,confidence:score,visible_features:["visible distinctive hair/helmet","visible distinctive facial detail"]}});
-test("52 actual local references and four complete, private, hash-checked atlases",()=>{
-  assert.equal(bank.available,true);assert.equal(bank.references.length,52);assert.equal(bank.atlases.length,4);
+test("58 actual local references and four complete, private, hash-checked atlases",()=>{
+  assert.equal(bank.available,true);assert.equal(bank.references.length,58);assert.equal(bank.atlases.length,4);
   assert.deepEqual(new Set(bank.references.map(r=>r.id)),new Set(HERO_REFERENCE_INDEX.map(r=>r.id)));
   assert.ok(bank.atlases.every(a=>a.imageUrl.startsWith("data:image/jpeg;base64,")));
 });
@@ -28,8 +28,8 @@ for(const hero of HERO_DEFINITIONS){
     assert.ok(thumb.width>=70&&thumb.height>=70);
     for(const ref of refs){
       const host=new URL(ref.sourceImage).hostname;
-      assert.ok(["www.lastwar.com","lastwar.wiki","static.wikia.nocookie.net"].includes(host));
-      assert.equal(ref.status,"verified");assert.equal(ref.variant,"normal");
+       assert.ok(["www.lastwar.com","lastwar.wiki","static.wikia.nocookie.net","cpt-hedge.com"].includes(host));
+       assert.equal(ref.status,"verified");
       if(hashes.has(ref.sha256))assert.equal(hashes.get(ref.sha256),hero.name);
       hashes.set(ref.sha256,hero.name);
       const found=recognizeHeroIdentity(visual(ref),bank.references);
@@ -40,12 +40,36 @@ for(const hero of HERO_DEFINITIONS){
     }
   });
 }
-test("all 40 researched upgrade contexts remain absent, not invented",()=>{
-  assert.equal(manifest.unverifiedVariants.length,40);
+test("only the 18 still-unattested requested upgrade contexts remain absent",()=>{
+  assert.equal(manifest.unverifiedVariants.length,18);
   assert.ok(manifest.unverifiedVariants.every(r=>r.status==="unverified"&&r.file===null));
-  assert.equal(manifest.unverifiedVariants.filter(r=>r.variant==="awakening").length,3);
-  assert.equal(manifest.unverifiedVariants.filter(r=>r.variant==="ssr_to_ur").length,6);
+  assert.equal(manifest.unverifiedVariants.filter(r=>r.variant==="awakening").length,0);
+  assert.equal(manifest.unverifiedVariants.filter(r=>r.variant==="ssr_to_ur").length,3);
+  assert.equal(manifest.unverifiedVariants.filter(r=>r.variant==="exclusive_weapon").length,15);
+  assert.ok(manifest.unverifiedVariants.every(r=>!bank.references.some(x=>x.canonicalName===r.name&&x.variant===r.variant)));
 });
+for(const ref of manifest.references.filter(r=>r.variant!=="normal")){
+  test(`${ref.canonicalName} ${ref.variant}: real cropped variant maps to the same hero, never to a new identity`,()=>{
+    assert.ok(ref.variantEvidence&&ref.visualChange&&ref.comparisonSource);
+    assert.match(ref.sourceSha256,/^[a-f0-9]{64}$/);
+    assert.equal(ref.transformation.type,"unaltered_rectangular_crop");
+    assert.equal(ref.width,ref.transformation.width);assert.equal(ref.height,ref.transformation.height);
+    const observation=recognizeHeroIdentity(visual(ref),bank.references);
+    assert.equal(observation.name,ref.canonicalName);
+    assert.equal(observation.evidence.portrait.variant,ref.variant);
+    assert.equal(observation.evidence.portrait.reference_verified,true);
+    assert.equal(observation.evidence.portrait.match_verified,false);
+    assert.equal(observation.evidence.requires_confirmation,true);
+    assert.equal(recognizeHeroIdentity(visual(ref,.4),bank.references).name,null);
+    const changed={...visual(ref).portrait,variant:"normal"};
+    assert.equal(recognizeHeroIdentity({portrait:changed},bank.references).evidence.portrait.reference_verified,false);
+    const conflicting=recognizeHeroIdentity({...visual(ref),name_text:"Murphy",name_evidence:"visible_text",name_confidence:.99},bank.references);
+    assert.equal(conflicting.name,null);
+    const saved=sanitize({squads:[{heroes:[visual(ref)]}]},"2026-10-07T00:00:00Z","squad1",[],bank.references);
+    assert.equal(saved.squads[0].heroes[0].name,ref.canonicalName);
+    assert.equal(saved.squads[0].heroes[0].scan_evidence.identity.requires_confirmation,true);
+  });
+}
 test("provider flags, unknown IDs, cross-hero IDs and mismatched variants never grant reference verification",()=>{
   const ref=bank.references.find(r=>r.canonicalName==="DVA");
   assert.equal(recognizeHeroIdentity({...visual(ref),reference_verified:true}).evidence.portrait.reference_verified,false);
@@ -74,6 +98,8 @@ const content=heroReferenceRequestContent(bank);
 test("actual reference bytes are attached and labels cannot be used as capture OCR or gameplay values",()=>{
   assert.equal(content.filter(x=>x.type==="input_image").length,4);
   assert.match(content[0].text,/not a player capture/);assert.match(content[0].text,/Never extract power/);
+  assert.match(content[0].text,/NEVER infer that the scanned player owns Awakening/);
+  assert.match(content[0].text,/new_appearance_preview/);assert.match(content[0].text,/promotion_preview/);
   for(const hero of HERO_DEFINITIONS)assert.ok(content[0].text.includes(hero.name));
   assert.deepEqual(heroReferenceRequestContent({available:false}),[]);
 });

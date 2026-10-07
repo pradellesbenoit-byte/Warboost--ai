@@ -26,9 +26,11 @@ existent pour chacun des 31 héros. Leur disponibilité et leurs références re
 `unverified` tant qu’une capture/source fiable ne les documente pas.
 
 Les SVG actuels sont des illustrations WarBoost, PAS des références Last War.
-Une banque privée contient désormais **52 images sources pour les 31 héros** :
+Une banque privée contient désormais **58 références pour les 31 héros** :
 5 visuels nommés du site officiel, 16 images de pages héros `lastwar.wiki` et
-31 vignettes du tableau Heroes de Fandom. L’identité a été contrôlée par le
+31 vignettes du tableau Heroes de Fandom, plus **six recadrages de captures de
+jeu nommées** publiées par Cpt Hedgehog : Awakening de Kimberly/DVA/Tesla
+et promotions UR de Sarah/Venom/Braz. L’identité a été contrôlée par le
 nom de la page/ligne, le libellé de l’image et une comparaison visuelle des
 planches. Les images réinterprétées trouvées sur un site complémentaire ont
 été rejetées, pas importées. Voir [l’audit détaillé](HERO_REFERENCE_AUDIT.md).
@@ -75,9 +77,12 @@ le prompt, les sélecteurs et le matching de texte. Ajouter un contexte à
 Cela n’invente pas de référence vérifiée pour un nouveau héros. Après revue des
 images sources, compléter les données déclaratives de `lib/hero-reference-index.js`
 et importer les fichiers via `scripts/build-hero-reference-assets.mjs`. Une
-variante attestée utilise `reviewedVariants` ; les planches et leur chargement
+variante attestée utilise `reviewedVariants` ; l’import incrémental
+`--append-reviewed chemin/vers/candidats-revus.json` refuse de remplacer une
+référence existante et demande des preuves de variante/changement visuel.
+Les planches et leur chargement
 s’adaptent au nombre de références sans réécrire le comparateur.
-Les originaux, sources, variantes, dimensions, empreintes SHA-256 et statuts
+Les fichiers, sources, variantes, dimensions, empreintes SHA-256 et statuts
 sont conservés dans `research/hero-references/manifest.json`. Le chargeur serveur
 vérifie la banque avant de joindre quatre planches légendées à la requête OpenAI
 existante. Les images sont distinctes des captures du joueur. Il n’y a ni appel
@@ -100,3 +105,9 @@ il reste à obtenir des captures autorisées et à mesurer chaque apparence rée
 Les références ajoutent des tokens image dans la requête existante ; coût et
 latence doivent être mesurés avec de vraies captures. Aucun droit d’usage ou
 accord officiel Last War/FUNFLY n’est accordé par cet import.
+
+L’audit des variantes se trouve dans [HERO_VARIANT_AUDIT.md](HERO_VARIANT_AUDIT.md).
+Une illustration/tuile « New Appearance » ou « Hero Promotion UR » est une
+référence d’apparence, jamais la preuve que le joueur scanné possède cette
+évolution. On ne déduit pas le niveau EW, la rareté ou l’Awakening du joueur
+à partir de la variante reconnue.

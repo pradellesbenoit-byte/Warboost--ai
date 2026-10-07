@@ -4,9 +4,12 @@
 
 31/31 héros possèdent une vignette réelle de jeu nommée, récupérée depuis
 le tableau public [Heroes de Fandom](https://last-war-survival.fandom.com/wiki/Heroes).
-52 fichiers sources au total, environ 2 Mo avec manifeste et quatre planches.
-Les pixels sources sont conservés tels que reçus ; les planches utilisent seulement
+58 références au total : 52 fichiers sources de base et six recadrages de
+captures réelles attestant des variantes. Les quatre planches utilisent seulement
 redimensionnement proportionnel, fond et légende. Pas de génération ou retouche IA.
+Les originaux de base restent inchangés. Les nouvelles références sont des
+rectangles de pixels originaux : URL, empreinte de la capture et coordonnées
+du recadrage sont conservées, sans chats ou identité de joueur dans le cadre.
 
 « Vérifié » signifie **association image–identité contrôlée**, pas précision
 de reconnaissance garantie, licence de reproduction ou affiliation officielle.
@@ -73,18 +76,20 @@ Schuyler conserve la clé historique interne Skyler. Blaz reste l’alias déjà
 existant de Braz. Il n’est pas créé de nouveau héros à partir de ces différences
 de noms. **Aucun héros sans référence de base récupérée.**
 
-## Variantes non activées
+## Variantes attestées et variantes non activées
 
-- Awakening : Kimberly, DVA, Tesla.
-- Portrait de promotion SSR→UR : Mason, Violet, Scarlett, Sarah, Venom, Braz.
+- Awakening : Kimberly, DVA et Tesla ont chacune une référence attestée.
+- Promotion SSR→UR : Sarah, Venom et Braz ont chacune une référence attestée.
+- Promotion SSR→UR encore absente : Mason, Violet, Scarlett.
 - Portrait physiquement différent à l’arme exclusive niveau 30 : aucun
   changement de portrait n’a été suffisamment attesté pour être activé.
 
-Les pages et guides publics consultés mentionnent des promotions/armes/éveils,
-mais leur existence n’associe pas à elle seule une image précise à une variante.
-Les emplacements de recherche des 31 héros pour l’arme exclusive ne prétendent
-pas que chacun dispose de cette arme ou change effectivement d’apparence.
-Ces statuts restent `unverified`, avec `file: null`. Aucun portrait normal n’est
+Voir [l’audit héros par héros et les sources exactes](HERO_VARIANT_AUDIT.md).
+La recherche EW est limitée aux **15 héros indiqués par l’utilisateur**. Les
+captures EW examinées montrent principalement le véhicule, pas le visage.
+Les 18 contextes encore absents restent `unverified`, avec `file: null`.
+Cela signifie « portrait distinct non attesté dans les sources examinées »,
+pas « cette évolution n’existe pas dans le jeu ». Aucun portrait normal n’est
 dupliqué sous une fausse étiquette de variante.
 
 Les illustrations générées trouvées dans la recherche et les portraits réalistes

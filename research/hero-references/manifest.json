@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-10-07T17:13:00.640Z",
+  "reviewedAt": "2026-10-07T17:55:44.005Z",
   "references": [
     {
       "id": "adam.normal.lastwarwiki",
@@ -1093,30 +1093,201 @@
       "verification": "named_source_and_visual_review",
       "variantEvidence": "Base portrait published in the named hero section; no claim about weapon level or promotion.",
       "rightsStatus": "not_licensed_by_this_manifest"
+    },
+    {
+      "id": "kimberly.awakening.cpthedgehog",
+      "canonicalName": "Kimberly",
+      "displayName": "Kimberly",
+      "variant": "awakening",
+      "status": "verified",
+      "sourcePage": "https://cpt-hedge.com/guides/hero-awakening",
+      "sourceName": "Kimberly",
+      "sourceImage": "https://cpt-hedge.com/images/guides/hero-awakening/awakening-unlocked.webp",
+      "sourceLabel": "Kimberly awakening",
+      "sourceKind": "named_community_game_screenshot",
+      "sourceEvidence": "Awakening Unlocked screen, identified as the Kimberly example by the guide; corroborated by named Kimberly unlock page.",
+      "file": "images/kimberly.awakening.cpthedgehog.png",
+      "sha256": "2826d055e4cd57ac9745787a319256948213349e7e6315cc9af35d78e3fc0c2d",
+      "bytes": 590991,
+      "width": 850,
+      "height": 890,
+      "verification": "named_source_and_visual_review",
+      "variantEvidence": "Awakening Unlocked screen, identified as the Kimberly example by the guide; corroborated by named Kimberly unlock page.",
+      "visualChange": "Blue short jacket, white strapped crop top, red gloves and gold rifle; unlike the base light-blue shirt.",
+      "comparisonSource": "https://lastwar.wiki/heroes/kimberly/",
+      "sourceSha256": "a44afda66e25b98848cb82afad2c04190dd27e920f32aa709beb14e6d89918f2",
+      "transformation": {
+        "type": "unaltered_rectangular_crop",
+        "x": 240,
+        "y": 40,
+        "width": 850,
+        "height": 890
+      },
+      "imageRole": "hero_illustration",
+      "rightsStatus": "not_licensed_by_this_manifest"
+    },
+    {
+      "id": "dva.awakening.cpthedgehog",
+      "canonicalName": "DVA",
+      "displayName": "DVA",
+      "variant": "awakening",
+      "status": "verified",
+      "sourcePage": "https://cpt-hedge.com/guides/season-6-dva-awakening",
+      "sourceName": "DVA",
+      "sourceImage": "https://cpt-hedge.com/images/guides/s6-dva-awakening/dva-awakening-unlock.webp",
+      "sourceLabel": "DVA awakening",
+      "sourceKind": "named_community_game_screenshot",
+      "sourceEvidence": "Named Blade Striker / DVA screenshot; only the tile explicitly labelled New Appearance is cropped, NOT the large pre-unlock model.",
+      "file": "images/dva.awakening.cpthedgehog.png",
+      "sha256": "17f46d04b2d4380a1523d5b77ca60966fb13421d0d637ed69163b9132dc1d04b",
+      "bytes": 43420,
+      "width": 163,
+      "height": 165,
+      "verification": "named_source_and_visual_review",
+      "variantEvidence": "Named Blade Striker / DVA screenshot; only the tile explicitly labelled New Appearance is cropped, NOT the large pre-unlock model.",
+      "visualChange": "Raised blue/pale collar in the new-appearance preview instead of the base black tactical jacket collar. Face/hair similarities are retained, not used to fabricate an identity.",
+      "comparisonSource": "https://www.lastwar.com/en/home.html",
+      "sourceSha256": "ae353bf1d9943529cdc26c8274aaedd8698ad0a6b29cc0148873a56c1fc55d57",
+      "transformation": {
+        "type": "unaltered_rectangular_crop",
+        "x": 300,
+        "y": 1575,
+        "width": 163,
+        "height": 165
+      },
+      "imageRole": "new_appearance_preview",
+      "rightsStatus": "not_licensed_by_this_manifest"
+    },
+    {
+      "id": "tesla.awakening.cpthedgehog",
+      "canonicalName": "Tesla",
+      "displayName": "Tesla",
+      "variant": "awakening",
+      "status": "verified",
+      "sourcePage": "https://cpt-hedge.com/guides/season-6-tesla-awakening",
+      "sourceName": "Tesla",
+      "sourceImage": "https://cpt-hedge.com/images/guides/s6-tesla-awakening/tesla-awakened-stats.webp",
+      "sourceLabel": "Tesla awakening",
+      "sourceKind": "named_community_game_screenshot",
+      "sourceEvidence": "Named Volt Traveler / Tesla screenshot on the Awakening tab, with awakened star and upgrade stats; guide explicitly identifies the awakened screen.",
+      "file": "images/tesla.awakening.cpthedgehog.png",
+      "sha256": "27d8131fa3ffd6369470f01e6f0b4173d5eff2fcca6d822e45c3e73dc4712b22",
+      "bytes": 571737,
+      "width": 770,
+      "height": 640,
+      "verification": "named_source_and_visual_review",
+      "variantEvidence": "Named Volt Traveler / Tesla screenshot on the Awakening tab, with awakened star and upgrade stats; guide explicitly identifies the awakened screen.",
+      "visualChange": "Transparent protective glasses, light rolled-up sleeves, green tie and fingerless gloves with blue electrical effects. Base illustration has no transparent glasses.",
+      "comparisonSource": "https://lastwar.wiki/heroes/tesla/",
+      "sourceSha256": "bd6b4e574ad95767e86f3b92fdd0053425b154a9841039541950d68be6bf4384",
+      "transformation": {
+        "type": "unaltered_rectangular_crop",
+        "x": 350,
+        "y": 550,
+        "width": 770,
+        "height": 640
+      },
+      "imageRole": "hero_illustration",
+      "rightsStatus": "not_licensed_by_this_manifest"
+    },
+    {
+      "id": "sarah.ssrtour.cpthedgehog",
+      "canonicalName": "Sarah",
+      "displayName": "Sarah",
+      "variant": "ssr_to_ur",
+      "status": "verified",
+      "sourcePage": "https://cpt-hedge.com/guides/season-4-sarah-ur-promotion",
+      "sourceName": "Sarah",
+      "sourceImage": "https://cpt-hedge.com/images/guides/s4-sarah-promotion/sarah-ur-phantom-shot.webp",
+      "sourceLabel": "Sarah ssr_to_ur",
+      "sourceKind": "named_community_game_screenshot",
+      "sourceEvidence": "Hero Promotion UR / Machinegun Phantom / Sarah are visible in the source screenshot; Promoted button also visible.",
+      "file": "images/sarah.ssrtour.cpthedgehog.png",
+      "sha256": "00069fccad7157da762cdc9edd9edf10e934fda3ace4e1805dba240879afcf51",
+      "bytes": 494695,
+      "width": 680,
+      "height": 880,
+      "verification": "named_source_and_visual_review",
+      "variantEvidence": "Hero Promotion UR / Machinegun Phantom / Sarah are visible in the source screenshot; Promoted button also visible.",
+      "visualChange": "Dark/gold face mask, purple scarf and black sleeveless outfit; base named thumbnail has an uncovered face and pale collar.",
+      "comparisonSource": "https://last-war-survival.fandom.com/wiki/Heroes",
+      "sourceSha256": "c604b471dc440d02aae3e13ff439caabc9b6dbb06707e5f7232bc4300253a2cd",
+      "transformation": {
+        "type": "unaltered_rectangular_crop",
+        "x": 420,
+        "y": 940,
+        "width": 680,
+        "height": 880
+      },
+      "imageRole": "promotion_preview",
+      "rightsStatus": "not_licensed_by_this_manifest"
+    },
+    {
+      "id": "venom.ssrtour.cpthedgehog",
+      "canonicalName": "Venom",
+      "displayName": "Venom",
+      "variant": "ssr_to_ur",
+      "status": "verified",
+      "sourcePage": "https://cpt-hedge.com/guides/season-5-venom-ur-promotion",
+      "sourceName": "Venom",
+      "sourceImage": "https://cpt-hedge.com/images/guides/s5-venom-promotion/venom-ur-corrosive-shot.webp",
+      "sourceLabel": "Venom ssr_to_ur",
+      "sourceKind": "named_community_game_screenshot",
+      "sourceEvidence": "Hero Promotion UR / Acid Surge / Venom are visible in source; SSR screenshot on same guide independently verifies before-state. This is a UR preview, not proof that this player promoted.",
+      "file": "images/venom.ssrtour.cpthedgehog.png",
+      "sha256": "c7cca73bb93000cd0df8ba558a6857099434fdfef46f7614883b248ece30376a",
+      "bytes": 548536,
+      "width": 565,
+      "height": 970,
+      "verification": "named_source_and_visual_review",
+      "variantEvidence": "Hero Promotion UR / Acid Surge / Venom are visible in source; SSR screenshot on same guide independently verifies before-state. This is a UR preview, not proof that this player promoted.",
+      "visualChange": "Wide cowboy hat, green scarf/cape, brown holsters and dual revolvers; SSR screenshot has no hat and a green jacket.",
+      "comparisonSource": "https://cpt-hedge.com/images/guides/s5-venom-promotion/venom-ssr-energy-bullet.webp",
+      "sourceSha256": "12e45d9d317f63c3828dd3d88d24910d645b869b979346c968a29583989298d3",
+      "transformation": {
+        "type": "unaltered_rectangular_crop",
+        "x": 290,
+        "y": 470,
+        "width": 565,
+        "height": 970
+      },
+      "imageRole": "promotion_preview",
+      "rightsStatus": "not_licensed_by_this_manifest"
+    },
+    {
+      "id": "braz.ssrtour.cpthedgehog",
+      "canonicalName": "Braz",
+      "displayName": "Braz",
+      "variant": "ssr_to_ur",
+      "status": "verified",
+      "sourcePage": "https://cpt-hedge.com/guides/season-6-braz-ur-promotion",
+      "sourceName": "Braz",
+      "sourceImage": "https://cpt-hedge.com/images/guides/s6-braz-promotion/s6-braz-ur-rocket-blast.webp",
+      "sourceLabel": "Braz ssr_to_ur",
+      "sourceKind": "named_community_game_screenshot",
+      "sourceEvidence": "Hero Promotion UR / Blaster / Braz are visible in source; SSR screenshot on same guide independently verifies before-state. This is a UR preview, not proof that this player promoted.",
+      "file": "images/braz.ssrtour.cpthedgehog.png",
+      "sha256": "cf8ac5052569e215a2c811c100acc827b8678abb4e7beb828238020e53142432",
+      "bytes": 437457,
+      "width": 620,
+      "height": 730,
+      "verification": "named_source_and_visual_review",
+      "variantEvidence": "Hero Promotion UR / Blaster / Braz are visible in source; SSR screenshot on same guide independently verifies before-state. This is a UR preview, not proof that this player promoted.",
+      "visualChange": "Sleeveless dark armour, exposed tattooed arms, patterned brown/gold forearm guards; SSR screenshot wears green sleeves and pale shoulder plates.",
+      "comparisonSource": "https://cpt-hedge.com/images/guides/s6-braz-promotion/s6-braz-ssr-rocket-spread.webp",
+      "sourceSha256": "4f0b0950f39548e3e346fb1ace5e5743c7e4a26c4786858f00676ef0527f6fab",
+      "transformation": {
+        "type": "unaltered_rectangular_crop",
+        "x": 225,
+        "y": 740,
+        "width": 620,
+        "height": 730
+      },
+      "imageRole": "promotion_preview",
+      "rightsStatus": "not_licensed_by_this_manifest"
     }
   ],
   "unverifiedVariants": [
-    {
-      "name": "Kimberly",
-      "variant": "awakening",
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "DVA",
-      "variant": "awakening",
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Tesla",
-      "variant": "awakening",
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
     {
       "name": "Mason",
       "variant": "ssr_to_ur",
@@ -1139,60 +1310,7 @@
       "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
     },
     {
-      "name": "Sarah",
-      "variant": "ssr_to_ur",
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Venom",
-      "variant": "ssr_to_ur",
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Braz",
-      "variant": "ssr_to_ur",
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Adam",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Ambolt",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Braz",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Cage",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Carlie",
+      "name": "Kimberly",
       "variant": "exclusive_weapon",
       "level": 30,
       "status": "unverified",
@@ -1208,111 +1326,7 @@
       "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
     },
     {
-      "name": "Elsa",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Farhad",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Fiona",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Gump",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Kane",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Kimberly",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Loki",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Lucius",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Marshall",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Mason",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Maxwell",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "McGregor",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Monica",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Morrison",
+      "name": "Tesla",
       "variant": "exclusive_weapon",
       "level": 30,
       "status": "unverified",
@@ -1328,39 +1342,7 @@
       "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
     },
     {
-      "name": "Richard",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Sarah",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Scarlett",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Skyler",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Stetmann",
+      "name": "Carlie",
       "variant": "exclusive_weapon",
       "level": 30,
       "status": "unverified",
@@ -1376,7 +1358,7 @@
       "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
     },
     {
-      "name": "Tesla",
+      "name": "Marshall",
       "variant": "exclusive_weapon",
       "level": 30,
       "status": "unverified",
@@ -1384,7 +1366,7 @@
       "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
     },
     {
-      "name": "Venom",
+      "name": "Skyler",
       "variant": "exclusive_weapon",
       "level": 30,
       "status": "unverified",
@@ -1392,7 +1374,23 @@
       "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
     },
     {
-      "name": "Violet",
+      "name": "McGregor",
+      "variant": "exclusive_weapon",
+      "level": 30,
+      "status": "unverified",
+      "file": null,
+      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
+    },
+    {
+      "name": "Lucius",
+      "variant": "exclusive_weapon",
+      "level": 30,
+      "status": "unverified",
+      "file": null,
+      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
+    },
+    {
+      "name": "Adam",
       "variant": "exclusive_weapon",
       "level": 30,
       "status": "unverified",
@@ -1406,6 +1404,30 @@
       "status": "unverified",
       "file": null,
       "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
+    },
+    {
+      "name": "Stetmann",
+      "variant": "exclusive_weapon",
+      "level": 30,
+      "status": "unverified",
+      "file": null,
+      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
+    },
+    {
+      "name": "Morrison",
+      "variant": "exclusive_weapon",
+      "level": 30,
+      "status": "unverified",
+      "file": null,
+      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
+    },
+    {
+      "name": "Fiona",
+      "variant": "exclusive_weapon",
+      "level": 30,
+      "status": "unverified",
+      "file": null,
+      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
     }
   ],
   "sourceAudit": {
@@ -1414,7 +1436,10 @@
     "lastwarWiki": "Sixteen named base hero images recovered; remaining individual hero URLs did not provide portraits.",
     "lastwarVault": "Named hero pages/season guides consulted; no usable named portrait images found. Restricted guide content was not accessed.",
     "fandom": "Thirty-one named game thumbnails recovered from the public Heroes table; standard browser Referer is required by its image CDN.",
-    "excluded": "AI search illustrations and reinterpreted lastwar-guide.org portraits were rejected; none imported."
+    "excluded": "AI search illustrations and reinterpreted lastwar-guide.org portraits were rejected; none imported.",
+    "cptHedgehogVariants": "6 named game screenshot references visually reviewed; unaltered rectangular crops only. Exact identity/variant/source/crop proof retained per reference.",
+    "exclusiveWeaponScope": "Only the fifteen requested EW owners were researched. Vehicle upgrades are not hero-portrait evidence; none activated as EW30.",
+    "variantAudit": "docs/HERO_VARIANT_AUDIT.md"
   },
   "atlases": [
     {
@@ -1494,14 +1519,20 @@
     {
       "id": "supplementary-2",
       "file": "atlases/supplementary-2.jpg",
-      "sha256": "45ec952d58945b8fe9586435fa18e898f93bd336174a0a2dbfcdf04cabbd1a3a",
-      "bytes": 49422,
+      "sha256": "ebc7c5201349cc8ea891ba5dc997eb78e0b129a141749218b9fe6aa2c4b75e0a",
+      "bytes": 123995,
       "referenceIds": [
         "swift.normal.lastwarwiki",
         "tesla.normal.lastwarwiki",
         "violet.normal.official",
         "violet.normal.lastwarwiki",
-        "williams.normal.lastwarwiki"
+        "williams.normal.lastwarwiki",
+        "kimberly.awakening.cpthedgehog",
+        "dva.awakening.cpthedgehog",
+        "tesla.awakening.cpthedgehog",
+        "sarah.ssrtour.cpthedgehog",
+        "venom.ssrtour.cpthedgehog",
+        "braz.ssrtour.cpthedgehog"
       ],
       "transformation": "Aspect-preserving resize, letterbox and source-ID label only; originals retained unchanged."
     }

@@ -47,7 +47,7 @@ for(const hero of HERO_RECOGNITION_LIBRARY){
       assert.equal(combined.name,hero.canonicalName);assert.equal(combined.evidence.identity.tier,"strong");
     }
     assert.ok(hero.appearances.find(a=>a.id==="normal").references.length>0);
-    assert.ok(hero.appearances.filter(a=>a.id!=="normal").every(a=>a.availability==="unverified"&&!a.references.length));
+    assert.ok(hero.appearances.every(a=>a.references.length?a.availability==="verified":a.availability==="unverified"));
   });
 }
 test("entire-roster OCR fragments do not depend on old or confirmed profile names",()=>{

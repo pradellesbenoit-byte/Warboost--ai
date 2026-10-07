@@ -41,7 +41,7 @@ export async function loadHeroReferenceImages({read=readFile}={}){
 export function heroReferenceRequestContent(bank){
   if(!bank?.available||!bank.atlases?.length)return [];
   return [
-    {type:"input_text",text:`REFERENCE ATLAS ONLY — not a player capture. Match every roster hero equally; the number of supplementary images is not a weight. Never extract power, stars, levels, squad order or equipment from these references. Labels map reference IDs to canonical heroes: ${JSON.stringify(bank.references.map(r=>({id:r.id,name:r.displayName,canonical_name:r.canonicalName,variant:r.variant})))}`},
+    {type:"input_text",text:`REFERENCE ATLAS ONLY — not a player capture. Match every roster hero equally; the number of supplementary images is not a weight. Never extract power, stars, levels, squad order or equipment from these references. Some references are new-appearance or promotion previews, not evidence of a player's upgrade. Matching an appearance identifies a hero proposal only; NEVER infer that the scanned player owns Awakening, UR promotion or an EW level from a reference match. Labels map reference IDs to canonical heroes: ${JSON.stringify(bank.references.map(r=>({id:r.id,name:r.displayName,canonical_name:r.canonicalName,variant:r.variant,image_role:r.imageRole})))}`},
     ...bank.atlases.flatMap(a=>[
       {type:"input_text",text:`REFERENCE ATLAS ${a.id}; IDs: ${a.referenceIds.join(", ")}`},
       {type:"input_image",image_url:a.imageUrl,detail:"high"}
