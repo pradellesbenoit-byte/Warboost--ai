@@ -43,3 +43,4 @@
 - [Billing user boundaries](billing-user-boundaries.md) — existing testers keep free PRO; paid PRO never grants alliance roles; TEST approval is not LIVE approval.
 - [Mobile wrapper scope](mobile-wrapper-scope.md) — Capacitor reuses web/PWA; mobile sales OFF, Stripe web-only; no signing, submissions or production changes.
 - [Fresh-launch privacy boundary](fresh-launch-policy.md) — reopen on Home without drafts/captures; preserve confirmed data, authentication and grants; gallery focus is not closure.
+- [Equal roster recognition](full-roster-recognition.md) — user requires every roster hero and appearance to be eligible equally, without popularity or profile-based priority.

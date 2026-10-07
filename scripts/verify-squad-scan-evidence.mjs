@@ -20,10 +20,10 @@ test("only owner-bound explicitly confirmed composition supplies hints",()=>{
   assert.deepEqual(confirmedSquadHints(base,1,"other-account"),[]);
   assert.deepEqual(confirmedSquadHints({...base,squads:[{heroes:base.squads[0].heroes}]},1,"fixture-a"),[]);
 });
-test("visible unique fragment can use confirmed profile, never portrait/slot alone",()=>{
+test("visible unique fragment uses the whole roster, never portrait/slot or a profile shortlist",()=>{
   const raw={name_text:"Kimber",name_evidence:"visible_fragment",name_confidence:0.96};
   assert.equal(squadEvidence(raw,names).name,"Kimberly");
-  assert.equal(squadEvidence(raw,[]).name,null);
+  assert.equal(squadEvidence(raw,[]).name,"Kimberly");
   assert.equal(squadEvidence({...raw,name_evidence:"portrait"},names).name,null);
   assert.equal(squadEvidence({...raw,name_text:null,name:"Kimberly",name_evidence:"portrait"},names).name,null);
   assert.equal(squadEvidence({...raw,name_text:"Mar"},names).name,null);
@@ -100,7 +100,7 @@ test("review displays explicit confidence and escaped visible text, never raw me
   const patch=createScanReviewDraft("squad1",{squads:[{power:44.43,heroes:[{name:"Kimberly"}]}]},{includeHeroNames:true});
   const escape=value=>String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   const markup=renderScanReviewMarkup(buildScanReviewGroups("squad1",patch,evidence),translator("fr"),escape);
-  assert.match(markup.html,/Confiance OCR/);assert.match(markup.html,/96 %/);
+  assert.match(markup.html,/Confiance déclarée de l’identité/);assert.match(markup.html,/96 %/);
   assert.match(markup.html,/aria-label="Nom"/);
   assert.doesNotMatch(markup.html,/scan_review_group_hero/);
   assert.doesNotMatch(markup.html,/<script>/);

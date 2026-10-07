@@ -1,7 +1,7 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
 import {buildPlayerScanOptions,normalizePlayerScanType} from "./lib/player-scan-types.js";
-import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation} from "./lib/heroes.js";
+import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation,heroDisplayName} from "./lib/heroes.js";
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
 import {canonicalShopStore} from "./lib/shop-catalog.js?v=shop-observations-v2-5-32-hf8-6-34-r2";
@@ -683,7 +683,7 @@ function saveConfirmedExclusiveScan(){
   if(status){status.className="notice";status.textContent=t("scan_exclusive_confirmed")}
   return true;
 }
-function heroConfirmOptions(selected){return [`<option value="">${esc(t("hero_choose"))}</option>`].concat(HERO_CATALOG.map(n=>`<option value="${esc(n)}"${n===selected?" selected":""}>${esc(n)}</option>`)).join("")}
+function heroConfirmOptions(selected){return [`<option value="">${esc(t("hero_choose"))}</option>`].concat(HERO_CATALOG.map(n=>`<option value="${esc(n)}"${n===selected?" selected":""}>${esc(heroDisplayName(n))}</option>`)).join("")}
 function openHeroConfirmation(squadId,suggestions=[]){pendingHeroSquadId=Number(squadId)||null;pendingHeroSuggestions=Array.from({length:5},(_,i)=>String(suggestions?.[i]||"").trim());const panel=$("#heroConfirmPanel"),rows=$("#heroConfirmRows");if(!panel||!rows||!pendingHeroSquadId)return false;const sq=state.squads[pendingHeroSquadId-1];if(!sq)return false;for(const [button,key] of [["#saveHeroNamesBtn","hero_save"],["#skipHeroNamesBtn","hero_skip"]]){const control=$(button);if(control){control.disabled=false;control.textContent=t(key)}}const heroes=fixedHeroSlots(sq.heroes);rows.innerHTML=Array.from({length:5},(_,i)=>{const h=heroes[i]||emptyHero(i+1),saved=isGenericHeroName(h?.name)?"":canonicalStoredHeroName(h.name),suggested=pendingHeroSuggestions[i]&&!isGenericHeroName(pendingHeroSuggestions[i])?canonicalStoredHeroName(pendingHeroSuggestions[i]):"",current=suggested||saved;return `<div class="heroConfirmRow"><span>${i+1}</span><select data-hero-slot="${i}">${heroConfirmOptions(current)}</select></div>`}).join("");$("#heroConfirmTitle").textContent=t("hero_confirm_title",{squad:pendingHeroSquadId});panel.classList.remove("hidden");return true;}
 function startHeroConfirmation(squadId,suggestions=[],scanSlots=[],scannedAt=null){const id=Number(squadId);pendingHeroScanSlots=Array.from({length:5},(_,i)=>({...((scanSlots?.[i]&&typeof scanSlots[i]==="object")?scanSlots[i]:{})}));pendingHeroScannedAt=scannedAt||new Date().toISOString();pendingHeroOwner=pendingScanOwner();if(!Number.isInteger(id)||id<1||id>4)return;const meta=$("#heroScanMeta");if(meta)meta.textContent=`${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(pendingHeroScannedAt).toLocaleString(locale||lang)}`;openDrawer("scan");renderScanTypeOptions();const type=$("#scanType");if(type)type.value=`squad${id}`;updateSquadCaptureHelp(`squad${id}`);const st=$("#scanStatus");if(st){st.className="notice warn";st.textContent=t("hero_confirm_needed")}const opened=openHeroConfirmation(id,suggestions);if(!opened)return;const drawer=$("#scanDrawer"),panel=$("#heroConfirmPanel");if(drawer)drawer.scrollTop=0;requestAnimationFrame(()=>requestAnimationFrame(()=>{try{panel?.scrollIntoView({behavior:"smooth",block:"center"})}catch{if(drawer)drawer.scrollTop=Math.max(0,(panel?.offsetTop||0)-24)}}));}
 function closeHeroConfirmation(clearImage=true){pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");if(clearImage)clearScanImage()}
@@ -3334,6 +3334,11 @@ function scanReviewFormEdits(draft){
     }else{
       const input=container.querySelector(`[data-scan-review-id="${id}"]`);
       if(!input)return {error:"scan_review_form_missing",path:row.path};
+      if(row.field==="name"&&row.path.includes("heroes")&&row.evidence?.requires_confirmation){
+        const acknowledged=container.querySelector(`[data-scan-review-identity-ack="${id}"]`)?.checked===true;
+        const corrected=Boolean(input.value&&canonicalStoredHeroName(input.value)!==canonicalStoredHeroName(row.value));
+        if(!acknowledged&&!corrected){issues.push({path:row.path,reason:"uncertain"});edits.push({path:row.path,value:""});continue}
+      }
       edits.push({path:row.path,value:input.value,badInput:input.validity?.badInput===true});
     }
   }
@@ -3468,7 +3473,7 @@ function confirmScanReview(){
     if(sm){
       const issues=secondaryErrors.map(error=>({slot:Number(error.path[3])+1,field:error.path.at(-1),reason:error.reason}));
       if(squadPowerMissing)issues.push({field:"power",reason:"missing"});
-      const applied=applyReviewedSquad(merged,{squadId:squadIndex+1,heroes:heroSlots,updatedAt:now,issues,powerConfirmed:!squadPowerMissing,evidence:draft.ocrEvidence||[],evidenceAt:draft.scannedAt||now});
+      const applied=applyReviewedSquad(merged,{squadId:squadIndex+1,heroes:heroSlots,updatedAt:now,issues,powerConfirmed:!squadPowerMissing,evidence:draft.ocrEvidence||[],evidenceAt:draft.scannedAt||now,identityReviewConfirmed:true});
       if(squadPowerMissing&&!applied.acceptedFields){
         const box=$("#scanReviewError");
         if(box){box.classList.remove("hidden");box.textContent=`${lang.startsWith("fr")?"Aucune valeur fiable à confirmer : puissance d’escouade manquante et aucun champ de héros associé sans ambiguïté.":"No reliable value to confirm: missing squad power and no unambiguously linked hero field."} ${applied.pending.filter(item=>item.field==="name").map(item=>squadPendingDescription(item,lang)).join(" ; ")}`}

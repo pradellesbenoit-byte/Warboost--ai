@@ -2843,3 +2843,15 @@ const SESSION_CAPTURE_TRANSLATIONS={
 };
 for(const [code,values] of Object.entries(SESSION_CAPTURE_TRANSLATIONS))
   Object.assign(packs[code],Object.fromEntries(Object.keys(SESSION_CAPTURE_COPY).map((key,i)=>[key,values[i]])));
+
+const HERO_RECOGNITION_COPY={
+  en:{scan_review_identity_confidence:"Declared identity confidence",scan_review_identity_strong:"Strong proposal — review before saving",
+    scan_review_identity_accept:"I confirm this hero",
+    scan_review_identity_medium:"To confirm — uncertain identity",scan_review_identity_low:"Low confidence or conflicting evidence — choose the hero",
+    scan_review_identity_visual_unverified:"Visual proposal, not a verified reference match"},
+  fr:{scan_review_identity_confidence:"Confiance déclarée de l’identité",scan_review_identity_strong:"Proposition forte — vérifier avant d’enregistrer",
+    scan_review_identity_accept:"Je confirme ce héros",
+    scan_review_identity_medium:"À confirmer — identité incertaine",scan_review_identity_low:"Confiance faible ou indices contradictoires — choisir le héros",
+    scan_review_identity_visual_unverified:"Proposition visuelle, sans correspondance de référence vérifiée"}
+};
+for(const [code,pack] of Object.entries(packs))Object.assign(pack,HERO_RECOGNITION_COPY[code]||HERO_RECOGNITION_COPY.en);
