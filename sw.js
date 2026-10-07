@@ -7,7 +7,7 @@
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization
 // Scan request restore: keep server-side scan completion authoritative; browser no longer aborts /api/scan at 60 s.
-const CACHE="warboost-v2-5-32-stripe-test-preparation-r1-beta-activation-atomic-r1-capacitor-wrapper-r1-fresh-launch-r1-squad-provenance-r1-full-roster-recognition-r1";
+const CACHE="warboost-v2-5-32-stripe-test-preparation-r1-beta-activation-atomic-r1-capacitor-wrapper-r1-fresh-launch-r1-squad-provenance-r1-full-roster-recognition-r1-real-hero-references-r1";
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-25-player-launch-integrity
 // Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
@@ -41,7 +41,7 @@ SHELL.push("/lib/player-scan-batch.js","/lib/player-global-diagnostic.js","/lib/
 SHELL.push("/lib/player-known-facts.js");
 SHELL.push("/lib/mobile-runtime.js","/lib/mobile-policy.js","/lib/account-deletion-ui.js",
   "/security.html","/delete-account.html","/delete-account-page.js","/trust-pages.css");
-for(const path of ["/lib/fresh-launch.js","/lib/squad-scan-evidence.js","/lib/squad-scan-review.js","/lib/hero-recognition.js"])
+for(const path of ["/lib/fresh-launch.js","/lib/squad-scan-evidence.js","/lib/squad-scan-review.js","/lib/hero-recognition.js","/lib/hero-reference-index.js"])
   if(!SHELL.includes(path))SHELL.push(path);
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

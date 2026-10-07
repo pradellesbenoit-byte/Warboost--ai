@@ -44,3 +44,4 @@
 - [Mobile wrapper scope](mobile-wrapper-scope.md) — Capacitor reuses web/PWA; mobile sales OFF, Stripe web-only; no signing, submissions or production changes.
 - [Fresh-launch privacy boundary](fresh-launch-policy.md) — reopen on Home without drafts/captures; preserve confirmed data, authentication and grants; gallery focus is not closure.
 - [Equal roster recognition](full-roster-recognition.md) — user requires every roster hero and appearance to be eligible equally, without popularity or profile-based priority.
+- [Hero portrait authenticity](hero-portrait-authenticity.md) — correctly named hero pages can contain reinterpreted art; inspect original pixels before enabling references.

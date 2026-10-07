@@ -2854,4 +2854,6 @@ const HERO_RECOGNITION_COPY={
     scan_review_identity_medium:"À confirmer — identité incertaine",scan_review_identity_low:"Confiance faible ou indices contradictoires — choisir le héros",
     scan_review_identity_visual_unverified:"Proposition visuelle, sans correspondance de référence vérifiée"}
 };
+HERO_RECOGNITION_COPY.en.scan_review_identity_reference_proposal="Proposal compared with a named-source portrait — confirm this hero";
+HERO_RECOGNITION_COPY.fr.scan_review_identity_reference_proposal="Proposition comparée à un portrait sourcé — confirme ce héros";
 for(const [code,pack] of Object.entries(packs))Object.assign(pack,HERO_RECOGNITION_COPY[code]||HERO_RECOGNITION_COPY.en);

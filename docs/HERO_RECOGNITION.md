@@ -26,8 +26,13 @@ existent pour chacun des 31 héros. Leur disponibilité et leurs références re
 `unverified` tant qu’une capture/source fiable ne les documente pas.
 
 Les SVG actuels sont des illustrations WarBoost, PAS des références Last War.
-Aucune galerie officielle ou référence visuelle validée n’a été fournie dans cette
-passe. Aucun portrait de référence ou changement d’apparence n’a été inventé.
+Une banque privée contient désormais **52 images sources pour les 31 héros** :
+5 visuels nommés du site officiel, 16 images de pages héros `lastwar.wiki` et
+31 vignettes du tableau Heroes de Fandom. L’identité a été contrôlée par le
+nom de la page/ligne, le libellé de l’image et une comparaison visuelle des
+planches. Les images réinterprétées trouvées sur un site complémentaire ont
+été rejetées, pas importées. Voir [l’audit détaillé](HERO_REFERENCE_AUDIT.md).
+Aucun changement d’apparence non attesté n’a été inventé.
 Le modèle Vision peut proposer une identité à partir d’au moins deux détails
 visibles, mais cette proposition visuelle seule reste à confirmer : ce n’est pas
 une correspondance de portrait certifiée ni une mesure de précision calibrée.
@@ -67,10 +72,31 @@ bêta/PRO n’est ajouté.
 Ajouter un héros à `HERO_DEFINITIONS` étend automatiquement la bibliothèque,
 le prompt, les sélecteurs et le matching de texte. Ajouter un contexte à
 `HERO_APPEARANCE_CONTEXTS` étend les emplacements et labels sans changer l’algorithme.
-Pour de vrais portraits de référence, renseigner identité, variante, provenance,
-date et validation de chaque référence, puis intégrer un comparateur vérifiable ;
-ne jamais accepter une simple affirmation `reference_verified` du fournisseur.
+Cela n’invente pas de référence vérifiée pour un nouveau héros. Après revue des
+images sources, compléter les données déclaratives de `lib/hero-reference-index.js`
+et importer les fichiers via `scripts/build-hero-reference-assets.mjs`. Une
+variante attestée utilise `reviewedVariants` ; les planches et leur chargement
+s’adaptent au nombre de références sans réécrire le comparateur.
+Les originaux, sources, variantes, dimensions, empreintes SHA-256 et statuts
+sont conservés dans `research/hero-references/manifest.json`. Le chargeur serveur
+vérifie la banque avant de joindre quatre planches légendées à la requête OpenAI
+existante. Les images sont distinctes des captures du joueur. Il n’y a ni appel
+supplémentaire de reconnaissance, ni téléchargement Last War à l’exécution.
+Les fichiers privés ne sont pas copiés dans le web/PWA ou le bundle mobile.
+Vercel les inclut seulement dans la fonction de scan.
+
+Le fournisseur personnalisé de secours ne déclare pas de capacité à recevoir ces
+planches : ses propositions restent non vérifiées et à confirmer. Il ne peut pas
+hériter de la validation de références envoyées à OpenAI. Une banque absente ou
+corrompue est entièrement désactivée ; aucun faux succès de vérification.
+Une simple affirmation `reference_verified` du fournisseur n’est jamais acceptée :
+l’ID doit appartenir aux références réellement jointes et correspondre au héros
+et à la variante. `match_verified` reste faux : la validité de la source ne
+certifie pas le résultat du modèle.
 
 Les tests synthétiques couvrent les 31 identités et les contextes, pas la précision
 réelle sur leurs portraits. Avant de promettre une reconnaissance visuelle exhaustive,
 il reste à obtenir des captures autorisées et à mesurer chaque apparence réelle.
+Les références ajoutent des tokens image dans la requête existante ; coût et
+latence doivent être mesurés avec de vraies captures. Aucun droit d’usage ou
+accord officiel Last War/FUNFLY n’est accordé par cet import.
