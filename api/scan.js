@@ -6,6 +6,8 @@ import {sanitizeTechnologyCards} from "../lib/technology-scan.js";
 import {cleanRosterOcrName,rosterIdentityKey} from "../lib/roster-identity-resolution.js";
 import {fetchWithTimeout} from "../lib/http-timeout.js";
 import {canonicalPowerMillions} from "../lib/power-units.js";
+import {confirmedSquadHints,squadEvidence,squadExtractionPrompt} from "../lib/squad-scan-evidence.js";
+import {configured,userConfigured,getProfile,getProfileForUser} from "../lib/supabase.js";
 import {parseHeroPower} from "../lib/hero-power.js";
 import {classifyDroneScreen,sanitizeDroneScan} from "../lib/drone-scan.js";
 import {explicitLastWarManagerRank,LAST_WAR_SCAN_RANK_SOURCE} from "../lib/rank-provenance.js";
@@ -141,7 +143,7 @@ export function usefulState(scanType,state){
   const t=String(scanType||"").toLowerCase();
   if(t==="profile")return Boolean(state?.player&&Object.keys(state.player).some(k=>k!=="updated_at"));
   if(t==="drone")return Boolean(state?.drone&&(state.drone.level!=null||state.drone.boostCombat?.level!=null||state.drone.power_m!=null||state.drone.components?.length||state.drone.skill_chips?.length));
-  const sm=t.match(/^squad([1-4])$/);if(sm){const q=state?.squads?.[Number(sm[1])-1];return Boolean(q&&(q.power!=null||(q.heroes||[]).some(h=>Object.keys(h||{}).length)))}
+  const sm=t.match(/^squad([1-4])$/);if(sm){const q=state?.squads?.[Number(sm[1])-1];return Boolean(q&&(q.power!=null||(q.heroes||[]).some(h=>["name","level","stars","power","exclusive","gear"].some(key=>h?.[key]!=null))))}
   if(t==="exclusive")return Boolean(state?.exclusive_weapons?.length);
   if(t==="awakening")return Boolean(state?.hero_progression?.length);
   if(t==="shop")return Boolean(state?.shop&&Object.keys(state.shop).some(k=>k!=="updated_at"));
@@ -206,11 +208,11 @@ export function sanitizeRosterRows(extracted,now,allianceTag=""){
   }
   return out;
 }
-export function sanitize(extracted,now,scanType){
+export function sanitize(extracted,now,scanType,knownHeroes=[]){
   const out={},forced=String(scanType||"").match(/^squad([1-4])$/i),forcedId=forced?Number(forced[1]):null;
   if(extracted?.player){const p={updated_at:now};for(const k of ["name","server_id","coordinates","role"]){const v=str(extracted.player[k],80);if(v)p[k]=v}const confirmedRole=explicitLastWarManagerRank(p.role);p.role_confirmation_status=confirmedRole?"confirmed_scan":"unconfirmed";if(confirmedRole){p.rank_confirmed_at=now;p.rank_confirmed_source=LAST_WAR_SCAN_RANK_SOURCE}const hq=num(extracted.player.hq_level),power=canonicalPowerMillions(extracted.player.power_m);if(hq!=null)p.hq_level=hq;if(power!=null)p.power_m=power;if(Object.keys(p).length>1)out.player=p}
   if(scanType==="drone"){const {drone}=sanitizeDroneScan(extracted,now);if(Object.keys(drone).length)out.drone=drone}
-   if(Array.isArray(extracted?.squads)&&extracted.squads.length){const arr=Array(4).fill(null),source=forcedId?extracted.squads.slice(0,1):extracted.squads.slice(0,4);for(const raw of source){const id=forcedId||Math.max(1,Math.min(4,Number(raw?.id)||1)),q={id,name:`Squad ${id}`,updated_at:now};const power=canonicalPowerMillions(raw?.power_m??raw?.power);if(power!=null)q.power=power;if(Array.isArray(raw?.heroes)){q.heroes=Array.from({length:5},(_,i)=>{const h=raw.heroes[i]||{},x={};const name=heroNameFromVisibleText(h);if(name)x.name=name;const level=num(h?.level),stars=num(h?.stars),heroPower=parseHeroPower(h?.power);if(level!=null)x.level=level;if(stars!=null)x.stars=stars;if(heroPower!=null)x.power=heroPower;const ex=str(h?.exclusive,100);if(ex)x.exclusive=ex;const gear=sanitizeGear(h?.gear);if(gear)x.gear=gear;return x})}else if(forcedId)q.heroes=Array.from({length:5},()=>({}));arr[id-1]=q}out.squads=arr}
+   if(Array.isArray(extracted?.squads)&&extracted.squads.length){const arr=Array(4).fill(null),source=forcedId?extracted.squads.slice(0,1):extracted.squads.slice(0,4);for(const raw of source){const id=forcedId||Math.max(1,Math.min(4,Number(raw?.id)||1)),q={id,name:`Squad ${id}`,updated_at:now};const power=canonicalPowerMillions(raw?.power_m??raw?.power);if(power!=null)q.power=power;if(Array.isArray(raw?.heroes)){q.heroes=Array.from({length:5},(_,i)=>{const h=raw.heroes[i]||{},x={},observation=squadEvidence(h,forcedId?knownHeroes:[]);if(observation.name)x.name=observation.name;x.scan_evidence=observation.evidence;const level=num(h?.level),stars=num(h?.stars);if(level!=null)x.level=level;if(stars!=null)x.stars=stars;if(observation.power!=null)x.power=observation.power;const ex=str(h?.exclusive,100);if(ex)x.exclusive=ex;const gear=sanitizeGear(h?.gear);if(gear)x.gear=gear;return x})}else if(forcedId)q.heroes=Array.from({length:5},()=>({}));arr[id-1]=q}out.squads=arr}
   const rawWeapons=Array.isArray(extracted?.exclusive_weapons)?extracted.exclusive_weapons:
     Array.isArray(extracted?.exclusiveWeapons)?extracted.exclusiveWeapons:
     extracted?.exclusive_weapon?[extracted.exclusive_weapon]:
@@ -242,7 +244,7 @@ export function sanitize(extracted,now,scanType){
   }
   return out;
 }
-export function promptFor(scanType,locale,allianceTag){
+export function promptFor(scanType,locale,allianceTag,knownHeroes=[]){
   const common=`You are WarBoost Vision reading a Last War: Survival screenshot. Read only facts actually visible in the image. Never invent hidden values. User locale: ${locale}. Return ONE valid JSON object only, without markdown or commentary.`;
   if(scanType==="alliance_roster")return `${common} This WarBoost action accepts TWO Last War layouts: (A) the alliance member list, or (B) an individual screen titled "PROFIL DU JOUEUR" / "PLAYER PROFILE". First identify the layout.
 
@@ -281,17 +283,17 @@ Return one JSON object, allowing a partial but valid result: {"exclusive_weapons
    if(scanType==="secret_mobile_squad")return `${common} Read the Secret Mobile Squad screen. Return only Special Supplementary Task labels whose text is visibly printed. Keep the exact visible wording and language; accept the newer text-label layout and older layouts without assuming a task name from an icon, reward, position, or game guide. If a label is partially readable, preserve the visible text. If no task text is visible, omit that row; never invent or normalize an unknown task. Return {"special_supplementary_tasks":[{"label":"exact visible task text","label_evidence":"visible_text","confidence":0.0}]}. WarBoost will retain the exact text as unmapped and require owner confirmation before saving.`;
   return common;
 }
-export async function openaiVision({image,images,scanType,locale,allianceTag}){
+export async function openaiVision({image,images,scanType,locale,allianceTag,knownHeroes=[]}){
   const key=env("OPENAI_API_KEY");if(!key)return null;
   const model=env("WARBOOST_VISION_MODEL")||"gpt-5.6-luna";
-  const content=[{type:"input_text",text:promptFor(scanType,locale,allianceTag)},...(Array.isArray(images)&&images.length?images:[image]).map(imageUrl=>({type:"input_image",image_url:imageUrl,detail:"high"}))];
+  const content=[{type:"input_text",text:promptFor(scanType,locale,allianceTag,knownHeroes)+(/^squad[1-4]$/.test(scanType)?squadExtractionPrompt(knownHeroes):"")},...(Array.isArray(images)&&images.length?images:[image]).map(imageUrl=>({type:"input_image",image_url:imageUrl,detail:"high"}))];
   const r=await fetchWithTimeout("https://api.openai.com/v1/responses",{method:"POST",headers:{"content-type":"application/json",authorization:`Bearer ${key}`},body:JSON.stringify({model,reasoning:{effort:"none"},max_output_tokens:5000,input:[{role:"user",content}]})},REQUEST_TIMEOUT_MS,{code:"VISION_TIMEOUT",message:"WarBoost Vision timed out"});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j?.error?.message||`Vision HTTP ${r.status}`),{status:r.status,code:j?.error?.code||"VISION_HTTP_ERROR"});
   return jsonFromText(textFromResponse(j));
 }
 async function customVision({image,images,scanType,locale,verifiedContext}){
   const url=env("WARBOOST_VISION_ENDPOINT");if(!url)return null;
-  const secret=env("WARBOOST_VISION_SECRET"),r=await fetchWithTimeout(url,{method:"POST",headers:{"content-type":"application/json",...(secret?{"x-warboost-vision-secret":secret}:{})},body:JSON.stringify({image_data_url:image,image_data_urls:images,scan_type:scanType,locale,current_state:verifiedContext})},REQUEST_TIMEOUT_MS,{code:"VISION_TIMEOUT",message:"WarBoost custom Vision timed out"});
+  const secret=env("WARBOOST_VISION_SECRET"),r=await fetchWithTimeout(url,{method:"POST",headers:{"content-type":"application/json",...(secret?{"x-warboost-vision-secret":secret}:{})},body:JSON.stringify({image_data_url:image,image_data_urls:images,scan_type:scanType,locale,current_state:verifiedContext,...(/^squad[1-4]$/.test(scanType)?{extraction_instructions:squadExtractionPrompt(verifiedContext?.confirmed_squad_names||[])}:{})})},REQUEST_TIMEOUT_MS,{code:"VISION_TIMEOUT",message:"WarBoost custom Vision timed out"});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(j?.message||`Vision HTTP ${r.status}`),{status:r.status,code:"VISION_HTTP_ERROR"});return j?.state||j?.data||j;
 }
 export default async function handler(req,res){
@@ -312,15 +314,26 @@ export default async function handler(req,res){
     const slot=scanAbuseGuard.acquire(user?.id);
     if(!slot.allowed){res.setHeader("Retry-After",String(slot.retryAfterSeconds));return res.status(429).json({error:"scan_rate_limited",code:"SCAN_RATE_LIMITED",message:"Trop d’analyses rapprochées. Réessaie dans un instant.",retry_after_seconds:slot.retryAfterSeconds})}
     releaseGuard=slot.release;
+    let knownHeroes=[];
+    if(/^squad[1-4]$/.test(scanType)&&(configured()||userConfigured())){
+      try{
+        const token=String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"");
+        const saved=userConfigured()?await getProfileForUser(user.id,token,{timeoutMs:2000}):await getProfile(user.id,{timeoutMs:2000});
+        knownHeroes=confirmedSquadHints(saved?.state,Number(scanType.slice(-1)),user.id);
+      }catch{
+        // Context is optional. An unavailable profile must not block or invent OCR.
+        console.warn("WarBoost squad scan: confirmed context unavailable");
+      }
+    }
     let extracted=null,engine="openai",firstError=null;
-    if(env("OPENAI_API_KEY")){try{extracted=await openaiVision({image,images,scanType,locale,allianceTag})}catch(error){firstError=error}}
-    if(!extracted&&env("WARBOOST_VISION_ENDPOINT")){engine="custom";try{extracted=await customVision({image,images,scanType,locale,verifiedContext})}catch(error){if(!firstError)firstError=error}}
+    if(env("OPENAI_API_KEY")){try{extracted=await openaiVision({image,images,scanType,locale,allianceTag,knownHeroes})}catch(error){firstError=error}}
+    if(!extracted&&env("WARBOOST_VISION_ENDPOINT")){engine="custom";try{extracted=await customVision({image,images,scanType,locale,verifiedContext:/^squad[1-4]$/.test(scanType)?{confirmed_squad_names:knownHeroes}:verifiedContext})}catch(error){if(!firstError)firstError=error}}
     if(!extracted){console.error("WarBoost scan provider unavailable",{code:safeErrorCode(firstError||{code:"SCAN_NOT_CONFIGURED"}),status:Number(firstError?.status)||503,type:scanTypeForLog,duration_ms:Math.max(0,Date.now()-startedAt)});const message=firstError?.code==="VISION_TIMEOUT"?"L’analyse a dépassé le délai. Réessaie avec la même capture.":firstError?.message||"WarBoost Vision n’est pas configuré sur ce déploiement.";return res.status(503).json({error:"scan_provider_unavailable",code:firstError?.code||"SCAN_NOT_CONFIGURED",message})}
     const now=new Date().toISOString();
     const quality={source:"screenshot_ocr",freshness:{observed_at:now,basis:"server_scan_time",screenshot_age:"unknown"},single_pass:true,requires_confirmation:true};
     if(scanType==="alliance_roster"){const rows=sanitizeRosterRows(extracted,now,allianceTag);if(!rows.length)return res.status(422).json({error:"scan_no_useful_data",message:"La liste des membres n’a pas pu être lue clairement. Garde la capture et réessaie."});return res.status(200).json({ok:true,engine,scanned_at:now,roster_rows:rows,quality:{...quality,row_count:rows.length}})}
     if(/^squad[1-4]$/i.test(scanType)&&squadCaptureScreenType(extracted)==="overview")return res.status(422).json({error:"wrong_squad_capture",code:"WRONG_SQUAD_CAPTURE",message:"Cette capture n'est pas la bonne. Dans Last War : Préréglage de Formation → Voir les Détails → prends ensuite la capture “Détails de la formation”."});
-    const state=sanitize(extracted,now,scanType),droneScreenType=scanType==="drone"?classifyDroneScreen(extracted):null;
+    const state=sanitize(extracted,now,scanType,knownHeroes),droneScreenType=scanType==="drone"?classifyDroneScreen(extracted):null;
     if(!usefulState(scanType,state)){
       if(scanType==="drone"&&["components","skill_chip"].includes(droneScreenType))
         return res.status(422).json({error:"drone_no_supported_fields",drone_screen_type:droneScreenType});

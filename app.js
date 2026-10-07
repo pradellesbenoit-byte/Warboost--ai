@@ -3262,7 +3262,7 @@ function renderScanReview(draft){
   pendingScanReview=draft;const panel=$("#scanReviewPanel"),rows=$("#scanReviewRows");if(!panel||!rows)return false;
   const entries=scanReviewEntries(draft.patch);if(!entries.length){discardScanReviewDraft();return false}
   const error=$("#scanReviewError");if(error){error.textContent="";delete error.dataset.scanReviewErrorKey;error.classList.add("hidden")}
-  const markup=renderScanReviewMarkup(buildScanReviewGroups(draft.type,draft.patch),t,esc);
+  const markup=renderScanReviewMarkup(buildScanReviewGroups(draft.type,draft.patch,draft.ocrEvidence),t,esc);
   if(!markup.rows.length){discardScanReviewDraft();return false}
   draft.displayRows=markup.rows;
   rows.innerHTML=markup.html;
@@ -3306,7 +3306,8 @@ function updateScanReviewRaritySummary(container,id,index){
 function translateOpenScanReview(statusBeforeLanguage){
   const status=$("#scanStatus");
   if(statusBeforeLanguage?.key&&status){
-    if(statusBeforeLanguage.confirmed)showConfirmedScanStatus(status,statusBeforeLanguage.key);
+    if(statusBeforeLanguage.key==="scan_review_partial_saved")showSquadScanStatus(status,statusBeforeLanguage.pending||[]);
+    else if(statusBeforeLanguage.confirmed)showConfirmedScanStatus(status,statusBeforeLanguage.key);
     else{status.className=statusBeforeLanguage.className;status.textContent=t(statusBeforeLanguage.key)}
   }
   const draft=pendingScanReview,container=$("#scanReviewRows"),panel=$("#scanReviewPanel");
@@ -3339,12 +3340,20 @@ function translateOpenScanReview(statusBeforeLanguage){
 }
 function showConfirmedScanStatus(status,messageKey){
   if(!status)return;
+  delete status.dataset.squadPending;
   status.className="notice";status.dataset.scanReviewStatusKey=messageKey;
   const badge=document.createElement("span");
   badge.className="scanReviewBadge";badge.dataset.status="confirmed";
   badge.textContent=t("scan_review_status_confirmed");
   badge.setAttribute("aria-label",badge.textContent);badge.title=badge.textContent;
   status.replaceChildren(badge,document.createTextNode(` ${t(messageKey)}`));
+}
+function showSquadScanStatus(status,pending){
+  if(!status)return;
+  if(!pending.length){showConfirmedScanStatus(status,"scan_saved");return}
+  status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_partial_saved";
+  status.dataset.squadPending=JSON.stringify(pending);
+  status.replaceChildren(document.createTextNode(`${t("scan_review_partial_saved")} ${t("scan_review_remaining_fields")} : ${pending.map(item=>squadPendingDescription(item,lang)).join(" ; ")}`));
 }
 function confirmScanReview(){
   const draft=pendingScanReview;if(!draft||draft.owner!==pendingScanOwner())return discardScanReviewDraft();
@@ -3417,7 +3426,7 @@ function confirmScanReview(){
     if(sm){
       const issues=secondaryErrors.map(error=>({slot:Number(error.path[3])+1,field:error.path.at(-1),reason:error.reason}));
       if(squadPowerMissing)issues.push({field:"power",reason:"missing"});
-      const applied=applyReviewedSquad(merged,{squadId:squadIndex+1,heroes:heroSlots,updatedAt:now,issues,powerConfirmed:!squadPowerMissing});
+      const applied=applyReviewedSquad(merged,{squadId:squadIndex+1,heroes:heroSlots,updatedAt:now,issues,powerConfirmed:!squadPowerMissing,evidence:draft.ocrEvidence||[],evidenceAt:draft.scannedAt||now});
       if(squadPowerMissing&&!applied.acceptedFields){
         const box=$("#scanReviewError");
         if(box){box.classList.remove("hidden");box.textContent=`${lang.startsWith("fr")?"Aucune valeur fiable à confirmer : puissance d’escouade manquante et aucun champ de héros associé sans ambiguïté.":"No reliable value to confirm: missing squad power and no unambiguously linked hero field."} ${applied.pending.filter(item=>item.field==="name").map(item=>squadPendingDescription(item,lang)).join(" ; ")}`}
@@ -3439,13 +3448,7 @@ function confirmScanReview(){
   }
   const type=draft.type,squadId=sm?Number(sm[1]):null,names=draft.heroNames||[];
    discardScanReviewDraft();$("#playerSyncInfo")?.classList.remove("hidden");invalidatePlayerAdvice({autoRefresh:true});
-  if(squadId){
-    showConfirmedScanStatus($("#scanStatus"),"scan_saved");
-    if(squadPending.length){
-      const status=$("#scanStatus");status.className="notice warn";
-      status.append(document.createTextNode(` · ${lang.startsWith("fr")?"Champs restants à confirmer":"Remaining fields to confirm"} : ${squadPending.map(item=>squadPendingDescription(item,lang)).join(" ; ")}`));
-    }
-  }
+  if(squadId)showSquadScanStatus($("#scanStatus"),squadPending);
   else{const status=$("#scanStatus");if(status){if(pendingPowerPaths.length){status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_power_pending";status.textContent=t("scan_review_power_pending")}else showConfirmedScanStatus(status,"scan_saved")}if(type==="vs"){render();openDrawer("vs");if(proFeatureAllowed())void requestAdvice("vs").then(live=>{$("#vsPlanText").textContent=structuredAdviceText("vs",live)})}}
 }
 $("#confirmScanReviewBtn")?.addEventListener("click",confirmScanReview);
@@ -3457,7 +3460,8 @@ document.addEventListener("change",event=>{
   const status=$("#scanStatus"),key=status?.dataset.scanReviewStatusKey,confirmed=Boolean(status?.querySelector(".scanReviewBadge[data-status='confirmed']"));
   const reviewOpen=Boolean(pendingScanReview&&!$("#scanReviewPanel")?.classList.contains("hidden"));
   const currentKey=key&&(confirmed||status.textContent.trim()===t(key))?key:reviewOpen&&status?.textContent.trim()===t("scan_review_ready")?"scan_review_ready":null;
-  scanReviewStatusBeforeLanguage={key:currentKey,confirmed,className:status?.className};
+  let pending=[];try{pending=JSON.parse(status?.dataset.squadPending||"[]")}catch{}
+  scanReviewStatusBeforeLanguage={key:currentKey,confirmed,className:status?.className,pending};
 },true);
 document.addEventListener("change",event=>{if(event.target?.id==="languageSelect")queueMicrotask(()=>translateOpenScanReview(scanReviewStatusBeforeLanguage))});
 async function imageToDataUrl(file){return new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const max=2048,scale=Math.min(1,max/Math.max(img.width,img.height)),w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);let data=c.toDataURL("image/jpeg",.9);if(data.length>3900000)data=c.toDataURL("image/jpeg",.78);URL.revokeObjectURL(url);resolve(data)}catch(e){reject(e)}};img.onerror=e=>{URL.revokeObjectURL(url);reject(e)};img.src=url})}
@@ -3553,7 +3557,7 @@ async function analyzeReviewedScan(){
       if(!scanResultHasUsefulData(scanType,j.state)&&!(scanType==="drone"&&j.state?.drone?.boostCombat?.level!=null)){status.className="notice warn";status.textContent=t("scan_error");return}
       const patch=createScanReviewDraft(scanType,j.state,{includeHeroNames:true}),match=scanType.match(/^squad([1-4])$/),rawHeroes=match?j.state.squads?.[Number(match[1])-1]?.heroes:[];
       if(!patch){status.className="notice warn";status.textContent=t("scan_error");return}
-      const draft={owner,type:scanType,request,patch,scannedAt:j.scanned_at||new Date().toISOString(),heroNames:Array.from({length:5},(_,i)=>String(rawHeroes?.[i]?.name||"").trim())};
+      const draft={owner,type:scanType,request,patch,scannedAt:j.scanned_at||new Date().toISOString(),heroNames:Array.from({length:5},(_,i)=>String(rawHeroes?.[i]?.name||"").trim()),ocrEvidence:match?Array.from({length:5},(_,i)=>rawHeroes?.[i]?.scan_evidence||null):[]};
       if(!scanReviewEntries(patch).length&&match){startHeroConfirmation(Number(match[1]),draft.heroNames,rawHeroes,draft.scannedAt);return}
       if(!renderScanReview(draft)){status.className="notice warn";status.textContent=t("scan_error");return}
        if(scanType==="technology"){void clearPendingTechnologyFiles(owner);void clearPendingSingleScan(owner)}

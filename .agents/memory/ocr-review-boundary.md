@@ -31,3 +31,15 @@ des héros ou champs secondaires incomplets, sans sacrifier les données déjà 
 **How to apply:** Distinguer la confirmation des valeurs de celle d’une nouvelle composition.
 Une identité exacte permet d’enrichir un héros connu ; seule une composition complète et
 sans ambiguïté autorise son remplacement. Les champs omis ne reçoivent pas de fraîcheur nouvelle.
+
+Les héros déjà confirmés du profil sont des indices de lecture, jamais une preuve de
+la composition actuellement visible. Ne pas identifier un héros par son portrait seul,
+sa position, son niveau, ses étoiles ou la liste des héros du profil. Une sauvegarde
+partielle ne doit pas être annoncée comme une confirmation complète.
+
+**Why:** L’utilisateur demande de renforcer la lecture des formations difficiles sans
+inventer d’identité ni afficher « Confirmé » lorsque des héros attendent encore validation.
+
+**How to apply:** Exiger un indice textuel réellement visible et une association sans
+ambiguïté pour utiliser le contexte confirmé. Garder explicites la confiance OCR et
+les éléments non résolus ; un score non fourni reste non fourni, pas un score inventé.

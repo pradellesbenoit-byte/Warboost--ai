@@ -10,6 +10,7 @@ import {confirmedHeroPower} from "../lib/hero-power.js";
 import {normalizeState} from "../lib/normalize.js";
 import {repairLegacySquadIdentity} from "../lib/squad-identity.js";
 import {catalogHeroName} from "../lib/heroes.js";
+import {translator} from "../i18n.js";
 
 const clone=x=>JSON.parse(JSON.stringify(x));
 const at="2026-10-07T12:00:00.000Z",old="2026-10-01T12:00:00.000Z";
@@ -102,15 +103,16 @@ check("review pruning retains the target indices for squads 2, 3 and 4",()=>{
 // squad application, field stamping and normalization are the actual modules.
 const app=fs.readFileSync("app.js","utf8");
 const handler=app.slice(app.indexOf("function confirmScanReview(){"),app.indexOf('$("#confirmScanReviewBtn")?.addEventListener'));
+const statusHandler=app.slice(app.indexOf("function showSquadScanStatus("),app.indexOf("function confirmScanReview(){"));
 function runHandler({patch,edits,owner="fixture-a",current=true,save=true}){
-  const error={textContent:"",classList:{remove(){}}},status={textContent:"",append(x){this.textContent+=x.textContent}};
+  const error={textContent:"",classList:{remove(){}}},status={textContent:"",dataset:{},replaceChildren(...nodes){this.textContent=nodes.map(node=>node.textContent).join("")}};
   const context=vm.createContext({
     state:clone(base),pendingScanReview:{owner:"fixture-a",type:"squad1",request:{},patch},
     lang:"fr",applyOwnedScanReview,applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription,
     stampConfirmedRecord,confirmedHeroPower,repairLegacySquadIdentity,
     pendingScanOwner:()=>owner,scanRequestIsCurrent:()=>current,scanReviewFormEdits:()=>({edits,issues:[]}),
     $:selector=>selector==="#scanReviewError"?error:selector==="#scanStatus"?status:{classList:{remove(){}}},
-    t:key=>key,setScanReviewError:key=>{error.textContent=key},
+    t:translator("fr"),setScanReviewError:key=>{error.textContent=key},
     discardScanReviewDraft:()=>{context.pendingScanReview=null},
     safeClone:clone,emptySquad:()=>({heroes:[]}),
     mergeStateProtected:(previous,incoming)=>{
@@ -122,7 +124,7 @@ function runHandler({patch,edits,owner="fixture-a",current=true,save=true}){
     invalidatePlayerAdvice:()=>{},showConfirmedScanStatus:()=>{status.textContent="saved"},
     document:{createTextNode:text=>({textContent:text})},proFeatureAllowed:()=>false
   });
-  vm.runInContext(`${handler}\nconfirmScanReview()`,context);
+  vm.runInContext(`${statusHandler}\n${handler}\nconfirmScanReview()`,context);
   return {state:clone(context.state),pending:context.pendingScanReview,error:error.textContent,status:status.textContent};
 }
 check("real confirm handler accepts reliable power with missing heroes",()=>{
@@ -131,7 +133,9 @@ check("real confirm handler accepts reliable power with missing heroes",()=>{
   assert.equal(result.pending,null);
   assert.equal(result.state.squads[0].power,44.43);
   for(const [index,hero] of heroes.entries())for(const field of Object.keys(hero))assert.deepEqual(result.state.squads[0].heroes[index][field],hero[field]);
-  assert.match(result.status,/Champs restants à confirmer/);
+  assert.match(result.status,/Scan partiellement enregistré/);
+  assert.match(result.status,/Éléments encore à confirmer/);
+  assert.doesNotMatch(result.status,/Confirmé|fusionné/i);
 });
 check("invalid optional hero field stays pending while valid power saves",()=>{
   const patch={squads:[{power:44.43,heroes:[{name:names[0],level:170}]}]};
@@ -153,6 +157,11 @@ check("localized squad input with M suffix safely normalizes before confirmation
   const result=runHandler({patch:{squads:[{power:44.43}]},edits:[{path:["squads",0,"power"],value:"44,43 M"}]});
   assert.equal(result.error,"");
   assert.equal(result.state.squads[0].power,44.43);
+});
+check("individual hero power accepts a localized M unit without silently losing decimal separators",()=>{
+  const result=runHandler({patch:{squads:[{power:44.43,heroes:[{name:names[0]}]}]},edits:[{path:["squads",0,"heroes",0,"power"],value:"5,65 M"}]});
+  assert.equal(result.error,"");
+  assert.equal(result.state.squads[0].heroes[0].power,5650000);
 });
 check("missing squad power preserves confirmed power",()=>{
   const result=runHandler({patch:{squads:[{power:0,heroes:[{name:names[0],level:155}]}]},edits:[{path:["squads",0,"power"],value:""}]});

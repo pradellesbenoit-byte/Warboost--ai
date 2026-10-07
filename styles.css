@@ -5,6 +5,7 @@
 .scanReviewPowerValue{display:flex;align-items:center;gap:8px;min-width:0}
 .scanReviewPowerValue input{flex:1;min-width:0}
 .scanReviewPowerUnit{flex:none;color:#dbe8f7;font-weight:650}
+.scanReviewEvidence{display:block;margin-top:6px;color:#b9cadc;font-size:11px;overflow-wrap:anywhere}
 .scanReviewGroup{min-width:0;padding:10px;border:1px solid #2a4160;border-radius:14px;background:#0b1525}
 .scanReviewGroupTitle{margin:0 0 9px;color:#f3f8ff;font-size:14px;line-height:1.35;font-weight:750;overflow-wrap:anywhere}
 .scanReviewGroupRows{display:grid;gap:7px;min-width:0}

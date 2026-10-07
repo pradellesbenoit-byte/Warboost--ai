@@ -39,6 +39,7 @@ let providerGate=null;
 let providerCalls=0;
 let providerStatus=200;
 const customProviderPayloads=[];
+const profileFixtures=new Map();
 globalThis.fetch=async(input,init={})=>{
   const url=new URL(String(input));
   if(url.pathname==="/auth/v1/user"){
@@ -47,6 +48,16 @@ globalThis.fetch=async(input,init={})=>{
   }
   if(url.pathname.startsWith("/rest/v1/wb1_beta_invites")){
     return new Response("[]",{status:200});
+  }
+  // Model a pre-billing-migration beta environment explicitly. An unexpected
+  // fetch exception is not the same as a missing schema and hides route checks.
+  if(url.pathname.startsWith("/rest/v1/warboost_")||url.pathname.startsWith("/rest/v1/rpc/warboost_")){
+    return new Response(JSON.stringify({code:url.pathname.includes("/rpc/")?"PGRST202":"PGRST205",message:"Schema absent in this beta fixture"}),{status:404});
+  }
+  if(url.pathname==="/rest/v1/wb1_profiles"){
+    const token=new Headers(init.headers).get("authorization")?.replace(/^Bearer\s+/i,"");
+    assert.equal(url.searchParams.get("player_id"),`eq.${token}`,"squad context query must target the authenticated owner");
+    return new Response(JSON.stringify(profileFixtures.get(token)?[{state:profileFixtures.get(token)}]:[]),{status:200});
   }
   if(url.href==="https://vision.test.invalid/scan"){
     providerCalls++;
@@ -146,6 +157,21 @@ async function call(req=request()){
   const unclassified=await call(request({token:"drone-unclassified",body:{scan_type:"drone"}}));
   assert.equal(unclassified.status,422,"unclassified legacy Drone output cannot replace confirmed values");
   console.log("PASS: scan quality requires confirmation; technology-only is valid and drone extras are omitted");
+}
+
+// Hints come from the authenticated owner's cloud row, never browser claims.
+{
+  const token="squad-context-owner",names=["Kimberly","Murphy","Marshall","DVA","Stetmann"];
+  profileFixtures.set(token,{player_id:token,squads:[{confirmed_composition:names,composition_confirmed_at:"2026-10-01T00:00:00Z"}]});
+  providerOutput={squads:[{power:"44,43M",heroes:[{name_text:"Kimber",name_evidence:"visible_fragment",name_confidence:.96,power_text:"5,65M",power_confidence:.97}]}]};
+  const out=await call(request({token,body:{scan_type:"squad1",current_state:{player_id:token,squads:[{confirmed_composition:["Tesla"],composition_confirmed_at:"2026-10-07T00:00:00Z"}]}}}));
+  assert.equal(out.status,200);
+  assert.equal(out.body.state.squads[0].heroes[0].name,"Kimberly");
+  assert.equal(out.body.state.squads[0].heroes[0].power,5650000);
+  assert.deepEqual(customProviderPayloads.at(-1).current_state,{confirmed_squad_names:names});
+  assert.match(customProviderPayloads.at(-1).extraction_instructions,/disambiguation hints ONLY/);
+  profileFixtures.delete(token);
+  console.log("PASS: squad hints use authenticated cloud profile, browser claims ignored, visible fragments and individual powers retained");
 }
 
 // Provider failures log only sanitized diagnostics, never request or credential data.

@@ -2788,3 +2788,21 @@ Object.assign(EN,Object.fromEntries(IDENTITY_ONBOARDING_KEYS.map((key,index)=>[k
 Object.assign(EN,{scan_review_form_missing:"A review field is missing from the form. Reopen the scan review before confirming."});
 for(const code of ["en-GB","en-US"])if(packs[code])Object.assign(packs[code],{scan_review_form_missing:EN.scan_review_form_missing});
 Object.assign(packs.fr,{scan_review_form_missing:"Un champ du formulaire de vérification est absent. Rouvre la vérification du scan avant de confirmer."});
+const SQUAD_SCAN_EVIDENCE_LABELS={
+  scan_review_partial_saved:"Scan partially saved.",
+  scan_review_remaining_fields:"Fields still to confirm",
+  scan_review_ocr_confidence:"OCR confidence",
+  scan_review_confidence_unknown:"not provided",
+  scan_review_visible_text:"Observed text (verify)",
+  scan_review_profile_hint:"Readable fragment matched uniquely to your confirmed squad"
+};
+Object.assign(EN,SQUAD_SCAN_EVIDENCE_LABELS);
+for(const code of ["en-GB","en-US"])Object.assign(packs[code],SQUAD_SCAN_EVIDENCE_LABELS);
+Object.assign(packs.fr,{
+  scan_review_partial_saved:"Scan partiellement enregistré.",
+  scan_review_remaining_fields:"Éléments encore à confirmer",
+  scan_review_ocr_confidence:"Confiance OCR",
+  scan_review_confidence_unknown:"non fournie",
+  scan_review_visible_text:"Texte observé (à vérifier)",
+  scan_review_profile_hint:"Fragment lisible associé uniquement à un héros de ton escouade confirmée"
+});

@@ -80,7 +80,8 @@ assert(!html.includes("<script>"));assert(!html.includes("<img src=x"));assert(h
 const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
 assert.match(app,/baseReview!==undefined/,"concurrent newer confirmations block old reviews");
 assert.match(app,/pendingExclusiveRequest\|\|!scanRequestIsCurrent/,"exclusive confirmation is account/capture bound");
-assert.match(app,/reconcileConfirmedSquad\(merged/,"hero identity and stats finalized in the same confirmation");
+assert.match(app,/applyReviewedSquad\(merged/,"hero identity and stats finalized in the same confirmation");
+assert.match(fs.readFileSync("lib/squad-scan-review.js","utf8"),/reconcileConfirmedSquad\(out/,"complete identity replacement keeps the existing reconciliation boundary");
 function functionSource(name){
   const start=app.indexOf(`function ${name}(`),open=app.indexOf("){",start)+1;let depth=0;
   for(let i=open;i<app.length;i++){if(app[i]==="{")depth++;if(app[i]==="}"&&!--depth)return app.slice(start,i+1)}

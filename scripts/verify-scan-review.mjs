@@ -97,7 +97,7 @@ assert.match(app,/scanRequestIsCurrent\(request\)/,'analysis only stages results
 assert.match(app,/if\(blockingErrors\.length\)/,'mandatory invalid edits stop before state merge and retain the draft; optional hero errors stay pending');
 assert.match(app,/scan_review_apply_failed/,'merge failures retain the review and show an inline error');
 assert.match(markup,/row\.kind==="boolean"[\s\S]*?<select/,'boolean review fields use explicit true/false options');
-assert.match(app,/renderScanReviewMarkup\(buildScanReviewGroups\(draft\.type,draft\.patch\),t,esc\)/,'review renders the localized grouped presentation');
+assert.match(app,/renderScanReviewMarkup\(buildScanReviewGroups\(draft\.type,draft\.patch,draft\.ocrEvidence\),t,esc\)/,'review renders grouped fields with separate non-editable OCR evidence');
 assert.match(app,/beginNewScanFileSelection\(\)/,'a newly selected image clears older scan confirmations immediately');
 assert.match(app,/mergeStateProtected\(safeClone\(previousState\),reviewed/,'profile identity uses the normal protected merge so omitted confirmed fields survive');
 assert.match(app,/out\.alliance=safeFields\(base\.alliance,incoming\.alliance,preferBase\)/,'alliance values omitted by Vision remain in the confirmed base state');

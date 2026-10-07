@@ -10,6 +10,7 @@
     "build:mobile": "node scripts/build-mobile-web.mjs",
     "test:web-build": "node scripts/verify-web-build.mjs",
     "test:squad-scan-review": "node --check lib/squad-scan-review.js && node scripts/verify-squad-scan-review.mjs",
+    "test:squad-scan-evidence": "node --check lib/squad-scan-evidence.js && node scripts/verify-squad-scan-evidence.mjs",
     "mobile:assets": "node scripts/generate-mobile-assets.mjs",
     "mobile:sync": "npm run build:mobile && npx cap sync",
     "mobile:doctor": "npx cap doctor",
