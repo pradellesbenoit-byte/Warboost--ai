@@ -2,6 +2,9 @@
 .scanReviewPanel{margin-top:10px;min-width:0;padding:12px;border:1px solid #315078;background:linear-gradient(145deg,#0a1424,#0b111e);border-radius:16px}
 .scanReviewPanel .sectionTitle{margin-bottom:7px}
 .scanReviewRows{display:grid;gap:10px;margin:10px 0 12px;min-width:0}
+.scanReviewPowerValue{display:flex;align-items:center;gap:8px;min-width:0}
+.scanReviewPowerValue input{flex:1;min-width:0}
+.scanReviewPowerUnit{flex:none;color:#dbe8f7;font-weight:650}
 .scanReviewGroup{min-width:0;padding:10px;border:1px solid #2a4160;border-radius:14px;background:#0b1525}
 .scanReviewGroupTitle{margin:0 0 9px;color:#f3f8ff;font-size:14px;line-height:1.35;font-weight:750;overflow-wrap:anywhere}
 .scanReviewGroupRows{display:grid;gap:7px;min-width:0}

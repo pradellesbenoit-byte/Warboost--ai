@@ -61,6 +61,7 @@ import {confirmPlayerHq,mergePlayerHqFields,playerHqNeedsCloudSync,normalizePlay
 import {parseHeroPower,confirmedHeroPower,heroPowerIsConfirmed} from "./lib/hero-power.js";
 import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 import {createScanReviewDraft,scanReviewEntries,applyOwnedScanReview,scanRequestMatches} from "./lib/scan-review.js";
+import {applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription} from "./lib/squad-scan-review.js";
 import {buildScanReviewGroups,serializeScanReviewGear} from "./lib/scan-review-presentation.js";
 import {renderScanReviewMarkup} from "./lib/scan-review-markup.js";
 import {mergeTechnologyBranches,finalizeTechnologyReview} from "./lib/technology-scan.js";
@@ -1845,6 +1846,12 @@ function renderSquads(){
     const swapMenu=swapTargets.length?`<div class="squadSwapMenu hidden" data-squad-swap-menu="${id}"><span>${esc(t("squad_swap_with"))}</span>${swapTargets.map(x=>`<button type="button" class="squadSwapTarget" data-squad-swap-target="${x.id}">${esc(t("squad"))} ${x.id}</button>`).join("")}</div>`:"";
       shell.innerHTML=`<details class="squad" data-squad-id="${id}"><summary class="squadHead"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true"></span></summary><div id="squadBody${id}" class="squadBody">${Array.from({length:5},(_,j)=>{const h=heroes[j]||emptyHero(j+1),hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtHeroPowerForDisplay(sq,h))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div></details>${swapButton}${swapMenu}`;
     box.appendChild(shell);
+    const pending=sq.composition_conflict?.scan_pending;
+    if(Array.isArray(pending)&&pending.length){
+      const notice=document.createElement("p");notice.className="notice warn";
+      notice.textContent=`${lang.startsWith("fr")?"À confirmer":"To confirm"} : ${pending.map(item=>squadPendingDescription(item,lang)).join(" ; ")}`;
+      shell.querySelector(".squadBody")?.prepend(notice);
+    }
     const swapBtn=shell.querySelector(".squadSwapBtn");
     swapBtn?.addEventListener("pointerdown",e=>e.stopPropagation());
     swapBtn?.addEventListener("click",e=>{
@@ -3250,7 +3257,7 @@ function scanResultHasUsefulData(scanType,payload){
   if(type==="season")return Boolean((x.season&&Object.keys(x.season).some(k=>k!=="updated_at"))||(x.technology&&Object.keys(x.technology).some(k=>k!=="updated_at"&&x.technology[k]!==null&&x.technology[k]!==undefined)));
   return Object.keys(x).length>0;
 }
-function setScanReviewError(key){const box=$("#scanReviewError");if(!box)return;box.dataset.scanReviewErrorKey=key;box.textContent=t(key);box.classList.remove("hidden")}
+function setScanReviewError(key,path){const box=$("#scanReviewError");if(!box)return;box.dataset.scanReviewErrorKey=key;box.textContent=(path?`${scanFieldDescription(path,lang)} : `:"")+t(key);box.classList.remove("hidden")}
 function renderScanReview(draft){
   pendingScanReview=draft;const panel=$("#scanReviewPanel"),rows=$("#scanReviewRows");if(!panel||!rows)return false;
   const entries=scanReviewEntries(draft.patch);if(!entries.length){discardScanReviewDraft();return false}
@@ -3265,27 +3272,30 @@ function renderScanReview(draft){
   return true;
 }
 function scanReviewFormEdits(draft){
-  const container=$("#scanReviewRows"),edits=[];
-  if(!container||!Array.isArray(draft.displayRows))return {error:"scan_review_apply_failed"};
+  const container=$("#scanReviewRows"),edits=[],issues=[];
+  if(!container||!Array.isArray(draft.displayRows))return {error:"scan_review_form_missing"};
   for(const [id,row] of draft.displayRows.entries()){
     if(row.kind==="gear"){
       const counts=[...container.querySelectorAll(`[data-scan-gear-count="${id}"]`)];
-      if(!counts.length||counts.some(input=>input.validity?.badInput===true))return {error:"scan_review_gear_invalid"};
+      if(!counts.length)return {error:"scan_review_form_missing",path:row.path};
       const parts=counts.map((input,index)=>({
         count:input.value,
         levels:container.querySelector(`[data-scan-gear-levels="${id}"][data-scan-gear-part="${index}"]`)?.value??"",
         rarity:[...container.querySelectorAll(`[data-scan-gear-rarity="${id}"][data-scan-gear-part="${index}"]:checked`)].map(option=>option.value).join(",")
       }));
       const serialized=serializeScanReviewGear(parts);
-      if(serialized.error)return {error:"scan_review_gear_invalid"};
+      if(serialized.error||counts.some(input=>input.validity?.badInput===true)){
+        if(/^squad[1-4]$/.test(draft.type)){issues.push({path:row.path,reason:"invalid_gear"});edits.push({path:row.path,value:""});continue}
+        return {error:"scan_review_gear_invalid",path:row.path};
+      }
       edits.push({path:row.path,value:serialized.value});
     }else{
       const input=container.querySelector(`[data-scan-review-id="${id}"]`);
-      if(!input)return {error:"scan_review_apply_failed"};
+      if(!input)return {error:"scan_review_form_missing",path:row.path};
       edits.push({path:row.path,value:input.value,badInput:input.validity?.badInput===true});
     }
   }
-  return {edits};
+  return {edits,issues};
 }
 function updateScanReviewRaritySummary(container,id,index){
   const summary=container.querySelector(`[data-scan-gear-rarity-summary="${id}"][data-scan-gear-part="${index}"]`);
@@ -3343,11 +3353,22 @@ function confirmScanReview(){
     const error=$("#scanReviewError");if(error){error.classList.remove("hidden");error.textContent=lang.startsWith("fr")?"Ces données ont changé depuis le début du scan. Relance l’analyse pour garder les confirmations les plus récentes.":"These data changed after scanning started. Analyze again to preserve the latest confirmations."}return;
   }
   const form=scanReviewFormEdits(draft);
-  if(form.error){setScanReviewError(form.error);return}
+  if(form.error){setScanReviewError(form.error,form.path);return}
   const edits=form.edits;
   const result=applyOwnedScanReview(draft,pendingScanOwner(),edits);
   if(!result)return discardScanReviewDraft();
-  if(result.errors.length){const error=result.errors[0];setScanReviewError(error.reason==="negative_number"?"scan_review_negative_number":error.reason==="invalid_boolean"?"scan_review_invalid_boolean":"scan_review_invalid_number");return}
+  const squadScan=/^squad[1-4]$/.test(draft.type),secondaryErrors=squadScan?[...result.errors.filter(error=>error.path?.[2]==="heroes"),...(form.issues||[])]:[];
+  const blockingErrors=result.errors.filter(error=>!secondaryErrors.includes(error));
+  if(blockingErrors.length){
+    const error=blockingErrors[0],box=$("#scanReviewError");
+    if(box){box.classList.remove("hidden");box.textContent=`${scanFieldDescription(error.path,lang)} : ${t(error.reason==="negative_number"?"scan_review_negative_number":error.reason==="invalid_boolean"?"scan_review_invalid_boolean":"scan_review_invalid_number")}`}
+    return;
+  }
+  // Invalid secondary observations remain pending and cannot become stamped confirmations.
+  for(const error of secondaryErrors){
+    let target=result.patch;for(const key of error.path.slice(0,-1))target=target?.[key];
+    if(target)delete target[error.path.at(-1)];
+  }
   let reviewed=result.patch;
   const hqConfirmedAt=new Date().toISOString();
   if(draft.type==="profile"&&reviewed.player&&Object.prototype.hasOwnProperty.call(reviewed.player,"hq_level")){
@@ -3380,25 +3401,51 @@ function confirmScanReview(){
    const pendingPowerPaths=[];
   for(const edit of edits)if(/^(power|power_m)$/i.test(String(edit.path.at(-1)))){if(edit.path[0]==="drone")continue;if(!String(edit.value??"").trim())continue;if(!confirmedHeroPower(edit.value)){let target=reviewed;for(const part of edit.path.slice(0,-1))target=target?.[part];if(target)delete target[edit.path.at(-1)];pendingPowerPaths.push(edit.path)}}
   const sm=draft.type.match(/^squad([1-4])$/),squadIndex=sm?Number(sm[1])-1:null,heroSlots=sm?(reviewed.squads?.[squadIndex]?.heroes||[]):[];
-   const previousState=state,now=hqConfirmedAt;let merged;
+   const previousState=state,now=hqConfirmedAt;let merged,squadPending=[],squadPowerMissing=false;
   try{
-    if(sm){reviewed.squads??=[];const incoming=reviewed.squads[squadIndex]||{},base=previousState.squads?.[squadIndex]||emptySquad(squadIndex+1);reviewed.squads[squadIndex]=incoming;for(const key of ["power","power_m","power_sync_status","last_confirmed_power"])if(incoming[key]===undefined)incoming[key]=base[key];if(pendingPowerPaths.some(path=>path[0]==="squads"&&path[1]===squadIndex)){incoming.power_sync_status="pending";incoming.last_confirmed_power=base.last_confirmed_power??base.power}delete incoming.heroes;for(let i=0;i<5;i++)heroSlots[i]={...(heroSlots[i]||{}),name:String(heroSlots[i]?.name||draft.heroNames?.[i]||"").trim()}}
+    if(sm){
+      const power=reviewedSquadPower(reviewed.squads?.[squadIndex]?.power);
+      squadPowerMissing=power===null;
+      // Never pass uncertain identity/composition metadata to the generic state merge.
+      reviewed.squads??=[];
+      reviewed.squads[squadIndex]=power===null?{}:{power,power_sync_status:"confirmed",updated_at:now,field_source:{power:"confirmed_scan"},field_updated_at:{power:now}};
+      for(let i=0;i<5;i++)heroSlots[i]={...(heroSlots[i]||{})};
+    }
     merged=repairLegacySquadIdentity(mergeStateProtected(safeClone(previousState),reviewed,{preferBase:false})).state;
     merged.sync.last_scan=now;merged.sync.sources={...merged.sync.sources,scan:true};
     if(["profile","drone","awakening"].includes(draft.type))state=merged,recordProgressionSnapshot(`scan_${draft.type}`,now),merged=state;
     if(sm){
-      const names=heroSlots.map(h=>canonicalStoredHeroName(h?.name)).filter(Boolean);
-      if(names.length!==5||new Set(names.map(name=>name.toLowerCase())).size!==5)throw new Error("hero_identity_incomplete");
-      merged=reconcileConfirmedSquad(merged,{squadId:squadIndex+1,names,incomingHeroes:heroSlots,updatedAt:now}).state;
+      const issues=secondaryErrors.map(error=>({slot:Number(error.path[3])+1,field:error.path.at(-1),reason:error.reason}));
+      if(squadPowerMissing)issues.push({field:"power",reason:"missing"});
+      const applied=applyReviewedSquad(merged,{squadId:squadIndex+1,heroes:heroSlots,updatedAt:now,issues,powerConfirmed:!squadPowerMissing});
+      if(squadPowerMissing&&!applied.acceptedFields){
+        const box=$("#scanReviewError");
+        if(box){box.classList.remove("hidden");box.textContent=`${lang.startsWith("fr")?"Aucune valeur fiable à confirmer : puissance d’escouade manquante et aucun champ de héros associé sans ambiguïté.":"No reliable value to confirm: missing squad power and no unambiguously linked hero field."} ${applied.pending.filter(item=>item.field==="name").map(item=>squadPendingDescription(item,lang)).join(" ; ")}`}
+        return;
+      }
+      merged=applied.state;squadPending=applied.pending;
     }
     state=merged;
     if(sm)recordProgressionSnapshot(`scan_squad${squadIndex+1}`,now);
     if(!saveState())throw new Error("local_scan_save_failed");
     updateSquadCaptureHelp($("#scanType")?.value||"profile");
-  }catch{state=previousState;setScanReviewError("scan_review_apply_failed");return}
+  }catch(error){
+    state=previousState;
+    const box=$("#scanReviewError");
+    if(box){box.classList.remove("hidden");box.textContent=error?.message==="local_scan_save_failed"
+      ?(lang.startsWith("fr")?"Enregistrement local impossible : les valeurs ne sont pas confirmées. Vérifie l’espace disponible et les autorisations de stockage, puis réessaie.":"Local storage failed: values are not confirmed. Check storage permissions and available space, then retry.")
+      :(lang.startsWith("fr")?"Fusion des données du scan impossible : aucune confirmation enregistrée.":"Scan merge failed: no confirmation saved.")}
+    return;
+  }
   const type=draft.type,squadId=sm?Number(sm[1]):null,names=draft.heroNames||[];
    discardScanReviewDraft();$("#playerSyncInfo")?.classList.remove("hidden");invalidatePlayerAdvice({autoRefresh:true});
-  if(squadId){showConfirmedScanStatus($("#scanStatus"),"scan_saved")}
+  if(squadId){
+    showConfirmedScanStatus($("#scanStatus"),"scan_saved");
+    if(squadPending.length){
+      const status=$("#scanStatus");status.className="notice warn";
+      status.append(document.createTextNode(` · ${lang.startsWith("fr")?"Champs restants à confirmer":"Remaining fields to confirm"} : ${squadPending.map(item=>squadPendingDescription(item,lang)).join(" ; ")}`));
+    }
+  }
   else{const status=$("#scanStatus");if(status){if(pendingPowerPaths.length){status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_power_pending";status.textContent=t("scan_review_power_pending")}else showConfirmedScanStatus(status,"scan_saved")}if(type==="vs"){render();openDrawer("vs");if(proFeatureAllowed())void requestAdvice("vs").then(live=>{$("#vsPlanText").textContent=structuredAdviceText("vs",live)})}}
 }
 $("#confirmScanReviewBtn")?.addEventListener("click",confirmScanReview);

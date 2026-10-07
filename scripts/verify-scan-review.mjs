@@ -89,9 +89,12 @@ const analyze=app.slice(app.indexOf('async function analyzeReviewedScan()'),app.
 assert.doesNotMatch(analyze,/saveState\s*\(|mergeStateProtected\s*\(|state\s*=/,'analysis must only stage data before the review action');
 assert.match(app,/draft\.owner!==pendingScanOwner\(\)/,'review confirmation is scoped to current account');
 assert.match(app,/function resetPendingScanUi\(\)\{scanInputRevision\+\+;scanFileSelectionRevision\+\+;discardScanReviewDraft\(\)/,'account changes clear in-memory scan review and invalidate pending requests');
-assert.match(app,/pendingPowerPaths\.some\(path=>path\[0\]==="squads"/,'unreadable squad power stays pending instead of being confirmed');
+// The targeted controller test exercises absent/unreadable squad totals against
+// an already-confirmed value; do not couple this assertion to the old loop syntax.
+assert.match(app,/reviewedSquadPower\(reviewed\.squads\?\.\[squadIndex\]\?\.power\)/,'squad totals pass through the shared positive-millions validator');
+assert.match(app,/if\(squadPowerMissing\)issues\.push\(\{field:"power",reason:"missing"\}\)/,'missing squad totals remain explicitly pending');
 assert.match(app,/scanRequestIsCurrent\(request\)/,'analysis only stages results for the unchanged request context');
-assert.match(app,/if\(result\.errors\.length\)/,'invalid edits stop before state merge and retain the draft');
+assert.match(app,/if\(blockingErrors\.length\)/,'mandatory invalid edits stop before state merge and retain the draft; optional hero errors stay pending');
 assert.match(app,/scan_review_apply_failed/,'merge failures retain the review and show an inline error');
 assert.match(markup,/row\.kind==="boolean"[\s\S]*?<select/,'boolean review fields use explicit true/false options');
 assert.match(app,/renderScanReviewMarkup\(buildScanReviewGroups\(draft\.type,draft\.patch\),t,esc\)/,'review renders the localized grouped presentation');

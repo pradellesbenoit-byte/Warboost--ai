@@ -2785,3 +2785,6 @@ for(const [code,copy] of Object.entries(IDENTITY_ONBOARDING_COPY)){
   Object.assign(packs[code],Object.fromEntries(IDENTITY_ONBOARDING_KEYS.map((key,index)=>[key,copy[index]])));
 }
 Object.assign(EN,Object.fromEntries(IDENTITY_ONBOARDING_KEYS.map((key,index)=>[key,IDENTITY_ONBOARDING_COPY["en-GB"][index]])));
+Object.assign(EN,{scan_review_form_missing:"A review field is missing from the form. Reopen the scan review before confirming."});
+for(const code of ["en-GB","en-US"])if(packs[code])Object.assign(packs[code],{scan_review_form_missing:EN.scan_review_form_missing});
+Object.assign(packs.fr,{scan_review_form_missing:"Un champ du formulaire de vérification est absent. Rouvre la vérification du scan avant de confirmer."});

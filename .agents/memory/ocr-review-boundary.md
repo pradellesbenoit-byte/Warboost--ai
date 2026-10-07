@@ -20,3 +20,14 @@ Account isolation also applies to transient media labels and progress, not only 
 **Why:** Suppressing a late result and clearing image references can still leave the previous account’s filename and progress visible in an existing drawer.
 
 **How to apply:** Account transitions must invalidate request bindings and clear the rendered capture list, preview, review status and busy controls before restoring the new owner’s pending captures.
+
+Une confirmation d’escouade peut enregistrer des champs fiables sans confirmer toute
+la composition. Les identités incomplètes, inconnues ou en double restent en attente ;
+elles ne permettent ni transfert positionnel d’attributs ni effacement des confirmations.
+
+**Why:** L’utilisateur demande que les scans partiels utiles ne soient plus bloqués par
+des héros ou champs secondaires incomplets, sans sacrifier les données déjà confirmées.
+
+**How to apply:** Distinguer la confirmation des valeurs de celle d’une nouvelle composition.
+Une identité exacte permet d’enrichir un héros connu ; seule une composition complète et
+sans ambiguïté autorise son remplacement. Les champs omis ne reçoivent pas de fraîcheur nouvelle.
