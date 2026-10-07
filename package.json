@@ -61,6 +61,7 @@
     "test:shared-alliance-roster": "node scripts/verify-shared-alliance-roster.mjs",
     "test:canonical-roster-count": "node scripts/verify-canonical-roster-count.mjs",
     "test:idle-resume": "node scripts/verify-idle-resume.mjs",
+    "test:fresh-launch": "node --check lib/fresh-launch.js && node scripts/verify-fresh-launch.mjs",
     "test:loading-screen": "node scripts/verify-loading-screen.mjs",
     "test:linked-account-render": "node scripts/verify-linked-account-render.mjs",
     "test:player-hq": "node scripts/verify-player-hq.mjs",

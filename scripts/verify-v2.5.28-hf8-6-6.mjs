@@ -46,8 +46,9 @@ assert.match(html,/HF8\.6\.34/);
 assert.match(html,/data-i18n="privacy_scan"/);
 assert.match(sw,/hf8-6-6-scan-persistence-reliability/);
 assert.match(sw,/\/lib\/pending-scan-storage\.js/);
-assert.match(health,/pending_scan_indexeddb_persistence:true/);
-assert.match(health,/pending_roster_queue_indexeddb_persistence:true/);
+assert.match(health,/pending_scan_indexeddb_persistence:false/);
+assert.match(health,/pending_roster_queue_indexeddb_persistence:false/);
+assert.match(health,/pending_scan_session_memory_only:true/);
 assert.match(health,/cloud_save_retry_on_mobile_lifecycle:true/);
 assert.match(pkg.description,/HF8\.6\.34/);
 assert.match(pkg.scripts.check,/lib\/pending-scan-storage\.js/);
@@ -55,11 +56,11 @@ assert.match(pkg.scripts.check,/lib\/pending-scan-storage\.js/);
 // 22 selectable languages + en-GB + en-US + auto = 24 entries total.
 assert.equal(LANGUAGES.length,24);
 const fr=translator('fr');
-assert.match(fr('privacy_scan'),/48 h/);
+assert.match(fr('privacy_scan'),/session ouverte/);
 assert.match(fr('tagline'),/HF8\.6\.34/);
 assert.notEqual(fr('scan_pending_local_failed'),'scan_pending_local_failed');
 const en=translator('en-GB');
-assert.match(en('privacy_scan'),/48 hours/);
+assert.match(en('privacy_scan'),/open session/);
 
 const migrations=fs.readdirSync(path.join(root,'supabase')).filter(x=>/hf8[_-]?6[_-]?6/i.test(x));
 assert.equal(migrations.length,0,'HF8.6.6 must not require a Supabase migration');

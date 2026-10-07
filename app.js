@@ -52,7 +52,8 @@ import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMI
 import {cleanRosterOcrName,rosterIdentityKey,resolveRosterScanRows,confirmRosterScanPossibleMatch,rosterScanHasUnresolvedIdentity} from "./lib/roster-identity-resolution.js";
 import {canonicalRosterMemberKey,previewAllianceRankChanges,applyAllianceRankChanges,permissionTransitions,rankManagementKey,confirmedCanonicalSelfRole} from "./lib/alliance-rank-management.js";
 import {preferredRankEvidence,rankConfirmationStatus} from "./lib/rank-provenance.js";
-import {savePendingSingleScan,loadPendingSingleScan,clearPendingSingleScan,savePendingRosterFiles,loadPendingRosterFiles,clearPendingRosterFiles,savePendingTechnologyFiles,loadPendingTechnologyFiles,clearPendingTechnologyFiles,movePendingScans} from "./lib/pending-scan-storage.js";
+import {savePendingSingleScan,loadPendingSingleScan,clearPendingSingleScan,savePendingRosterFiles,loadPendingRosterFiles,clearPendingRosterFiles,savePendingTechnologyFiles,loadPendingTechnologyFiles,clearPendingTechnologyFiles,clearPendingScanSession,clearLegacyPendingScans,movePendingScans} from "./lib/pending-scan-storage.js";
+import {createFreshLaunchController} from "./lib/fresh-launch.js";
 import {hasMeaningfulCoreState,hydrateCloudState,mergeDesertStormState,desertStormSelectionSignature,canUseKeepaliveBody,betaStateAfterVerifiedStateRead} from "./lib/cloud-state-recovery.js";
 import {readOwnProfileDirect} from "./lib/cloud-profile-direct.js";
 import {shouldPreserveVerifiedSessionAccess,betaStateForSessionBootstrap,preserveAllowedAfterTransient,restoreAttemptSucceeded,canRevealOwnedPrivateState,deriveRuntimeAccessState} from "./lib/session-bootstrap.js";
@@ -525,9 +526,15 @@ let pendingScanRestoreInFlight=null,pendingScanRestoreOwner="";
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
 function discardScanReviewDraft(){pendingScanReview=null;$("#scanReviewPanel")?.classList.add("hidden");const rows=$("#scanReviewRows");if(rows)rows.replaceChildren()}
 function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft();
+  pendingScanRestoreInFlight=null;pendingScanRestoreOwner="";
+  const rosterStatus=$("#rosterScanStatus"),rosterButton=$("#rosterScanAnalyzeBtn"),fullSnapshot=$("#rosterScanFullSnapshot");
+  if(rosterStatus){rosterStatus.textContent="";rosterStatus.classList.add("hidden")}
+  if(rosterButton){rosterButton.disabled=false;rosterButton.textContent=t("analyze")}
+  if(fullSnapshot)fullSnapshot.checked=false;
   pendingExclusiveRequest=null;updateTechnologyScanPreview([]);
   const status=$("#scanStatus"),button=$("#analyzeScanBtn");
-  if(status){delete status.dataset.scanReviewStatusKey;status.className="notice";status.textContent=t("scan_wait")}
+  if(status){delete status.dataset.scanReviewStatusKey;delete status.dataset.squadPending;status.className="notice";status.textContent=t("scan_wait")}
+  const reviewError=$("#scanReviewError");if(reviewError){reviewError.textContent="";reviewError.classList.add("hidden")}
   if(button){button.disabled=false;button.textContent=t("analyze")}
 }
 async function restorePendingScans(){
@@ -709,7 +716,7 @@ async function saveInlineHeroNames(squadId,container,button=null){
 if(!localStorage.getItem(LANG_KEY)){for(const key of LEGACY_LANGUAGE_KEYS){const v=localStorage.getItem(key);if(v){localStorage.setItem(LANG_KEY,v);break}}}
 let languageChoice=localStorage.getItem(LANG_KEY)||"auto",lang=resolveLanguage(languageChoice),locale=localeFor(lang),t=translator(lang);
 loadingScreen=createLoadingScreenController({documentRef:document,windowRef:window,translate:key=>t(key)});
-returnViewController=createReturnViewController({documentRef:document,windowRef:window,openDrawer,canRestorePrivateData:()=>betaPrivateDataVisible()});
+returnViewController=createReturnViewController({documentRef:document,windowRef:window,openDrawer,canRestorePrivateData:()=>betaPrivateDataVisible(),persistAcrossReload:false});
 function betaConsentStorageKey(){const id=String(cloudSession?.user?.id||"").trim();return id?`${BETA_CONSENT_KEY}:${id}`:null}
 function betaConsentAccepted(){const key=betaConsentStorageKey();return Boolean(key&&localStorage.getItem(key)==="1")}
 function authHeaders(extra={}){return {...extra,...(cloudSession?.access_token?{authorization:`Bearer ${cloudSession.access_token}`}:{}) ,...(betaConsentAccepted()?{"x-warboost-beta-consent":BETA_CONSENT_VERSION}:{})}}
@@ -3548,7 +3555,7 @@ async function analyzeReviewedScan(){
   btn.disabled=true;btn.textContent=t("scan_processing");status.className="notice";status.textContent=t("scan_processing");
   try{
     const j=await analyzePlayerCaptureBatch({type:scanType,images,isCurrent:()=>scanRequestIsCurrent(request),
-      onProgress:(n,total)=>{status.textContent=`${t("scan_processing")} ${n}/${total}`},
+      onProgress:(n,total)=>{if(scanRequestIsCurrent(request))status.textContent=`${t("scan_processing")} ${n}/${total}`},
       request:payload=>fetchWarBoostScan({scan_type:scanType,locale:lang,...payload,current_state:state})});
     if(!j)return;
     const r={ok:true};
@@ -3877,7 +3884,32 @@ $("#rosterScanFiles")?.addEventListener("change",async e=>{
   const kept=await persistPendingRosterQueue();
   if(!kept&&rosterScanFiles.length){const st=$("#rosterScanStatus");if(st){st.className="notice warn";st.textContent=t("scan_pending_local_failed");st.classList.remove("hidden")}}
 });
-$("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus"),btn=$("#rosterScanAnalyzeBtn");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}if(!rosterScanFiles.length){if(status){status.className="notice warn";status.textContent=t("roster_scan_choose_first");status.classList.remove("hidden")}return}if(!requireBetaAccess()||!requireBetaConsent())return;if(!cloudSession?.access_token){openDrawer("account");return}btn.disabled=true;const old=btn.textContent;btn.textContent=t("scan_processing");if(status){status.className="notice";status.textContent=t("roster_scan_processing",{count:rosterScanFiles.length});status.classList.remove("hidden")}try{let rows=[];for(let i=0;i<rosterScanFiles.length;i++){const image=await imageToDataUrl(rosterScanFiles[i]),{response:r,json:j}=await fetchWarBoostScan({scan_type:"alliance_roster",locale:lang,image_data_url:image,current_state:state});if(!r.ok)throw new Error(j.message||j.error||"scan_failed");rows=mergeRosterScanRows(rows,j.roster_rows||[]);if(status)status.textContent=t("roster_scan_progress",{done:i+1,total:rosterScanFiles.length,rows:rows.length})}rosterScanDraft=resolveCurrentRosterScanDraft(mergeRosterScanRows([],rows));renderRosterScanDraft();if(status){status.className="notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})}}catch(e){if(status){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}finally{btn.disabled=false;btn.textContent=old}});
+$("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{
+  const status=$("#rosterScanStatus"),btn=$("#rosterScanAnalyzeBtn");
+  if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}
+  if(!rosterScanFiles.length){if(status){status.className="notice warn";status.textContent=t("roster_scan_choose_first");status.classList.remove("hidden")}return}
+  if(!requireBetaAccess()||!requireBetaConsent())return;
+  if(!cloudSession?.access_token){openDrawer("account");return}
+  const revision=scanInputRevision,owner=pendingScanOwner(),files=[...rosterScanFiles];
+  const isCurrent=()=>revision===scanInputRevision&&owner===pendingScanOwner();
+  btn.disabled=true;const old=btn.textContent;btn.textContent=t("scan_processing");
+  if(status){status.className="notice";status.textContent=t("roster_scan_processing",{count:files.length});status.classList.remove("hidden")}
+  try{
+    let rows=[];
+    for(let i=0;i<files.length;i++){
+      const image=await imageToDataUrl(files[i]);if(!isCurrent())return;
+      const {response:r,json:j}=await fetchWarBoostScan({scan_type:"alliance_roster",locale:lang,image_data_url:image,current_state:state});
+      if(!isCurrent())return;
+      if(!r.ok)throw new Error(j.message||j.error||"scan_failed");
+      rows=mergeRosterScanRows(rows,j.roster_rows||[]);
+      if(status)status.textContent=t("roster_scan_progress",{done:i+1,total:files.length,rows:rows.length});
+    }
+    if(!isCurrent())return;
+    rosterScanDraft=resolveCurrentRosterScanDraft(mergeRosterScanRows([],rows));renderRosterScanDraft();
+    if(status){status.className="notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})}
+  }catch(e){if(isCurrent()&&status){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}
+  finally{if(isCurrent()){btn.disabled=false;btn.textContent=old}}
+});
 $("#rosterScanImportBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}collectRosterScanDraftFromDom();if(rosterScanHasUnresolvedIdentity(rosterScanDraft)){if(status){status.className="notice warn";status.textContent=t("roster_identity_unresolved_block");status.classList.remove("hidden")}renderRosterScanDraft();return}if(rosterScanDraft.some(row=>!scanRole(row?.role))){if(status){status.className="notice warn";status.textContent="Chaque grade doit être confirmé avant l’import.";status.classList.remove("hidden")}return}const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=await applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result?.synced){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";void clearPendingRosterFiles(pendingScanOwner());renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
 
 $("#rosterImportBtn")?.addEventListener("click",async()=>{
@@ -4114,7 +4146,13 @@ window.addEventListener("online",()=>{
   else void reconcileAuthenticatedRuntime("online",{force:true});
 });
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&cloudDirty)void pushServerState({keepalive:true})});
-window.addEventListener("pagehide",()=>{returnViewController?.capture();if(cloudDirty)void pushServerState({keepalive:true})});
+window.addEventListener("pagehide",()=>{if(cloudDirty)void pushServerState({keepalive:true})});
+const freshLaunch=createFreshLaunchController({
+  resetTemporary:()=>{resetPendingScanUi();const type=$("#scanType");if(type)type.value="profile";updateScanCaptureMode()},
+  closeTemporary:()=>closeDrawers(),
+  clearReturnView:()=>returnViewController?.clear(),
+  clearCaptures:clearPendingScanSession,clearLegacyCaptures:clearLegacyPendingScans
+});
 const STARTUP_MODE_STORAGE_KEY="warboost-startup-mode";
 const STARTUP_SCAN_RESTORE_WAIT_MS=5000;
 let serviceWorkerUpdatePromise=Promise.resolve({ok:false,skipped:true});
@@ -4133,7 +4171,7 @@ if("serviceWorker" in navigator&&!isNativeWarBoost){
             let alreadyReloaded=false;
             try{alreadyReloaded=sessionStorage.getItem(reloadKey)==="1"}catch{}
             if(refreshing||alreadyReloaded)return;
-            refreshing=true;returnViewController?.capture();
+            refreshing=true;returnViewController?.clear();
             try{sessionStorage.setItem(reloadKey,"1");sessionStorage.setItem(STARTUP_MODE_STORAGE_KEY,"update")}catch{}
             location.reload();
           });
@@ -4161,6 +4199,7 @@ $("#loadingRetry")?.addEventListener("click",async()=>{
   await loadingScreen?.hide();
 });
 async function initializeWarBoost(){
+  freshLaunch.start();
   identityOnboardingController=createIdentityOnboardingController({
     document,
     getContext:()=>({userId:String(cloudSession?.user?.id||""),ownerId:String(state?.player_id||""),
@@ -4207,7 +4246,7 @@ async function initializeWarBoost(){
     new Promise(resolve=>{scanRestoreTimer=setTimeout(()=>resolve({timeout:true}),STARTUP_SCAN_RESTORE_WAIT_MS)})
   ]);
   if(scanRestoreTimer!==null)clearTimeout(scanRestoreTimer);
-  if(!pendingJoinCode())returnViewController?.restore();
+  // Startup always remains on Home; invitation/auth flows keep their own guards.
   loadingScreen?.setStage("version");
   await Promise.race([
     serviceWorkerUpdatePromise,
