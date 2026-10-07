@@ -12,8 +12,8 @@ import {normalizeState} from "../lib/normalize.js";
 import {translator} from "../i18n.js";
 
 const names=["Kimberly","Murphy","Marshall","DVA","Stetmann"],at="2026-10-07T00:00:00Z";
-const base={player_id:"fixture-a",squads:[{power:42,power_sync_status:"confirmed",confirmed_composition:names,composition_confirmed_at:at,
-  heroes:names.map(name=>({name,level:150,stars:5,power:5000000,updated_at:at,source:"confirmed_manual"}))}]};
+const base={player_id:"fixture-a",squads:[{power:42,power_sync_status:"confirmed",confirmed_composition:names,composition_confirmed_at:at,composition_source:"explicit_confirmation",
+  heroes:names.map(name=>({name,level:150,stars:5,power:5000000,exclusive:null,gear:null,awakening:null,updated_at:at,source:"confirmed_manual"}))}]};
 let count=0;const test=(name,run)=>{run();count++;console.log(`PASS ${name}`)};
 test("only owner-bound explicitly confirmed composition supplies hints",()=>{
   assert.deepEqual(confirmedSquadHints(base,1,"fixture-a"),names);

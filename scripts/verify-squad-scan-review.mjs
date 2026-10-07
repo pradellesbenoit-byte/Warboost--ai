@@ -15,8 +15,8 @@ import {translator} from "../i18n.js";
 const clone=x=>JSON.parse(JSON.stringify(x));
 const at="2026-10-07T12:00:00.000Z",old="2026-10-01T12:00:00.000Z";
 const names=["Kimberly","Murphy","Marshall","DVA","Stetmann"].map(catalogHeroName);
-const heroes=names.map(name=>({name,level:150,stars:5,power:5000000,gear:"count=4;level=40",updated_at:old,source:"confirmed_manual"}));
-const base={player_id:"fixture-a",player:{},squads:[{id:1,power:42,power_sync_status:"confirmed",heroes:clone(heroes),confirmed_composition:names,composition_confirmed_at:old}],sync:{sources:{}}};
+const heroes=names.map(name=>({name,level:150,stars:5,power:5000000,exclusive:null,awakening:null,gear:"count=4;level=40",updated_at:old,source:"confirmed_manual"}));
+const base={player_id:"fixture-a",player:{},squads:[{id:1,power:42,power_sync_status:"confirmed",heroes:clone(heroes),confirmed_composition:names,composition_confirmed_at:old,composition_source:"explicit_confirmation"}],sync:{sources:{}}};
 let checks=0;
 const check=(label,fn)=>{fn();checks++;console.log(`PASS ${label}`)};
 check("partial scan preserves confirmed identities/fields and updates exact hero",()=>{

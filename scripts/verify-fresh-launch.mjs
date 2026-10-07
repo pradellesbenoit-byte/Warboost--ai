@@ -13,7 +13,7 @@ const app=fs.readFileSync("app.js","utf8");
 const image="data:image/png;base64,aGVsbG8=",owner="fixture-user";
 const names=["Kimberly","Murphy","Marshall","DVA","Stetmann"];
 const profile={player_id:owner,player:{name:"Fixture",hq_level:31,role:"R5"},alliance:{role:"R5",cloud_role_verified:true},
-  squads:[{power:44.43,power_sync_status:"confirmed",confirmed_composition:names,composition_confirmed_at:"2026-10-07T00:00:00Z",
+  squads:[{power:44.43,power_sync_status:"confirmed",confirmed_composition:names,composition_confirmed_at:"2026-10-07T00:00:00Z",composition_source:"explicit_confirmation",
     heroes:names.map(name=>({name,level:150,stars:5,power:5000000}))}],sync:{pending_cloud_save:true}};
 const protectedStore=new Map([["confirmed-profile",JSON.stringify(profile)],["auth-session","fixture-session"],["beta-grant","active"],["pro-grant","active"]]);
 const storage={getItem:k=>protectedStore.get(k),setItem:(k,v)=>protectedStore.set(k,v),removeItem:k=>protectedStore.delete(k)};

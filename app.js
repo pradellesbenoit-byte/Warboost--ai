@@ -14,7 +14,7 @@ import {profileIdentity,applyIdentityProfile} from "./lib/identity-onboarding.js
 import {createIdentityOnboardingController} from "./lib/identity-onboarding-controller.js";
 import {betaCodeVisible,betaActivationErrorKey,betaActivationSucceeded} from "./lib/beta-activation-ui.js";
 let identityOnboardingController=null;
-import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad} from "./lib/squad-identity.js";
+import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad,mergeSquadIdentityHistory,squadForStableSlot} from "./lib/squad-identity.js";
 import {reconcileCloudSquads} from "./lib/squad-freshness.js";
 import {recoverHeroData} from "./lib/hero-history.js";
 import {parseRosterImport,rosterNameKey} from "./lib/roster-import.js";
@@ -201,11 +201,15 @@ function mergeSquadComposition(baseSquad={},incomingSquad={},preferBase=false){
   return preferBase?(base||incoming):(incoming||base);
 }
 function mergeSquadPayload(baseSquad={},incomingSquad,id,{preferBase=false}={}){
-  const b=baseSquad||emptySquad(id);
+  const b=normalizeSquadSlots(baseSquad||emptySquad(id),id);
   if(!incomingSquad)return normalizeSquadSlots({...b,power:canonicalPowerMillions(b.power),heroes:fixedHeroSlots(b.heroes)},id,{inferLegacy:true});
+  incomingSquad=normalizeSquadSlots(incomingSquad,id);
   const incomingPower=incomingSquad.power_m??incomingSquad.power,basePending=b.power_sync_status==="pending";
   const freshSquad=mergeFreshRecord(b,{...incomingSquad,power:canonicalPowerMillions(incomingPower)},["power","last_confirmed_power"],{baseFallbackAt:b.updated_at,incomingFallbackAt:incomingSquad.updated_at,baseSource:"squad",incomingSource:"squad"});
   const composition=mergeSquadComposition(b,incomingSquad,preferBase);
+  const confirmedRecord=preferBase
+    ?(confirmedCompositionForSquad(b)?b:incomingSquad)
+    :(confirmedCompositionForSquad(incomingSquad)?incomingSquad:b);
   const merged={
     ...b,...incomingSquad,id:Number(id),name:`Squad ${id}`,
      power:basePending?b.power:freshSquad.power,
@@ -214,6 +218,9 @@ function mergeSquadPayload(baseSquad={},incomingSquad,id,{preferBase=false}={}){
     needs_rescan:preferBase?b.needs_rescan===true:incomingSquad.needs_rescan===true,
     composition_changed_at:(preferBase?b.composition_changed_at:null)||incomingSquad.composition_changed_at||b.composition_changed_at||null,
     confirmed_composition:composition||Array.from({length:5},()=>""),
+    composition_source:confirmedRecord.composition_source,
+    composition_confirmed_at:confirmedRecord.composition_confirmed_at,
+    composition_conflict:mergeSquadIdentityHistory(b,incomingSquad),
      heroes:Array.from({length:5},(_,j)=>mergeHeroSlotIdentitySafe(b.heroes?.[j],incomingSquad.heroes?.[j],{preferBase,baseFallbackAt:b.updated_at,incomingFallbackAt:incomingSquad.updated_at}))
   };
   return normalizeSquadSlots(merged,id,{inferLegacy:false});
@@ -238,7 +245,40 @@ function adoptCanonicalPendingAccounts(target,source,{available=false}={}){
   const unlinked_accounts=available?rebuildCanonicalPendingAccounts(source,{currentPlayerId:playerId,currentPlayerAliases:aliases}):[];
   return {...target,alliance:{...(target?.alliance||{}),unlinked_accounts}};
 }
-function mergeState(base,incoming){if(!incoming||typeof incoming!=="object")return base;const out={...base,...incoming};const playerFields=Object.keys({...base.player,...incoming.player}).filter(key=>!["field_updated_at","field_source","updated_at","source"].includes(key));out.player=mergeFreshRecord(base.player,incoming.player,playerFields,{baseFallbackAt:base.player?.updated_at,incomingFallbackAt:incoming.player?.updated_at||incoming.updated_at,baseSource:"player",incomingSource:"player"});out.player.power_m=canonicalPowerMillions(out.player.power_m);out.player_context={...(base.player_context||{}),...(incoming.player_context||{})};out.activity_events=mergeActivityEvents(base.activity_events,incoming.activity_events);out.player_availability=mergeEventAvailabilities(base.player_availability,incoming.player_availability);out.availability_history=mergeAvailabilityHistory(base.availability_history,incoming.availability_history);out.drone=mergeFreshRecord(base.drone,incoming.drone,["level","power_m","boostCombat"],{baseFallbackAt:base.drone?.updated_at,incomingFallbackAt:incoming.drone?.updated_at||incoming.updated_at,baseSource:"drone",incomingSource:"drone"});out.drone.power_m=canonicalPowerMillions(out.drone.power_m);out.shop=mergeShopState(base.shop,incoming.shop);out.alliance={...base.alliance,...incoming.alliance};out.alliance.members=mergeAllianceMembersProtected(base.alliance?.members,incoming.alliance?.members,false);out.alliance=reconcileCanonicalAlliance(base.alliance,incoming.alliance,out.alliance);out.alliance.unlinked_accounts=normalizeUnlinkedAccounts(out.alliance.unlinked_accounts,out.alliance.members,{serverId:out.alliance.server_id||out.player?.server_id,allianceTag:out.alliance.tag,currentPlayerId:out.player_id,currentPlayerName:out.player?.name,currentPlayerAliases:String(base.player_id||"")===String(out.player_id||"")?[base.player?.name]:[],identityLinkStatus:out.alliance.identity_link_status});out.alliance.former_members=[];out.alliance.roster_removal_tombstones=normalizeRosterRemovalTombstones([...(base.alliance?.roster_removal_tombstones||[]),...(incoming.alliance?.roster_removal_tombstones||[]),...(base.alliance?.former_members||[]),...(incoming.alliance?.former_members||[])]);out.alliance.event_availability=mergeEventAvailabilities(base.alliance?.event_availability,incoming.alliance?.event_availability,...out.alliance.members.map(x=>x.event_availability||[]));out.alliance.availability_history=mergeAvailabilityHistory(base.alliance?.availability_history,incoming.alliance?.availability_history,...out.alliance.members.map(x=>x.availability_history||[]));out.alliance.desert_storm=mergeDesertStormState(base.alliance?.desert_storm,incoming.alliance?.desert_storm);out.alliance.canyon=mergeCanyonState(base.alliance?.canyon,incoming.alliance?.canyon);out.vs=mergeVsState(base.vs,incoming.vs);out.season=mergeFreshRecord(base.season,incoming.season,Object.keys({...base.season,...incoming.season}).filter(key=>!["field_updated_at","field_source","updated_at","source"].includes(key)),{baseFallbackAt:base.season?.updated_at,incomingFallbackAt:incoming.season?.updated_at||incoming.updated_at,baseSource:"season",incomingSource:"season"});out.technology=mergeFreshRecord(base.technology,incoming.technology,Object.keys({...base.technology,...incoming.technology}).filter(key=>!["field_updated_at","field_source","updated_at","source","branches"].includes(key)),{baseFallbackAt:base.technology?.updated_at,incomingFallbackAt:incoming.technology?.updated_at||incoming.updated_at,baseSource:"technology",incomingSource:"technology"});out.technology.branches=mergeTechnologyBranches(base.technology?.branches,incoming.technology?.branches);out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);out.sync={...base.sync,...incoming.sync,sources:{...base.sync.sources,...incoming.sync?.sources}};out.squads=Array.from({length:4},(_,i)=>mergeSquadPayload(base.squads?.[i]||emptySquad(i+1),incoming.squads?.[i],i+1));out.version=APP_VERSION;return out}
+function mergeState(base,incoming){
+  if(!incoming||typeof incoming!=="object")return base;
+  const out={...base,...incoming};
+  const playerFields=Object.keys({...base.player,...incoming.player}).filter(key=>!["field_updated_at","field_source","updated_at","source"].includes(key));
+  out.player=mergeFreshRecord(base.player,incoming.player,playerFields,{baseFallbackAt:base.player?.updated_at,incomingFallbackAt:incoming.player?.updated_at||incoming.updated_at,baseSource:"player",incomingSource:"player"});
+  out.player.power_m=canonicalPowerMillions(out.player.power_m);
+  out.player_context={...(base.player_context||{}),...(incoming.player_context||{})};
+  out.activity_events=mergeActivityEvents(base.activity_events,incoming.activity_events);
+  out.player_availability=mergeEventAvailabilities(base.player_availability,incoming.player_availability);
+  out.availability_history=mergeAvailabilityHistory(base.availability_history,incoming.availability_history);
+  out.drone=mergeFreshRecord(base.drone,incoming.drone,["level","power_m","boostCombat"],{baseFallbackAt:base.drone?.updated_at,incomingFallbackAt:incoming.drone?.updated_at||incoming.updated_at,baseSource:"drone",incomingSource:"drone"});
+  out.drone.power_m=canonicalPowerMillions(out.drone.power_m);out.shop=mergeShopState(base.shop,incoming.shop);
+  out.alliance={...base.alliance,...incoming.alliance};
+  out.alliance.members=mergeAllianceMembersProtected(base.alliance?.members,incoming.alliance?.members,false);
+  out.alliance=reconcileCanonicalAlliance(base.alliance,incoming.alliance,out.alliance);
+  out.alliance.unlinked_accounts=normalizeUnlinkedAccounts(out.alliance.unlinked_accounts,out.alliance.members,{serverId:out.alliance.server_id||out.player?.server_id,allianceTag:out.alliance.tag,currentPlayerId:out.player_id,currentPlayerName:out.player?.name,currentPlayerAliases:String(base.player_id||"")===String(out.player_id||"")?[base.player?.name]:[],identityLinkStatus:out.alliance.identity_link_status});
+  out.alliance.former_members=[];
+  out.alliance.roster_removal_tombstones=normalizeRosterRemovalTombstones([...(base.alliance?.roster_removal_tombstones||[]),...(incoming.alliance?.roster_removal_tombstones||[]),...(base.alliance?.former_members||[]),...(incoming.alliance?.former_members||[])]);
+  out.alliance.event_availability=mergeEventAvailabilities(base.alliance?.event_availability,incoming.alliance?.event_availability,...out.alliance.members.map(x=>x.event_availability||[]));
+  out.alliance.availability_history=mergeAvailabilityHistory(base.alliance?.availability_history,incoming.alliance?.availability_history,...out.alliance.members.map(x=>x.availability_history||[]));
+  out.alliance.desert_storm=mergeDesertStormState(base.alliance?.desert_storm,incoming.alliance?.desert_storm);
+  out.alliance.canyon=mergeCanyonState(base.alliance?.canyon,incoming.alliance?.canyon);
+  out.vs=mergeVsState(base.vs,incoming.vs);
+  out.season=mergeFreshRecord(base.season,incoming.season,Object.keys({...base.season,...incoming.season}).filter(key=>!["field_updated_at","field_source","updated_at","source"].includes(key)),{baseFallbackAt:base.season?.updated_at,incomingFallbackAt:incoming.season?.updated_at||incoming.updated_at,baseSource:"season",incomingSource:"season"});
+  out.technology=mergeFreshRecord(base.technology,incoming.technology,Object.keys({...base.technology,...incoming.technology}).filter(key=>!["field_updated_at","field_source","updated_at","source","branches"].includes(key)),{baseFallbackAt:base.technology?.updated_at,incomingFallbackAt:incoming.technology?.updated_at||incoming.updated_at,baseSource:"technology",incomingSource:"technology"});
+  out.technology.branches=mergeTechnologyBranches(base.technology?.branches,incoming.technology?.branches);
+  out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);
+  out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);
+  out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);
+  out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);
+  out.sync={...base.sync,...incoming.sync,sources:{...base.sync.sources,...incoming.sync?.sources}};
+  out.squads=Array.from({length:4},(_,i)=>mergeSquadPayload(squadForStableSlot(base.squads,i+1)||emptySquad(i+1),squadForStableSlot(incoming.squads,i+1),i+1));
+  out.version=APP_VERSION;return out;
+}
 function hasValue(v){return !(v===null||v===undefined||v===""||(Array.isArray(v)&&v.length===0))}
 function safeFields(base={},incoming={},preferBase=false){const out={...base};for(const [k,v] of Object.entries(incoming||{})){if(!hasValue(v))continue;if(preferBase&&hasValue(out[k]))continue;out[k]=v}return out}
 function allianceMemberKey(m){const id=String(m?.player_id||"").trim();if(id)return `id:${id}`;if(m?.canonical_member_key)return `key:${m.canonical_member_key}`;const name=String(m?.name||"").trim().toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");return name?`name:${name}`:""}
@@ -268,10 +308,12 @@ function mergeStateProtected(base,incoming,{preferBase=false}={}){
    out.vs=mergeVsState(base.vs,incoming.vs);if(preferBase)out.vs={...out.vs,...safeFields(incoming.vs,base.vs,false),snapshots:out.vs.snapshots||base.vs?.snapshots||[]};out.season=mergeFreshRecord(base.season,incoming.season,Object.keys({...base.season,...incoming.season}).filter(key=>!["field_updated_at","field_source","updated_at","source"].includes(key)),{baseSource:"season",incomingSource:"season"});out.technology=mergeFreshRecord(base.technology||{},incoming.technology||{},Object.keys({...base.technology,...incoming.technology}).filter(key=>!["field_updated_at","field_source","updated_at","source","branches"].includes(key)),{baseSource:"technology",incomingSource:"technology"});out.technology.branches=mergeTechnologyBranches(base.technology?.branches,incoming.technology?.branches);out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);
   out.sync={...base.sync,...safeFields(base.sync,incoming.sync,preferBase),sources:{...base.sync?.sources,...incoming.sync?.sources}};
   out.squads=Array.from({length:4},(_,i)=>{
-    const b=base.squads?.[i]||emptySquad(i+1),n=incoming.squads?.[i];
+    const b=squadForStableSlot(base.squads,i+1)||emptySquad(i+1),n=squadForStableSlot(incoming.squads,i+1);
     if(!n)return normalizeSquadSlots({...b,heroes:fixedHeroSlots(b.heroes)},i+1,{inferLegacy:true});
     const merged=mergeSquadPayload(b,n,i+1,{preferBase});
-    return normalizeSquadSlots({...merged,...safeFields({},n,preferBase),id:i+1,name:`Squad ${i+1}`,confirmed_composition:mergeSquadComposition(b,n,preferBase)||merged.confirmed_composition,heroes:merged.heroes},i+1,{inferLegacy:false});
+    return normalizeSquadSlots({...merged,...safeFields({},n,preferBase),id:i+1,name:`Squad ${i+1}`,
+      confirmed_composition:merged.confirmed_composition,composition_source:merged.composition_source,
+      composition_confirmed_at:merged.composition_confirmed_at,composition_conflict:merged.composition_conflict,heroes:merged.heroes},i+1,{inferLegacy:false});
   });
    for(const row of out.alliance.members||[]){
      const aliasMatches=[...renameWinners.values()].filter(known=>!row.canonical_member_key&&String(known.player_id||"")===String(row.player_id||"")&&(known.name_aliases||[]).includes(row.name));
@@ -351,20 +393,13 @@ function migrateLegacyLocalState(seed){
   setIfEmpty(out.alliance,'tag',alliance.alliance);
   const sq=out.squads?.[0];if(sq){
     setIfEmpty(sq,'power',profile.squadPower?Number(String(profile.squadPower).replace(',','.'))||profile.squadPower:null);
-    for(let i=0;i<5;i++){
-      const h=sq.heroes[i],legacyName=canonicalStoredHeroName(profile[`heroName${i+1}`]),currentName=canonicalStoredHeroName(h?.name);
-      // V2.5.0: legacy slot fields may only be imported during an empty first-time migration.
-      // Once a hero identity already exists in core state, never enrich it directly from wb10_profile.
-      const emptyIdentity=Boolean(legacyName&&!currentName);
-      if(emptyIdentity)setIfEmpty(h,'name',legacyName);
-      // Existing named heroes are never enriched directly from the slot-based legacy profile.
-      // They are handled later by the identity-aware recovery engine, which can require corroboration.
-      if(!emptyIdentity)continue;
-      setIfEmpty(h,'level',profile[`heroLevel${i+1}`]?Number(profile[`heroLevel${i+1}`])||profile[`heroLevel${i+1}`]:null);
-      setIfEmpty(h,'stars',profile[`heroStars${i+1}`]?Number(profile[`heroStars${i+1}`])||profile[`heroStars${i+1}`]:null);
-      setIfEmpty(h,'exclusive',profile[`heroWeapon${i+1}`]?Number(profile[`heroWeapon${i+1}`])||profile[`heroWeapon${i+1}`]:null);
-      setIfEmpty(h,'gear',profile[`heroGear${i+1}`]||null);
-    }
+    const legacySquad=normalizeSquadSlots({id:1,composition_source:"wb10_profile",
+      heroes:Array.from({length:5},(_,i)=>({name:profile[`heroName${i+1}`]||"",
+        level:profile[`heroLevel${i+1}`]??null,stars:profile[`heroStars${i+1}`]??null,
+        exclusive:profile[`heroWeapon${i+1}`]??null,gear:profile[`heroGear${i+1}`]??null}))},1);
+    const conflict=mergeSquadIdentityHistory(sq,legacySquad);
+    if(JSON.stringify(conflict)!==JSON.stringify(sq.composition_conflict||null)){sq.composition_conflict=conflict;changed=true}
+    if(!confirmedCompositionForSquad(sq)&&conflict?.identity_history?.length)sq.needs_rescan=true;
   }
   setIfEmpty(out.drone,'level',profile.droneLevel?Number(profile.droneLevel)||profile.droneLevel:null);setIfEmpty(out.drone,'power_m',profile.drone?Number(String(profile.drone).replace(',','.'))||profile.drone:null);
   setIfEmpty(out.vs,'day',simple.vsDay?Number(simple.vsDay)||simple.vsDay:null);setIfEmpty(out.season,'name',simple.season);setIfEmpty(out.season,'profession',simple.profession);

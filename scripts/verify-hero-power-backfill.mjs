@@ -35,12 +35,13 @@ const profile=name=>state.hero_profiles.find(row=>row.hero_name===name);
 assert.equal(profile("Carlie").power,5_665_085);
 assert.equal(profile("Swift").power,5_269_612);
 assert.equal(profile("Fiona").power,4_960_000);
-assert.equal(state.squads[0].heroes[0].power,5_665_085);
-assert.equal(state.squads[1].heroes[0].power,5_269_612);
-assert.equal(state.squads[2].heroes[0].power,4_960_000);
+assert.equal(state.squads[0].heroes[0].power,null);
+assert.equal(state.squads[1].heroes[0].power,null);
+assert.equal(state.squads[2].heroes[0].power,null);
 assert.equal(state.squads[0].heroes[1].power,null);
-assert.equal(state.squads[0].heroes[0].level,150);
-assert.equal(state.squads[0].heroes[0].gear,"T1");
+assert.equal(state.squads[0].heroes[0].name,"");
+assert.equal(state.squads[0].composition_conflict.identity_history[0].heroes[0].level,150);
+assert.equal(state.squads[0].composition_conflict.identity_history[0].heroes[0].gear,"T1");
 
 const second=backfillConfirmedHeroPowers(state,{now:"2026-09-22T13:00:00.000Z"});
 assert.equal(second.changed,false);
@@ -51,9 +52,10 @@ assert.equal(normalized.hero_progression[0].power,5_665_085);
 assert.equal(normalized.progression_snapshots[0].hero_powers[0].power,5_269_612);
 
 const cloud=hydrateCloudState(legacy,{hero_profiles:[],exclusive_weapons:[],hero_progression:[],progression_snapshots:[],squads:[]},legacy.player_id);
-assert.equal(cloud.squads[0].heroes[0].power,5_665_085);
-assert.equal(cloud.squads[1].heroes[0].power,5_269_612);
-assert.equal(cloud.squads[2].heroes[0].power,4_960_000);
+assert.equal(cloud.hero_profiles.find(h=>h.hero_name==="Carlie").power,5_665_085);
+assert.equal(cloud.hero_profiles.find(h=>h.hero_name==="Swift").power,5_269_612);
+assert.equal(cloud.hero_profiles.find(h=>h.hero_name==="Fiona").power,4_960_000);
+assert.ok(cloud.squads.slice(0,3).every(s=>s.heroes.every(h=>!h.name)));
 assert.equal(cloud.player_id,legacy.player_id);
 
-console.log("PASS: legacy hero powers backfill from progression, snapshots, and scan history without overwriting unrelated fields");
+console.log("PASS: legacy hero powers remain in the identity registry; unproven compositions stay archived without occupying current slots");

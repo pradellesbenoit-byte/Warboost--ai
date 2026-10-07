@@ -34,7 +34,13 @@ const squad3=[
   {name:"Fiona",power:"4,96 M"},
   {name:"Swift",power:null}
 ];
-const normalized=normalizeState({
+// Positive power-sync fixtures represent actual user-confirmed five-name squads.
+function normalizeConfirmedFixture(input){
+  return normalizeState({...input,squads:input.squads.map((squad,i)=>squad.heroes?.length===5
+    ?{id:i+1,composition_source:"explicit_confirmation",composition_confirmed_at:"2026-09-20T07:00:00Z",
+      confirmed_composition:squad.heroes.map(h=>canonicalHeroName(h.name)),...squad}:squad)});
+}
+const normalized=normalizeConfirmedFixture({
   squads:[
     {},
     {power:"39,73 M",heroes:squad2},
@@ -48,7 +54,7 @@ assert.equal(confirmedHeroPowerMillions(normalized.squads[1].heroes[4].power),nu
 assert.equal(confirmedHeroPowerMillions(normalized.squads[1].power),39.73);
 assert.equal(confirmedHeroPowerMillions(normalized.squads[2].power),40.6);
 
-const existing=normalizeState({
+const existing=normalizeConfirmedFixture({
   squads:[{},{
     power:"39.73 M",
     heroes:[{name:"DVA",power:"5.65 M"},{name:"Lucius",power:"5.53 M"},{name:"Skyler",power:"5.11 M"},{name:"Morrison",power:"5.1 M"},{name:"Carlie",power:"4.2 M"}]
@@ -68,7 +74,7 @@ const dva=profiles.find(h=>h.hero_name==="DVA");
 assert.equal(confirmedHeroPowerMillions(dva.power),5.65);
 assert.equal(dva.power===0,false);
 
-const noTotal=normalizeState({squads:[{},{
+const noTotal=normalizeConfirmedFixture({squads:[{},{
   power:"39.73 M",
   last_confirmed_power:"39.73 M",
   power_sync_status:"pending",
@@ -78,7 +84,7 @@ assert.equal(confirmedHeroPowerMillions(noTotal.squads[1].power),39.73);
 assert.equal(noTotal.squads[1].power_sync_status,"pending");
 assert.equal(confirmedHeroPowerMillions(noTotal.squads[1].heroes[0].power),5.65);
 
-const exclusiveBase=normalizeState({
+const exclusiveBase=normalizeConfirmedFixture({
   squads:[{},{
     power:"39.73 M",
     power_sync_status:"confirmed",
@@ -134,16 +140,18 @@ const legacyNames=normalizeState({
 });
 assert.equal(legacyNames.exclusive_weapons.length,2,"legacy Carlie/Swift weapon rows are deduplicated");
 assert.deepEqual(legacyNames.exclusive_weapons.map(x=>x.hero_name).sort(),["Carlie","Swift"]);
-assert.equal(legacyNames.squads[1].heroes[0].name,"Carlie");
-assert.equal(confirmedHeroPowerMillions(legacyNames.squads[1].heroes[0].power),5.67);
-assert.equal(confirmedHeroPowerMillions(legacyNames.squads[1].heroes[4].power),5.67);
-assert.equal(confirmedHeroPowerMillions(legacyNames.squads[2].heroes[1].power),5.12);
+assert.equal(legacyNames.squads[1].heroes[0].name,"");
+assert.equal(confirmedHeroPowerMillions(legacyNames.squads[1].heroes[0].power),null);
+assert.equal(confirmedHeroPowerMillions(legacyNames.squads[1].heroes[4].power),null);
+assert.equal(confirmedHeroPowerMillions(legacyNames.squads[2].heroes[1].power),null);
 assert.equal(legacyNames.hero_profiles.filter(x=>x.hero_name==="Carlie").length,1);
 assert.equal(legacyNames.hero_profiles.filter(x=>x.hero_name==="Swift").length,1);
 assert.equal(legacyNames.hero_profiles.find(x=>x.hero_name==="Carlie").power,5_670_000);
 assert.equal(legacyNames.hero_profiles.find(x=>x.hero_name==="Swift").power,5_120_000);
 for(const name of ["DVA","Morrison","Tesla","Lucius","Fiona","McGregor","Adam"]){
-  assert.equal(legacyNames.squads.flatMap(s=>s.heroes).filter(h=>h.name===name).length,1,`${name} identity remains untouched`);
+  assert.equal(legacyNames.squads.flatMap(s=>s.heroes).filter(h=>h.name===name).length,0,`${name} has no confirmed composition evidence`);
+  const archived=legacyNames.squads.flatMap(s=>s.composition_conflict?.identity_history||[]).flatMap(row=>row.heroes);
+  assert.equal(archived.filter(h=>h.name===name).length,1,`${name} remains preserved in unconfirmed history`);
 }
 
 const newerWins=normalizeState({

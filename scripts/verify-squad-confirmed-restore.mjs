@@ -58,7 +58,7 @@ assert.deepEqual(delayed.localNewer,[1],"the response must trigger another POST 
 
 const misleadingCloud=normalizeState({...old,updated_at:at3,squads:[{...old.squads[0],updated_at:at3}]});
 const naiveSyncMerge=mergeNewest(first,misleadingCloud);
-assert.deepEqual(naiveSyncMerge.squads[0].confirmed_composition,namesOld,"reproduce the old /api/sync bug: later squad scan timestamp beats a newer confirmation");
+assert.deepEqual(naiveSyncMerge.squads[0].confirmed_composition,namesNew,"the server merge must keep newer explicit confirmation despite a later unrelated scan timestamp");
 const protectedSyncMerge=reconcileCloudSquads(first,misleadingCloud,naiveSyncMerge);
 assert.deepEqual(protectedSyncMerge.state.squads[0].confirmed_composition,namesNew,"the server sync merge must restore the latest confirmed squad");
 const moreRecentPower=normalizeState({...old,squads:[{...old.squads[0],power:42,updated_at:at3}]});
