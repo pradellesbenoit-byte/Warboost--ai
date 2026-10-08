@@ -46,12 +46,15 @@ Sources consultées pour ces promotions : recherche individuelle par nom,
 [lastwar.wiki](https://lastwar.wiki/category/heroes/) et guides Cpt Hedgehog.
 L’absence de référence retenue n’est pas une preuve d’absence de changement visuel.
 
-## Armes exclusives : vérification individuelle des 15 héros
+## Armes exclusives : audit d’équipement, pas liste de variantes manquantes
 
 Les guides individuels suivants et leurs captures ont été examinés. Ils montrent
 des **véhicules/armes et des compétences** ; cela ne prouve pas un portrait de
 visage modifié par EW30. Aucune image de véhicule n’est injectée dans la banque
 de portraits. Aucun de ces 15 contextes ne reçoit une référence EW vérifiée.
+Ils sont classés comme équipement dans `equipmentAudit`, et non comme évolutions
+ou variantes visuelles manquantes. Utiliser les portraits normaux tant qu’une
+source fiable n’atteste pas un changement réel du héros.
 
 | Héros | Source examinée | Référence de portrait EW30 retenue |
 |---|---|---|
@@ -72,9 +75,12 @@ de portraits. Aucun de ces 15 contextes ne reçoit une référence EW vérifiée
 | Fiona | [S5 Fiona](https://cpt-hedge.com/guides/season-5-fiona-exclusive-weapon) | Non |
 
 Schuyler reste associé à la clé canonique historique `Skyler`.
-Il reste **18 contextes sans fichier** : ces 15 EW30 et les trois promotions
-Mason/Violet/Scarlett. Les anciennes pistes EW des 16 autres héros ont été
-retirées de la liste de recherche, pas converties en variantes inexistantes.
+Il reste **trois promotions à rechercher/valider** : Mason/Violet/Scarlett.
+Les quinze armes exclusives restent un audit d’équipement à changement visuel
+non établi, pas quinze portraits à obtenir obligatoirement. Les tâches de
+recherche doivent viser ces trois promotions ; pour EW, ne chercher/intégrer
+une variante qu’en présence d’un indice fiable de portrait réellement différent.
+Les anciennes pistes EW des 16 autres héros ne sont pas des variantes manquantes.
 
 ## Priorité des sources et exclusions
 

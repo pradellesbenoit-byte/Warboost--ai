@@ -39,6 +39,12 @@ for(const hero of HERO_RECOGNITION_LIBRARY){
       assert.equal(recognitionHeroName(`${hero.displayName} ${context.id}`),hero.canonicalName);
       assert.equal(recognitionHeroName(`${context.id} ${hero.displayName}`),hero.canonicalName);
       const portrait=squadEvidence(visual(hero.displayName,context.id));
+      if(context.requiresVerifiedReference){
+        assert.equal(portrait.name,null);
+        assert.equal(portrait.evidence.identity.portrait.reference_verified,false);
+        assert.equal(squadEvidence({...text(hero.displayName),...visual(hero.displayName,context.id)}).name,hero.canonicalName);
+        continue;
+      }
       assert.equal(portrait.name,hero.canonicalName);
       assert.equal(portrait.evidence.identity.tier,"medium");
       assert.equal(portrait.evidence.identity.requires_confirmation,true);
@@ -48,6 +54,9 @@ for(const hero of HERO_RECOGNITION_LIBRARY){
     }
     assert.ok(hero.appearances.find(a=>a.id==="normal").references.length>0);
     assert.ok(hero.appearances.every(a=>a.references.length?a.availability==="verified":a.availability==="unverified"));
+    assert.ok(!hero.appearances.some(a=>a.id==="exclusive_weapon"));
+    assert.ok(hero.appearances.filter(a=>a.availability==="unverified").every(a=>
+      a.id==="ssr_to_ur"&&["Mason","Violet","Scarlett"].includes(hero.canonicalName)));
   });
 }
 test("entire-roster OCR fragments do not depend on old or confirmed profile names",()=>{
@@ -55,6 +64,26 @@ test("entire-roster OCR fragments do not depend on old or confirmed profile name
     assert.equal(squadEvidence({name_text:"Maxw",name_evidence:"visible_fragment",name_confidence:.95},hints).name,"Maxwell");
     assert.equal(squadEvidence({name_text:"Mar",name_evidence:"visible_fragment",name_confidence:.99},hints).name,null);
   }
+});
+test("EW equipment and claimed level 30 never manufacture a visual identity or a verified variant",()=>{
+  for(const label of ["exclusive_weapon","EW","EW30","arme exclusive"]){
+    const raw=visual("DVA",label);
+    raw.portrait.reference_verified=true;
+    assert.equal(recognizeHeroIdentity(raw).name,null);
+    assert.equal(recognizeHeroIdentity({...text("DVA"),...raw}).name,"DVA");
+  }
+  assert.equal(HERO_RECOGNITION_LIBRARY.filter(h=>h.equipment.includes("exclusive_weapon")).length,15);
+  assert.match(heroRecognitionPrompt(),/equipment, NOT automatic visual evolutions/);
+  // Synthetic future attestation tests the extension point, NOT a real EW image.
+  const ref={id:"test.dva.changed.portrait",canonicalName:"DVA",variant:"exclusive_weapon",status:"verified"};
+  const raw=visual("DVA","EW30");
+  raw.portrait.reference_id=ref.id;
+  assert.equal(recognizeHeroIdentity(raw,[{...ref,variant:"normal"}]).name,null);
+  const proposal=recognizeHeroIdentity(raw,[ref]);
+  assert.equal(proposal.name,"DVA");
+  assert.equal(proposal.evidence.requires_confirmation,true);
+  assert.equal(proposal.evidence.tier,"medium");
+  assert.equal(proposal.evidence.portrait.match_verified,false);
 });
 test("invalid/low visual scores, unsupported contexts and insufficient features remain blank",()=>{
   for(const score of [null,NaN,1.5,-.1,.4,true,[.95],{}])assert.equal(squadEvidence(visual("DVA","normal",score)).name,null);

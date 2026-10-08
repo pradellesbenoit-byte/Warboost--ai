@@ -26,3 +26,12 @@ créerait une fausse variante pourtant issue d’une capture authentique.
 
 **How to apply:** distinguer l’identité du héros, la zone visuelle représentée et
 la preuve d’évolution. Un aperçu de promotion n’atteste pas l’acquisition du joueur.
+
+L’utilisateur demande de ne plus lister automatiquement les quinze armes
+exclusives comme « variantes visuelles manquantes ». Une arme exclusive est un
+équipement ; sans preuve fiable de changement d’apparence, utiliser le normal.
+
+**Why:** l’utilisateur a précisé que certains héros n’ont pas d’évolution visuelle.
+
+**How to apply:** séparer l’audit des équipements des promotions/apparences à
+valider, y compris dans les prochains briefs de recherche.

@@ -19,11 +19,14 @@ Aucun héros, type, rareté, emplacement ou composition antérieure n’est prio
 
 ## Apparences et limites réelles
 
-Chaque identité possède les mêmes emplacements de références extensibles :
-portrait normal, arme exclusive, Awakening, promotion SSR→UR, autre apparence.
-Ce sont des **contextes possibles**, pas une affirmation que toutes ces variantes
-existent pour chacun des 31 héros. Leur disponibilité et leurs références restent
-`unverified` tant qu’une capture/source fiable ne les documente pas.
+Chaque identité possède des références normales et ses seules variantes visuelles
+attestées. Les promotions SSR→UR de Mason, Violet et Scarlett restent à rechercher
+et valider ; elles ne disposent pas encore de référence vérifiée.
+Les armes exclusives sont classées séparément comme **équipement**, pas comme
+évolution visuelle ni comme portrait manquant. EW/EW30 ne devient un contexte
+visuel utilisable que si une référence vérifiée atteste un portrait réellement
+différent. Sinon, comparer uniquement à l’apparence normale. La structure reste
+extensible sans créer automatiquement des variantes pour les 31 héros.
 
 Les SVG actuels sont des illustrations WarBoost, PAS des références Last War.
 Une banque privée contient désormais **58 références pour les 31 héros** :
@@ -39,8 +42,9 @@ Le modèle Vision peut proposer une identité à partir d’au moins deux détai
 visibles, mais cette proposition visuelle seule reste à confirmer : ce n’est pas
 une correspondance de portrait certifiée ni une mesure de précision calibrée.
 
-Les labels de variantes sont ramenés à la même identité : DVA normale,
-DVA arme exclusive et DVA Awakening ne créent jamais trois héros.
+Les labels de variantes attestées sont ramenés à la même identité : DVA normale
+et DVA Awakening restent DVA. La présence d’une arme exclusive ne crée ni une
+nouvelle identité ni une preuve de changement d’apparence.
 
 ## Confiance et validation
 

@@ -40,12 +40,17 @@ for(const hero of HERO_DEFINITIONS){
     }
   });
 }
-test("only the 18 still-unattested requested upgrade contexts remain absent",()=>{
-  assert.equal(manifest.unverifiedVariants.length,18);
+test("only three pending UR promotions; EW equipment is not a missing visual variant",()=>{
+  assert.equal(manifest.unverifiedVariants.length,3);
   assert.ok(manifest.unverifiedVariants.every(r=>r.status==="unverified"&&r.file===null));
   assert.equal(manifest.unverifiedVariants.filter(r=>r.variant==="awakening").length,0);
   assert.equal(manifest.unverifiedVariants.filter(r=>r.variant==="ssr_to_ur").length,3);
-  assert.equal(manifest.unverifiedVariants.filter(r=>r.variant==="exclusive_weapon").length,15);
+  assert.equal(manifest.unverifiedVariants.filter(r=>r.variant==="exclusive_weapon").length,0);
+  assert.deepEqual(manifest.unverifiedVariants.map(r=>r.name).sort(),["Mason","Scarlett","Violet"]);
+  assert.equal(manifest.equipmentAudit.length,15);
+  assert.equal(new Set(manifest.equipmentAudit.map(r=>r.name)).size,15);
+  assert.ok(manifest.equipmentAudit.every(r=>r.weaponType==="exclusive_weapon"&&r.visualChangeStatus==="not_established"&&r.file===null));
+  assert.ok(!bank.references.some(r=>r.variant==="exclusive_weapon"));
   assert.ok(manifest.unverifiedVariants.every(r=>!bank.references.some(x=>x.canonicalName===r.name&&x.variant===r.variant)));
 });
 for(const ref of manifest.references.filter(r=>r.variant!=="normal")){

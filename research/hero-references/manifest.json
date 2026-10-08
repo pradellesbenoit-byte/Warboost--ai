@@ -1308,127 +1308,24 @@
       "status": "unverified",
       "file": null,
       "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Kimberly",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "DVA",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Tesla",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Murphy",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Carlie",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Swift",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Marshall",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Skyler",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "McGregor",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Lucius",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Adam",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Williams",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Stetmann",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Morrison",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
-    },
-    {
-      "name": "Fiona",
-      "variant": "exclusive_weapon",
-      "level": 30,
-      "status": "unverified",
-      "file": null,
-      "reason": "No separately identified, attested changed portrait was recovered. Upgrade availability alone is not portrait evidence."
     }
+  ],
+  "equipmentAudit": [
+    {"name":"Kimberly","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"DVA","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Tesla","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Murphy","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Carlie","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Swift","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Marshall","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Skyler","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"McGregor","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Lucius","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Adam","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Williams","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Stetmann","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Morrison","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."},
+    {"name":"Fiona","weaponType":"exclusive_weapon","levelReviewed":30,"visualChangeStatus":"not_established","file":null,"reason":"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."}
   ],
   "sourceAudit": {
     "officialWebsite": "Five explicitly named hero images recovered.",
@@ -1438,7 +1335,7 @@
     "fandom": "Thirty-one named game thumbnails recovered from the public Heroes table; standard browser Referer is required by its image CDN.",
     "excluded": "AI search illustrations and reinterpreted lastwar-guide.org portraits were rejected; none imported.",
     "cptHedgehogVariants": "6 named game screenshot references visually reviewed; unaltered rectangular crops only. Exact identity/variant/source/crop proof retained per reference.",
-    "exclusiveWeaponScope": "Only the fifteen requested EW owners were researched. Vehicle upgrades are not hero-portrait evidence; none activated as EW30.",
+    "exclusiveWeaponScope": "Fifteen EW equipment contexts audited separately; no changed hero portrait established. They are not missing visual variants.",
     "variantAudit": "docs/HERO_VARIANT_AUDIT.md"
   },
   "atlases": [

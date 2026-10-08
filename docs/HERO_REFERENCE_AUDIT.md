@@ -87,10 +87,13 @@ de noms. **Aucun héros sans référence de base récupérée.**
 Voir [l’audit héros par héros et les sources exactes](HERO_VARIANT_AUDIT.md).
 La recherche EW est limitée aux **15 héros indiqués par l’utilisateur**. Les
 captures EW examinées montrent principalement le véhicule, pas le visage.
-Les 18 contextes encore absents restent `unverified`, avec `file: null`.
-Cela signifie « portrait distinct non attesté dans les sources examinées »,
-pas « cette évolution n’existe pas dans le jeu ». Aucun portrait normal n’est
-dupliqué sous une fausse étiquette de variante.
+Seules les trois promotions Mason/Violet/Scarlett restent dans
+`unverifiedVariants`, avec `file: null`. Les quinze contextes d’équipement EW
+sont séparés dans `equipmentAudit`, avec `visualChangeStatus: not_established` :
+ce ne sont **pas quinze variantes visuelles manquantes**. Cela ne prouve pas
+qu’aucun changement n’existe ; une nouvelle variante EW exige une preuve visuelle
+fiable avant activation. Aucun portrait normal n’est dupliqué sous une fausse
+étiquette de variante.
 
 Les illustrations générées trouvées dans la recherche et les portraits réalistes
 réinterprétés de lastwar-guide.org ont été exclus. Leurs fichiers temporaires

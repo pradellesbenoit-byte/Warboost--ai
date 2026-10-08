@@ -4,7 +4,7 @@ import {join,resolve} from "node:path";
 import {createHash} from "node:crypto";
 import {execFileSync} from "node:child_process";
 import {HERO_DEFINITIONS,heroKey} from "../lib/heroes.js";
-import {HERO_REFERENCE_INDEX} from "../lib/hero-reference-index.js";
+import {HERO_REFERENCE_INDEX,HERO_EXCLUSIVE_WEAPON_OWNERS} from "../lib/hero-reference-index.js";
 
 // Offline asset preparation only; never run as a web/mobile build lifecycle hook.
 const root=resolve("research/hero-references");
@@ -44,9 +44,7 @@ if(importAt>=0||appendAt>=0){
   }
   const requested=[
     ...["Kimberly","DVA","Tesla"].map(name=>({name,variant:"awakening"})),
-    ...["Mason","Violet","Scarlett","Sarah","Venom","Braz"].map(name=>({name,variant:"ssr_to_ur"})),
-    ...["Kimberly","DVA","Tesla","Murphy","Carlie","Swift","Marshall","Skyler","McGregor","Lucius","Adam","Williams","Stetmann","Morrison","Fiona"]
-      .map(name=>({name,variant:"exclusive_weapon",level:30}))
+    ...["Mason","Violet","Scarlett","Sarah","Venom","Braz"].map(name=>({name,variant:"ssr_to_ur"}))
   ];
   manifest={...(manifest||{}),schemaVersion:1,reviewedAt:new Date().toISOString(),references:refs,
     unverifiedVariants:requested.filter(x=>!refs.some(ref=>ref.canonicalName===x.name&&ref.variant===x.variant)).map(x=>({...x,status:"unverified",file:null,
@@ -60,14 +58,20 @@ if(importAt>=0||appendAt>=0){
       excluded:"AI search illustrations and reinterpreted lastwar-guide.org portraits were rejected; none imported."
     }),...(refs.some(r=>r.variant!=="normal")?{
       cptHedgehogVariants:"Six named game screenshots visually reviewed; unaltered rectangular crops only. Awakening Kimberly/DVA/Tesla; UR promotion previews Sarah/Venom/Braz.",
-      exclusiveWeaponScope:"Only the fifteen requested EW owners were researched. Vehicle upgrades are not hero-portrait evidence; none activated as EW30.",
+      exclusiveWeaponScope:"Fifteen EW equipment contexts audited separately; no changed hero portrait established. They are not missing visual variants.",
       variantAudit:"docs/HERO_VARIANT_AUDIT.md"
     }:{})}};
 }else manifest=JSON.parse(await readFile(join(root,"manifest.json"),"utf8"));
+// Keep equipment research separate, including when rebuilding an old manifest.
+manifest.unverifiedVariants=manifest.unverifiedVariants.filter(ref=>ref.variant!=="exclusive_weapon");
+manifest.equipmentAudit=HERO_EXCLUSIVE_WEAPON_OWNERS.map(name=>({
+  name,weaponType:"exclusive_weapon",levelReviewed:30,visualChangeStatus:"not_established",file:null,
+  reason:"Equipment only; no attested changed hero portrait. Use normal appearance; not a missing visual variant."
+}));
 if(manifest.references.some(ref=>ref.variant!=="normal")){
   manifest.sourceAudit={...manifest.sourceAudit,
     cptHedgehogVariants:`${manifest.references.filter(ref=>ref.variant!=="normal").length} named game screenshot references visually reviewed; unaltered rectangular crops only. Exact identity/variant/source/crop proof retained per reference.`,
-    exclusiveWeaponScope:"Only the fifteen requested EW owners were researched. Vehicle upgrades are not hero-portrait evidence; none activated as EW30.",
+    exclusiveWeaponScope:"Fifteen EW equipment contexts audited separately; no changed hero portrait established. They are not missing visual variants.",
     variantAudit:"docs/HERO_VARIANT_AUDIT.md"};
 }
 const temp=await mkdtemp(join(tmpdir(),"warboost-hero-atlas-"));
