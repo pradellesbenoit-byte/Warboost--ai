@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "revision": "c8fee7740b7528992768",
+  "verified_at": null,
+  "refresh_interval_hours": 24,
+  "scheduler_enabled": false,
+  "sources": [
+    {
+      "id": "official-wiki",
+      "url": "https://wiki.lastwar.com/",
+      "kind": "official",
+      "editorial": "mixed",
+      "enabled": true,
+      "status": "unavailable",
+      "published_at": null,
+      "verified_at": null,
+      "last_attempt_at": "2026-10-11T16:40:27.850Z",
+      "error": "source_requires_public_browser_review"
+    },
+    {
+      "id": "official-site",
+      "url": "https://www.lastwar.com/",
+      "kind": "official",
+      "editorial": "publisher",
+      "enabled": true,
+      "status": "unavailable",
+      "published_at": null,
+      "verified_at": null,
+      "last_attempt_at": "2026-10-11T16:40:27.850Z",
+      "error": "robots_unavailable"
+    },
+    {
+      "id": "community-wiki",
+      "url": "https://lastwar.wiki/",
+      "kind": "community",
+      "editorial": "community",
+      "enabled": false,
+      "status": "not_checked",
+      "published_at": null,
+      "verified_at": null
+    },
+    {
+      "id": "community-vault",
+      "url": "https://lastwarvault.com/",
+      "kind": "community",
+      "editorial": "community",
+      "enabled": false,
+      "status": "not_checked",
+      "published_at": null,
+      "verified_at": null
+    }
+  ],
+  "facts": [],
+  "discoveries": [
+    {"title":"Sep Week 4 Update","url":"https://wiki.lastwar.com/","source_id":"official-wiki","observed_at":"2026-10-11","published_at":null,"review_status":"requires_article_review","author_verified":false,"scope":null,"observation_method":"manual_public_rendered_page"},
+    {"title":"Sep Week 3 Update","url":"https://wiki.lastwar.com/","source_id":"official-wiki","observed_at":"2026-10-11","published_at":null,"review_status":"requires_article_review","author_verified":false,"scope":null,"observation_method":"manual_public_rendered_page"},
+    {"title":"September Week 2 Update","url":"https://wiki.lastwar.com/","source_id":"official-wiki","observed_at":"2026-10-11","published_at":null,"review_status":"requires_article_review","author_verified":false,"scope":null,"observation_method":"manual_public_rendered_page"}
+  ],
+  "limitations": [
+    "Public homepages are discovery sources, not verified gameplay rules. Official hosting may include community-authored articles. No gameplay change is approved without a dated, attributable primary announcement and explicit editorial review."
+  ],
+  "last_attempt_at": "2026-10-11T16:40:27.850Z"
+}

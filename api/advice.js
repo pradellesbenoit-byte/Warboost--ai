@@ -1,4 +1,6 @@
 import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
+import {loadKnowledge} from "./_knowledge.js";
+import {scopedDiagnosticState,buildKnowledgeGuidance} from "../lib/knowledge-guidance.js";
 import {requireProductUser} from "../lib/pro-access.js";
 import {configured} from "../lib/supabase.js";
 import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
@@ -1361,7 +1363,17 @@ export default async function handler(req,res){
       return res.status(200).json({ok:research.status!=="unavailable",research,server_time:new Date().toISOString()});
     }catch(e){return res.status(e.status||500).json({error:e.code||"event_research_failed"})}
   }
-  const scope=String(req.body?.scope||"player"),s=scope==="player"?resolveDiagnosticState(req.body?.state||{}):(req.body?.state||{}),loc=String(req.body?.locale||"en-GB");
+  if(["knowledge_refresh","knowledge_status"].includes(req.query?.action)){
+    res.setHeader("Cache-Control","no-store");
+    try{return res.status(200).json({ok:true,knowledge:await loadKnowledge({refresh:req.query.action==="knowledge_refresh"})})}
+    catch{return res.status(503).json({ok:false,error:"knowledge_unavailable"})}
+  }
+  const scope=String(req.body?.scope||"player"),rawState=req.body?.state||{},loc=String(req.body?.locale||"en-GB");
+  let s=rawState;
+  if(scope==="player"){
+    try{s=resolveDiagnosticState(scopedDiagnosticState(rawState,req.body?.squad_id).state)}
+    catch{return res.status(400).json({ok:false,error:"invalid_diagnostic_squad"})}
+  }
   if(scope==="player"){
     const analysis=buildPlayerAnalysis(s,loc);
      analysis.shop=buildShopAdvice(s,loc,analysis);
@@ -1370,6 +1382,8 @@ export default async function handler(req,res){
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
     analysis.technology_advice=buildTechnologyAdvice(s,{mainType:analysis.composition?.main_type||null});
     analysis.global_diagnostic=buildGlobalDiagnostic(s,analysis,loc);
+    try{analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,await loadKnowledge(),req.body?.squad_id)}
+    catch{analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,{},req.body?.squad_id)}
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }

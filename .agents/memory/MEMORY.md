@@ -52,3 +52,4 @@
 - [Equipment reading policy](equipment-reading-policy.md) — current visible pieces supply scan evidence; preserving confirmed values must not masquerade as new detection.
 - [Localization validation](localization-validation.md) — verify actual locale resolution and screens; never translate gameplay/user data or equate dictionary presence with complete coverage.
 - [Private test captures](private-test-captures.md) — private uploads stay out of pending Git history; synthetic geometry tests do not establish real OCR accuracy.
+- [Knowledge guidance policy](knowledge-guidance-policy.md) — discovery is not confirmed gameplay; advice uses exact squad evidence, with no paid monitoring or automatic production changes.

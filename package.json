@@ -5,6 +5,8 @@
   "description": "WarBoost V2.5.32 HF8.6.34 — dated in-game shop observations and currency-aware acquisition guidance.",
   "type": "module",
   "scripts": {
+    "knowledge:refresh": "node scripts/refresh-last-war-knowledge.mjs",
+    "test:knowledge-guidance": "node scripts/verify-knowledge-guidance.mjs",
     "build": "npm run build:web",
     "build:web": "node scripts/build-web.mjs",
     "build:mobile": "node scripts/build-mobile-web.mjs",

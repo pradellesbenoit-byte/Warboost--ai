@@ -3,6 +3,7 @@
   "outputDirectory": "web-dist",
   "cleanUrls": true,
   "functions": {
+    "api/advice.js": {"includeFiles":"assets/last-war-knowledge.json"},
     "api/scan.js": {"includeFiles":"research/hero-references/**"}
   },
   "headers": [

@@ -72,6 +72,8 @@ import {mergeTechnologyBranches,finalizeTechnologyReview} from "./lib/technology
 import {buildTechnologyAdvice} from "./lib/technology-advisor.js";
 import {mergeFreshRecord,stampConfirmedRecord} from "./lib/field-freshness.js";
 import {playerAdviceInputSignature} from "./lib/player-advice-signature.js";
+import {renderKnowledgeGuidance} from "./lib/knowledge-guidance-ui.js";
+import {knowledgeCopy} from "./lib/knowledge-copy.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.32";
@@ -2068,6 +2070,33 @@ function renderProPriority(analysis){
   if(!panel||!analysis)return;
   if(currentPlayerAdviceAnalysis!==analysis)activeAcquisitionShopView=null;
   currentPlayerAdviceAnalysis=analysis;
+  if(analysis.knowledge_guidance){
+  let knowledgePanel=$("#knowledgeAdvicePanel");
+  if(!knowledgePanel){knowledgePanel=document.createElement("section");knowledgePanel.id="knowledgeAdvicePanel";(panel.querySelector("#proDiagnosticDisclosure .proDisclosureContent")||panel).append(knowledgePanel)}
+  knowledgePanel.innerHTML=renderKnowledgeGuidance(analysis.knowledge_guidance,{locale:lang,squadLabel:id=>`${t("squad")} ${id}`,allowSquad4:proFeatureAllowed()});
+  knowledgePanel.querySelector("[data-diagnostic-squad]")?.addEventListener("change",event=>{
+    const id=Number(event.target.value);if(!requirePro()||!Number.isInteger(id)||id<1||id>4){event.target.value=String(analysis.knowledge_guidance?.squad_id||1);return}
+    const previous=state.diagnostic_squad_id;
+    state.diagnostic_squad_id=id;
+    if(!saveState()){
+      if(previous===undefined)delete state.diagnostic_squad_id;else state.diagnostic_squad_id=previous;
+      event.target.value=String(analysis.knowledge_guidance.squad_id);return;
+    }
+    invalidatePlayerAdvice({autoRefresh:false});void runPlayerAdvice(false);
+  });
+  knowledgePanel.querySelector("[data-knowledge-refresh]")?.addEventListener("click",async event=>{
+    if(!requirePro())return;
+    const button=event.currentTarget,status=knowledgePanel.querySelector("[data-knowledge-status]");
+    button.disabled=true;
+    const finish=beginActiveLoadingOperation("advice:knowledge");
+    try{
+      const {response,json}=await fetchJsonBounded("/api/advice?action=knowledge_refresh",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:"{}"},25000);
+      if(!response.ok||!json?.ok)throw Error("knowledge_unavailable");
+      await runPlayerAdvice(false);
+    }catch{if(status)status.textContent=knowledgeCopy(lang).unavailable}
+    finally{finish();button.disabled=false}
+  });
+  }
   diagnosticDisclosures.capture(panel);
   const diagnosticShop=$("#proDiagnosticShop");
   if(diagnosticShop){
@@ -3611,7 +3640,11 @@ function confirmScanReview(){
       merged=applied.state;squadPending=applied.pending;
     }
     state=merged;
-    if(sm)recordProgressionSnapshot(`scan_squad${squadIndex+1}`,now);
+    if(sm){
+      state.diagnostic_squad_id=squadIndex+1;
+      state.squads[squadIndex].last_confirmed_scan_at=now;
+      recordProgressionSnapshot(`scan_squad${squadIndex+1}`,now);
+    }
     if(!saveState())throw new Error("local_scan_save_failed");
     updateSquadCaptureHelp($("#scanType")?.value||"profile");
   }catch(error){
@@ -3805,7 +3838,7 @@ async function requestAdvice(scope,stateForRequest=state){
   if(scope==="vs"){state.vs.week=currentVsWeek();state.vs.day=currentVsDay()}
   const finishAnalysis=beginActiveLoadingOperation(`advice:${scope}`);
   try{
-    const {response:r,json:j}=await fetchJsonBounded("/api/advice",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({scope,state:stateForRequest,locale:lang})},25000);
+    const {response:r,json:j}=await fetchJsonBounded("/api/advice",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({scope,state:stateForRequest,locale:lang,squad_id:scope==="player"?(stateForRequest.diagnostic_squad_id||1):undefined})},25000);
     if(r.ok)return j;
   }catch{}
   finally{finishAnalysis()}
