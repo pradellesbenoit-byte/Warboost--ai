@@ -20,7 +20,7 @@
 - [GitHub push fallback](github-push-fallback.md) — when the HTTPS remote lacks usable credentials, use the attached GitHub connector and verify the target branch commit.
 - [Shared event availability](shared-event-availability.md) — event planning uses explicit, sourced availability; unsourced unknown cloud rows cannot erase confirmed local status.
 - [Current game rule provenance](current-game-rule-provenance.md) — update rules stay explicitly sourced and partial scans cannot erase confirmed eligibility or shop content.
-- [OCR power confirmation](ocr-power-confirmation.md) — retain visibly unreadable power text for manual correction; only parsed positive values may propagate as confirmed hero power.
+- [OCR power boundaries](ocr-power-confirmation.md) — exclude exclusive-weapon screen numbers from power fields; other supported power evidence still requires review.
 - [OCR review boundary](ocr-review-boundary.md) — actionable scan values need owner- and capture-bound review before replacing confirmed data; unreadable fields stay pending.
 - [Drone OCR power evidence](drone-ocr-power-evidence.md) — keep visible whole-unit Drone power separate from canonical millions; a provider decimal alone is not evidence.
 - [Named Technology scan evidence](named-technology-scan.md) — never infer a branch from its grid position or map a scanned percentage into an unrelated legacy category.
@@ -45,3 +45,10 @@
 - [Fresh-launch privacy boundary](fresh-launch-policy.md) — reopen on Home without drafts/captures; preserve confirmed data, authentication and grants; gallery focus is not closure.
 - [Equal roster recognition](full-roster-recognition.md) — user requires every roster hero and appearance to be eligible equally, without popularity or profile-based priority.
 - [Hero portrait authenticity](hero-portrait-authenticity.md) — correctly named hero pages can contain reinterpreted art; inspect original pixels before enabling references.
+- [Browser/server module boundary](browser-server-module-boundary.md) — Node checks and copied builds can pass while a native import prevents all browser startup.
+- [Scan deadline boundary](scan-deadline-boundary.md) — access checks count toward the full scan budget; optional refinement must never discard the primary result.
+- [WarBoost visual scope](warboost-visual-scope.md) — restore the pre-neon layout only; preserve functional scan improvements and the character loading screen.
+- [Read-only Git checks](git-read-only-checks.md) — disable incidental index refresh when inspecting a modified worktree; do not bypass the Git guard.
+- [Equipment reading policy](equipment-reading-policy.md) — current visible pieces supply scan evidence; preserving confirmed values must not masquerade as new detection.
+- [Localization validation](localization-validation.md) — verify actual locale resolution and screens; never translate gameplay/user data or equate dictionary presence with complete coverage.
+- [Private test captures](private-test-captures.md) — private uploads stay out of pending Git history; synthetic geometry tests do not establish real OCR accuracy.

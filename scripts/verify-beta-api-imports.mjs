@@ -37,6 +37,11 @@ function mockResponse(){
 }
 
 const stateResponse=mockResponse();
+// Configure only this isolated test process; unauthenticated requests must not
+// require a real Supabase connection or depend on injected workspace secrets.
+process.env.SUPABASE_URL="https://supabase.invalid";
+process.env.SUPABASE_SERVICE_ROLE_KEY="unit-test-not-a-secret";
+process.env.SUPABASE_ANON_KEY="unit-test-not-a-secret";
 await state.default({method:"GET",url:"/api/state?restore=1",query:{restore:"1"},headers:{}},stateResponse);
 assert.equal(stateResponse.statusCode,401,"An unauthenticated restore request should reach normal auth handling.");
 assert.equal(stateResponse.body?.error,"AUTH_REQUIRED");

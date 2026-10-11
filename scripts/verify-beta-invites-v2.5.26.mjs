@@ -23,7 +23,7 @@ const log=msg=>console.log(`✓ ${msg}`);
 
 // No extra Vercel function: invite management reuses /api/support.
 {
-  const api=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js')).sort();
+  const api=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js')&&!x.startsWith('_')).sort();
   assert.equal(api.length,12);
   assert.ok(api.includes('support.js'));
   assert.ok(!api.includes('beta-invites.js'));

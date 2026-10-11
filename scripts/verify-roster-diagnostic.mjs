@@ -5,7 +5,7 @@ import {fileURLToPath} from "node:url";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const read=file=>fs.readFileSync(path.join(root,file),"utf8");
-const apiFiles=fs.readdirSync(path.join(root,"api")).filter(file=>file.endsWith(".js")).sort();
+const apiFiles=fs.readdirSync(path.join(root,"api")).filter(file=>file.endsWith(".js")&&!file.startsWith("_")).sort();
 const roleApi=read("api/alliance-role.js"),app=read("app.js"),server=read("server.mjs");
 
 assert.equal(apiFiles.length,12,`Expected 12 Vercel functions, found ${apiFiles.length}`);
@@ -14,7 +14,11 @@ assert.match(roleApi,/req\.method==="GET"&&String\(req\.query\?\.action\|\|""\)=
 assert.match(roleApi,/requireBetaUser\(req,\{consent:true\}\)/);
 assert.match(roleApi,/getAllianceMembership\(user\.id\)/);
 assert.match(roleApi,/getAllianceRoster\(user\.id\)/);
-assert.match(roleApi,/source:canonical\.length\?"canonical":"cloud_members"/);
+const diagnosticBlock=roleApi.slice(roleApi.indexOf('action||"")==="roster_diagnostic"'),roleApi.indexOf('if(req.method!=="POST")'));
+assert.match(diagnosticBlock,/sanitizeCanonicalRoster\(ctx\.alliance\.roster/);
+assert.match(diagnosticBlock,/source:"canonical"/);
+assert.match(diagnosticBlock,/roster:canonical/,"even an empty canonical roster must not be replaced by legacy cloud members");
+assert.doesNotMatch(diagnosticBlock,/roster:cloudMembers|source:"cloud_members"/);
 assert.match(app,/\/api\/alliance-role\?action=roster_diagnostic/);
 assert.doesNotMatch(app,/\/api\/alliance-roster-diagnostic/);
 assert.doesNotMatch(server,/alliance-roster-diagnostic/);

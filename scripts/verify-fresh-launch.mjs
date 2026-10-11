@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import {playerScanBatchLimit} from "../lib/player-scan-batch.js";
+import {MAX_FORMATION_BATCH_LENGTH} from "../lib/formation-batch.js";
 import fs from "node:fs";
 import vm from "node:vm";
 import {createFreshLaunchController} from "../lib/fresh-launch.js";
@@ -161,7 +163,7 @@ await test("late image decode failure cannot replace the fresh waiting status",a
   const f=fixture();f.controller.start();
   f.get("#scanType").value="squad1";
   let captured,rejectImage;
-  Object.assign(f.context,{PLAYER_SCAN_BATCH_LIMIT:3,
+  Object.assign(f.context,{PLAYER_SCAN_BATCH_LIMIT:3,playerScanBatchLimit,MAX_FORMATION_BATCH_LENGTH,
     beginNewScanFileSelection:()=>({owner,fileRevision:f.context.scanFileSelectionRevision,clearPending:Promise.resolve()}),
     imageToDataUrlLimited:()=>new Promise((resolve,reject)=>{rejectImage=reject})});
   const original=f.context.$;

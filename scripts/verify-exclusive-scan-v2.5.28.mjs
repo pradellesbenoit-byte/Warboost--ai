@@ -2,20 +2,10 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
-import {sanitize,usefulState} from "../api/scan.js";
-import {parseHeroPower} from "../lib/hero-power.js";
+import {promptFor,sanitize,usefulState} from "../api/scan.js";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const now="2026-09-18T12:00:00.000Z";
-
-for(const [input,expected] of [
-  ["5665085",5665085],
-  ["5 665 085",5665085],
-  ["5.665.085",5665085],
-  ["5,665,085",5665085],
-  ["5,65 M",5650000],
-  ["5 269 612",5269612]
-])assert.equal(parseHeroPower(input),expected);
 
 // Real-player regression: DVA's exclusive weapon screen shows a localized Lv.26 label
 // and can omit secondary values from the provider response.
@@ -56,8 +46,7 @@ for(const [input,expected] of [
   console.log("PASS: alternate weapon layout and level label stay partial and non-invented");
 }
 
-// Real-player regression: Swift's exclusive weapon screen includes a visible
-// hero, level, full weapon power and secondary stats.
+// A large number below the weapon level is never weapon power or hero power.
 {
   const state=sanitize({
     exclusive_weapon:{
@@ -65,6 +54,7 @@ for(const [input,expected] of [
       weapon_name:"Swift Exclusive Weapon",
       level:"Niv. 3",
       power:"526612",
+      visible_power:"5 266 12",
       hero_hp_bonus:"8%",
       hero_atk_bonus:"12%",
       hero_def_bonus:"6%",
@@ -77,39 +67,36 @@ for(const [input,expected] of [
     hero_name:"Swift",
     weapon_name:"Swift Exclusive Weapon",
     level:3,
-    power:526612,
     hero_hp_bonus:8,
     hero_atk_bonus:12,
     hero_def_bonus:6,
     all_damage_resistance_pct:4.5,
     max_skill_level:3
   }]);
+  assert.ok(state.exclusive_weapons.every(row=>!Object.keys(row).some(key=>/power/i.test(key))));
   assert.equal(usefulState("exclusive",state),true);
-  console.log("PASS: Swift exclusive weapon power 526612 and visible stats survive sanitization");
+  console.log("PASS: exclusive central number is excluded while level and visible stats survive sanitization");
 }
 
 {
   const state=sanitize({
     exclusive_weapons:[
-      {hero_name:"Carly",power:"5 665 085"},
-      {hero_name:"Swift",power:"5 269 612"}
+      {hero_name:"Carly",power:"5 665 085",power_raw:"5 665 085",weapon_power:"5665085",hero_power:"5665085"},
+      {hero_name:"Swift",power:"5 269 612",power_text:"5 269 612",combat_power_value:"5269612"}
     ]
   },now,"exclusive");
-  assert.deepEqual(state.exclusive_weapons.map(x=>[x.hero_name,x.power]),[
-    ["Carlie",5665085],
-    ["Swift",5269612]
-  ]);
-  console.log("PASS: localized Carlie/Carly and Swift exclusive powers survive scan sanitization");
+  assert.deepEqual(state.exclusive_weapons.map(x=>x.hero_name),["Carlie","Swift"]);
+  assert.ok(state.exclusive_weapons.every(row=>!Object.keys(row).some(key=>/power/i.test(key))));
+  console.log("PASS: legacy provider power aliases are stripped from exclusive scan results");
 }
 
 {
   const state=sanitize({
-    exclusive_weapons:[{hero_name:"Carlie",power:"5.67M?"}]
+    exclusive_weapons:[{hero_name:"Carlie",power:"5.67M?",power_raw:"5.67M?",exclusive_power:"5.67M?"}]
   },now,"exclusive");
-  assert.equal(state.exclusive_weapons[0].power,undefined);
-  assert.equal(state.exclusive_weapons[0].power_raw,"5.67M?");
-  assert.equal(state.exclusive_weapons[0].power_parse_status,"needs_verification");
-  console.log("PASS: unreadable visible exclusive power stays editable and unconfirmed");
+  assert.ok(state.exclusive_weapons.every(row=>!Object.keys(row).some(key=>/power/i.test(key))));
+  assert.equal(usefulState("exclusive",state),true);
+  console.log("PASS: unreadable exclusive central number is also excluded");
 }
 
 // Existing squad and Drone scan paths remain useful and valid.
@@ -123,17 +110,19 @@ for(const [input,expected] of [
 }
 
 const scan=fs.readFileSync(path.join(root,"api/scan.js"),"utf8");
+const exclusivePrompt=promptFor("exclusive","fr");
 const app=fs.readFileSync(path.join(root,"app.js"),"utf8");
 const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
 const css=fs.readFileSync(path.join(root,"styles.css"),"utf8");
 const analysis=app.slice(app.indexOf("async function analyzeExclusiveScan"),app.indexOf('$("#analyzeScanBtn").addEventListener("click",async event=>'));
+const exclusiveReview=app.slice(app.indexOf("function renderExclusiveConfirmation"),app.indexOf("function heroConfirmOptions"));
 assert.match(scan,/partial_results_allowed:scanType==="exclusive"/);
 assert.match(scan,/requires_confirmation:\/\^squad\[1-4\]\$\/i\.test\(scanType\)\|\|scanType==="exclusive"/);
 assert.match(app,/event\.stopImmediatePropagation\(\)/);
 assert.match(app,/renderExclusiveConfirmation\(rows\)/);
-assert.match(app,/type="text" inputmode="decimal"/);
-assert.match(app,/scan_exclusive_power_verify/);
-assert.match(app,/exclusivePowerNeedsVerification/);
+assert.match(exclusiveReview,/Object\.fromEntries\(usableFields\.filter/);
+assert.doesNotMatch(exclusiveReview,/data-exclusive-field="power"|power_raw|exclusivePower/);
+assert.doesNotMatch(analysis,/needsPowerReview|exclusivePower|power_raw|w\.power/);
 assert.match(app,/exclusiveResultFieldCount\(rows\)/);
 assert.match(app,/scrollIntoView\(\{behavior:"smooth",block:"nearest"\}\)/);
 assert.match(app,/scan_exclusive_result_ready/);
@@ -167,6 +156,12 @@ assert.match(css,/\.squad\[open\]>\.squadBody[\s\S]*display:block/);
 assert.match(css,/\.squadHead::?-webkit-details-marker/);
 assert.match(css,/touch-action:manipulation/);
 assert.match(scan,/formation_overview/);
-assert.match(scan,/WRONG_SQUAD_CAPTURE/);
+assert.match(scan,/classifySquadCapture/);
+assert.match(exclusivePrompt,/large number directly below the weapon level is intentionally excluded/i);
+assert.match(exclusivePrompt,/never return it as power, power_raw, weapon_power or hero_power/i);
+assert.doesNotMatch(exclusivePrompt,/"power":/);
+// A readable complementary weapon screen must not abort the whole squad lot.
+// Missing formation guidance now belongs to the completed batch, not each image.
+assert.match(fs.readFileSync("lib/player-scan-batch.js","utf8"),/WRONG_SQUAD_CAPTURE/);
 console.log("PASS: exclusive scan stages Vision data, confirms it, then saves only after confirmation");
 console.log("WarBoost V2.5.28 exclusive scan verification: PASS");

@@ -11,9 +11,10 @@ const confirmedRows=[
 ];
 const hero=(name,power)=>({name,level:150,stars:5,power,exclusive:8,gear:null,awakening:null});
 const emptySquad=id=>({id,name:`Squad ${id}`,power:null,updated_at:"2026-09-20T10:00:00.000Z",needs_rescan:false,heroes:Array.from({length:5},()=>({name:"",level:null,stars:null,power:null,exclusive:null,gear:null,awakening:null}))});
+const confirmedSquad=(id,heroes)=>({...emptySquad(id),composition_confirmed_at:"2026-09-20T10:00:00.000Z",composition_source:"explicit_confirmation",confirmed_composition:heroes.map(x=>x.name),heroes});
 const base={
   player_id:"power-test",hero_profiles:[],hero_progression:[],exclusive_weapons:[],
-  squads:[emptySquad(1),{...emptySquad(2),heroes:[hero("DVA",5_650_000),hero("Lucius",5_530_000),hero("Skyler",5_110_000),hero("Morrison",5_100_000),hero("Carlie",null)]},{...emptySquad(3),heroes:[hero("Tesla",5_760_000),hero("Adam",5_580_000),hero("McGregor",6_070_000),hero("Swift",null),hero("Fiona",4_960_000)]},emptySquad(4)]
+  squads:[emptySquad(1),confirmedSquad(2,[hero("DVA",5_650_000),hero("Lucius",5_530_000),hero("Skyler",5_110_000),hero("Morrison",5_100_000),hero("Carlie",null)]),confirmedSquad(3,[hero("Tesla",5_760_000),hero("Adam",5_580_000),hero("McGregor",6_070_000),hero("Swift",null),hero("Fiona",4_960_000)]),emptySquad(4)]
 };
 
 const saved=mergeConfirmedExclusiveWeaponPowers({...base,exclusive_weapons:confirmedRows},{weapons:confirmedRows,updatedAt:"2026-09-22T10:00:00.000Z"}).state;

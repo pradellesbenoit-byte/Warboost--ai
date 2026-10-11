@@ -48,11 +48,83 @@ nouvelle identité ni une preuve de changement d’apparence.
 
 ## Confiance et validation
 
+### Lots mixtes de formation et d’armes exclusives
+
+Le joueur choisit un seul scan « Formation actuelle », sans numéro d’escouade.
+Le lot accepte de 1 à 6 images : une formation obligatoire et jusqu’à cinq armes
+exclusives. Il utilise une seule requête Vision structurée pour le lot complet et une seule fiche
+de vérification pour tout le lot. Les autres types de scan restent limités à
+trois captures ; Technologie conserve sa requête groupée dédiée.
+
+Chaque image joueur est indexée séparément des atlas. La réponse `captures[]`
+doit couvrir exactement ces indices, sans doublons, avec sous-type, preuves,
+confiances et cinq slots ordonnés pour la formation. Le serveur rejette une
+réponse tronquée/incohérente et ne transforme pas un titre d’arme en OCR de formation.
+Un portrait relié à une référence vérifiée peut proposer son héros ; un titre
+d’arme compatible le corrobore sans créer de slot. Forte confiance = proposition,
+moyenne = à confirmer, faible = vide ; la confirmation finale reste obligatoire.
+Le catalogue d’associations fourni par l’utilisateur contient treize héros :
+il sert d’indice d’identité, jamais de remplissage de nom d’arme/niveau/bonus.
+Skyler/Schuyler et Stetmann/Stethmann restent chacun une seule identité canonique.
+Les puissances individuelles exigent une capture dédiée explicitement supportée,
+hors de ce lot ; aucun champ de puissance individuelle n’est extrait ici.
+
+Le lot entrant est limité à 3 600 000 caractères de données image. La sélection
+répartit ce budget entre les fichiers et compresse seulement si nécessaire,
+sans réduire les dimensions ; elle n’envoie pas le profil complet pour ce scan.
+Les atlas restent privés et sont joints côté serveur. OpenAI reçoit un schéma JSON
+strict ; un fournisseur custom doit respecter le même contrat multi-images.
+Les tests de transport utilisent un fournisseur simulé, pas une mesure OCR réelle.
+Chaque image est classée en `formation_details`, `formation_overview`,
+`exclusive_weapon_detail` ou `unknown`. Une arme lisible n’interrompt plus le lot
+au motif qu’elle n’affiche pas cinq héros.
+
+La formation reste la source de l’ordre, des niveaux des héros et de la puissance
+totale (par exemple 44,43 M). Un écran nommé d’arme fournit une preuve séparée :
+texte visible du héros, nom de l’arme, niveau et confiance de lecture. « Skyler »
+et « Schuyler » désignent toujours la même clé canonique historique `Skyler`.
+
+Une arme ne prouve jamais l’appartenance à la formation. Son niveau ne rejoint
+le champ d’arme que si un unique héros de formation a une proposition d’identité
+compatible et suffisamment confiante. Les emplacements inconnus ou en doublon
+ne sont pas remplis depuis les armes ; les preuves non reliées ou contradictoires
+sont signalées sans être appliquées. Le grand nombre sous le niveau d’arme est
+ignoré : aucune puissance d’arme ni puissance de héros n’en est extraite.
+
+Le résultat affiche les sous-types reconnus et les preuves reliées/non reliées.
+Les champs de formation lisibles restent dans la vérification, même si les noms
+sont absents. Toute sauvegarde passe par la confirmation utilisateur existante ;
+ni l’analyse ni la fusion du lot ne modifient directement le profil.
+
+Les armes non reliées apparaissent comme « arme détectée à associer ». Le joueur
+peut explicitement confirmer le héros d’un emplacement inconnu/compatible et y
+associer une arme, sans changement du profil avant la confirmation finale.
+Les armes reliées affichent leur nom, niveau et valeurs fiables dans le même
+groupe que le héros, sans champ de puissance d’arme. Les puissances individuelles
+absentes de la formation sont optionnelles et ne créent aucun élément manquant ;
+la puissance totale lisible de formation reste proposée puis enregistrée après confirmation.
+Les bonus non suffisamment confiants ne sont pas proposés comme valeurs fiables.
+
+Compatibilité : ce parcours utilise intérieurement `squads[0]` et la clé historique
+`squad1`; les autres escouades enregistrées restent intactes. Les anciens raccourcis
+de scan numérotés sont redirigés vers « Formation actuelle », sans exposer ce choix
+technique. Une nouvelle composition ne remplace la précédente qu’après confirmation.
+Les six captures du parcours restent en mémoire durant la session, sans cache
+persistant volumineux ; fermeture complète ou changement de compte les efface.
+
+Le test `test:squad-mixed-captures` couvre notamment une formation de cinq héros
+niveau 155 à 44,43 M, DVA arme niveau 28 et Skyler arme niveau 1. Ce sont des
+réponses fournisseur synthétiques représentatives, pas une mesure OCR sur les
+captures originales de l’utilisateur.
+
 - Texte complet ou fragment unique du roster, confiance déclarée >= 0,88 :
   proposition forte, toujours revue avant l’enregistrement.
 - Confiance déclarée >= 0,70 et < 0,88 : proposition « à confirmer ».
-- Portrait seul suffisamment décrit : proposition plafonnée à 0,84, donc
-  confirmation manuelle obligatoire, même si le modèle annonce une valeur élevée.
+- Détecteur générique : portrait seul suffisamment décrit plafonné à 0,84.
+  Dans le lot Formation actuelle, une référence vérifiée exacte est obligatoire
+  pour un nom proposé par portrait seul ; une confiance >= 0,88 peut alors devenir
+  une proposition forte, corroborée si un titre d’arme compatible est disponible.
+  La confirmation finale reste obligatoire, même à forte confiance.
 - Confiance faible, score invalide, nom inconnu, fragment ambigu ou indices
   contradictoires : identité vide et choix manuel.
 - Quand texte et portrait concordent, leur confiance combinée reste conservatrice :

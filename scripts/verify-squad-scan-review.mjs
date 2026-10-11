@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
+import {scanSquadId} from "../lib/player-scan-types.js";
 import {applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription} from "../lib/squad-scan-review.js";
 import {createScanReviewDraft,applyOwnedScanReview} from "../lib/scan-review.js";
 import {buildScanReviewGroups} from "../lib/scan-review-presentation.js";
@@ -103,15 +104,16 @@ check("review pruning retains the target indices for squads 2, 3 and 4",()=>{
 // squad application, field stamping and normalization are the actual modules.
 const app=fs.readFileSync("app.js","utf8");
 const handler=app.slice(app.indexOf("function confirmScanReview(){"),app.indexOf('$("#confirmScanReviewBtn")?.addEventListener'));
+const targetGuard=app.slice(app.indexOf("function requireScanSquadTarget("),app.indexOf("function updateScanCaptureMode("));
 const statusHandler=app.slice(app.indexOf("function showSquadScanStatus("),app.indexOf("function confirmScanReview(){"));
 function runHandler({patch,edits,owner="fixture-a",current=true,save=true}){
   const error={textContent:"",classList:{remove(){}}},status={textContent:"",dataset:{},replaceChildren(...nodes){this.textContent=nodes.map(node=>node.textContent).join("")}};
   const context=vm.createContext({
     state:clone(base),pendingScanReview:{owner:"fixture-a",type:"squad1",request:{},patch},
-    lang:"fr",applyOwnedScanReview,applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription,
+    lang:"fr",scanSquadId,applyOwnedScanReview,applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription,
     stampConfirmedRecord,confirmedHeroPower,repairLegacySquadIdentity,
     pendingScanOwner:()=>owner,scanRequestIsCurrent:()=>current,scanReviewFormEdits:()=>({edits,issues:[]}),
-    $:selector=>selector==="#scanReviewError"?error:selector==="#scanStatus"?status:{classList:{remove(){}}},
+    $:selector=>selector==="#scanSquadTargetConfirmed"?{checked:true}:selector==="#scanReviewError"?error:selector==="#scanStatus"?status:{classList:{remove(){}}},
     t:translator("fr"),setScanReviewError:key=>{error.textContent=key},
     discardScanReviewDraft:()=>{context.pendingScanReview=null},
     safeClone:clone,emptySquad:()=>({heroes:[]}),
@@ -124,7 +126,7 @@ function runHandler({patch,edits,owner="fixture-a",current=true,save=true}){
     invalidatePlayerAdvice:()=>{},showConfirmedScanStatus:()=>{status.textContent="saved"},
     document:{createTextNode:text=>({textContent:text})},proFeatureAllowed:()=>false
   });
-  vm.runInContext(`${statusHandler}\n${handler}\nconfirmScanReview()`,context);
+  vm.runInContext(`${targetGuard}\n${statusHandler}\n${handler}\nconfirmScanReview()`,context);
   return {state:clone(context.state),pending:context.pendingScanReview,error:error.textContent,status:status.textContent};
 }
 check("real confirm handler accepts reliable power with missing heroes",()=>{

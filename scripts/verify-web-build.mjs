@@ -21,7 +21,15 @@ async function verifyFiles(dir){
     const file=`${dir}/${entry.name}`;
     if(entry.isDirectory()){await verifyFiles(file);continue;}
     if(!file.endsWith(".js"))continue;
-    for(const match of (await read(file)).matchAll(/(?:from\s*|import\s*\(?\s*)["'](\.[^"']+\.js)(?:\?[^"']*)?["']/g)){
+    const source=await read(file);
+    // These modules are served unbundled. A static Node/package import aborts
+    // the browser's entire module graph before the boot error handler can run.
+    // Lazy imports in guarded native/server functions are not static imports.
+    for(const match of source.matchAll(/\b(?:import|export)\s+(?:[^;"']*?\s+from\s*)?["']([^"']+)["']/g)){
+      assert.match(match[1],/^(?:\.{1,2}\/|\/|https?:\/\/)/,
+        `${file}: static import ${match[1]} cannot resolve in an unbundled browser`);
+    }
+    for(const match of source.matchAll(/(?:from\s*|import\s*\(?\s*)["'](\.[^"']+\.js)(?:\?[^"']*)?["']/g)){
       if(file==="web-dist/lib/mobile-runtime.js"&&match[1]==="./mobile-capacitor.js"){
         assert.match(await read(file),/if\(!isNativeWarBoost\)return/);
         continue;

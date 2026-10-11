@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
-import {mergePlayerScanBatch,analyzePlayerCaptureBatch} from "../lib/player-scan-batch.js";
+import {scanSquadId} from "../lib/player-scan-types.js";
+import {mergePlayerScanBatch,analyzePlayerCaptureBatch,playerScanBatchLimit} from "../lib/player-scan-batch.js";
 import {buildGlobalDiagnostic,resolveDiagnosticState} from "../lib/player-global-diagnostic.js";
 import {renderGlobalDiagnostic} from "../lib/player-global-diagnostic-ui.js";
 import {buildDiagnosticShop} from "../lib/diagnostic-shop.js";
@@ -97,12 +98,14 @@ const context={$:node,t:k=>k,lang:"fr",scanInputRevision:0,scanFileSelectionRevi
   discardScanReviewDraft(){},renderRosterScanFiles(){},renderRosterScanDraft(){},scanImageData:"A-image",scanImageDataList:["A-image"],scanImageName:"A-file.png",
   pendingHeroSquadId:1,pendingHeroSuggestions:[],pendingHeroScanSlots:[],pendingHeroScannedAt:now,pendingHeroOwner:"A",
   rosterScanFiles:[],rosterScanDraft:[],pendingExclusiveScan:[],pendingExclusiveScannedAt:now,
-  PLAYER_SCAN_BATCH_LIMIT:3,esc:String,aiUsesNativeCopy:()=>true,aiUiText:()=>({}),currentPlayerAdviceAnalysis:null,
+  PLAYER_SCAN_BATCH_LIMIT:3,playerScanBatchLimit,MAX_FORMATION_BATCH_LENGTH:3_600_000,esc:String,aiUsesNativeCopy:()=>true,aiUiText:()=>({}),currentPlayerAdviceAnalysis:null,
   activeAcquisitionShopView:null,renderTechnologyAdvicePanel(){},renderGlobalDiagnostic,
   state,buildDiagnosticShop,renderDiagnosticShop,
   diagnosticDisclosures:{capture(){},restore(){}}};
+context.scanSquadId=scanSquadId;
 vm.runInNewContext(`${functionSource("updateTechnologyScanPreview")}\n${functionSource("resetPendingScanUi")}\n${functionSource("renderProPriority")}\nresetPendingScanUi();renderProPriority({global_diagnostic:${JSON.stringify(diagnostic)}});`,context);
-assert.equal(node("#scanImageBatchList").innerHTML,"","actual account-reset handler removes foreign filenames");
+assert.doesNotMatch(node("#scanImageBatchList").innerHTML,/A-file|A-image/,"actual account-reset handler removes foreign filenames");
+assert.match(node("#scanImageBatchList").innerHTML,/0\/3/,"the empty counter may remain without foreign media");
 assert.equal(node("#scanStatus").textContent,"scan_wait","actual handler clears stale progress");
 assert.equal(node("#analyzeScanBtn").disabled,false);
 assert.equal(context.pendingExclusiveRequest,null);

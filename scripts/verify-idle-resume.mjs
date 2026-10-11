@@ -298,7 +298,7 @@ assert.match(app,/onResume:\(\{reason\}\)=>performIdleResume\(reason\)/);
 assert.match(app,/runAuthenticatedIdleResume\(\{[\s\S]*reconcile:reconcileAuthenticatedRuntime/);
 assert.match(app,/event==="TOKEN_REFRESHED"&&session/);
 assert.match(app,/loadingScreen\?\.show\(mode,"profile"\)/);
-assert.match(app,/function beginActiveLoadingOperation\(\)/);
+assert.match(app,/function beginActiveLoadingOperation\([^)]*\)/);
 assert.match(app,/fetchWarBoostScan\(payload\)[\s\S]*finishOperation\(\)/);
 assert.match(index,/app\.js\?v=player-hq-confirmation-r1/);
 assert.match(sw,/const CACHE="warboost-v\d[^"]*";/,"active cache is versioned for the current player shell");

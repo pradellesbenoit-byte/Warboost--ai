@@ -10,3 +10,13 @@ Normalize every squad to five materialized slots and resolve attributes by canon
 **Why:** Sparse OCR and cloud/local positional merges can shift heroes or erase slot 1; destructive duplicate cleanup loses the only trusted identity and its attributes. A user reported that inherited names did not match their actual formation; treating complete inherited names as confirmed had allowed a partial scan to preserve and reuse them incorrectly.
 
 **How to apply:** Every scan, hydration, merge, backfill, render, or confirmation path must require explicit provenance before restoring names or supplying Vision hints. Preserve confirmed composition and its provenance together until the player explicitly confirms a replacement. Never promote archived identities because another field or the total power was confirmed.
+
+The player scan must explicitly distinguish squads 1, 2, 3 and 4. A historical
+“Formation actuelle” capture must never be arbitrarily reassigned to another squad.
+
+**Why:** The user now wants WarBoost to distinguish their four squads, replacing
+the earlier single-formation scan choice without losing existing confirmations.
+
+**How to apply:** Require the player's target choice/confirmation when the
+capture does not reliably identify a squad number. Keep each squad's data and
+confirmation history separate throughout import, review, persistence and advice.

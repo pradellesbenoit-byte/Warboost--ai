@@ -1,6 +1,7 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
+import {createAnalysisIndicator,analysisFailureMessage} from "./lib/analysis-indicator.js";
 import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
-import {buildPlayerScanOptions,normalizePlayerScanType} from "./lib/player-scan-types.js";
+import {buildPlayerScanOptions,normalizePlayerScanType,scanSquadId} from "./lib/player-scan-types.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation,heroDisplayName} from "./lib/heroes.js";
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
@@ -35,7 +36,9 @@ import {buildEventStrategy} from "./lib/event-strategy.js";
 import {renderEventStrategy,eventStrategyOrders,toggleEventStrategyGroup} from "./lib/event-strategy-ui.js";
 import {applyCanonicalRenames} from "./lib/alliance-member-rename.js";
 import {showMemberRenameDialog} from "./lib/member-rename-ui.js";
-import {PLAYER_SCAN_BATCH_LIMIT,analyzePlayerCaptureBatch} from "./lib/player-scan-batch.js";
+import {playerScanBatchLimit,analyzePlayerCaptureBatch} from "./lib/player-scan-batch.js";
+import {MAX_FORMATION_BATCH_LENGTH} from "./lib/formation-batch.js";
+import {squadCaptureSummary,associateSquadWeaponProof} from "./lib/squad-capture.js";
 import {renderGlobalDiagnostic} from "./lib/player-global-diagnostic-ui.js";
 import {renderDesertStormPlanInto} from "./lib/desert-storm-plan-ui.js?v=hf8630-desert-storm-plan-r2";
 import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStormSubstituteSelections,toggleDesertStormSelection} from "./lib/desert-storm-selection.js";
@@ -519,7 +522,7 @@ function bindAllianceAccordions(){
   });
 }
 let alliancePlayerModalScrollTop=0,alliancePlayerModalHistory=false,alliancePlayerModalLastFocus=null,alliancePlayerModalBodyStyles=null;
-let scanImageDataList=[];
+let scanImageDataList=[],scanImageNames=[];
 let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
 let recentlyGeneratedDesertStormPlan=null;
 let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0,sharedRosterLinkPromise=null;
@@ -559,8 +562,8 @@ let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pe
 let pendingScanReview=null;
 let pendingScanRestoreInFlight=null,pendingScanRestoreOwner="";
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
-function discardScanReviewDraft(){pendingScanReview=null;$("#scanReviewPanel")?.classList.add("hidden");const rows=$("#scanReviewRows");if(rows)rows.replaceChildren()}
-function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft();
+function discardScanReviewDraft(){if(typeof analysisIndicator!=="undefined")analysisIndicator.cancel("scan");pendingScanReview=null;$("#scanReviewPanel")?.classList.add("hidden");$("#scanUnlinkedWeapons")?.classList.add("hidden");const rows=$("#scanReviewRows");if(rows)rows.replaceChildren();const ack=$("#scanSquadTargetConfirmed");if(ack)ack.checked=false}
+function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageNames=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveRequest=null;pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");updateTechnologyScanPreview([]);const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft();
   pendingScanRestoreInFlight=null;pendingScanRestoreOwner="";
   const rosterStatus=$("#rosterScanStatus"),rosterButton=$("#rosterScanAnalyzeBtn"),fullSnapshot=$("#rosterScanFullSnapshot");
   if(rosterStatus){rosterStatus.textContent="";rosterStatus.classList.add("hidden")}
@@ -585,15 +588,15 @@ async function restorePendingScans(){
       const files=await loadPendingRosterFiles(owner);
       if(owner!==pendingScanOwner()||scanInputRevision!==inputRevision||scanFileSelectionRevision!==fileRevision)return {ok:true,stale:true};
       if(techFiles.length){
-        scanImageDataList=techImages;scanImageData=scanImageDataList[0]||null;scanImageName=techFiles.map(file=>file.name).join(", ");
+        scanImageDataList=techImages;scanImageData=scanImageDataList[0]||null;scanImageNames=techFiles.map(file=>String(file.name||"capture.jpg"));scanImageName=scanImageNames.join(", ");
         renderScanTypeOptions();const type=$("#scanType");if(type)type.value="technology";
-        updateScanCaptureMode();updateTechnologyScanPreview(techFiles.map(file=>file.name));
+        updateScanCaptureMode();updateTechnologyScanPreview(scanImageNames);
         const clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(clear)clear.classList.remove("hidden");
         if(status){status.className="notice";status.textContent=t("scan_ready")}
       }else if(pending?.image_data_url){
-        scanImageData=pending.image_data_url;scanImageDataList=pending.image_data_urls?.length?pending.image_data_urls:[scanImageData];scanImageName=pending.name||"capture.jpg";
+        scanImageData=pending.image_data_url;scanImageDataList=pending.image_data_urls?.length?pending.image_data_urls:[scanImageData];scanImageNames=String(pending.name||"capture.jpg").split(", ");scanImageNames=scanImageDataList.map((_,index)=>scanImageNames[index]||`capture-${index+1}.jpg`);scanImageName=scanImageNames.join(", ");
         renderScanTypeOptions();const type=$("#scanType");if(type&&[...type.options].some(o=>o.value===pending.scan_type))type.value=pending.scan_type;
-        updateSquadCaptureHelp(type?.value||"profile");updateScanCaptureMode();updateTechnologyScanPreview(scanImageName.split(", "));
+        updateSquadCaptureHelp(type?.value||"profile");updateScanCaptureMode();updateTechnologyScanPreview(scanImageNames);
         const clear=$("#clearScanCaptureBtn"),status=$("#scanStatus");if(clear)clear.classList.remove("hidden");
         if(status){status.className="notice";status.textContent=t("scan_ready")}
       }
@@ -607,19 +610,19 @@ async function restorePendingScans(){
   }
 }
 async function persistPendingRosterQueue(){return await savePendingRosterFiles(pendingScanOwner(),rosterScanFiles).catch(()=>false)}
-function clearScanImage({forget=true}={}){scanInputRevision++;scanFileSelectionRevision++;const owner=pendingScanOwner();scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";pendingExclusiveScan=[];pendingExclusiveScannedAt=null;pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");discardScanReviewDraft();const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");updateTechnologyScanPreview([]);if(forget){void clearPendingSingleScan(owner);void clearPendingTechnologyFiles(owner)}}
+function clearScanImage({forget=true}={}){scanInputRevision++;scanFileSelectionRevision++;const owner=pendingScanOwner();scanImageData=null;scanImageDataList=[];scanImageNames=[];scanImageName="capture.jpg";pendingExclusiveRequest=null;pendingExclusiveScan=[];pendingExclusiveScannedAt=null;pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");discardScanReviewDraft();const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");updateTechnologyScanPreview([]);if(forget){void clearPendingSingleScan(owner);void clearPendingTechnologyFiles(owner)}}
 function beginNewScanFileSelection(){
-  const owner=pendingScanOwner(),revision=++scanInputRevision;scanFileSelectionRevision++;scanImageData=null;scanImageDataList=[];scanImageName="capture.jpg";pendingExclusiveScan=[];pendingExclusiveScannedAt=null;pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";discardScanReviewDraft();$("#heroConfirmPanel")?.classList.add("hidden");$("#exclusiveConfirmPanel")?.classList.add("hidden");const preview=$("#scanPreview"),clear=$("#clearScanCaptureBtn");if(preview){preview.removeAttribute("src");preview.classList.add("hidden")}if(clear)clear.classList.add("hidden");updateTechnologyScanPreview([]);
+  const owner=pendingScanOwner(),revision=++scanInputRevision;scanFileSelectionRevision++;scanImageData=null;scanImageDataList=[];scanImageNames=[];scanImageName="capture.jpg";pendingExclusiveRequest=null;pendingExclusiveScan=[];pendingExclusiveScannedAt=null;pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";discardScanReviewDraft();$("#heroConfirmPanel")?.classList.add("hidden");$("#exclusiveConfirmPanel")?.classList.add("hidden");const preview=$("#scanPreview"),clear=$("#clearScanCaptureBtn");if(preview){preview.removeAttribute("src");preview.classList.add("hidden")}if(clear)clear.classList.add("hidden");updateTechnologyScanPreview([]);
   return {owner,revision,fileRevision:scanFileSelectionRevision,clearPending:Promise.all([clearPendingSingleScan(owner),clearPendingTechnologyFiles(owner)])};
 }
 function scanCaptureFingerprint(scanType=$("#scanType")?.value||"profile"){return scanImageDataList.length?scanImageDataList.join("\n"):scanImageData}
-function scanRequestIsCurrent(request){return scanRequestMatches(request,{owner:pendingScanOwner(),scanType:$("#scanType")?.value||"profile",imageFingerprint:scanCaptureFingerprint(),revision:scanInputRevision})}
+function scanRequestIsCurrent(request){return (!scanSquadId(request?.scanType)||$("#scanSquadTargetConfirmed")?.checked===true)&&scanRequestMatches(request,{owner:pendingScanOwner(),scanType:$("#scanType")?.value||"profile",imageFingerprint:scanCaptureFingerprint(),revision:scanInputRevision})}
 function exclusiveNumber(value){const text=String(value??"").trim().replace(",",".");if(!text)return null;const n=Number(text);return Number.isFinite(n)?n:null}
-function exclusivePower(value){const parsed=parseHeroPower(value);return parsed===null?null:parsed}
 function renderExclusiveConfirmation(rows=[]){
-  pendingExclusiveScan=Array.isArray(rows)?rows.map(x=>({...x})).filter(x=>x&&typeof x==="object"):[];
+  const usableFields=["hero_name","weapon_name","level","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
+  pendingExclusiveScan=(Array.isArray(rows)?rows:[]).filter(x=>x&&typeof x==="object").map(row=>
+    Object.fromEntries(usableFields.filter(field=>row[field]!==undefined&&row[field]!==null&&String(row[field]).trim()!=="").map(field=>[field,row[field]])));
   const panel=$("#exclusiveConfirmPanel"),box=$("#exclusiveConfirmRows");if(!panel||!box)return false;
-  const usableFields=["hero_name","weapon_name","level","power","power_raw","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
   pendingExclusiveScan=pendingExclusiveScan.filter(w=>usableFields.some(field=>w[field]!==undefined&&w[field]!==null&&String(w[field]).trim()!==""));
   if(!pendingExclusiveScan.length){panel.classList.add("hidden");box.innerHTML="";return false}
   box.innerHTML=pendingExclusiveScan.map((w,i)=>`<div class="exclusiveConfirmCard" data-exclusive-index="${i}">
@@ -627,7 +630,6 @@ function renderExclusiveConfirmation(rows=[]){
       <label>${esc(t("hero"))}<input data-exclusive-field="hero_name" value="${esc(w.hero_name||"")}" maxlength="80"/></label>
       <label>${esc(t("exclusive_weapon"))}<input data-exclusive-field="weapon_name" value="${esc(w.weapon_name||"")}" maxlength="120"/></label>
       <label>${esc(t("level"))}<input data-exclusive-field="level" type="number" min="0" max="999" step="1" value="${w.level??""}"/></label>
-        <label>${esc(t("power"))}<input data-exclusive-field="power" type="text" inputmode="decimal" autocomplete="off" value="${esc(w.power??w.power_raw??"")}"/><small class="exclusiveDetectedPower">${esc(w.power!==undefined&&w.power!==null?`Puissance détectée : ${w.power}`:w.power_raw?`Puissance détectée à vérifier : ${w.power_raw}`:"Puissance non visible : à rescanner")}</small></label>
       <label>${esc(t("scan_exclusive_hp_bonus"))}<input data-exclusive-field="hero_hp_bonus" type="number" step="any" value="${w.hero_hp_bonus??""}"/></label>
       <label>${esc(t("scan_exclusive_atk_bonus"))}<input data-exclusive-field="hero_atk_bonus" type="number" step="any" value="${w.hero_atk_bonus??""}"/></label>
       <label>${esc(t("scan_exclusive_def_bonus"))}<input data-exclusive-field="hero_def_bonus" type="number" step="any" value="${w.hero_def_bonus??""}"/></label>
@@ -640,29 +642,17 @@ function renderExclusiveConfirmation(rows=[]){
   return pendingExclusiveScan.length>0;
 }
 function exclusiveResultFieldCount(rows=[]){
-  const fields=["hero_name","weapon_name","level","power","power_raw","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
+  const fields=["hero_name","weapon_name","level","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
   return new Set(fields.filter(field=>(Array.isArray(rows)?rows:[]).some(w=>w?.[field]!==undefined&&w?.[field]!==null&&String(w[field]).trim()!==""))).size;
 }
 function collectExclusiveConfirmation(){
   const rows=[];$("#exclusiveConfirmRows")?.querySelectorAll("[data-exclusive-index]").forEach(card=>{
     const row={},read=field=>String(card.querySelector(`[data-exclusive-field="${field}"]`)?.value||"").trim();
     const hero=canonicalHeroName(read("hero_name")),weapon=read("weapon_name");if(hero)row.hero_name=hero;if(weapon)row.weapon_name=weapon;
-    const powerText=read("power"),power=exclusivePower(powerText);if(power!==null)row.power=power;else if(powerText){row.power_raw=powerText;row.power_parse_status="needs_verification";}
     for(const field of ["level","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"]){const value=exclusiveNumber(read(field));if(value!==null)row[field]=value}
     if(Object.keys(row).length)rows.push(row);
   });
   return rows;
-}
-function exclusivePowerNeedsVerification(){
-  let invalid=false;
-  $("#exclusiveConfirmRows")?.querySelectorAll("[data-exclusive-index]").forEach(card=>{
-    const index=Number(card.getAttribute("data-exclusive-index")),staged=pendingExclusiveScan[index]||{};
-    const stagedPower=String(staged.power??staged.power_raw??"").trim(),hero=canonicalHeroName(String(card.querySelector('[data-exclusive-field="hero_name"]')?.value||"").trim()||staged.hero_name);
-    if(!hero||!stagedPower)return;
-    const visible=card.querySelector('[data-exclusive-field="power"]')?.value||"";
-    if(confirmedHeroPower(exclusivePower(visible))===null)invalid=true;
-  });
-  return invalid;
 }
 function saveConfirmedExclusiveScan(){
   const confirmed=collectExclusiveConfirmation(),status=$("#scanStatus"),previousState=state;
@@ -670,8 +660,7 @@ function saveConfirmedExclusiveScan(){
   if(JSON.stringify(pendingExclusiveRequest.baseReview)!==JSON.stringify(createScanReviewDraft("exclusive",state))){
     if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?"Les armes ont changé depuis le début du scan. Relance l’analyse.":"Weapons changed after scanning started. Analyze again."}return false;
   }
-  if(exclusivePowerNeedsVerification()){if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?"Puissance détectée à vérifier. Corrige la valeur avant l’enregistrement.":t("scan_exclusive_power_verify")}return false}
-  if(!confirmed.some(w=>w.hero_name||w.weapon_name||w.level!==undefined||w.power!==undefined)){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_required")}return false}
+  if(!confirmed.some(w=>w.hero_name||w.weapon_name||w.level!==undefined)){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_required")}return false}
   const now=new Date().toISOString(),observed=confirmed.map(row=>stampConfirmedRecord(row,{at:now,source:"confirmed_scan"}));
   const staged=mergeStateProtected(state,{exclusive_weapons:observed},{preferBase:false});
   state=mergeConfirmedExclusiveWeaponPowers(staged,{weapons:observed,updatedAt:now}).state;
@@ -685,11 +674,12 @@ function saveConfirmedExclusiveScan(){
 }
 function heroConfirmOptions(selected){return [`<option value="">${esc(t("hero_choose"))}</option>`].concat(HERO_CATALOG.map(n=>`<option value="${esc(n)}"${n===selected?" selected":""}>${esc(heroDisplayName(n))}</option>`)).join("")}
 function openHeroConfirmation(squadId,suggestions=[]){pendingHeroSquadId=Number(squadId)||null;pendingHeroSuggestions=Array.from({length:5},(_,i)=>String(suggestions?.[i]||"").trim());const panel=$("#heroConfirmPanel"),rows=$("#heroConfirmRows");if(!panel||!rows||!pendingHeroSquadId)return false;const sq=state.squads[pendingHeroSquadId-1];if(!sq)return false;for(const [button,key] of [["#saveHeroNamesBtn","hero_save"],["#skipHeroNamesBtn","hero_skip"]]){const control=$(button);if(control){control.disabled=false;control.textContent=t(key)}}const heroes=fixedHeroSlots(sq.heroes);rows.innerHTML=Array.from({length:5},(_,i)=>{const h=heroes[i]||emptyHero(i+1),saved=isGenericHeroName(h?.name)?"":canonicalStoredHeroName(h.name),suggested=pendingHeroSuggestions[i]&&!isGenericHeroName(pendingHeroSuggestions[i])?canonicalStoredHeroName(pendingHeroSuggestions[i]):"",current=suggested||saved;return `<div class="heroConfirmRow"><span>${i+1}</span><select data-hero-slot="${i}">${heroConfirmOptions(current)}</select></div>`}).join("");$("#heroConfirmTitle").textContent=t("hero_confirm_title",{squad:pendingHeroSquadId});panel.classList.remove("hidden");return true;}
-function startHeroConfirmation(squadId,suggestions=[],scanSlots=[],scannedAt=null){const id=Number(squadId);pendingHeroScanSlots=Array.from({length:5},(_,i)=>({...((scanSlots?.[i]&&typeof scanSlots[i]==="object")?scanSlots[i]:{})}));pendingHeroScannedAt=scannedAt||new Date().toISOString();pendingHeroOwner=pendingScanOwner();if(!Number.isInteger(id)||id<1||id>4)return;const meta=$("#heroScanMeta");if(meta)meta.textContent=`${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(pendingHeroScannedAt).toLocaleString(locale||lang)}`;openDrawer("scan");renderScanTypeOptions();const type=$("#scanType");if(type)type.value=`squad${id}`;updateSquadCaptureHelp(`squad${id}`);const st=$("#scanStatus");if(st){st.className="notice warn";st.textContent=t("hero_confirm_needed")}const opened=openHeroConfirmation(id,suggestions);if(!opened)return;const drawer=$("#scanDrawer"),panel=$("#heroConfirmPanel");if(drawer)drawer.scrollTop=0;requestAnimationFrame(()=>requestAnimationFrame(()=>{try{panel?.scrollIntoView({behavior:"smooth",block:"center"})}catch{if(drawer)drawer.scrollTop=Math.max(0,(panel?.offsetTop||0)-24)}}));}
+function startHeroConfirmation(squadId,suggestions=[],scanSlots=[],scannedAt=null){const id=Number(squadId);pendingHeroScanSlots=Array.from({length:5},(_,i)=>({...((scanSlots?.[i]&&typeof scanSlots[i]==="object")?scanSlots[i]:{})}));pendingHeroScannedAt=scannedAt||new Date().toISOString();pendingHeroOwner=pendingScanOwner();if(!Number.isInteger(id)||id<1||id>4)return;const meta=$("#heroScanMeta");if(meta)meta.textContent=`${t("squad")} ${id} · ${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(pendingHeroScannedAt).toLocaleString(locale||lang)}`;openDrawer("scan");renderScanTypeOptions();const type=$("#scanType");if(type)type.value=`squad${id}`;updateSquadCaptureHelp(`squad${id}`);updateScanCaptureMode();const st=$("#scanStatus");if(st){st.className="notice warn";st.textContent=t("hero_confirm_needed")}const opened=openHeroConfirmation(id,suggestions);if(!opened)return;const drawer=$("#scanDrawer"),panel=$("#heroConfirmPanel");if(drawer)drawer.scrollTop=0;requestAnimationFrame(()=>requestAnimationFrame(()=>{try{panel?.scrollIntoView({behavior:"smooth",block:"center"})}catch{if(drawer)drawer.scrollTop=Math.max(0,(panel?.offsetTop||0)-24)}}));}
 function closeHeroConfirmation(clearImage=true){pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");if(clearImage)clearScanImage()}
 async function saveHeroConfirmation(){
   if(!pendingHeroSquadId)return;
   if(pendingHeroOwner!==pendingScanOwner()){closeHeroConfirmation(true);return}
+  if(scanSquadId($("#scanType")?.value)!==pendingHeroSquadId||!requireScanSquadTarget(`squad${pendingHeroSquadId}`))return;
   const selects=[...document.querySelectorAll("#heroConfirmRows select[data-hero-slot]")],values=selects.map(x=>String(x.value||"").trim()),st=$("#scanStatus"),btn=$("#saveHeroNamesBtn");
   if(values.length!==5||values.some(v=>!v)){st.className="notice warn";st.textContent=t("hero_all_required");return}
   if(new Set(values.map(v=>canonicalStoredHeroName(v).toLowerCase())).size!==values.length){st.className="notice warn";st.textContent=t("hero_duplicate");return}
@@ -750,6 +740,8 @@ async function saveInlineHeroNames(squadId,container,button=null){
 
 if(!localStorage.getItem(LANG_KEY)){for(const key of LEGACY_LANGUAGE_KEYS){const v=localStorage.getItem(key);if(v){localStorage.setItem(LANG_KEY,v);break}}}
 let languageChoice=localStorage.getItem(LANG_KEY)||"auto",lang=resolveLanguage(languageChoice),locale=localeFor(lang),t=translator(lang);
+const analysisIndicator=createAnalysisIndicator({message:()=>t("analysis_busy"),inlineTarget:()=>$("#scanDrawer")?.classList.contains("open")?$("#scanStatus"):null});
+$("#languageSelect")?.addEventListener("change",()=>queueMicrotask(()=>analysisIndicator.refresh()));
 loadingScreen=createLoadingScreenController({documentRef:document,windowRef:window,translate:key=>t(key)});
 returnViewController=createReturnViewController({documentRef:document,windowRef:window,openDrawer,canRestorePrivateData:()=>betaPrivateDataVisible(),persistAcrossReload:false});
 function betaConsentStorageKey(){const id=String(cloudSession?.user?.id||"").trim();return id?`${BETA_CONSENT_KEY}:${id}`:null}
@@ -911,21 +903,36 @@ function ensureExtendedObjectives(){
   }
 }
 ensureExtendedObjectives();
-function updateTechnologyScanPreview(names=scanImageDataList.map((_,index)=>scanImageName.split(", ")[index]||`${t("scan_technology")} ${index+1}`)){
-  const list=$("#scanImageBatchList"),isTechnology=$("#scanType")?.value==="technology",items=Array.isArray(names)?names:[];
-  if(list){list.classList.toggle("hidden",!items.length);list.innerHTML=items.length?`<b>${esc(lang.startsWith("fr")?`${items.length} capture(s) · maximum ${PLAYER_SCAN_BATCH_LIMIT}`:`${items.length} screenshot(s) · maximum ${PLAYER_SCAN_BATCH_LIMIT}`)}</b><ul>${items.map(name=>`<li>${esc(name)}</li>`).join("")}</ul>`:""}
+function updateTechnologyScanPreview(names=scanImageNames.length?scanImageNames:scanImageDataList.map((_,index)=>`${t("scan_technology")} ${index+1}`)){
+  const list=$("#scanImageBatchList"),items=Array.isArray(names)?names:[],scanType=$("#scanType")?.value||"profile",limit=playerScanBatchLimit(scanType);
+  const target=scanSquadId(scanType),targetLabel=target?`${t("squad")} ${target} · `:"";
+  if(list){list.classList.remove("hidden");list.innerHTML=`<b>${esc(targetLabel+`${items.length}/${limit}`)}</b>${items.length?`<ul>${items.map((name,index)=>`<li>${esc(targetLabel+name)} <button type="button" class="textAction scanCaptureRemove" data-remove-scan-capture="${index}" aria-label="${esc(t("scan_remove")+" "+name)}">${esc(t("scan_remove"))}</button></li>`).join("")}</ul>`:""}`}
   const preview=$("#scanPreview");
   if(preview){
     const first=scanImageDataList[0]||scanImageData;
-    if(first){preview.src=first;preview.classList.remove("hidden")}else{preview.removeAttribute("src");preview.classList.add("hidden")}
+    if(first){preview.src=first;preview.alt=targetLabel+t("scan_type");preview.classList.remove("hidden")}else{preview.removeAttribute("src");preview.classList.add("hidden")}
   }
 }
+function updateScanSquadTarget(){
+  const id=scanSquadId($("#scanType")?.value),panel=$("#scanSquadTarget"),label=$("#scanSquadTargetLabel");
+  panel?.classList.toggle("hidden",!id);
+  if(label)label.textContent=id?t("scan_target_ack",{squad:`${t("squad")} ${id}`}):"";
+}
+function requireScanSquadTarget(type,status=$("#scanStatus")){
+  if(!scanSquadId(type)||$("#scanSquadTargetConfirmed")?.checked===true)return true;
+  if(status){status.className="notice warn";status.textContent=t("scan_target_required")}
+  return false;
+}
 function updateScanCaptureMode(){
-  const isTechnology=$("#scanType")?.value==="technology",input=$("#scanFile"),label=$("#scanCaptureLabel"),help=$("#technologyScanHelp");
+  const scanType=$("#scanType")?.value||"profile",isSquad=isSquadScanType(scanType),input=$("#scanFile"),label=$("#scanCaptureLabel"),help=$("#technologyScanHelp"),limit=playerScanBatchLimit(scanType);
+  const selector=$("#scanType"),ack=$("#scanSquadTargetConfirmed");
+  if(selector?.dataset.previousType!==scanType){discardScanReviewDraft();if(ack)ack.checked=false}
+  if(selector)selector.dataset.previousType=scanType;
   if(input)input.multiple=true;
-  if(label){delete label.dataset.i18n;label.textContent=lang.startsWith("fr")?"Choisir 1 à 3 captures":"Choose 1 to 3 screenshots"}
-  if(help){help.classList.remove("hidden");delete help.dataset.i18n;help.textContent=lang.startsWith("fr")?"Même type de données, même escouade si applicable. Les captures sont réunies dans une seule vérification.":"Use the same data type and squad. Overlapping screenshots are combined into one review."}
-  updateTechnologyScanPreview();
+  if(label){delete label.dataset.i18n;label.textContent=t("scan_capture_choose",{limit})}
+  if(help){help.classList.remove("hidden");delete help.dataset.i18n;help.textContent=isSquad
+    ?t("scan_formation_help"):t("scan_same_type_help")}
+  updateScanSquadTarget();updateTechnologyScanPreview();
 }
 function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(lang);t=translator(lang);document.documentElement.lang=lang;document.documentElement.dir=dirFor(lang);$$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});$$('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));$$('[data-i18n-alt]').forEach(el=>el.setAttribute('alt',t(el.dataset.i18nAlt)));$$('[data-i18n-placeholder]').forEach(el=>{const text=t(el.dataset.i18nPlaceholder);el.setAttribute('placeholder',text);if(el.isContentEditable)el.setAttribute('data-placeholder',text)});const sel=$("#languageSelect");if(sel){sel.innerHTML=LANGUAGES.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=languageChoice}renderScanTypeOptions();renderClock();render();renderAuth();renderBeta();renderPro();renderVoiceSettings();renderSupportAccess();renderSupportTickets();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden")}
 function saveState(options={}){const renderUi=options?.renderUi!==false,signedInUserId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");if(signedInUserId&&ownerId&&ownerId!==signedInUserId){if(hasMeaningfulCore(state))rememberAccountState(ownerId,state);const own=readAccountState(signedInUserId);state=hasMeaningfulCore(own)?hydrateCloudState(own,initialState(),signedInUserId):initialState();state.player_id=signedInUserId;state.sync={...state.sync,status:"waiting",last_error:"account_owner_mismatch",pending_cloud_save:false};if(renderUi)render();return false}if(signedInUserId&&!ownerId)state.player_id=signedInUserId;state=repairLegacySquadIdentity(state).state;state=backfillConfirmedHeroPowers(state).state;state.updated_at=new Date().toISOString();state.version=APP_VERSION;localStateRevision++;const localOk=safeLocalSet(STORE_KEY,JSON.stringify(state));if(!localOk)state.sync={...state.sync,status:"waiting",last_error:"local_storage_unavailable",pending_cloud_save:true};rememberLastGoodState(state,"save");if(signedInUserId&&String(state.player_id||"")===signedInUserId)rememberAccountState(signedInUserId,state);if(renderUi)render();if(!suppressPush&&hasMeaningfulCore(state))scheduleServerSave(localOk?350:0);return localOk}
@@ -1609,7 +1616,7 @@ function renderSeasonAccess(){
   notice.hidden=confirmed;
   notice.style.display=confirmed?"none":"";
 }
-function openQuickScan(type){if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("scan");renderScanTypeOptions();const opts=buildPlayerScanOptions(t),safeType=normalizePlayerScanType(type,opts),sel=$("#scanType");if(sel)sel.value=safeType;updateSquadCaptureHelp(safeType)}
+function openQuickScan(type){if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("scan");renderScanTypeOptions();const opts=buildPlayerScanOptions(t),safeType=normalizePlayerScanType(type,opts),sel=$("#scanType");if(sel)sel.value=safeType;updateSquadCaptureHelp(safeType);updateScanCaptureMode()}
 
 function qg35Text(key,params={}){
   const translated={...params};
@@ -3271,19 +3278,25 @@ async function syncAll(){
 $("#syncAllBtn").addEventListener("click",syncAll);$("#syncPlayerBtn").addEventListener("click",syncAll);
 $("#openScanBtn").addEventListener("click",()=>openQuickScan("profile"));$("#scanPlayerBtn").addEventListener("click",()=>openQuickScan(playerOnboardingStatus().next_type||"profile"));$("#playerOnboardingScanBtn")?.addEventListener("click",e=>openQuickScan(e.currentTarget?.dataset?.nextScan||playerOnboardingStatus().next_type||"profile"));$("#quickProfileScanBtn")?.addEventListener("click",()=>openQuickScan("profile"));$("#quickSquadScanBtn")?.addEventListener("click",()=>{const strongest=strongestSquadFromState(state);openQuickScan(`squad${strongest.id||1}`)});$("#quickDroneScanBtn")?.addEventListener("click",()=>openQuickScan("drone"));$("#scanShopBtn")?.addEventListener("click",()=>openQuickScan("shop"));$("#scanVsBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#vsStartScanBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#scanSeasonBtn")?.addEventListener("click",()=>openQuickScan("season"));
 
-function beginActiveLoadingOperation(){
+function beginActiveLoadingOperation(kind="scan"){
   activeLoadingOperations++;idleLifecycle?.setBusy(true);
+  const finishIndicator=analysisIndicator.begin(kind);
   let finished=false;
   return ()=>{
     if(finished)return;
-    finished=true;activeLoadingOperations=Math.max(0,activeLoadingOperations-1);
+    finished=true;finishIndicator();activeLoadingOperations=Math.max(0,activeLoadingOperations-1);
     idleLifecycle?.noteActivity({type:"operation-complete"});
     idleLifecycle?.setBusy(activeLoadingOperations>0);
   };
 }
 async function fetchWarBoostScan(payload){
   const finishOperation=beginActiveLoadingOperation();
-  try{return await fetchJsonBounded("/api/scan",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(payload)},48000)}
+  try{return await fetchJsonBounded("/api/scan",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(payload)},90000)}
+  catch(error){
+    if(error?.code==="request_timeout")throw Object.assign(new Error(t("scan_timeout")),
+      {code:"SCAN_REQUEST_TIMEOUT",timeout_ms:90000});
+    throw error;
+  }
   finally{finishOperation()}
 }
 function scanResultHasUsefulData(scanType,payload){
@@ -3299,16 +3312,113 @@ function scanResultHasUsefulData(scanType,payload){
   if(type==="season")return Boolean((x.season&&Object.keys(x.season).some(k=>k!=="updated_at"))||(x.technology&&Object.keys(x.technology).some(k=>k!=="updated_at"&&x.technology[k]!==null&&x.technology[k]!==undefined)));
   return Object.keys(x).length>0;
 }
+function scanReviewTranslator(type){
+  return (key,params)=>key==="scan_review_squad_heading"&&/^squad[1-4]$/.test(type)
+    ?`${t("squad")} ${scanSquadId(type)}`
+    :t(key,params);
+}
+function scanReviewGroupsWithWeapons(draft){
+  const groups=buildScanReviewGroups(draft.type,draft.data||draft.patch,draft.ocrEvidence);
+  if(!/^squad[1-4]$/.test(draft.type))return groups;
+  const records=Array.isArray((draft.data||draft.patch)?.exclusive_weapons)?(draft.data||draft.patch).exclusive_weapons:[];
+  const heroes=(draft.data||draft.patch)?.squads?.[scanSquadId(draft.type)-1]?.heroes||[];
+  for(const [recordIndex,record] of records.entries()){
+    const heroKey=canonicalStoredHeroName(record?.hero_name||"");
+    const matches=heroes.map((hero,index)=>({hero,index})).filter(({hero})=>heroKey&&canonicalStoredHeroName(hero?.name||"")===heroKey);
+    if(matches.length!==1)continue;
+    const slot=matches[0].index,group=groups.find(item=>item.kind==="hero"&&item.number===slot+1);
+    if(!group)continue;
+    const fields=["weapon_name","level","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
+    for(const field of fields){
+      const value=record?.[field],existing=group.rows.some(row=>row.path?.[0]==="exclusive_weapons"&&row.path?.[1]===recordIndex&&row.field===field);
+      if(existing)continue;
+      const missing=value===undefined||value===null||value==="";
+      group.rows.push({path:["exclusive_weapons",recordIndex,field],field,kind:typeof value==="number"?"number":"text",value:missing?"":value,status:missing?"missing":"pending"});
+    }
+  }
+  return groups;
+}
+function scanFormationSlotIdentity(draft,index){
+  const data=draft.data||draft.patch,hero=data?.squads?.[scanSquadId(draft.type)-1]?.heroes?.[index],raw=String(hero?.name||"").trim();
+  return raw&&!isGenericHeroName(raw)?canonicalStoredHeroName(raw):"";
+}
+function scanWeaponAssociationOptions(draft,proof){
+  const rawProofHero=String(proof?.hero_name||"").trim(),proofHero=rawProofHero&&!isGenericHeroName(rawProofHero)?canonicalStoredHeroName(rawProofHero):"";
+  const linked=new Set((draft.data||draft.patch)?.exclusive_weapons?.map(row=>canonicalStoredHeroName(row?.hero_name||"")).filter(Boolean)||[]);
+  return Array.from({length:5},(_,index)=>({index,name:scanFormationSlotIdentity(draft,index)}))
+    .filter(slot=>!linked.has(slot.name||proofHero)&&(!slot.name||Boolean(proofHero&&slot.name===proofHero)));
+}
+function renderUnlinkedWeaponReview(draft){
+  const panel=$("#scanUnlinkedWeapons"),proofs=Array.isArray(draft.unlinkedWeapons)?draft.unlinkedWeapons:[];
+  if(!panel)return;
+  if(!proofs.length){panel.innerHTML="";panel.classList.add("hidden");return}
+  const fr=lang.startsWith("fr");
+  panel.innerHTML=`<div class="sectionTitle"><h3>${fr?"Armes détectées à associer":"Weapons detected — needs association"}</h3></div>`+
+    proofs.map((proof,index)=>{
+      const label=[proof?.hero_name,proof?.weapon_name].filter(Boolean).join(" — "),level=proof?.level;
+      const allowed=scanWeaponAssociationOptions(draft,proof),slots=`<option value="">${esc(fr?"Choisir un emplacement":"Choose a slot")}</option>`+allowed.map(slot=>`<option value="${slot.index}">${esc(fr?`Emplacement ${slot.index+1}${slot.name?` · ${slot.name}`:" · Inconnu"}`:`Slot ${slot.index+1}${slot.name?` · ${slot.name}`:" · Unknown"}`)}</option>`).join("");
+      const assigned=new Set(Array.from({length:5},(_,i)=>scanFormationSlotIdentity(draft,i)).filter(Boolean));
+      const rawProofHero=String(proof?.hero_name||"").trim(),proofHero=rawProofHero&&!isGenericHeroName(rawProofHero)?canonicalStoredHeroName(rawProofHero):"";
+      const linked=new Set((draft.data||draft.patch)?.exclusive_weapons?.map(row=>canonicalStoredHeroName(row?.hero_name||"")).filter(Boolean)||[]);
+      const heroOptions=HERO_CATALOG.filter(name=>!linked.has(canonicalStoredHeroName(name))&&(!assigned.has(canonicalStoredHeroName(name))||canonicalStoredHeroName(name)===proofHero))
+        .map(name=>`<option value="${esc(name)}">${esc(heroDisplayName(name))}</option>`).join("");
+      const noSlots=!allowed.length?`<p class="privacyText">${esc(fr?"Aucun emplacement inconnu ou correspondant n’est disponible.":"No unknown or matching formation slot is available.")}</p>`:"";
+      return `<article class="scanReviewGroup" data-unlinked-weapon="${index}"><h4 class="scanReviewGroupTitle">${fr?"Arme détectée à associer":"Weapon detected — needs association"}</h4>
+        <p>${esc(label|| (fr?"Nom non visible":"Name not visible"))}${level!==undefined&&level!==null?` · ${esc(fr?"Niveau":"Level")} ${esc(level)}`:""}</p>
+        ${noSlots}<div class="settingsForm"><label>${fr?"Emplacement de formation":"Formation slot"}<select data-weapon-slot="${index}">${slots}</select></label>
+        <label>${fr?"Confirmer le héros de cet emplacement":"Confirm this slot’s hero"}<select data-weapon-hero="${index}"><option value="">${esc(fr?"Choisir un héros":"Choose a hero")}</option>${heroOptions}</select></label></div>
+        <button type="button" class="secondaryBtn" data-associate-weapon="${index}"${noSlots?" disabled":""}>${fr?"Associer et confirmer le héros":"Associate and confirm hero"}</button></article>`;
+    }).join("");
+  panel.classList.remove("hidden");
+}
+function associatePendingSquadWeapon(button){
+  const draft=pendingScanReview,index=Number(button.dataset.associateWeapon);
+  if(!draft||draft.owner!==pendingScanOwner()||!scanRequestIsCurrent(draft.request)||!/^squad[1-4]$/.test(draft.type))return false;
+  const proof=draft.unlinkedWeapons?.[index];
+  if(!proof)return false;
+  const card=button.closest(`[data-unlinked-weapon="${index}"]`),slotValue=String(card?.querySelector(`[data-weapon-slot="${index}"]`)?.value||""),slotIndex=Number(slotValue),hero=String(card?.querySelector(`[data-weapon-hero="${index}"]`)?.value||"").trim();
+  if(!slotValue||!Number.isInteger(slotIndex)||slotIndex<0||slotIndex>4||!hero)return false;
+  const allowed=scanWeaponAssociationOptions(draft,proof);
+  if(!allowed.some(slot=>slot.index===slotIndex)){setScanReviewError("scan_review_apply_failed");return false}
+  const rawProofHero=String(proof.hero_name||"").trim(),heroKey=canonicalStoredHeroName(hero),proofHero=rawProofHero&&!isGenericHeroName(rawProofHero)?canonicalStoredHeroName(rawProofHero):"",existing=scanFormationSlotIdentity(draft,slotIndex);
+  if(existing&&existing!==heroKey||proofHero&&proofHero!==heroKey){setScanReviewError("scan_review_apply_failed");return false}
+  for(let slot=0;slot<5;slot++)if(slot!==slotIndex&&scanFormationSlotIdentity(draft,slot)===heroKey){setScanReviewError("scan_review_apply_failed");return false}
+  const fr=lang.startsWith("fr"),message=fr
+    ?`Confirmer ${heroDisplayName(hero)} comme héros de l’emplacement ${slotIndex+1} et associer cette arme ?`
+    :`Confirm ${heroDisplayName(hero)} as the hero in slot ${slotIndex+1} and associate this weapon?`;
+  if(!window.confirm(message))return false;
+  const form=scanReviewFormEdits(draft);
+  if(form.error){setScanReviewError(form.error,form.path);return false}
+  const working={...draft,patch:draft.data||draft.patch};
+  const result=applyOwnedScanReview(working,pendingScanOwner(),form.edits);
+  if(!result||result.errors.length||form.issues?.length){setScanReviewError("scan_review_invalid_number");return false}
+   const squadIndex=scanSquadId(draft.type)-1;
+   result.patch.squads??=[];result.patch.squads[squadIndex]??={};
+   result.patch.squads[squadIndex].heroes=Array.from({length:5},(_,slot)=>({...((result.patch.squads[squadIndex].heroes?.[slot]&&typeof result.patch.squads[squadIndex].heroes[slot]==="object")?result.patch.squads[squadIndex].heroes[slot]:{})}));
+   const heroes=result.patch.squads[squadIndex].heroes;
+  heroes[slotIndex]??={};
+  try{
+     const next=associateSquadWeaponProof(result.patch,proof,slotIndex,{squadId:scanSquadId(draft.type)});
+    draft.data=next;draft.patch=next;draft.unlinkedWeapons=draft.unlinkedWeapons.filter((_,at)=>at!==index);
+    const error=$("#scanReviewError");if(error){error.textContent="";error.classList.add("hidden")}
+    return renderScanReview(draft);
+  }catch{
+    setScanReviewError("scan_review_apply_failed");return false;
+  }
+}
 function setScanReviewError(key,path){const box=$("#scanReviewError");if(!box)return;box.dataset.scanReviewErrorKey=key;box.textContent=(path?`${scanFieldDescription(path,lang)} : `:"")+t(key);box.classList.remove("hidden")}
 function renderScanReview(draft){
   pendingScanReview=draft;const panel=$("#scanReviewPanel"),rows=$("#scanReviewRows");if(!panel||!rows)return false;
-  const entries=scanReviewEntries(draft.patch);if(!entries.length){discardScanReviewDraft();return false}
+  draft.data??=draft.patch;
+  const entries=scanReviewEntries(draft.data||draft.patch);if(!entries.length){discardScanReviewDraft();return false}
   const error=$("#scanReviewError");if(error){error.textContent="";delete error.dataset.scanReviewErrorKey;error.classList.add("hidden")}
-  const markup=renderScanReviewMarkup(buildScanReviewGroups(draft.type,draft.patch,draft.ocrEvidence),t,esc);
+  const markup=renderScanReviewMarkup(scanReviewGroupsWithWeapons(draft),scanReviewTranslator(draft.type),esc);
   if(!markup.rows.length){discardScanReviewDraft();return false}
   draft.displayRows=markup.rows;
   rows.innerHTML=markup.html;
-  $("#scanReviewMeta").textContent=`${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(draft.scannedAt).toLocaleString(locale||lang)}`;
+  renderUnlinkedWeaponReview(draft);
+   $("#scanReviewMeta").textContent=`${scanSquadId(draft.type)?`${t("squad")} ${scanSquadId(draft.type)} · `:""}${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(draft.scannedAt).toLocaleString(locale||lang)}`;
+   const confirm=$("#confirmScanReviewBtn");if(confirm)confirm.textContent=t("scan_review_confirm")+(scanSquadId(draft.type)?` — ${t("squad")} ${scanSquadId(draft.type)}`:"");
   panel.classList.remove("hidden");$("#exclusiveConfirmPanel")?.classList.add("hidden");$("#heroConfirmPanel")?.classList.add("hidden");
   requestAnimationFrame(()=>{if(pendingScanReview===draft&&!panel.classList.contains("hidden"))panel.scrollIntoView({block:"start",behavior:"smooth"})});
   return true;
@@ -3322,6 +3432,7 @@ function scanReviewFormEdits(draft){
       if(!counts.length)return {error:"scan_review_form_missing",path:row.path};
       const parts=counts.map((input,index)=>({
         count:input.value,
+        slot:input.dataset?.scanGearSlot,
         levels:container.querySelector(`[data-scan-gear-levels="${id}"][data-scan-gear-part="${index}"]`)?.value??"",
         rarity:[...container.querySelectorAll(`[data-scan-gear-rarity="${id}"][data-scan-gear-part="${index}"]:checked`)].map(option=>option.value).join(",")
       }));
@@ -3361,7 +3472,7 @@ function translateOpenScanReview(statusBeforeLanguage){
   if(!draft||!container||!panel||panel.classList.contains("hidden"))return;
   const controls=[...container.querySelectorAll("input,select")],focused=document.activeElement,focusIndex=controls.indexOf(focused);
   const details=[...container.querySelectorAll("details")].map(item=>item.open);
-  const markup=renderScanReviewMarkup(buildScanReviewGroups(draft.type,draft.patch),t,esc);
+  const markup=renderScanReviewMarkup(scanReviewGroupsWithWeapons(draft),scanReviewTranslator(draft.type),esc);
   const holder=document.createElement("div");holder.innerHTML=markup.html;
   const replacements=[...holder.querySelectorAll("input,select")];
   if(controls.length!==replacements.length)return;
@@ -3380,9 +3491,11 @@ function translateOpenScanReview(statusBeforeLanguage){
   container.replaceChildren(...holder.childNodes);
   [...container.querySelectorAll("details")].forEach((item,index)=>{item.open=details[index]||false});
   draft.displayRows=markup.rows;
+  renderUnlinkedWeaponReview(draft);
   draft.displayRows.forEach((row,id)=>{if(row.kind==="gear")for(const part of container.querySelectorAll(`[data-scan-gear-count="${id}"]`))updateScanReviewRaritySummary(container,id,part.dataset.scanGearPart)});
   const error=$("#scanReviewError");if(error?.dataset.scanReviewErrorKey)error.textContent=t(error.dataset.scanReviewErrorKey);
-  $("#scanReviewMeta").textContent=`${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(draft.scannedAt).toLocaleString(locale||lang)}`;
+   $("#scanReviewMeta").textContent=`${scanSquadId(draft.type)?`${t("squad")} ${scanSquadId(draft.type)} · `:""}${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(draft.scannedAt).toLocaleString(locale||lang)}`;
+   const confirm=$("#confirmScanReviewBtn");if(confirm)confirm.textContent=t("scan_review_confirm")+(scanSquadId(draft.type)?` — ${t("squad")} ${scanSquadId(draft.type)}`:"");
   if(focusIndex>=0)controls[focusIndex].focus({preventScroll:true});
 }
 function showConfirmedScanStatus(status,messageKey){
@@ -3402,8 +3515,16 @@ function showSquadScanStatus(status,pending){
   status.dataset.squadPending=JSON.stringify(pending);
   status.replaceChildren(document.createTextNode(`${t("scan_review_partial_saved")} ${t("scan_review_remaining_fields")} : ${pending.map(item=>squadPendingDescription(item,lang)).join(" ; ")}`));
 }
+function filterReviewedSquadWeapons(heroSlots=[],weapons=[]){
+  return (Array.isArray(weapons)?weapons:[]).filter(weapon=>{
+    const identity=canonicalStoredHeroName(weapon?.hero_name||"");
+    if(!identity)return false;
+    return heroSlots.filter(hero=>canonicalStoredHeroName(hero?.name||"")===identity).length===1;
+  }).map(weapon=>({...weapon,hero_name:canonicalStoredHeroName(weapon.hero_name)}));
+}
 function confirmScanReview(){
   const draft=pendingScanReview;if(!draft||draft.owner!==pendingScanOwner())return discardScanReviewDraft();
+  if(!requireScanSquadTarget(draft.type))return;
   if(!scanRequestIsCurrent(draft.request)){discardScanReviewDraft();return}
   if(draft.request?.baseReview!==undefined&&JSON.stringify(draft.request.baseReview)!==JSON.stringify(createScanReviewDraft(draft.type,state,{includeHeroNames:true}))){
     const error=$("#scanReviewError");if(error){error.classList.remove("hidden");error.textContent=lang.startsWith("fr")?"Ces données ont changé depuis le début du scan. Relance l’analyse pour garder les confirmations les plus récentes.":"These data changed after scanning started. Analyze again to preserve the latest confirmations."}return;
@@ -3456,7 +3577,15 @@ function confirmScanReview(){
    reviewed=stampConfirmedRecord(reviewed,{at:hqConfirmedAt,source:draft.type==="secret_mobile_squad"?"owner_confirmed_scan":"confirmed_scan"});
    const pendingPowerPaths=[];
   for(const edit of edits)if(/^(power|power_m)$/i.test(String(edit.path.at(-1)))){if(edit.path[0]==="drone")continue;if(!String(edit.value??"").trim())continue;if(!confirmedHeroPower(edit.value)){let target=reviewed;for(const part of edit.path.slice(0,-1))target=target?.[part];if(target)delete target[edit.path.at(-1)];pendingPowerPaths.push(edit.path)}}
-  const sm=draft.type.match(/^squad([1-4])$/),squadIndex=sm?Number(sm[1])-1:null,heroSlots=sm?(reviewed.squads?.[squadIndex]?.heroes||[]):[];
+   const sm=draft.type.match(/^squad([1-4])$/),squadIndex=sm?Number(sm[1])-1:null,heroSlots=sm?(reviewed.squads?.[squadIndex]?.heroes||[]):[];
+   if(sm){
+     if(Array.isArray(reviewed.exclusive_weapons))reviewed.exclusive_weapons=filterReviewedSquadWeapons(heroSlots,reviewed.exclusive_weapons);
+     for(let slot=0;slot<heroSlots.length;slot++){
+       const proof=draft.ocrEvidence?.[slot]?.exclusive_weapon,hero=heroSlots[slot];
+       if(proof&&canonicalStoredHeroName(hero?.name||"")!==canonicalStoredHeroName(proof.hero_name)&&String(hero?.exclusive)===String(proof.level))
+         delete hero.exclusive;
+     }
+   }
    const previousState=state,now=hqConfirmedAt;let merged,squadPending=[],squadPowerMissing=false;
   try{
     if(sm){
@@ -3501,6 +3630,7 @@ function confirmScanReview(){
 $("#confirmScanReviewBtn")?.addEventListener("click",confirmScanReview);
 $("#discardScanReviewBtn")?.addEventListener("click",()=>{discardScanReviewDraft();const status=$("#scanStatus");if(status){status.className="notice";status.dataset.scanReviewStatusKey="scan_review_discarded";status.textContent=t("scan_review_discarded")}});
 $("#scanReviewRows")?.addEventListener("change",event=>{const input=event.target.closest?.("[data-scan-gear-rarity]");if(input)updateScanReviewRaritySummary(event.currentTarget,input.dataset.scanGearRarity,input.dataset.scanGearPart)});
+$("#scanUnlinkedWeapons")?.addEventListener("click",event=>{const button=event.target.closest?.("[data-associate-weapon]");if(button)associatePendingSquadWeapon(button)});
 let scanReviewStatusBeforeLanguage=null;
 document.addEventListener("change",event=>{
   if(event.target?.id!=="languageSelect")return;
@@ -3529,26 +3659,70 @@ async function imageToDataUrlLimited(file,maxDataUrlLength){
 $("#scanFile").addEventListener("change",async e=>{
   const scanType=$("#scanType")?.value||"profile",files=Array.from(e.target.files||[]);
   if(!files.length)return;
-  if(files.length>PLAYER_SCAN_BATCH_LIMIT){const status=$("#scanStatus");if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?"Choisis au maximum 3 captures.":"Choose at most 3 screenshots."}e.target.value="";return}
+  const limit=playerScanBatchLimit(scanType);
+  if(files.length>limit){const status=$("#scanStatus");if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?`Choisis au maximum ${limit} capture${limit>1?"s":""}.`:`Choose at most ${limit} screenshot${limit>1?"s":""}.`}e.target.value="";return}
   const selection=beginNewScanFileSelection();
   try{
     await selection.clearPending;if(selection.fileRevision!==scanFileSelectionRevision)return;
     const multi=scanType==="technology",selected=files;
-    const images=[];for(const file of selected)images.push(await imageToDataUrlLimited(file,multi?1_900_000:3_900_000));
+    const cap=/^squad[1-4]$/.test(scanType)?Math.floor(MAX_FORMATION_BATCH_LENGTH/selected.length):multi?1_900_000:3_900_000;
+    const images=[];for(const file of selected)images.push(await imageToDataUrlLimited(file,cap));
     if(selection.fileRevision!==scanFileSelectionRevision)return;
     scanImageDataList=images;scanImageData=images[0]||null;
-    const names=selected.map(file=>String(file.name||"capture.jpg"));scanImageName=names.join(", ");
+    const names=selected.map(file=>String(file.name||"capture.jpg"));scanImageNames=names;scanImageName=names.join(", ");
     updateTechnologyScanPreview(names);$("#clearScanCaptureBtn")?.classList.remove("hidden");
-    const kept=multi?await savePendingTechnologyFiles(selection.owner,selected):
-      await savePendingSingleScan(selection.owner,{scan_type:scanType,image_data_url:scanImageData,image_data_urls:images,name:scanImageName});
+    let kept=false;
+    if(multi)kept=await savePendingTechnologyFiles(selection.owner,selected);
+    else if(!/^squad[1-4]$/.test(scanType))kept=await savePendingSingleScan(selection.owner,{scan_type:scanType,image_data_url:scanImageData,image_data_urls:images,name:scanImageName});
+    else{const cleared=await Promise.all([clearPendingSingleScan(selection.owner),clearPendingTechnologyFiles(selection.owner)]);kept=cleared.every(Boolean)}
     if(selection.fileRevision!==scanFileSelectionRevision)return;
     $("#scanStatus").className=kept?"notice":"notice warn";$("#scanStatus").textContent=t(kept?"scan_ready":"scan_pending_local_failed");
   }catch{if(selection.fileRevision===scanFileSelectionRevision){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_error")}}
 });
 $("#scanType")?.addEventListener("change",()=>{
-  clearScanImage();updateScanCaptureMode();
+  const next=$("#scanType")?.value,previous=$("#scanType")?.dataset.previousType;
+  if(scanSquadId(next)&&scanSquadId(previous)){
+    scanInputRevision++;discardScanReviewDraft();
+    pendingExclusiveRequest=null;pendingExclusiveScan=[];pendingExclusiveScannedAt=null;
+    pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";
+    $("#heroConfirmPanel")?.classList.add("hidden");$("#exclusiveConfirmPanel")?.classList.add("hidden");
+    const status=$("#scanStatus");if(status){status.className="notice warn";status.textContent=t("scan_target_changed")}
+  }else clearScanImage();
+  if($("#scanSquadTargetConfirmed"))$("#scanSquadTargetConfirmed").checked=false;
+  if($("#scanType"))$("#scanType").dataset.previousType=next;
+  updateScanCaptureMode();
 });
 $("#clearScanCaptureBtn")?.addEventListener("click",()=>{clearScanImage();const st=$("#scanStatus");if(st){st.className="notice";st.textContent=t("scan_wait")}});
+function scanImageUrlAsFile(dataUrl,name){
+  const match=String(dataUrl||"").match(/^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i);
+  if(!match||typeof File!=="function")return null;
+  try{return new File([Uint8Array.from(atob(match[2]),char=>char.charCodeAt(0))],String(name||"capture.jpg"),{type:match[1]})}catch{return null}
+}
+$("#scanImageBatchList")?.addEventListener("click",async event=>{
+  const button=event.target.closest?.("[data-remove-scan-capture]");
+  if(!button)return;
+  const index=Number(button.dataset.removeScanCapture),type=$("#scanType")?.value||"profile";
+  if(!Number.isInteger(index)||index<0||index>=scanImageDataList.length)return;
+  const owner=pendingScanOwner();
+  scanInputRevision++;scanFileSelectionRevision++;pendingExclusiveRequest=null;pendingExclusiveScan=[];pendingExclusiveScannedAt=null;
+  const removalRevision=scanInputRevision;
+  discardScanReviewDraft();$("#exclusiveConfirmPanel")?.classList.add("hidden");$("#heroConfirmPanel")?.classList.add("hidden");
+  scanImageDataList=scanImageDataList.filter((_,at)=>at!==index);
+  scanImageNames=scanImageNames.filter((_,at)=>at!==index);
+  scanImageData=scanImageDataList[0]||null;scanImageName=scanImageNames.join(", ");
+  const file=$("#scanFile");if(file)file.value="";
+  updateTechnologyScanPreview(scanImageNames);
+  const clear=$("#clearScanCaptureBtn");if(clear)clear.classList.toggle("hidden",!scanImageDataList.length);
+  const status=$("#scanStatus");
+  if(status){status.className="notice";status.textContent=scanImageDataList.length?t("scan_ready"):t("scan_wait")}
+  await Promise.all([clearPendingSingleScan(owner),clearPendingTechnologyFiles(owner)]);
+  if(scanInputRevision!==removalRevision||owner!==pendingScanOwner())return;
+  if(scanImageDataList.length&&type==="technology"){
+    const files=scanImageDataList.map((data,at)=>scanImageUrlAsFile(data,scanImageNames[at]));
+    if(files.every(Boolean)&&scanInputRevision===removalRevision)await savePendingTechnologyFiles(owner,files);
+  }else if(scanImageDataList.length&&!/^squad[1-4]$/.test(type))
+    await savePendingSingleScan(owner,{scan_type:type,image_data_url:scanImageData,image_data_urls:scanImageDataList,name:scanImageName});
+});
 async function analyzeExclusiveScan(){
   const btn=$("#analyzeScanBtn"),status=$("#scanStatus"),scanType=$("#scanType")?.value||"profile",owner=pendingScanOwner(),image=scanImageData,request={owner,scanType,imageFingerprint:scanCaptureFingerprint(scanType),revision:scanInputRevision,baseReview:createScanReviewDraft(scanType,state)};
   if(scanType!=="exclusive")return;
@@ -3556,10 +3730,11 @@ async function analyzeExclusiveScan(){
   if(!requireBetaAccess()||!requireBetaConsent())return;
   if(!cloudSession?.access_token){openDrawer("account");authMessage(t("connect_pro"));return}
   btn.disabled=true;btn.textContent=t("scan_processing");status.className="notice";status.textContent=t("scan_processing");
+  const finishAnalysis=beginActiveLoadingOperation("scan");
   try{
     const j=await analyzePlayerCaptureBatch({type:scanType,images:scanImageDataList.length?scanImageDataList:[image],
       isCurrent:()=>scanRequestIsCurrent(request),onProgress:(n,total)=>{status.textContent=`${t("scan_processing")} ${n}/${total}`},
-      request:payload=>fetchWarBoostScan({scan_type:scanType,locale:lang,...payload,current_state:state})});
+      request:payload=>fetchWarBoostScan({scan_type:scanType,locale:lang,...payload,...(/^squad[1-4]$/.test(scanType)?{}:{current_state:state})})});
     if(!j)return;
     const r={ok:true};
     if(!scanRequestIsCurrent(request))return;
@@ -3579,39 +3754,38 @@ async function analyzeExclusiveScan(){
     }
     const meta=$("#exclusiveReviewMeta");if(meta)meta.textContent=`${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(pendingExclusiveScannedAt).toLocaleString(locale||lang)}`;
      const first=rows[0],hero=first?.hero_name||first?.weapon_name||t("exclusive_weapon"),fields=exclusiveResultFieldCount(rows);
-     const needsPowerReview=rows.some(row=>{const raw=String(row?.power_raw??"").trim();return Boolean(raw&&confirmedHeroPower(exclusivePower(row?.power??raw))===null)});
-     status.className=needsPowerReview?"notice warn":"notice";
-     status.textContent=needsPowerReview
-       ?(lang.startsWith("fr")?"Puissance détectée à vérifier. Corrige la valeur dans le panneau avant l’enregistrement.":t("scan_exclusive_power_verify"))
-       :t("scan_exclusive_result_ready",{hero,fields});
-  }catch(error){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=error?.message||t("scan_error")}}
-  finally{btn.disabled=false;btn.textContent=t("analyze")}
+     status.className="notice";
+     status.textContent=t("scan_exclusive_result_ready",{hero,fields});
+  }catch(error){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=analysisFailureMessage(error,t)}}
+  finally{finishAnalysis();btn.disabled=false;btn.textContent=t("analyze")}
 }
 async function analyzeReviewedScan(){
   const btn=$("#analyzeScanBtn"),status=$("#scanStatus"),scanType=$("#scanType")?.value||"profile",owner=pendingScanOwner(),image=scanImageData,images=scanImageDataList.length?scanImageDataList:[image].filter(Boolean),request={owner,scanType,imageFingerprint:scanCaptureFingerprint(scanType),revision:scanInputRevision,baseReview:createScanReviewDraft(scanType,state,{includeHeroNames:true})};
-  if(!images.length||scanType==="technology"&&images.length>3){status.className="notice warn";status.textContent=t("scan_wait");return}
+   if(!requireScanSquadTarget(scanType,status))return;
+   if(!images.length||images.length>playerScanBatchLimit(scanType)){status.className="notice warn";status.textContent=t("scan_wait");return}
   if(!requireBetaAccess()||!requireBetaConsent())return;
   if(!cloudSession?.access_token){openDrawer("account");authMessage(t("connect_pro"));return}
   btn.disabled=true;btn.textContent=t("scan_processing");status.className="notice";status.textContent=t("scan_processing");
+  const finishAnalysis=beginActiveLoadingOperation("scan");
   try{
     const j=await analyzePlayerCaptureBatch({type:scanType,images,isCurrent:()=>scanRequestIsCurrent(request),
-      onProgress:(n,total)=>{if(scanRequestIsCurrent(request))status.textContent=`${t("scan_processing")} ${n}/${total}`},
+      onProgress:(n,total)=>{if(scanRequestIsCurrent(request))status.textContent=/^squad[1-4]$/.test(scanType)?t("scan_processing"):`${t("scan_processing")} ${n}/${total}`},
       request:payload=>fetchWarBoostScan({scan_type:scanType,locale:lang,...payload,current_state:state})});
     if(!j)return;
     const r={ok:true};
     if(!scanRequestIsCurrent(request))return;
     if(r.ok&&j.state){
-      if(!scanResultHasUsefulData(scanType,j.state)&&!(scanType==="drone"&&j.state?.drone?.boostCombat?.level!=null)){status.className="notice warn";status.textContent=t("scan_error");return}
+      if(!scanResultHasUsefulData(scanType,j.state)&&!(scanType==="drone"&&j.state?.drone?.boostCombat?.level!=null)){status.className="notice warn";status.textContent=j.captures?squadCaptureSummary(j.captures,j.complementary_evidence,lang)+" "+t("scan_formation_missing"):t("scan_error");return}
       const patch=createScanReviewDraft(scanType,j.state,{includeHeroNames:true}),match=scanType.match(/^squad([1-4])$/),rawHeroes=match?j.state.squads?.[Number(match[1])-1]?.heroes:[];
       if(!patch){status.className="notice warn";status.textContent=t("scan_error");return}
-      const draft={owner,type:scanType,request,patch,scannedAt:j.scanned_at||new Date().toISOString(),heroNames:Array.from({length:5},(_,i)=>String(rawHeroes?.[i]?.name||"").trim()),ocrEvidence:match?Array.from({length:5},(_,i)=>rawHeroes?.[i]?.scan_evidence||null):[]};
+      const draft={owner,type:scanType,request,patch,data:patch,unlinkedWeapons:match&&Array.isArray(j.complementary_evidence?.pending)?j.complementary_evidence.pending.map(row=>({...row})):[],scannedAt:j.scanned_at||new Date().toISOString(),heroNames:Array.from({length:5},(_,i)=>String(rawHeroes?.[i]?.name||"").trim()),ocrEvidence:match?Array.from({length:5},(_,i)=>rawHeroes?.[i]?.scan_evidence||null):[]};
       if(!scanReviewEntries(patch).length&&match){startHeroConfirmation(Number(match[1]),draft.heroNames,rawHeroes,draft.scannedAt);return}
       if(!renderScanReview(draft)){status.className="notice warn";status.textContent=t("scan_error");return}
        if(scanType==="technology"){void clearPendingTechnologyFiles(owner);void clearPendingSingleScan(owner)}
-      status.className="notice";status.dataset.scanReviewStatusKey="scan_review_ready";status.textContent=t("scan_review_ready")+(j.conflicts?.length?(lang.startsWith("fr")?" Des valeurs diffèrent entre captures : vérifie les champs réunis.":" Some screenshots disagree: check the combined fields."):"");
+      status.className="notice";status.dataset.scanReviewStatusKey="scan_review_ready";status.textContent=t("scan_review_ready")+(j.captures?` ${squadCaptureSummary(j.captures,j.complementary_evidence,lang)}`:"")+(j.conflicts?.length?" "+t("scan_batch_disagreements"):"");
     }else{status.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){status.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else if(scanType==="drone"&&j.error==="drone_no_supported_fields"){const key=j.drone_screen_type==="skill_chip"?"scan_drone_skill_chip_no_fields":"scan_drone_components_no_fields";status.dataset.scanReviewStatusKey=key;status.textContent=t(key)}else status.textContent=j.code==="SCAN_NOT_CONFIGURED"?t("scan_unconfigured"):(j.message||t("scan_error"))}
-  }catch(e){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}
-  finally{btn.disabled=false;btn.textContent=t("analyze")}
+  }catch(e){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=analysisFailureMessage(e,t)}}
+  finally{finishAnalysis();btn.disabled=false;btn.textContent=t("analyze")}
 }
 $("#analyzeScanBtn").addEventListener("click",async event=>{
   event.stopImmediatePropagation();
@@ -3622,17 +3796,19 @@ $("#cancelExclusiveConfirmBtn")?.addEventListener("click",()=>{
   pendingExclusiveScan=[];pendingExclusiveScannedAt=null;$("#exclusiveConfirmPanel")?.classList.add("hidden");
   const status=$("#scanStatus");if(status){status.className="notice";status.textContent=t("scan_ready")}
 });
-$("#scanType")?.addEventListener("change",()=>{discardScanReviewDraft();pendingExclusiveScan=[];pendingExclusiveScannedAt=null;if(pendingHeroSquadId)closeHeroConfirmation(false);$("#exclusiveConfirmPanel")?.classList.add("hidden");updateSquadCaptureHelp($("#scanType")?.value||"profile")});
+$("#scanType")?.addEventListener("change",()=>{discardScanReviewDraft();pendingExclusiveRequest=null;pendingExclusiveScan=[];pendingExclusiveScannedAt=null;if(pendingHeroSquadId)closeHeroConfirmation(false);$("#exclusiveConfirmPanel")?.classList.add("hidden");updateSquadCaptureHelp($("#scanType")?.value||"profile");updateScanCaptureMode()});
 $("#collapseAllSquadsBtn")?.addEventListener("click",e=>{e.preventDefault();document.querySelectorAll("#squadList details.squad").forEach(squad=>{squad.open=false})});
 $("#squadCaptureHelpBtn")?.addEventListener("click",()=>openSquadCaptureHelp(false));
 $("#squadCaptureAckBtn")?.addEventListener("click",closeSquadCaptureHelp);
 
 async function requestAdvice(scope,stateForRequest=state){
   if(scope==="vs"){state.vs.week=currentVsWeek();state.vs.day=currentVsDay()}
+  const finishAnalysis=beginActiveLoadingOperation(`advice:${scope}`);
   try{
     const {response:r,json:j}=await fetchJsonBounded("/api/advice",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({scope,state:stateForRequest,locale:lang})},25000);
     if(r.ok)return j;
   }catch{}
+  finally{finishAnalysis()}
   return null;
 }
 function resetPlayerAdviceButtons(){
@@ -3643,6 +3819,7 @@ function resetPlayerAdviceButtons(){
   }
 }
 function invalidatePlayerAdvice({autoRefresh=true}={}){
+  analysisIndicator.cancel("advice:player");
   diagnosticDisclosures.capture($("#proPriorityPanel"));
   playerAdviceGeneration++;
   playerAdvicePendingSignature="";
@@ -3947,7 +4124,7 @@ $("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{
     if(!isCurrent())return;
     rosterScanDraft=resolveCurrentRosterScanDraft(mergeRosterScanRows([],rows));renderRosterScanDraft();
     if(status){status.className="notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})}
-  }catch(e){if(isCurrent()&&status){status.className="notice warn";status.textContent=e?.message||t("scan_error")}}
+  }catch(e){if(isCurrent()&&status){status.className="notice warn";status.textContent=analysisFailureMessage(e,t)}}
   finally{if(isCurrent()){btn.disabled=false;btn.textContent=old}}
 });
 $("#rosterScanImportBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}collectRosterScanDraftFromDom();if(rosterScanHasUnresolvedIdentity(rosterScanDraft)){if(status){status.className="notice warn";status.textContent=t("roster_identity_unresolved_block");status.classList.remove("hidden")}renderRosterScanDraft();return}if(rosterScanDraft.some(row=>!scanRole(row?.role))){if(status){status.className="notice warn";status.textContent="Chaque grade doit être confirmé avant l’import.";status.classList.remove("hidden")}return}const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=await applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result?.synced){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";void clearPendingRosterFiles(pendingScanOwner());renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});

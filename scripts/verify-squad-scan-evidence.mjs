@@ -64,7 +64,7 @@ test("44.43M formation fixture remains partial without inventing five identities
   const applied=applyReviewedSquad({...base,squads:[{...base.squads[0],power:44.43}]},{squadId:1,heroes:draft.squads[0].heroes,updatedAt:at,powerConfirmed:true,evidence});
   assert.deepEqual(applied.state.squads[0].heroes,base.squads[0].heroes);
   assert.equal(applied.pending.filter(item=>item.field==="name").length,5);
-  assert.equal(applied.pending.filter(item=>item.field==="power").length,5);
+  assert.equal(applied.pending.filter(item=>item.field==="power").length,0,"absent individual powers are optional, not pending");
   assert.equal(normalizeState(applied.state).squads[0].composition_conflict.scan_evidence.heroes.length,5);
   assert.deepEqual(applyScanReviewEdits(draft,[]).errors,[]);
 });

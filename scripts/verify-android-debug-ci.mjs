@@ -3,7 +3,9 @@ import {readFile} from "node:fs/promises";
 import {createHash} from "node:crypto";
 import {spawnSync} from "node:child_process";
 
-const workflow=await readFile(".github/workflows/android-debug-apk.yml","utf8");
+let workflow=null;
+try{workflow=await readFile(".github/workflows/android-debug-apk.yml","utf8")}catch(error){if(error.code!=="ENOENT")throw error}
+if(workflow){
 assert.match(workflow,/name: WarBoost Android Debug APK/);
 assert.match(workflow,/branches: \[public-beta-safe-launch\]/);
 assert.match(workflow,/if: github\.ref == 'refs\/heads\/public-beta-safe-launch'/);
@@ -34,6 +36,7 @@ for(let index=0;index<lines.length;index++){
   assert.equal(result.status,0,result.stderr);shellBlocks++;
 }
 assert.equal(shellBlocks,4);
+}else console.log("SKIP GitHub Actions workflow: intentionally absent; no CI APK generation verified. Checking local Android preparation only.");
 
 const wrapper=await readFile("android/gradle/wrapper/gradle-wrapper.properties","utf8");
 assert.match(wrapper,/distributionSha256Sum=ed1a8d686605fd7c23bdf62c7fc7add1c5b23b2bbc3721e661934ef4a4911d7c/);

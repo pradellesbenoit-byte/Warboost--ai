@@ -114,7 +114,7 @@ const api=fs.readFileSync(new URL("../lib/identity-onboarding-handler.js",import
 assert.match(api,/requireProductUser\(req,\{consent:true\}\)/);
 assert.match(api,/service.complete\(String\(user.id\)/,"actor comes from auth, not payload");
 assert.ok(!api.includes("req.body.player_id"));
-assert.equal(fs.readdirSync(new URL("../api/",import.meta.url)).filter(name=>name.endsWith(".js")).length,12);
+assert.equal(fs.readdirSync(new URL("../api/",import.meta.url)).filter(name=>name.endsWith(".js")&&!name.startsWith("_")).length,12);
 const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
 assert.match(app,/identityOnboardingController\?\.sync\(\)/);
 assert.match(app,/String\(cloudSession\?\.user\?\.id\|\|""\)!==ownerId/,"late result cannot affect a different account");

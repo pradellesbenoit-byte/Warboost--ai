@@ -17,3 +17,9 @@ ios/**/xcuserdata/
 *.apk
 *.ipa
 *.xcarchive
+
+# Private test uploads and local recovery bundles must never be published.
+/attached_assets/
+/.local/private-git-backups/
+/.local/private-scan-captures/
+/generated-artifacts/

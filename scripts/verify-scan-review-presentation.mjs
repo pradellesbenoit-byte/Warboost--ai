@@ -11,10 +11,10 @@ assert.equal(squadGroups.filter(group=>group.kind==='hero').length,5,'all five h
 assert.equal(squadGroups[0].kind,'squad','squad power stays in its own group');
 assert.equal(squadGroups[0].rows[0].status,'missing','zero squad power is treated as unobserved');
 const firstHero=squadGroups.find(group=>group.kind==='hero'&&group.number===1);
-assert.deepEqual(firstHero.rows.map(row=>row.field),['name','level','stars','power','exclusive','gear']);
+assert.deepEqual(firstHero.rows.map(row=>row.field),['name','level','stars','exclusive','gear']);
 assert.equal(firstHero.rows.find(row=>row.field==='level').status,'missing','an unobserved hero level is blank');
 assert.equal(firstHero.rows.find(row=>row.field==='stars').value,3);
-assert.equal(firstHero.rows.find(row=>row.field==='power').status,'missing');
+assert.equal(firstHero.rows.find(row=>row.field==='power'),undefined,'an absent optional hero power creates no missing row');
 assert.equal(firstHero.rows.find(row=>row.field==='exclusive').exclusiveNotVisible,true);
 assert.equal(firstHero.rows.find(row=>row.field==='exclusive').status,'missing');
 assert.deepEqual(firstHero.rows.find(row=>row.field==='gear').value,[{count:4,levels:[40,40,40,40],rarity:''}]);

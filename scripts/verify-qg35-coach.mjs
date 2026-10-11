@@ -156,7 +156,8 @@ assert.equal(en("qg35_title"),"🏆 HQ35+ · AI Coach");
 assert.equal(fr("qg35_analyze_button"),"🧠 Analyser mon QG35");
 assert.equal(fr("qg35_locked_status"),"Disponible à partir du QG35");
 assert.equal(fr("qg35_unknown_status"),"QG non renseigné");
-assert.equal(es("qg35_title"),en("qg35_title"),"Other locales should fall back to English.");
+assert.notEqual(es("qg35_title"),en("qg35_title"),"Spanish coach copy must now be translated, not silently fall back to English.");
+assert.equal(translator("unsupported-language")("qg35_title"),en("qg35_title"),"Unsupported locales still have a safe English fallback.");
 for(const [code] of LANGUAGES.filter(([locale])=>locale!=="auto")){
   const t=translator(code);
   for(const key of ["qg35_summary_title","qg35_next_capture","qg35_no_safe_action"])
@@ -193,7 +194,7 @@ assert.match(indexHtml,/styles\.css\?v=scan-review-human-r1/);
 assert.match(indexHtml,/app\.js\?v=player-hq-confirmation-r1/);
 assert.match(indexHtml,/warboost-build" content="2\.5\.32-HF8\.6\.34-shop-observations-r2"/);
 const swSource=await readFile(new URL("../sw.js",import.meta.url),"utf8");
-assert.match(swSource,/warboost-loading-startup-screen-r2/);
+assert.match(swSource,/\/loading-screen\.css\?v=warboost-startup-screen-r2/);
 assert.match(swSource,/shop-observations-2026-09-28\.js/);
 
 console.log("QG35+ Coach eligibility, report completeness, privacy, access gating, translations, and read-only stability verified.");
