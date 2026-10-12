@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import {readFile} from "node:fs/promises";
-import {parseRosterConfidence,safeRosterDiagnostic,recordRosterDiagnostic,rosterDiagnostics,rosterFailureKind,rosterReplyConfirmed} from "../lib/roster-sync.js";
+import {parseRosterConfidence,safeRosterDiagnostic,recordRosterDiagnostic,rosterDiagnostics,rosterFailureKind,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest} from "../lib/roster-sync.js";
 import {ROSTER_SYNC_LOCALES,rosterSyncCopy} from "../lib/roster-sync-copy.js";
 import {applyRosterImportLifecycle} from "../lib/alliance-roster-lifecycle.js";
 const app=await readFile(new URL("../app.js",import.meta.url),"utf8");
@@ -71,7 +71,7 @@ function browserContext(){
   const context=vm.createContext({state,cloudSession:{access_token:"synthetic-session",user:{id:owner}},
     betaAccessAllowed:()=>true,betaConsentAccepted:()=>true,authHeaders:h=>h,cloudRevision:revision,
     localStateRevision:0,lang:"fr",t:key=>key,parseRosterConfidence,safeRosterDiagnostic,
-    recordRosterDiagnostic,rosterFailureKind,rosterSyncCopy,rosterReplyConfirmed,
+     recordRosterDiagnostic,rosterFailureKind,rosterSyncCopy,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest,
     canonicalRosterMemberKey:r=>r.name,
     applyRosterImportLifecycle,
     mergeStateProtected:(base,incoming,{preferBase=false}={})=>structuredClone(preferBase?base:incoming),
@@ -113,8 +113,9 @@ await test("explicit canonical acknowledgement accepted, including safe older AP
     const c=browserContext();
     c.fetchJsonBounded=async(_path,request)=>{
       const body=JSON.parse(request.body);assert.equal(body.base_roster_updated_at,revision);
-      return {response:{ok:true,status:200},json:{ok:true,state:{...body.state,
-        alliance:{...body.state.alliance,roster_sync_status:"synced"}},updated_at:revision,...extra}};
+       assert.equal(body.operation,"alliance_roster");assert.equal(body.state,undefined);
+       return {response:{ok:true,status:200},json:{ok:true,state:{...seed(),
+         alliance:{...seed().alliance,members:body.roster_patch.members,roster_sync_status:"synced"}},updated_at:revision,...extra}};
     };
     assert.equal((await c.applyRosterRows([row])).synced,true);
   }
@@ -169,7 +170,7 @@ await test("new local edits during successful request remain pending, never clai
     const body=JSON.parse(request.body);c.localStateRevision++;
     c.state.alliance.roster_sync_status="pending";c.state.alliance.members[0].hq_level=36;
     return {response:{ok:true,status:200},json:{ok:true,roster_confirmation:{requested:true,persisted:true},
-      state:{...body.state,alliance:{...body.state.alliance,roster_sync_status:"synced"}}}};
+       state:{...seed(),alliance:{...seed().alliance,members:body.roster_patch.members,roster_sync_status:"synced"}}}};
   };
   const result=await c.applyRosterRows([row],{status:notice});
   assert.equal(result.synced,false);assert.equal(result.roster_persisted,true);
@@ -182,8 +183,9 @@ for(const [,names,path] of api.matchAll(/^import\s+\{([^}]+)\}\s+from\s+["']([^"
   const module=await import(new URL(path,new URL("../api/sync.js",import.meta.url)));
   for(const name of names.split(",").map(n=>n.trim()))imports[name]=module[name];
 }
-async function serverCase({role="R4",stale=false,snapshotFailure=false,noContext=false,unavailable=false,readFailure=false,reloadFailure=false}={}){
+async function serverCase({role="R4",stale=false,snapshotFailure=false,noContext=false,unavailable=false,readFailure=false,reloadFailure=false,request}={}){
   const canonical={name:"Synthetic Manager",role,server_id:"123",alliance_tag:"TEST",player_id:owner,
+    identity_basis:"lastwar_nickname_server_alliance",
     warboost_linked:true,rank_confirmation_status:"confirmed_manual",hq_level:35,power_m:229};
   const state=imports.normalizeState({...seed(),player:{...seed().player,role},
     alliance:{...seed().alliance,members:[canonical,row],roster_sync_status:"pending"}});
@@ -203,7 +205,7 @@ async function serverCase({role="R4",stale=false,snapshotFailure=false,noContext
     console});
   vm.runInContext(api.replace(/^import .*$/gm,"").replace("export default async function handler","async function handler"),context);
   const response={statusCode:200,setHeader(){},status(code){this.statusCode=code;return this},json(body){this.body=plain(body);return this}};
-  await context.handler({method:"POST",headers:{},body:{state,base_updated_at:revision,base_roster_updated_at:stale?"old":revision}},response);
+   await context.handler({method:"POST",headers:{},body:request||{state,base_updated_at:revision,base_roster_updated_at:stale?"old":revision}},response);
   return {...response,writes,profiles,writePayloads};
 }
 await test("actual API success positively acknowledges canonical roster persistence",async()=>{
@@ -216,12 +218,12 @@ await test("actual API stale roster revision rejected before any write",async()=
   assert.equal(result.statusCode,409);assert.equal(result.body.error,"alliance_write_conflict");
   assert.equal(result.writes,0);assert.equal(result.profiles,0);
 });
-await test("actual API post-roster snapshot failure acknowledges partial write, hides SQL details",async()=>{
+await test("legacy pending-roster request is isolated and cannot attempt a personal snapshot write",async()=>{
   const result=await serverCase({snapshotFailure:true});
-  assert.equal(result.statusCode,503);assert.ok(result.writes>0);
+  assert.equal(result.statusCode,200);assert.ok(result.writes>0);assert.equal(result.profiles,0);
   assert.equal(result.body.roster_confirmation.persisted,true);
   assert.equal(result.body.roster_confirmation.write_state,"confirmed");
-  assert.equal(result.body.upstream_code,"42501");assert.doesNotMatch(JSON.stringify(result.body),/private SQL/);
+  assert.equal(result.body.state,undefined);assert.doesNotMatch(JSON.stringify(result.body),/private SQL/);
 });
 await test("failed post-write readback never returns stale canonical data as synced",async()=>{
   const result=await serverCase({reloadFailure:true});
@@ -233,16 +235,56 @@ await test("failed post-write readback never returns stale canonical data as syn
 await test("actual API R3, missing canonical context and cloud outage cannot report sync success",async()=>{
   for(const options of [{role:"R3"},{noContext:true},{unavailable:true},{readFailure:true}]){
     const result=await serverCase(options);assert.notEqual(result.statusCode,200);
-    // Existing R3 self-availability publication remains permitted; never imports
-    // the requested roster or changes anyone else's grade/power.
-    if(options.role==="R3"){
-      for(const payload of result.writePayloads){
-        assert.equal(payload.length,1);assert.equal(payload[0].name,"Synthetic Manager");
-        assert.equal(payload[0].role,"R3");assert.equal(payload[0].power_m,229);
-      }
-    }else assert.equal(result.writes,0);
+     // Refused roster requests have no availability/profile/membership side effects.
+     assert.equal(result.writes,0);
     assert.equal(result.profiles,0);
     assert.equal(result.body.roster_confirmation.persisted,false);
   }
+});
+await test("real browser importer and API roster-only round trip preserve personal fields and suppress auto-save",async()=>{
+  const c=browserContext(),saveOptions=[];
+  c.state.squads=[{id:1,power:44.43,heroes:[{name:"DVA",confirmation:"synthetic"}]},{id:2,power:99}];
+  c.state.drone={level:100};c.state.technology={hero_tech_pct:25};
+  const personal=plain({squads:c.state.squads,drone:c.state.drone,technology:c.state.technology,player:c.state.player});
+  c.saveState=options=>{saveOptions.push(options);return true};
+  c.fetchJsonBounded=async(_path,request)=>{
+    const body=JSON.parse(request.body);
+    assert.equal(body.operation,"alliance_roster");assert.equal(body.state,undefined);
+    const response=await serverCase({request:body});
+    assert.equal(response.profiles,0);
+    return {response:{ok:response.statusCode===200,status:response.statusCode},json:response.body};
+  };
+  const result=await c.applyRosterRows([row]);
+  assert.equal(result.synced,true);
+  assert.deepEqual(plain({squads:c.state.squads,drone:c.state.drone,technology:c.state.technology,player:c.state.player}),personal);
+  assert.ok(saveOptions.length>0&&saveOptions.every(o=>o?.cloudSave===false));
+});
+await test("actual saveState local-only option disables automatic profile scheduling, default remains unchanged",()=>{
+  let scheduled=0,stored=0;
+  const c=vm.createContext({state:seed(),cloudSession:{user:{id:owner}},APP_VERSION:"synthetic",
+    STORE_KEY:"synthetic",localStateRevision:0,suppressPush:false,render:()=>{},
+    repairLegacySquadIdentity:state=>({state}),backfillConfirmedHeroPowers:state=>({state}),
+    safeLocalSet:()=>{stored++;return true},rememberLastGoodState:()=>{},rememberAccountState:()=>{},
+    hasMeaningfulCore:()=>true,scheduleServerSave:()=>{scheduled++}});
+  vm.runInContext(slice("function saveState(","function scheduleServerSave("),c);
+  assert.equal(c.saveState({cloudSave:false}),true);assert.equal(stored,1);assert.equal(scheduled,0);
+  assert.equal(c.saveState(),true);assert.equal(stored,2);assert.equal(scheduled,1);
+});
+await test("actual manual retry uses roster-only path, without profile recovery or personal sync",async()=>{
+  const c=browserContext(),saveOptions=[],notice={textContent:""};
+  c.state.alliance.roster_sync_status="pending";c.state.alliance.members.push(row);
+  c.requireBetaAccess=()=>true;c.requireBetaConsent=()=>true;c.hasMeaningfulCore=()=>false;
+  c.reconcileAuthenticatedRuntime=()=>{throw Error("must not recover or write profile for roster retry")};
+  c.saveState=options=>{saveOptions.push(options);return true};
+  c.$=()=>notice;
+  c.fetchJsonBounded=async(_path,request)=>{
+    const body=JSON.parse(request.body);assert.equal(body.operation,"alliance_roster");
+    const response=await serverCase({request:body});
+    return {response:{ok:response.statusCode===200,status:response.statusCode},json:response.body};
+  };
+  vm.runInContext(slice("async function syncAll(){",'$("#syncAllBtn").addEventListener'),c);
+  await c.syncAll();
+  assert.equal(c.state.alliance.roster_sync_status,"synced");
+  assert.equal(saveOptions.length,1);assert.equal(saveOptions[0].cloudSave,false);
 });
 console.log(`PASS roster sync feedback: ${passed} test groups (synthetic fixtures and controlled transports; no real OCR/cloud validation)`);

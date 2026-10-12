@@ -1,5 +1,7 @@
 import {mergeNewest,normalizeState} from "../lib/normalize.js";
 import {reconcileCloudSquads} from "../lib/squad-freshness.js";
+import {syncAllianceRoster} from "../lib/roster-import-sync.js";
+import {rosterImportRequest} from "../lib/roster-sync.js";
 import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,getAllianceRoster,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import {requireProductUser} from "../lib/pro-access.js";
@@ -18,26 +20,40 @@ void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remai
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   let rosterPersisted=false,rosterWriteAttempted=false;
-  const rosterConfirmation=()=>({requested:req.body?.state?.alliance?.roster_sync_status==="pending",persisted:rosterPersisted,
+  const rosterConfirmation=()=>({requested:req.body?.operation==="alliance_roster"||req.body?.state?.alliance?.roster_sync_status==="pending",persisted:rosterPersisted,
     write_state:rosterPersisted?"confirmed":rosterWriteAttempted?"unknown":"not_attempted"});
   try{
-    const {user}=await requireProductUser(req,{consent:true}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,alliancePendingCanonical=false;
+    const {user}=await requireProductUser(req,{consent:true}),playerId=user.id,access=accessToken(req);
+    if(req.body?.operation==="alliance_roster"||
+      (!req.body?.operation&&req.body?.state?.alliance?.roster_sync_status==="pending")){
+      const beta=await betaAccessForUserAsync(user);
+      // Older roster clients also remain roster-only: never fall through to profile writes.
+      const request=req.body.operation==="alliance_roster"?req.body:rosterImportRequest(req.body.state,req.body.locale);
+      if(req.body.operation!=="alliance_roster"){
+        if(Object.hasOwn(req.body,"base_roster_updated_at"))request.base_roster_updated_at=req.body.base_roster_updated_at;
+        else delete request.base_roster_updated_at;
+      }
+      const result=await syncAllianceRoster(request,{playerId,access,betaAllowed:beta.allowed},
+        {configured,userConfigured,getProfile,getProfileForUser,getAllianceRoster,updateAllianceScopeRoster});
+      return res.status(result.status).json(result.body);
+    }
+    const userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,alliancePendingCanonical=false;
     // Personal synchronization has no legacy code requirement. Alliance paths retain their beta gate.
     const allianceBeta=await betaAccessForUserAsync(user);
-    if(requestedRosterSync&&!allianceBeta.allowed)return res.status(403).json({error:"BETA_INVITE_REQUIRED"});
+    if(requestedRosterSync&&!allianceBeta.allowed)return res.status(403).json({error:"BETA_INVITE_REQUIRED",roster_confirmation:rosterConfirmation()});
     if(requestedRosterSync&&!configured())throw Object.assign(new Error("Roster cloud service unavailable"),{status:503,code:"roster_cloud_service_unavailable"});
     if(configured()||userMode){
       saved=userMode?await getProfileForUser(playerId,access):await getProfile(playerId);
       const baseUpdatedAt=req.body?.base_updated_at===null?null:String(req.body?.base_updated_at||"").trim()||null;
       const cloudState=saved?.state?normalizeState({...saved.state,player_id:playerId}):null;
       if(saved?.updated_at&&baseUpdatedAt!==String(saved.updated_at)){
-        return res.status(409).json({error:"profile_write_conflict",message:"Le profil a été modifié sur un autre appareil.",state:cloudState,updated_at:saved.updated_at});
+        return res.status(409).json({error:"profile_write_conflict",message:"Le profil a été modifié sur un autre appareil.",state:cloudState,updated_at:saved.updated_at,roster_confirmation:rosterConfirmation()});
       }
       if(cloudState){
         base=mergeNewest(base,cloudState);
         const squadResult=reconcileCloudSquads(current,cloudState,base);
         if(squadResult.conflicts.length){
-          return res.status(409).json({error:"squad_freshness_ambiguous",message:"La composition de cette escouade doit être confirmée avant synchronisation.",state:cloudState,updated_at:saved.updated_at});
+          return res.status(409).json({error:"squad_freshness_ambiguous",message:"La composition de cette escouade doit être confirmée avant synchronisation.",state:cloudState,updated_at:saved.updated_at,roster_confirmation:rosterConfirmation()});
         }
         base=squadResult.state;
         if(requestedRosterSync){

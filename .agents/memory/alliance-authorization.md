@@ -14,3 +14,9 @@ Une erreur de synchronisation du roster ne garantit pas l'annulation de toutes l
 **Why:** Le propriétaire exige de préserver les membres, grades et droits même lorsqu'une opération cloud n'est que partiellement terminée.
 
 **How to apply:** Pour les futures confirmations et retentatives d'import, distinguer données locales en attente, écritures cloud déjà attestées et finalisation complète, sans contourner les contrôles de rôle ou d'identité.
+
+Un import roster et une synchronisation personnelle sont des intentions distinctes. L’import ne doit jamais transmettre le profil personnel ni programmer implicitement sa sauvegarde cloud.
+
+**Why:** L’ancien import envoyait les escouades du navigateur : un conflit légitime de fraîcheur d’escouade bloquait alors le roster. Même une sauvegarde locale pouvait ensuite déclencher une sauvegarde du profil entier.
+
+**How to apply:** Autoriser et fusionner l’import depuis l’identité et le roster cloud canoniques, indépendamment des escouades locales. Garder les garde-fous de fraîcheur pour la synchronisation personnelle. Un import, même déclaré complet, ne remplace pas une action explicite de départ/suppression.
