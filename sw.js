@@ -7,7 +7,7 @@
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization
 // Scan request restore: keep server-side scan completion authoritative; browser no longer aborts /api/scan at 60 s.
-const CACHE="warboost-v2-5-32-stripe-test-preparation-r1-beta-activation-atomic-r1-capacitor-wrapper-r1-fresh-launch-r1-squad-provenance-r1-full-roster-recognition-r1-real-hero-references-r1-attested-hero-variants-r1-ew-equipment-boundary-r1-mixed-squad-captures-r1-current-formation-six-r1-no-weapon-power-joint-vision-r1-legacy-layout-restored-r1-squad-target-r1-analysis-audit-r2-scan-inline-w-r2-knowledge-guidance-r2";
+const CACHE="warboost-v2-5-32-stripe-test-preparation-r1-beta-activation-atomic-r1-capacitor-wrapper-r1-fresh-launch-r1-squad-provenance-r1-full-roster-recognition-r1-real-hero-references-r1-attested-hero-variants-r1-ew-equipment-boundary-r1-mixed-squad-captures-r1-current-formation-six-r1-no-weapon-power-joint-vision-r1-legacy-layout-restored-r1-squad-target-r1-analysis-audit-r2-scan-inline-w-r2-knowledge-guidance-r2-roster-sync-diagnostic-r1";
 // Legacy cache verification marker: warboost-v2-5-28-hf8-6-25-player-launch-integrity
 // Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
 // Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
@@ -30,6 +30,7 @@ SHELL.push("/lib/technology-scan.js","/lib/technology-advisor.js","/technology-a
 SHELL.push("/assets/warboost-loading-scene.webp");
 SHELL.push("/lib/diagnostic-shop.js?v=diagnostic-shop-r1","/lib/diagnostic-shop-ui.js?v=diagnostic-shop-r1","/diagnostic-shop.css?v=diagnostic-shop-r1");
 SHELL.push("/lib/knowledge-guidance-ui.js","/lib/knowledge-copy.js");
+SHELL.push("/lib/roster-sync.js","/lib/roster-sync-copy.js");
 SHELL.push("/lib/diagnostic-disclosures.js?v=diagnostic-disclosures-r1","/lib/diagnostic-shop-ui.js?v=diagnostic-disclosures-r1","/diagnostic-disclosures.css?v=diagnostic-disclosures-r1");
 SHELL.push("/identity-onboarding.css?v=identity-onboarding-r1","/lib/identity-onboarding.js",
   "/lib/identity-onboarding-ui.js","/lib/identity-onboarding-controller.js","/lib/identity-onboarding-copy.js",

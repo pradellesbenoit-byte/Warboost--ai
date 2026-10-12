@@ -62,6 +62,7 @@
     "test:tolerant-identity": "node scripts/verify-tolerant-r4-r5-identity.mjs",
     "test:rank-canonical-resolution": "node scripts/verify-rank-canonical-resolution.mjs",
     "test:roster-rank-persistence": "node scripts/verify-roster-rank-persistence.mjs",
+    "test:roster-sync-feedback": "node --check lib/roster-sync.js && node --check lib/roster-sync-copy.js && node scripts/verify-roster-sync-feedback.mjs",
     "test:roster-anti-rollback": "node scripts/verify-roster-anti-rollback.mjs",
     "test:rank-provenance": "node scripts/verify-rank-provenance.mjs",
     "test:restore-canonicalization": "node scripts/verify-restore-canonicalization.mjs",

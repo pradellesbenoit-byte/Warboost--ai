@@ -53,6 +53,8 @@ import {normalizeAvailabilityRecord,mergeAvailabilityRecords,countAvailabilitySl
 import {appendProgressionSnapshot,mergeProgressionSnapshots,progressionComparison,strongestSquadFromState} from "./lib/progression-history.js";
 import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMIT} from "./lib/roster-scan-queue.js";
 import {cleanRosterOcrName,rosterIdentityKey,resolveRosterScanRows,confirmRosterScanPossibleMatch,rosterScanHasUnresolvedIdentity} from "./lib/roster-identity-resolution.js";
+import {parseRosterConfidence,safeRosterDiagnostic,recordRosterDiagnostic,rosterDiagnostics,rosterFailureKind,rosterReplyConfirmed} from "./lib/roster-sync.js";
+import {rosterSyncCopy} from "./lib/roster-sync-copy.js";
 import {canonicalRosterMemberKey,previewAllianceRankChanges,applyAllianceRankChanges,permissionTransitions,rankManagementKey,confirmedCanonicalSelfRole} from "./lib/alliance-rank-management.js";
 import {preferredRankEvidence,rankConfirmationStatus} from "./lib/rank-provenance.js";
 import {savePendingSingleScan,loadPendingSingleScan,clearPendingSingleScan,savePendingRosterFiles,loadPendingRosterFiles,clearPendingRosterFiles,savePendingTechnologyFiles,loadPendingTechnologyFiles,clearPendingTechnologyFiles,clearPendingScanSession,clearLegacyPendingScans,movePendingScans} from "./lib/pending-scan-storage.js";
@@ -3260,6 +3262,8 @@ $("#saveProfileBtn").addEventListener("click",async()=>{
 
 async function syncAll(){
   if(!requireBetaAccess()||!requireBetaConsent())return;
+  if(rosterImportInFlight)return;
+  const rosterPending=state.alliance?.roster_sync_status==="pending";
   const requestOwner=String(cloudSession?.user?.id||"");
   const btns=[$("#syncAllBtn"),$("#syncPlayerBtn")].filter(Boolean);
   btns.forEach(b=>{b.disabled=true;b.textContent=t("syncing")});
@@ -3274,9 +3278,11 @@ async function syncAll(){
     }
     const userId=requestOwner,syncRevision=localStateRevision;
     if(!userId||String(state.player_id||"")!==userId)return;
-    const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state,locale:lang,base_updated_at:cloudRevision})},20000);
+    const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state,locale:lang,base_updated_at:cloudRevision,base_roster_updated_at:state.alliance?.roster_updated_at||null})},20000);
     if(String(cloudSession?.user?.id||"")!==userId)return;
     if(j?.state?.player_id&&String(j.state.player_id)!==userId)throw new Error("profile_owner_mismatch");
+    if(rosterPending&&(!r.ok||!rosterReplyConfirmed(j)))throw Object.assign(new Error("roster_sync_failed"),
+      safeRosterDiagnostic({code:!r.ok?j?.error:"roster_sync_unconfirmed"},r,j));
     if(r.ok&&j.state){
       cloudRevision=j.updated_at||cloudRevision;
       const remote=hydrateCloudState(j.state,initialState(),userId),changedDuringSync=localStateRevision!==syncRevision;
@@ -3298,8 +3304,16 @@ async function syncAll(){
     }else{
       state.sync.last_error=j.message||j.error||t("hybrid_no_public");state.sync.status="waiting";saveState();
     }
-  }catch{
-    if(requestOwner&&requestOwner===String(cloudSession?.user?.id||"")&&String(state?.player_id||"")===requestOwner){state.sync.last_error=t("offline_keep");state.sync.status="offline";saveState()}
+   }catch(error){
+     if(requestOwner&&requestOwner===String(cloudSession?.user?.id||"")&&String(state?.player_id||"")===requestOwner){
+       if(rosterPending){
+         const diagnostic=recordRosterDiagnostic(safeRosterDiagnostic(error)),copy=rosterSyncCopy(lang);
+         state.alliance.roster_sync_status="pending";state.alliance.roster_sync_error=copy[rosterFailureKind(diagnostic)];
+         state.sync.last_error=diagnostic.code;state.sync.status="waiting";
+         const saved=saveState(),note=$("#playerSyncInfo");
+         if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=[saved?copy.pending:copy.storage,state.alliance.roster_sync_error,copy.partial,copy.refresh].join(" ");renderRosterSyncDiagnostic(note)}
+       }else{state.sync.last_error=t("offline_keep");state.sync.status="offline";saveState()}
+     }
   }finally{
     btns.forEach((b,i)=>{b.disabled=false;b.textContent=i===0?t("public_refresh"):t("public_button")});
   }
@@ -4040,7 +4054,23 @@ function rosterDraftKey(row){return rosterIdentityKey(row?.name||"",currentRoste
 function scanRole(v){const role=String(v??"").trim().toUpperCase();return /^R[1-5]$/.test(role)?role:null}
 function confirmedMemberRank(member){return member?.rank_confirmation_status==="unconfirmed"?"?":normalizeAllianceRole(member?.role)}
 function mergeRosterScanRows(base=[],incoming=[]){
-  const tag=currentRosterIdentityContext().alliance_tag,map=new Map();for(const raw of [...(Array.isArray(base)?base:[]),...(Array.isArray(incoming)?incoming:[])]){const name=cleanRosterOcrName(raw?.name||"",tag),key=rosterIdentityKey(name,tag);if(!name||!key)continue;const role=scanRole(raw?.role),hq=Number(raw?.hq_level),power=Number(raw?.power_m),confidence=Number(raw?.confidence);const row={...raw,name,role,hq_level:Number.isFinite(hq)&&hq>0?Math.round(hq):null,power_m:Number.isFinite(power)&&power>0?Math.round(power*100)/100:null,confidence:Number.isFinite(confidence)?Math.max(0,Math.min(1,confidence)):null,updated_at:raw?.updated_at||null,rank_confirmation_status:raw?.rank_confirmation_status||(role==="R4"||role==="R5"?"confirmed_scan":"unconfirmed")};const old=map.get(key);if(!old){map.set(key,row);continue}const oldScore=(old.confidence??0)+(old.hq_level?0.15:0)+(old.power_m?0.15:0),newScore=(row.confidence??0)+(row.hq_level?0.15:0)+(row.power_m?0.15:0);map.set(key,newScore>=oldScore?{...old,...row}:{...row,...old})}return [...map.values()].sort((a,b)=>({R5:5,R4:4,R3:3,R2:2,R1:1}[b.role]||0)-({R5:5,R4:4,R3:3,R2:2,R1:1}[a.role]||0)||(b.power_m||0)-(a.power_m||0)||a.name.localeCompare(b.name));
+  const tag=currentRosterIdentityContext().alliance_tag,map=new Map();
+  for(const raw of [...(Array.isArray(base)?base:[]),...(Array.isArray(incoming)?incoming:[])]){
+    const name=cleanRosterOcrName(raw?.name||"",tag),key=rosterIdentityKey(name,tag);if(!name||!key)continue;
+    const role=scanRole(raw?.role),hq=Number(raw?.hq_level),power=Number(raw?.power_m);
+    const row={...raw,name,role,hq_level:Number.isFinite(hq)&&hq>0?Math.round(hq):null,
+      power_m:Number.isFinite(power)&&power>0?Math.round(power*100)/100:null,
+      confidence:parseRosterConfidence(raw?.confidence),updated_at:raw?.updated_at||null,
+      rank_confirmation_status:raw?.rank_confirmation_status||(role==="R4"||role==="R5"?"confirmed_scan":"unconfirmed")};
+    const old=map.get(key);if(!old){map.set(key,row);continue}
+    const oldScore=(old.confidence??0)+(old.hq_level?0.15:0)+(old.power_m?0.15:0),newScore=(row.confidence??0)+(row.hq_level?0.15:0)+(row.power_m?0.15:0);
+    map.set(key,newScore>=oldScore?{...old,...row}:{...row,...old});
+  }
+  return [...map.values()].sort((a,b)=>({R5:5,R4:4,R3:3,R2:2,R1:1}[b.role]||0)-({R5:5,R4:4,R3:3,R2:2,R1:1}[a.role]||0)||(b.power_m||0)-(a.power_m||0)||a.name.localeCompare(b.name));
+}
+function rosterConfidenceLabel(value){
+  const confidence=parseRosterConfidence(value);
+  return confidence===null?rosterSyncCopy(lang).unknownConfidence:Math.round(confidence*100)+" %";
 }
 function resolveCurrentRosterScanDraft(rows=rosterScanDraft){return resolveRosterScanRows(rows,currentRosterIdentityCollections(),currentRosterIdentityContext())}
 function rosterIdentityStatusText(r){
@@ -4056,7 +4086,7 @@ function rosterIdentityStatusText(r){
 function renderRosterScanDraft(){
   const box=$("#rosterScanDraft"),btn=$("#rosterScanImportBtn");if(!box)return;if(btn)btn.classList.toggle("hidden",!rosterScanDraft.length);
   if(btn)btn.disabled=rosterScanHasUnresolvedIdentity(rosterScanDraft);
-  box.innerHTML=rosterScanDraft.length?rosterScanDraft.map((r,i)=>`<div class="rosterScanRow" data-roster-draft-index="${i}"><input data-rsf="name" value="${esc(r.name)}" aria-label="${esc(t("nickname"))}"/><select data-rsf="role"><option value=""${!r.role?" selected":""}>—</option>${["R5","R4","R3","R2","R1"].map(x=>`<option value="${x}"${r.role===x?" selected":""}>${x}</option>`).join("")}</select><input data-rsf="hq" inputmode="numeric" value="${esc(r.hq_level??"")}" placeholder="QG"/><input data-rsf="power" inputmode="decimal" value="${esc(r.power_m??"")}" placeholder="M"/><button type="button" data-roster-draft-remove="${i}">×</button><div class="rosterScanConfidence">${esc(t("roster_scan_confidence"))}: ${r.confidence===null?"—":Math.round(r.confidence*100)+"%"}</div><div class="rosterIdentityStatus ${esc(r.identity_status||"new")}">${esc(rosterIdentityStatusText(r))}${r.identity_status==="possible"?` <button type="button" class="smallBtn" data-roster-confirm-match="${i}">${esc(t("roster_identity_use_match"))}</button>`:""}</div></div>`).join(""):`<div class="privacyText">${esc(t("roster_scan_empty"))}</div>`;
+  box.innerHTML=rosterScanDraft.length?rosterScanDraft.map((r,i)=>`<div class="rosterScanRow" data-roster-draft-index="${i}"><input data-rsf="name" value="${esc(r.name)}" aria-label="${esc(t("nickname"))}"/><select data-rsf="role"><option value=""${!r.role?" selected":""}>—</option>${["R5","R4","R3","R2","R1"].map(x=>`<option value="${x}"${r.role===x?" selected":""}>${x}</option>`).join("")}</select><input data-rsf="hq" inputmode="numeric" value="${esc(r.hq_level??"")}" placeholder="QG"/><input data-rsf="power" inputmode="decimal" value="${esc(r.power_m??"")}" placeholder="M"/><button type="button" data-roster-draft-remove="${i}">×</button><div class="rosterScanConfidence">${esc(t("roster_scan_confidence"))}: ${esc(rosterConfidenceLabel(r.confidence))}</div>${r.confidence===null||r.confidence===0?`<div class="privacyText">${esc(rosterSyncCopy(lang).verifyName)}</div>`:""}<div class="rosterIdentityStatus ${esc(r.identity_status||"new")}">${esc(rosterIdentityStatusText(r))}${r.identity_status==="possible"?` <button type="button" class="smallBtn" data-roster-confirm-match="${i}">${esc(t("roster_identity_use_match"))}</button>`:""}</div></div>`).join(""):`<div class="privacyText">${esc(t("roster_scan_empty"))}</div>`;
   box.querySelectorAll("[data-roster-draft-remove]").forEach(b=>b.addEventListener("click",()=>{rosterScanDraft.splice(Number(b.dataset.rosterDraftRemove),1);renderRosterScanDraft()}));
   box.querySelectorAll("[data-roster-confirm-match]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.rosterConfirmMatch),row=rosterScanDraft[i];if(!row)return;rosterScanDraft[i]=confirmRosterScanPossibleMatch(row,currentRosterIdentityCollections(),currentRosterIdentityContext());renderRosterScanDraft()}));
   box.querySelectorAll("[data-roster-draft-index]").forEach(row=>row.addEventListener("change",()=>{const i=Number(row.dataset.rosterDraftIndex),cur=rosterScanDraft[i];if(!cur)return;cur.name=row.querySelector('[data-rsf="name"]')?.value.trim()||"";cur.role=scanRole(row.querySelector('[data-rsf="role"]')?.value);cur.rank_confirmation_status="unconfirmed";const h=Number(row.querySelector('[data-rsf="hq"]')?.value),p=Number(String(row.querySelector('[data-rsf="power"]')?.value||"").replace(',','.'));cur.hq_level=Number.isFinite(h)&&h>0?Math.round(h):null;cur.power_m=Number.isFinite(p)&&p>0?Math.round(p*100)/100:null;rosterScanDraft[i]=resolveRosterScanRows([cur],currentRosterIdentityCollections(),currentRosterIdentityContext())[0];renderRosterScanDraft()}));
@@ -4068,22 +4098,50 @@ function collectRosterScanDraftFromDom(){
   return rosterScanDraft;
 }
 async function persistRosterCandidate(candidate){
-  if(!cloudSession?.access_token||!betaAccessAllowed()||!betaConsentAccepted())throw Object.assign(new Error(t("roster_sync_login_required")),{code:"roster_cloud_required"});
+  if(!cloudSession?.access_token)throw Object.assign(new Error("roster_cloud_required"),{code:"roster_cloud_required",write_state:"not_attempted"});
+  if(!betaAccessAllowed())throw Object.assign(new Error("roster_beta_required"),{code:"roster_beta_required",write_state:"not_attempted"});
+  if(!betaConsentAccepted())throw Object.assign(new Error("roster_consent_required"),{code:"roster_consent_required",write_state:"not_attempted"});
   const owner=String(cloudSession.user.id);
   if(String(candidate.player_id||"")!==owner)throw Object.assign(new Error("account_owner_mismatch"),{code:"account_owner_mismatch"});
-  const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state:candidate,locale:lang,base_updated_at:cloudRevision})},20000);
+  const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({state:candidate,locale:lang,base_updated_at:cloudRevision,
+    base_roster_updated_at:state.alliance?.roster_updated_at||null})},20000);
   if(String(cloudSession?.user?.id||"")!==owner)throw Object.assign(new Error("account_changed"),{code:"account_changed"});
   if(j?.state?.player_id&&String(j.state.player_id)!==owner)throw Object.assign(new Error("profile_owner_mismatch"),{code:"profile_owner_mismatch"});
-  if(!r.ok)throw Object.assign(new Error(j?.message||j?.error||t("roster_sync_failed")),{code:j?.error||"roster_sync_failed",limit:j?.limit,count:j?.count,cloud_state:j?.state||null,cloud_updated_at:j?.updated_at||null});
+  if(!r.ok||!rosterReplyConfirmed(j)){
+    const diagnostic=safeRosterDiagnostic({code:!r.ok?j?.error:"roster_sync_unconfirmed"},r,j);
+    throw Object.assign(new Error(diagnostic.code),{...diagnostic,cloud_state:j?.state||null,cloud_updated_at:j?.updated_at||null});
+  }
   return j;
 }
+function renderRosterSyncDiagnostic(status){
+  if(!status?.id)return;
+  const id=status.id+"PrivateDiagnostic",copy=rosterSyncCopy(lang);
+  let details=$("#"+id);
+  if(!details){
+    details=document.createElement("details");details.id=id;details.className="compactDetails";
+    const summary=document.createElement("summary"),pre=document.createElement("pre"),button=document.createElement("button");
+    summary.textContent=copy.diagnostic;pre.style.whiteSpace="pre-wrap";pre.style.overflowWrap="anywhere";
+    button.type="button";button.className="secondaryBtn";button.textContent=copy.copy;
+    button.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(JSON.stringify(rosterDiagnostics(),null,2))}catch{details.open=true}});
+    details.append(summary,pre,button);status.after(details);
+  }
+  details.querySelector("pre").textContent=JSON.stringify(rosterDiagnostics(),null,2);
+}
+let rosterImportInFlight=false;
 async function applyRosterRows(imported,{complete=false,status=null,source="manual_import"}={}){
+  if(rosterImportInFlight)return null;
+  rosterImportInFlight=true;
+  try{
   const requestOwner=String(cloudSession?.user?.id||"");
   const now=new Date().toISOString(),rows=(Array.isArray(imported)?imported:[]).filter(x=>x?.name).map(row=>({...row,server_id:state.player?.server_id||row.server_id||"",alliance_tag:state.alliance?.tag||row.alliance_tag||"",source,updated_at:row.updated_at||now}));
   if(!rows.length){if(status){status.className="notice warn";status.textContent=t("import_error");status.classList.remove("hidden")}return null}
   const candidate=JSON.parse(JSON.stringify(state)),result=applyRosterImportLifecycle({members:candidate.alliance.members,review:candidate.alliance.roster_review,former:candidate.alliance.former_members,removal_tombstones:candidate.alliance.roster_removal_tombstones},rows,{complete,now});
   candidate.alliance.members=result.members.map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:candidate.alliance.server_id||candidate.player?.server_id,allianceTag:candidate.alliance.tag})}));
-  candidate.alliance.roster_review=result.review;candidate.alliance.former_members=[];candidate.alliance.roster_removal_tombstones=result.removal_tombstones||candidate.alliance.roster_removal_tombstones||[];if(complete)candidate.alliance.roster_snapshot_complete_at=now;candidate.alliance.roster_sync_status="pending";candidate.alliance.roster_sync_error=null;candidate.alliance.updated_at=now;candidate.sync.sources={...candidate.sync.sources,alliance:true};
+  candidate.alliance.roster_review=result.review;candidate.alliance.former_members=[];candidate.alliance.roster_removal_tombstones=result.removal_tombstones||candidate.alliance.roster_removal_tombstones||[];
+  // A retry of a pending snapshot must not falsely date the same capture as newer
+  // than intervening canonical changes and turn an additive retry into replacement.
+  if(complete&&!(candidate.alliance.roster_sync_status==="pending"&&candidate.alliance.roster_snapshot_complete_at))candidate.alliance.roster_snapshot_complete_at=now;
+  candidate.alliance.roster_sync_status="pending";candidate.alliance.roster_sync_error=null;candidate.alliance.updated_at=now;candidate.sync.sources={...candidate.sync.sources,alliance:true};
   let synced=null;const rosterRevision=localStateRevision;
   try{synced=await persistRosterCandidate(candidate)}catch(error){
     if(error?.code==="account_changed"||(requestOwner&&String(cloudSession?.user?.id||"")!==requestOwner))return {...result,synced:false,error};
@@ -4095,10 +4153,16 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
       merged=reconcileCloudSquads(state,remote,merged).state;
       cloudRevision=error.cloud_updated_at||cloudRevision;
     }
-    merged.alliance.roster_sync_status="pending";merged.alliance.roster_sync_error=String(error?.message||error?.code||t("roster_sync_failed")).slice(0,300);state=merged;saveState();render();
-    if(status&&(error?.code==="roster_canonical_persist_required"||error?.code==="r4_r5_required"))showAllianceRoleGuard(status);
-    else if(status){status.className="notice warn";status.textContent=`${t("roster_sync_pending")} ${candidate.alliance.roster_sync_error}`;status.classList.remove("hidden")}
-    return {...result,synced:false,error};
+    const diagnostic=recordRosterDiagnostic(safeRosterDiagnostic(error)),copy=rosterSyncCopy(lang);
+    merged.alliance.roster_sync_status="pending";merged.alliance.roster_sync_error=copy[rosterFailureKind(diagnostic)];
+    state=merged;const locallySaved=saveState();render();
+    if(status){
+      status.className="notice warn";
+      status.textContent=[locallySaved?copy.pending:copy.storage,state.alliance.roster_sync_error,
+        diagnostic.write_state==="not_attempted"?null:copy.partial,copy.refresh].filter(Boolean).join(" ");
+      status.classList.remove("hidden");renderRosterSyncDiagnostic(status);
+    }
+    return {...result,synced:false,error,diagnostic,locally_saved:locallySaved};
   }
   cloudRevision=synced?.updated_at||cloudRevision;
   const changedDuringSync=localStateRevision!==rosterRevision;
@@ -4112,7 +4176,15 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
   }
   state=adoptCanonicalPendingAccounts(state,synced?.state||null,{available:synced?.alliance_pending_source==="canonical"});
   state.alliance.roster_sync_status=changedDuringSync&&state.alliance.roster_sync_status==="pending"?"pending":"synced";state.alliance.roster_sync_error=null;saveState();render();
-  if(status){status.className="notice";status.textContent=complete?t("roster_import_complete_result",{active:result.summary.active_count,review:result.summary.review_count,added:result.summary.added,returned:result.summary.returned}):t("roster_import_partial_result",{count:result.summary.imported,added:result.summary.added,returned:result.summary.returned});status.classList.remove("hidden")}return {...result,synced:true};
+  const stillPending=state.alliance.roster_sync_status==="pending";
+  if(status){
+    $("#"+status.id+"PrivateDiagnostic")?.remove();status.className=stillPending?"notice warn":"notice";
+    status.textContent=stillPending?[rosterSyncCopy(lang).pending,rosterSyncCopy(lang).refresh].join(" "):
+      complete?t("roster_import_complete_result",{active:result.summary.active_count,review:result.summary.review_count,added:result.summary.added,returned:result.summary.returned}):t("roster_import_partial_result",{count:result.summary.imported,added:result.summary.added,returned:result.summary.returned});
+    status.classList.remove("hidden");
+  }
+  return {...result,synced:!stillPending,roster_persisted:true};
+  }finally{rosterImportInFlight=false}
 }
 function renderRosterScanFiles(){
   const info=$("#rosterScanFileInfo"),list=$("#rosterScanFileList");

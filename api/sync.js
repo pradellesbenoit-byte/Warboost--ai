@@ -17,11 +17,15 @@ import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/ca
 void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remains exported and audited
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
+  let rosterPersisted=false,rosterWriteAttempted=false;
+  const rosterConfirmation=()=>({requested:req.body?.state?.alliance?.roster_sync_status==="pending",persisted:rosterPersisted,
+    write_state:rosterPersisted?"confirmed":rosterWriteAttempted?"unknown":"not_attempted"});
   try{
-    const {user}=await requireProductUser(req,{consent:true}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,rosterPersisted=false,alliancePendingCanonical=false;
+    const {user}=await requireProductUser(req,{consent:true}),playerId=user.id,access=accessToken(req),userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,alliancePendingCanonical=false;
     // Personal synchronization has no legacy code requirement. Alliance paths retain their beta gate.
     const allianceBeta=await betaAccessForUserAsync(user);
     if(requestedRosterSync&&!allianceBeta.allowed)return res.status(403).json({error:"BETA_INVITE_REQUIRED"});
+    if(requestedRosterSync&&!configured())throw Object.assign(new Error("Roster cloud service unavailable"),{status:503,code:"roster_cloud_service_unavailable"});
     if(configured()||userMode){
       saved=userMode?await getProfileForUser(playerId,access):await getProfile(playerId);
       const baseUpdatedAt=req.body?.base_updated_at===null?null:String(req.body?.base_updated_at||"").trim()||null;
@@ -46,7 +50,12 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
     merged.sync={...merged.sync,provider,provider_kind:providerKind,access_status:"safe-launch-external-disabled",capabilities,status:"ok",last_sync:now,last_error:null,auto_ready:true,sources:{...merged.sync?.sources,official:false,public:false,scan:Boolean(merged.sync?.last_scan),alliance:false}};
     if(configured()||userMode){
       if(configured()&&allianceBeta.allowed){
-        let ctx=await getAllianceRoster(playerId,{serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag}).catch(()=>null);
+        let ctx=await getAllianceRoster(playerId,{serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag}).catch(error=>{if(requestedRosterSync)throw error;return null});
+        if(requestedRosterSync&&!ctx?.alliance)throw Object.assign(new Error("Canonical alliance unavailable"),{status:409,code:"roster_context_unavailable"});
+        if(requestedRosterSync&&Object.hasOwn(req.body||{},"base_roster_updated_at")){
+          const expected=req.body.base_roster_updated_at||null,actual=ctx?.alliance?.roster_updated_at||null;
+          if(expected!==actual)throw Object.assign(new Error("Canonical roster version changed"),{status:409,code:"alliance_write_conflict"});
+        }
         alliancePendingCanonical=Boolean(ctx?.alliance&&Array.isArray(ctx.cloud_roster));
           if(ctx){
           const targetServer=normalizeServerId(ctx.alliance?.server_id),targetTag=normalizeAllianceTag(ctx.alliance?.tag);
@@ -59,6 +68,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
           let membership=ctx.membership,linkPersisted=false;
           if(identityLink.persist_link){
             try{
+               rosterWriteAttempted=true;
               const savedLink=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,server_id:targetServer,tag:targetTag,name:ctx.alliance.name,roster:identityLink.members,roster_tombstones:ctx.roster_tombstones,expected_updated_at:ctx.alliance.updated_at});
               canonical=Array.isArray(savedLink?.roster)?savedLink.roster:identityLink.members;
               linkPersisted=true;
@@ -84,9 +94,15 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
             const completeSnapshotFresh=Number.isFinite(snapshotAt)&&snapshotAt>0&&(!Number.isFinite(serverRosterAt)||snapshotAt>serverRosterAt);
             if(scope.server_id===targetServer&&scope.alliance_tag===targetTag&&candidateRoster.length>0&&(completeSnapshotFresh||candidateRoster.length>=existingCount)){
               const canonicalMerged=completeSnapshotFresh?replaceCanonicalRosterFromCompleteSnapshot(ctx.alliance?.roster,candidateRoster,{serverId:targetServer,allianceTag:targetTag}):mergeCanonicalRoster(ctx.alliance?.roster,candidateRoster,{serverId:targetServer,allianceTag:targetTag});
-               await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,roster:canonicalMerged,expected_updated_at:ctx.alliance.updated_at});
+                rosterWriteAttempted=true;
+                await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,roster:canonicalMerged,expected_updated_at:ctx.alliance.updated_at});
                rosterPersisted=true;
-              ctx=await getAllianceRoster(playerId).catch(()=>ctx);
+               // Never send the pre-write roster as a "synced" result when readback
+               // fails. The write may be complete, but finalization remains pending.
+               const writtenAllianceId=ctx.alliance.id;
+               ctx=await getAllianceRoster(playerId,{serverId:targetServer,allianceTag:targetTag});
+               if(!ctx?.alliance||ctx.alliance.id!==writtenAllianceId)
+                 throw Object.assign(new Error("Canonical readback unavailable"),{status:503,code:"roster_context_unavailable"});
             }
           }
 
@@ -98,6 +114,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
            const ownAvailability=mergePlayerAvailabilityIntoRoster(canonical,merged.player_availability,{playerId,name:merged.player?.name,serverId:authoritativeServer,allianceTag:authoritativeTag});
            if(ownAvailability.changed){
              try{
+               rosterWriteAttempted=true;
                const savedAvailability=await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,server_id:authoritativeServer,tag:authoritativeTag,name:ctx.alliance.name,roster:ownAvailability.rows,roster_tombstones:ctx.roster_tombstones,expected_updated_at:ctx.alliance.updated_at});
                canonical=markCanonicalRosterPresence(savedAvailability?.roster||ownAvailability.rows,savedAvailability?.roster_updated_at||ctx.alliance.roster_updated_at).map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:authoritativeServer,allianceTag:authoritativeTag})}));
                if(savedAvailability?.updated_at)ctx.alliance={...ctx.alliance,...savedAvailability};
@@ -121,7 +138,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
           if(requestedRosterSync&&!rosterPersisted){
             const currentAuthorization=canonicalAllianceAuthorization({playerId,membership:ctx.membership,alliance:ctx.alliance,roster:canonical,identity:{name:merged.player?.name,server_id:merged.player?.server_id,alliance_tag:merged.alliance?.tag}});
             const message=!currentAuthorization.allowed?authorizationMessage(currentAuthorization):"Le roster candidat ne correspond pas au serveur et à l’alliance canoniques, ou sa révision cloud a changé.";
-            return res.status(409).json({error:"roster_canonical_persist_required",message,authorization:currentAuthorization,canonical_count:Array.isArray(ctx.alliance?.roster)?ctx.alliance.roster.length:0,candidate_count:Array.isArray(merged.alliance?.members)?merged.alliance.members.length:0});
+            return res.status(409).json({error:"roster_canonical_persist_required",message,authorization:currentAuthorization,roster_confirmation:rosterConfirmation(),canonical_count:Array.isArray(ctx.alliance?.roster)?ctx.alliance.roster.length:0,candidate_count:Array.isArray(merged.alliance?.members)?merged.alliance.members.length:0});
           }
         merged=applyCanonicalRenames(merged);
         const written=await saveProfileIfUnchanged(playerId,merged,saved?.updated_at||null);saved=written||saved;await insertSnapshot(playerId,merged,provider);
@@ -131,6 +148,11 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
       }
     }
     const cfg={official:false,approved:false,legacy:false,authorization_status:"safe-launch-disabled",safe_launch_lock:true};
-    return res.status(200).json({ok:true,provider,provider_kind:providerKind,capabilities,sources:merged.sync.sources,alliance_pending_source:alliancePendingCanonical?"canonical":"unavailable",provider_config:cfg,public_config:cfg,safe_launch:true,synced_at:merged.sync.last_sync,state:merged,updated_at:saved?.updated_at||null,access_mode:userMode?"user-rls":"service"});
-  }catch(e){return res.status(e.status||500).json({error:e.code||"sync_failed",message:e.name==="AbortError"?"Source timeout":e.message})}
+    return res.status(200).json({ok:true,provider,provider_kind:providerKind,capabilities,sources:merged.sync.sources,roster_confirmation:rosterConfirmation(),alliance_pending_source:alliancePendingCanonical?"canonical":"unavailable",provider_config:cfg,public_config:cfg,safe_launch:true,synced_at:merged.sync.last_sync,state:merged,updated_at:saved?.updated_at||null,access_mode:userMode?"user-rls":"service"});
+  }catch(e){
+    const upstream=String(e.body?.code||"");
+    return res.status(e.status||500).json({error:e.code||"sync_failed",
+      message:rosterConfirmation().requested?"Roster synchronization not finalized. Review private diagnostics.":e.name==="AbortError"?"Source timeout":e.message,
+      ...(rosterConfirmation().requested?{roster_confirmation:rosterConfirmation(),upstream_code:/^(?:[0-9A-Z]{5}|PGRST\d{3})$/.test(upstream)?upstream:null}:{})});
+  }
 }
