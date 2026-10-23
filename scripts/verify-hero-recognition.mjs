@@ -93,11 +93,17 @@ test("invalid/low visual scores, unsupported contexts and insufficient features 
   assert.equal(squadEvidence({name:"DVA",name_evidence:"portrait",name_confidence:.99}).name,null);
   assert.equal(squadEvidence({portrait:{...visual("DVA").portrait,reference_verified:true}}).evidence.identity.portrait.reference_verified,false);
 });
-test("contradictory OCR/name/portrait never selects one identity automatically",()=>{
+test("strong validated contradictions stay blank; unvalidated portraits cannot veto legible OCR",()=>{
   assert.equal(squadEvidence({...text("DVA"),name:"Mason"}).name,null);
-  const clash=squadEvidence({...text("DVA"),...visual("Mason")});
-  assert.equal(clash.name,null);assert.equal(clash.evidence.identity.method,"conflicting_identity");
-  assert.equal(clash.evidence.identity.tier,"low");
+  const unverified=squadEvidence({...text("DVA"),...visual("Mason")});
+  assert.equal(unverified.name,"DVA");
+  assert.equal(unverified.evidence.identity.method,"visible_text");
+  assert.equal(unverified.evidence.identity.requires_confirmation,true);
+  const clash=recognizeHeroIdentity({...text("DVA"),
+    portrait:{...visual("Mason").portrait,reference_id:"test-mason"}},
+    [{id:"test-mason",canonicalName:"Mason",variant:"normal",status:"verified"}]);
+  assert.equal(clash.name,null);assert.equal(clash.evidence.method,"conflicting_identity");
+  assert.equal(clash.evidence.tier,"low");
   assert.equal(squadEvidence({name_text:"Mar",name_evidence:"visible_fragment",name_confidence:.96,...visual("Mason")}).name,null);
 });
 test("31 names are present in prompts; old shortlist does not constrain recognition",()=>{
@@ -193,6 +199,9 @@ test("actual form collector excludes unchecked proposals but accepts individual 
   assert.equal(applied.complete,false);assert.deepEqual(confirmedSquadHints(applied.state,1,"owner"),[]);
   assert.equal(owned.patch.squads[0].power,44.43);
   inputs[0].value="Williams";acknowledgements.slice(1).forEach(ack=>{ack.checked=true});
+  const unacknowledgedCorrection=collect(draft);
+  assert.equal(unacknowledgedCorrection.issues.length,1,"dropdown correction still requires explicit acknowledgement");
+  acknowledgements[0].checked=true;
   form=collect(draft);
   assert.equal(form.issues.length,0);
   owned=applyOwnedScanReview(draft,"owner",form.edits);

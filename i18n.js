@@ -484,6 +484,10 @@ Object.assign(SV,{stronger_squad_note:"{name} är för närvarande starkare ({po
 const packs={fr:FR,"en-GB":EN_GB,"en-US":EN_US,es:ES,it:IT,de:DE,pt:PT,nl:NL,zh:ZH,ja:JA,ru:RU,ar:AR,pl:PL,tr:TR,ko:KO,vi:VI,th:TH,id:ID,uk:UK,ro:RO,el:EL,cs:CS,sv:SV};
 import {ANALYSIS_SCAN_TRANSLATIONS} from "./lib/analysis-copy.js";
 for(const [code,copy] of Object.entries(ANALYSIS_SCAN_TRANSLATIONS))Object.assign(packs[code],copy);
+import {LOADING_TRANSLATIONS} from "./lib/loading-copy.js";
+for(const [code,copy] of Object.entries(LOADING_TRANSLATIONS))Object.assign(packs[code],copy);
+import {ACCOUNT_SYNC_COPY} from "./lib/account-sync-copy.js";
+for(const [code,copy] of Object.entries(ACCOUNT_SYNC_COPY))Object.assign(packs[code],copy);
 Object.assign(EN,{ds_clear_confirm:"Clear all Desert Storm selections and reset the event's declared availability? Player profiles and alliance members are kept.",season_unknown_note:"Season status is not confirmed. Scan the Season screen before making a season decision."});
 Object.assign(FR,{ds_clear_confirm:"Effacer toute la sélection Tempête du Désert et remettre à zéro les disponibilités déclarées de cet événement ? Les profils joueurs et les membres de l’alliance sont conservés.",season_unknown_note:"L’état de la Saison n’est pas confirmé. Scanne l’écran Saison avant de prendre une décision."});
 export function translationDiagnostics(keys){
@@ -2870,3 +2874,52 @@ HERO_RECOGNITION_COPY.fr.scan_review_identity_reference_proposal="Proposition co
 for(const [code,pack] of Object.entries(packs))Object.assign(pack,HERO_RECOGNITION_COPY[code]||HERO_RECOGNITION_COPY.en);
 import {COMPLETED_LOCALES} from "./lib/locales/completed.js";
 for(const [code,copy] of Object.entries(COMPLETED_LOCALES))Object.assign(packs[code],copy);
+
+const AUTH_REQUEST_SUPERSEDED={
+  fr:"Cette demande de connexion a été remplacée. Vérifie le compte actuellement connecté.",
+  "en-GB":"This sign-in request was superseded. Check the account currently signed in.",
+  "en-US":"This sign-in request was superseded. Check the account currently signed in.",
+  es:"Esta solicitud de acceso ha sido sustituida. Comprueba la cuenta conectada actualmente.",
+  it:"Questa richiesta di accesso è stata sostituita. Verifica l’account attualmente connesso.",
+  de:"Diese Anmeldeanfrage wurde ersetzt. Prüfe das aktuell angemeldete Konto.",
+  pt:"Este pedido de início de sessão foi substituído. Verifica a conta atualmente ligada.",
+  nl:"Dit aanmeldverzoek is vervangen. Controleer het account dat nu is aangemeld.",
+  zh:"此登录请求已被替代。请检查当前登录的账户。",
+  ja:"このログイン要求は新しい要求に置き換えられました。現在ログイン中のアカウントを確認してください。",
+  ru:"Этот запрос входа заменён новым. Проверьте, какой аккаунт сейчас используется.",
+  ar:"تم استبدال طلب تسجيل الدخول هذا. تحقّق من الحساب المسجّل دخوله حاليًا.",
+  pl:"To żądanie logowania zostało zastąpione. Sprawdź aktualnie zalogowane konto.",
+  tr:"Bu giriş isteğinin yerine yenisi geçti. Şu anda oturum açmış hesabı kontrol et.",
+  ko:"이 로그인 요청은 새 요청으로 대체되었습니다. 현재 로그인된 계정을 확인하세요.",
+  vi:"Yêu cầu đăng nhập này đã được thay thế. Hãy kiểm tra tài khoản hiện đang đăng nhập.",
+  th:"คำขอเข้าสู่ระบบนี้ถูกแทนที่แล้ว โปรดตรวจสอบบัญชีที่เข้าสู่ระบบอยู่ในขณะนี้",
+  id:"Permintaan masuk ini telah digantikan. Periksa akun yang sedang masuk.",
+  uk:"Цей запит входу замінено новим. Перевірте поточний обліковий запис.",
+  ro:"Această cerere de autentificare a fost înlocuită. Verifică contul conectat în prezent.",
+  el:"Αυτό το αίτημα σύνδεσης αντικαταστάθηκε. Ελέγξτε τον λογαριασμό που είναι συνδεδεμένος.",
+  cs:"Tento požadavek na přihlášení byl nahrazen. Zkontrolujte aktuálně přihlášený účet.",
+  sv:"Den här inloggningsbegäran ersattes. Kontrollera kontot som är inloggat nu."
+};
+for(const [code,copy] of Object.entries(AUTH_REQUEST_SUPERSEDED))packs[code].auth_request_superseded=copy;
+
+// Explicit English fallback for roster correction; no raw translation keys.
+for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
+  roster_manual_add:"Ajouter un membre manuellement",
+  roster_rank_required:"Grade R1–R5 à confirmer avant import",
+  roster_manual_help:"Saisis le pseudo et confirme explicitement son grade R1–R5 avant l’import. Aucun grade n’est deviné.",
+  roster_scan_unreadable:"{count} capture(s) non lue(s). Les autres lignes sont conservées ; vérifie-les ou ajoute le membre manuellement."
+}:{
+  roster_manual_add:"Add a member manually",
+  roster_rank_required:"Confirm R1–R5 rank before import",
+  roster_manual_help:"Enter the nickname and explicitly confirm their R1–R5 rank before import. No rank is guessed.",
+  roster_scan_unreadable:"{count} unreadable capture(s). Other rows are kept; review them or add the member manually."
+});
+
+// Explicit English fallback in every locale; no raw translation keys.
+for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
+  scan_review_identity_conflict:"Image entière : {full} ; portrait agrandi : {zoom} — propositions contradictoires. Choisis le bon héros puis coche « Je confirme ce héros ».",
+  scan_review_portrait_diagnostic:"Diagnostic du portrait"
+}:{
+  scan_review_identity_conflict:"Full image: {full}; enlarged portrait: {zoom} — conflicting proposals. Choose the correct hero, then tick “I confirm this hero”.",
+  scan_review_portrait_diagnostic:"Portrait diagnostic"
+});

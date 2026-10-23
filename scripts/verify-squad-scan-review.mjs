@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 import {scanSquadId} from "../lib/player-scan-types.js";
-import {applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription} from "../lib/squad-scan-review.js";
+import {applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription,uniqueSquadPending} from "../lib/squad-scan-review.js";
 import {createScanReviewDraft,applyOwnedScanReview} from "../lib/scan-review.js";
 import {buildScanReviewGroups} from "../lib/scan-review-presentation.js";
 import {renderScanReviewMarkup} from "../lib/scan-review-markup.js";
@@ -110,7 +110,7 @@ function runHandler({patch,edits,owner="fixture-a",current=true,save=true}){
   const error={textContent:"",classList:{remove(){}}},status={textContent:"",dataset:{},replaceChildren(...nodes){this.textContent=nodes.map(node=>node.textContent).join("")}};
   const context=vm.createContext({
     state:clone(base),pendingScanReview:{owner:"fixture-a",type:"squad1",request:{},patch},
-    lang:"fr",scanSquadId,applyOwnedScanReview,applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription,
+    lang:"fr",scanSquadId,applyOwnedScanReview,applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription,uniqueSquadPending,
     stampConfirmedRecord,confirmedHeroPower,repairLegacySquadIdentity,
     pendingScanOwner:()=>owner,scanRequestIsCurrent:()=>current,scanReviewFormEdits:()=>({edits,issues:[]}),
     $:selector=>selector==="#scanSquadTargetConfirmed"?{checked:true}:selector==="#scanReviewError"?error:selector==="#scanStatus"?status:{classList:{remove(){}}},

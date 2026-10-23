@@ -4,6 +4,8 @@ import {readFile} from "node:fs/promises";
 import {parseRosterConfidence,safeRosterDiagnostic,recordRosterDiagnostic,rosterDiagnostics,rosterFailureKind,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest} from "../lib/roster-sync.js";
 import {ROSTER_SYNC_LOCALES,rosterSyncCopy} from "../lib/roster-sync-copy.js";
 import {applyRosterImportLifecycle} from "../lib/alliance-roster-lifecycle.js";
+import {createAnalysisIndicator,beginLoadingButton} from "../lib/analysis-indicator.js";
+import {normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 const app=await readFile(new URL("../app.js",import.meta.url),"utf8");
 let passed=0;
 async function test(name,fn){await fn();passed++;console.log("PASS",name)}
@@ -69,6 +71,7 @@ const seed=()=>({player_id:owner,player:{name:"Synthetic Manager",server_id:"123
 function browserContext(){
   const state=seed();
   const context=vm.createContext({state,cloudSession:{access_token:"synthetic-session",user:{id:owner}},
+    normalizeServerId,normalizeAllianceTag,
     betaAccessAllowed:()=>true,betaConsentAccepted:()=>true,authHeaders:h=>h,cloudRevision:revision,
     localStateRevision:0,lang:"fr",t:key=>key,parseRosterConfidence,safeRosterDiagnostic,
      recordRosterDiagnostic,rosterFailureKind,rosterSyncCopy,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest,
@@ -78,13 +81,31 @@ function browserContext(){
     reconcileCloudSquads:(_base,_incoming,merged)=>({state:merged}),
     hydrateCloudState:v=>structuredClone(v),initialState:seed,preservePendingRoster:(_local,remote)=>remote,
     adoptCanonicalPendingAccounts:v=>v,saveState:()=>true,render:()=>{},$:()=>null,
-    renderRosterSyncDiagnostic:()=>{}});
+    renderRosterSyncDiagnostic:()=>{},beginLoadingButton,analysisIndicator:createAnalysisIndicator()});
+  vm.runInContext(slice("function beginRosterUpdateFeedback(","let rosterImportInFlight=false;"),context);
   vm.runInContext(slice("async function persistRosterCandidate(","function renderRosterSyncDiagnostic("),context);
   vm.runInContext(slice("let rosterImportInFlight=false;","function renderRosterScanFiles("),context);
   return context;
 }
 const status=()=>({id:"synthetic-status",textContent:"",classList:{remove(){}}});
 const row={name:"Synthetic New",role:"R3",hq_level:35,power_m:229};
+await test("late roster success or failure cannot overwrite a different alliance or server",async()=>{
+  for(const field of ["tag","server_id","id"]){
+    for(const fail of [false,true,"timeout"]){
+      const c=browserContext();let settle,reject;
+      c.fetchJsonBounded=()=>new Promise((resolve,no)=>{settle=resolve;reject=no});
+      const pending=c.applyRosterRows([row],{status:status()});
+      c.state.alliance[field]="different-synthetic-scope";
+      const before=JSON.stringify(c.state);
+      if(fail==="timeout")reject(new Error("synthetic_timeout"));
+      else settle({response:{ok:!fail,status:fail?503:200},json:fail?{error:"sync_failed"}:
+        {ok:true,state:seed(),roster_confirmation:{requested:true,persisted:true}}});
+      const result=await pending;
+      assert.equal(result.synced,false);
+      assert.equal(JSON.stringify(c.state),before,"late data must not be merged into the new scope");
+    }
+  }
+});
 await test("actual browser importer shows effective error, retains rows and safe pending state",async()=>{
   for(const code of ["AUTH_REQUIRED","BETA_CONSENT_REQUIRED","r4_r5_required","alliance_write_conflict","request_timeout"]){
     const c=browserContext(),notice=status();
@@ -271,7 +292,7 @@ await test("actual saveState local-only option disables automatic profile schedu
   assert.equal(c.saveState(),true);assert.equal(stored,2);assert.equal(scheduled,1);
 });
 await test("actual manual retry uses roster-only path, without profile recovery or personal sync",async()=>{
-  const c=browserContext(),saveOptions=[],notice={textContent:""};
+  const c=browserContext(),saveOptions=[],notice={textContent:"",setAttribute(){},removeAttribute(){}};
   c.state.alliance.roster_sync_status="pending";c.state.alliance.members.push(row);
   c.requireBetaAccess=()=>true;c.requireBetaConsent=()=>true;c.hasMeaningfulCore=()=>false;
   c.reconcileAuthenticatedRuntime=()=>{throw Error("must not recover or write profile for roster retry")};
@@ -286,5 +307,30 @@ await test("actual manual retry uses roster-only path, without profile recovery 
   await c.syncAll();
   assert.equal(c.state.alliance.roster_sync_status,"synced");
   assert.equal(saveOptions.length,1);assert.equal(saveOptions[0].cloudSave,false);
+});
+await test("actual roster button feedback is immediate, blocks doubles and cleans up verified/error/timeout replies",async()=>{
+  for(const outcome of ["confirmed","unconfirmed-200","409","timeout"]){
+    const c=browserContext(),notice=status(),button={disabled:false,textContent:"Import",attrs:{},
+      setAttribute(k,v){this.attrs[k]=v},removeAttribute(k){delete this.attrs[k]}};
+    c.$=id=>id==="#rosterImportBtn"?button:null;
+    let settle,calls=0;
+    c.fetchJsonBounded=()=>{calls++;return new Promise((resolve,reject)=>{settle={resolve,reject}})};
+    const pending=c.applyRosterRows([row],{status:notice});
+    assert.equal(button.disabled,true);assert.equal(button.textContent,"alliance_update_busy");
+    assert.equal(button.attrs["data-wb-analysis-active"],"true");
+    assert.equal(await c.applyRosterRows([row],{status:notice}),null);assert.equal(calls,1);
+    if(outcome==="timeout")settle.reject(Object.assign(Error("private detail"),{code:"request_timeout"}));
+    else settle.resolve({response:{ok:outcome!=="409",status:outcome==="409"?409:200},
+      json:outcome==="confirmed"?{ok:true,operation:"alliance_roster",player_id:owner,
+        alliance_pending_source:"canonical",roster_confirmation:{requested:true,persisted:true},
+        alliance:{members:[row],canonical_roster:[row],roster_sync_status:"synced",roster_updated_at:revision}}
+        :outcome==="409"?{error:"alliance_write_conflict",roster_confirmation:{write_state:"not_attempted"}}:{ok:true}});
+    const result=await pending;
+    assert.equal(button.disabled,false);assert.equal(button.attrs["data-wb-analysis-active"],undefined);
+    assert.equal(result.synced,outcome==="confirmed");
+    assert.equal(notice.textContent.includes("alliance_update_done"),outcome==="confirmed");
+    if(outcome!=="confirmed"){assert.equal(c.state.alliance.roster_sync_status,"pending");
+      assert.match(notice.textContent,new RegExp(result.diagnostic.code));assert.doesNotMatch(notice.textContent,/private detail/)}
+  }
 });
 console.log(`PASS roster sync feedback: ${passed} test groups (synthetic fixtures and controlled transports; no real OCR/cloud validation)`);

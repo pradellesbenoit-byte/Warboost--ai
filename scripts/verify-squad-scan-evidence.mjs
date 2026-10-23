@@ -7,7 +7,7 @@ import {createScanReviewDraft,applyScanReviewEdits} from "../lib/scan-review.js"
 import {buildScanReviewGroups} from "../lib/scan-review-presentation.js";
 import {renderScanReviewMarkup} from "../lib/scan-review-markup.js";
 import {mergePlayerScanBatch} from "../lib/player-scan-batch.js";
-import {applyReviewedSquad,squadPendingDescription} from "../lib/squad-scan-review.js";
+import {applyReviewedSquad,squadPendingDescription,uniqueSquadPending} from "../lib/squad-scan-review.js";
 import {normalizeState} from "../lib/normalize.js";
 import {translator} from "../i18n.js";
 
@@ -110,7 +110,7 @@ test("production status renders partial without Confirmed badge, complete only w
   const app=fs.readFileSync("app.js","utf8"),fn=app.slice(app.indexOf("function showSquadScanStatus("),app.indexOf("function confirmScanReview(){"));
   const status={dataset:{},textContent:"",replaceChildren(...nodes){this.textContent=nodes.map(n=>n.textContent).join("")}};
   let confirmed=0;
-  const ctx=vm.createContext({lang:"fr",t:translator("fr"),squadPendingDescription,status,showConfirmedScanStatus:()=>{confirmed++},document:{createTextNode:textContent=>({textContent})}});
+  const ctx=vm.createContext({lang:"fr",t:translator("fr"),squadPendingDescription,uniqueSquadPending,status,showConfirmedScanStatus:()=>{confirmed++},document:{createTextNode:textContent=>({textContent})}});
   vm.runInContext(fn,ctx);
   ctx.pending=Array.from({length:5},(_,i)=>({slot:i+1,field:"name",reason:"missing"}));
   vm.runInContext("showSquadScanStatus(status,pending)",ctx);

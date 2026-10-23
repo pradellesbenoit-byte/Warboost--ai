@@ -1,24 +1,15 @@
 import http from "node:http";
-import {readFile,stat,realpath} from "node:fs/promises";
 import path from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
+import {createPublicStaticFiles,publicRequestKey} from "./lib/public-static-files.mjs";
+import {createSaveDiagnostic,publicSaveError} from "./lib/cloud-save-diagnostic.js";
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
+const PUBLIC_FILES=await createPublicStaticFiles(ROOT);
 const PORT=Number(process.env.PORT)||5000;
 const API_NAMES=new Set(["advice","alliance-role","cloud-config","health","ingest","invite","join","pro","scan","state","support","sync"]);
 const MIME={".css":"text/css; charset=utf-8",".html":"text/html; charset=utf-8",".js":"text/javascript; charset=utf-8",".json":"application/json; charset=utf-8",".webmanifest":"application/manifest+json; charset=utf-8",".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".webp":"image/webp",".svg":"image/svg+xml",".txt":"text/plain; charset=utf-8"};
 const CSP="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self' https://*.replit.com https://*.replit.dev; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co https://*.supabase.in";
-async function publicFilePath(pathname){
-  if(![".html",".css",".js",".webmanifest",".png",".jpg",".jpeg",".webp",".svg"].includes(path.extname(pathname).toLowerCase()))return null;
-  const file=path.resolve(ROOT,`.${pathname}`);
-  if(!file.startsWith(`${ROOT}${path.sep}`))return null;
-  // Resolve symlinks as well as ".."; never read a file outside the public workspace root.
-  const resolved=await realpath(file);
-  const relative=path.relative(ROOT,resolved);
-  if(!resolved.startsWith(`${ROOT}${path.sep}`)||relative.split(path.sep).some(part=>part.startsWith(".")||["node_modules","supabase","scripts","docs","research","attached_assets","screenshots"].includes(part)))return null;
-  if(![".html",".css",".js",".webmanifest",".png",".jpg",".jpeg",".webp",".svg"].includes(path.extname(resolved).toLowerCase()))return null;
-  return resolved;
-}
 
 function securityHeaders(res){
   res.setHeader("X-Content-Type-Options","nosniff");
@@ -45,12 +36,21 @@ async function api(req,res,url){
   const name=url.pathname.slice(5);
   if(!API_NAMES.has(name))return false;
   decorate(req,res,url);
+  let handlerEntered=false;
   try{
     if(!["GET","HEAD"].includes(req.method))req.body=await body(req);
     else req.body={};
     const mod=await import(`${pathToFileURL(path.join(ROOT,"api",`${name}.js`)).href}?dev=1`);
+    handlerEntered=true;
     await mod.default(req,res);
   }catch(error){
+    if(name==="state"&&req.method==="POST"&&!res.headersSent){
+      const status=error?.status||500;
+      const code=publicSaveError({code:error?.message},status);
+      res.status(status).json({error:code,diagnostic:createSaveDiagnostic({stage:handlerEntered?"response":"request",
+        status,code,writeState:handlerEntered?"unknown":"not_attempted"})});
+      return true;
+    }
     if(!res.headersSent)res.status(error?.status||500).json({error:error?.message||"local_api_error"});
     else if(!res.writableEnded)res.end();
   }
@@ -58,27 +58,21 @@ async function api(req,res,url){
 }
 async function staticFile(req,res,url){
   if(!["GET","HEAD"].includes(req.method)){res.statusCode=405;return res.end("Method not allowed")}
-  let pathname;
-  try{pathname=decodeURIComponent(url.pathname)}catch{res.statusCode=400;return res.end("Bad request")}
-  // Never expose repository metadata, SQL, source tooling, uploads or server-only files.
-  const segments=pathname.split("/");
-  if(segments.some(part=>part.startsWith(".")||["node_modules","supabase","scripts","docs","research","attached_assets","screenshots",".agents",".local"].includes(part))
-    ||/\.(?:sql|mjs|md|toml|lock|env)$/i.test(pathname)||pathname.includes("\\")){
-    res.statusCode=403;return res.end("Forbidden");
-  }
-  if(pathname==="/")pathname="/index.html";
-  if(!path.extname(pathname))pathname+=".html";
-  try{
-    const file=await publicFilePath(pathname);
-    if(!file){res.statusCode=403;return res.end("Forbidden")}
-    const info=await stat(file);if(!info.isFile())throw new Error("not_file");
-    const data=await readFile(file);res.setHeader("Content-Type",MIME[path.extname(file).toLowerCase()]||"application/octet-stream");res.setHeader("Cache-Control",path.extname(file)===".html"?"no-cache":"public, max-age=0");res.statusCode=200;if(req.method==="HEAD")res.end();else res.end(data);
-  }catch{res.statusCode=404;res.setHeader("Content-Type","text/plain; charset=utf-8");res.end("Not found")}
+  const request=publicRequestKey(req.url||"/");
+  if(request.status!==200){res.statusCode=request.status;return res.end(request.status===400?"Bad request":"Forbidden");}
+  const file=PUBLIC_FILES.get(request.key);
+  if(!file){res.statusCode=404;res.setHeader("Content-Type","text/plain; charset=utf-8");return res.end("Not found");}
+  res.setHeader("Content-Type",MIME[file.extension]||"application/octet-stream");
+  res.setHeader("Cache-Control",file.extension===".html"?"no-cache":"public, max-age=0");
+  res.statusCode=200;if(req.method==="HEAD")res.end();else res.end(file.data);
 }
 
 const server=http.createServer(async(req,res)=>{
   securityHeaders(res);
-  const url=new URL(req.url||"/",`http://${req.headers.host||"localhost"}`);
+  let url;
+  // Routing is origin-independent: an untrusted Host must not crash URL parsing.
+  try{url=new URL(req.url||"/","http://localhost");}
+  catch{res.statusCode=400;return res.end("Bad request");}
   if(url.pathname.startsWith("/api/")){if(!await api(req,res,url)){res.statusCode=404;res.end("Not found")}return}
   await staticFile(req,res,url);
 });

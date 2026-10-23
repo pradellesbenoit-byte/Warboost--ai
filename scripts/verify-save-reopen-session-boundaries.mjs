@@ -48,11 +48,12 @@ const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
 // These bounded source assertions verify wiring/order, not browser execution.
 {
   const save=app.match(/function saveState\(options=\{\}\)\{([\s\S]*?)\nfunction scheduleServerSave/)?.[1]||"";
-  const push=app.match(/async function pushServerState\(\{keepalive=false\}=\{\}\)\{([\s\S]*?)\n\}/)?.[1]||"";
+  const push=app.match(/async function pushServerState\(\{keepalive=false,userRequested=false\}=\{\}\)\{([\s\S]*?)\n\}/)?.[1]||"";
   assert.match(save,/ownerId!==signedInUserId[\s\S]*?last_error:"account_owner_mismatch"[\s\S]*?return false/);
   assert.match(save,/ownerId!==signedInUserId[\s\S]*?return false[\s\S]*?scheduleServerSave/);
   assert.match(push,/if\(!userId\|\|ownerId!==userId\)return \{skipped:true,reason:"account_owner_mismatch"\}/);
-  assert.ok(push.indexOf("account_owner_mismatch")<push.indexOf('fetch("/api/state"'),"owner mismatch must be rejected before POST");
+  assert.ok(push.includes('fetchJsonBounded("/api/state"'),"current bounded transport must remain wired");
+  assert.ok(push.indexOf("account_owner_mismatch")<push.indexOf('fetchJsonBounded("/api/state"'),"owner mismatch must be rejected before POST");
 }
 
 // A failed restore is not success. The app's pull path must return before
@@ -107,12 +108,14 @@ const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
   assert.equal(reauthReconciles,0);
 }
 
-// Bounded app.js wiring checks: actual /online forced reconcile, conflict merge
-// plus local persistence, and failed push persistence are not VM-executed here.
+// Current conflict handling deliberately does NOT merge an unconfirmed reply
+// or silently resend it. These wiring checks are not browser execution.
 {
   assert.match(app,/window\.addEventListener\("online",[\s\S]{0,260}reconcileAuthenticatedRuntime\("online",\{force:true\}\)/);
-  assert.match(app,/r\.status===409&&j\?\.error==="profile_write_conflict"[\s\S]*?mergeStateProtected\(remote,state,\{preferBase:false\}\)[\s\S]*?markCloudPending\("profile_write_conflict"\)[\s\S]*?safeLocalSet\(STORE_KEY,JSON\.stringify\(state\)\)/);
-  assert.match(app,/catch\(e\)\{suppressPush=false;markCloudPending\(e\?\.name\|\|"offline"\);return \{ok:false,error:e\?\.name\|\|"offline"\}\}/);
+  const conflict=app.match(/if\(r\.status===409&&j\?\.error==="profile_write_conflict"\)\{([\s\S]*?)\n\s*\}/)?.[1]||"";
+  assert.match(conflict,/markCloudPending\("profile_write_conflict"\).*return \{ok:false,conflict:true/);
+  assert.doesNotMatch(conflict,/mergeStateProtected|scheduleServerSave|pushServerState/);
+  assert.match(app,/catch\(e\)\{[\s\S]*?suppressPush=false;[\s\S]*?markCloudPending\(diagnostic.code\);renderBeta\(\)/);
 }
 
 console.log("Save/reopen/session boundaries: PASS (pure-helper tests + bounded app.js static assertions; no app VM/browser execution)");

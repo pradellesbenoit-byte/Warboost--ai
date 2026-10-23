@@ -101,6 +101,33 @@ test("successive scans and corrected values in Squad 2 leave all other squads in
   assert.equal(second.squads[0].power,base.squads[0].power);
 });
 
+for(let id=1;id<=4;id++)test(`Squad ${id}: partial confirmations, stale import and reload preserve all four squads`,()=>{
+  let base=confirmedBase();
+  for(let target=1;target<=4;target++)base=review(base,target).state;
+  const before=clone(base),hero=base.squads[id-1].heroes[0];
+  const partial=applyReviewedSquad(base,{squadId:id,updatedAt:"2026-10-11T13:00:00.000Z",
+    heroes:[{name:hero.name,level:170},{level:199,exclusive:99}],identityReviewConfirmed:true});
+  assert.equal(partial.complete,false);
+  assert.equal(partial.state.squads[id-1].heroes[0].level,170);
+  assert.deepEqual(partial.state.squads[id-1].heroes[0].gear,hero.gear);
+  assert.equal(partial.state.squads[id-1].power,before.squads[id-1].power);
+  assert.deepEqual(partial.state.squads[id-1].confirmed_composition,before.squads[id-1].confirmed_composition);
+  assert.deepEqual(partial.state.squads[id-1].heroes[1],before.squads[id-1].heroes[1],
+    "unidentified partial slot cannot modify an existing hero");
+  const stale=applyReviewedSquad(partial.state,{squadId:id,updatedAt:"2026-09-01T00:00:00.000Z",
+    heroes:[{name:hero.name,level:10}],identityReviewConfirmed:true});
+  for(let other=1;other<=4;other++)if(other!==id)
+    assert.deepEqual(stale.state.squads[other-1],before.squads[other-1]);
+  const reopened=normalizeState(JSON.parse(JSON.stringify(stale.state)));
+  assert.equal(reopened.squads[id-1].heroes[0].level,170);
+  assert.deepEqual(reopened.squads[id-1].heroes[0].gear,hero.gear);
+  for(let other=1;other<=4;other++)if(other!==id)
+    assert.deepEqual(reopened.squads[other-1],normalizeState(before).squads[other-1],
+      "compare the same reload normalization, including removal of absent source metadata");
+  assert.deepEqual(reopened.technology,before.technology);
+  assert.deepEqual(base,before,"confirmed source was not mutated");
+});
+
 test("legacy current-formation data is not reassigned; empty scans do not inject names",()=>{
   const legacy=initial();
   legacy.squads[0].heroes=teams[0].map(name=>({name,level:155}));
@@ -212,5 +239,18 @@ for(let id=1;id<=4;id++)test(`production confirm handler saves only Squad ${id} 
     assert.deepEqual(reopened.squads[other-1].heroes,base.squads[other-1].heroes);
   }
   assert.equal(ctx.pendingScanReview,null);
+  // A failed local write must restore the previous four squads and leave
+  // review available. Never show a successful confirmation on quota failure.
+  ctx.state=clone(base);ctx.pendingScanReview=draft;
+  ctx.saveState=()=>false;
+  ctx.confirmScanReview();
+  assert.deepEqual(ctx.state,base,"storage failure rolls back the entire tentative merge");
+  assert.equal(ctx.pendingScanReview,draft,"failed save retains review for correction");
+  // Real handler rejects late/stale review before touching storage.
+  ctx.saveState=()=>{throw new Error("stale review must never save")};
+  ctx.scanRequestIsCurrent=()=>false;
+  ctx.confirmScanReview();
+  assert.equal(ctx.pendingScanReview,null);
+  assert.deepEqual(ctx.state,base);
 });
 console.log(`PASS ${checks} squad target checks (synthetic OCR; isolated DOM/storage; no live account writes)`);

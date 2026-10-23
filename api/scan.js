@@ -282,7 +282,7 @@ For an INDIVIDUAL PLAYER PROFILE, return exactly {"screen_type":"player_profile"
 - The member ROLE is the visible R1/R2/R3/R4/R5 badge associated with the alliance membership row.
 - The ALLIANCE DISPLAY NAME is separate, often on a row such as "[ALL4]ALL FOR 1". It is NEVER the player's nickname.
 - A visible "#884" means server_id "884".
-- If nickname or role cannot be clearly distinguished from the alliance name, omit the player instead of guessing.
+- If the nickname cannot be clearly distinguished from the alliance name, omit the player instead of guessing. If the nickname IS readable but the grade is absent or unreadable, KEEP the player with role:null; a human must explicitly confirm R1 through R5 before import. Never omit a readable nickname solely because its grade is unknown.
 
 Alliance tag expected from WarBoost context is ${allianceTag||"unknown"}. A leading [${allianceTag||"TAG"}] decoration is not part of the nickname when it matches that alliance tag. Preserve genuine nickname characters, spaces and trailing digits. Power ending in M is numeric millions. Never infer hidden members, departures, ranks, HQ values or power.`;
   if(/^squad[1-4]$/i.test(scanType)){
@@ -372,11 +372,12 @@ export function sanitizeFormationBatch(extracted,{count,now,scanType,knownHeroes
   return {...merged,conflicts:[...new Set([...(merged.conflicts||[]),...equipmentConflicts])],
     unmatched_equipment:unmatchedEquipment,batch_analysis:true,capture_count:count};
 }
-async function openaiResponseJson({key,model,content,schemaName,schema,maxTokens,signal}){
+export async function openaiResponseJson({key,model,content,schemaName,schema,maxTokens,signal,store}){
   const r=await fetchWithTimeout("https://api.openai.com/v1/responses",{method:"POST",
     signal,
     headers:{"content-type":"application/json",authorization:`Bearer ${key}`},
     body:JSON.stringify({model,reasoning:{effort:"none"},max_output_tokens:maxTokens,
+      ...(store===false?{store:false}:{}),
       ...(schema?{text:{format:{type:"json_schema",name:schemaName,strict:true,schema}}}:{}),
       input:[{role:"user",content}]})},REQUEST_TIMEOUT_MS,
     {code:"VISION_TIMEOUT",message:"WarBoost Vision timed out"});

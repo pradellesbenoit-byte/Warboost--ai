@@ -4,7 +4,8 @@ import sharp from "sharp";
 import {openaiVision,sanitizeFormationBatch,validateScanImageBatch,visionRequestContent} from "../api/scan.js";
 import {analyzePlayerCaptureBatch} from "../lib/player-scan-batch.js";
 import {KNOWN_EXCLUSIVE_WEAPONS,MAX_FORMATION_BATCH_LENGTH,FORMATION_BATCH_SCHEMA,FORMATION_PORTRAIT_ZOOM_SCHEMA,
-  createFormationPortraitZooms,mergeFormationPortraitZooms,mergeFormationPortraitZoomGroups} from "../lib/formation-batch.js";
+  createFormationPortraitZooms,mergeFormationPortraitZooms,mergeFormationPortraitZoomGroups,normalizeFormationSlots} from "../lib/formation-batch.js";
+import {parseGear} from "../lib/gear.js";
 import {catalogHeroName} from "../lib/heroes.js";
 import {recognizeHeroIdentity,HERO_RECOGNITION_LIBRARY} from "../lib/hero-recognition.js";
 import {portraitDiagnosticLabel} from "../lib/portrait-diagnostics.js";
@@ -500,5 +501,137 @@ await test("strong same-slot crop may propose over a weaker full portrait withou
   const identity=result.state.squads[0].heroes[1].scan_evidence.identity;
   assert.equal(identity.candidate,"Williams");assert.equal(identity.confidence,.75);
   assert.equal(identity.tier,"medium");assert.equal(identity.requires_confirmation,true);
+});
+const compositions=[
+  tanks,["Violet","Mason","Scarlett","Richard","Monica"],
+  ["Williams","Murphy","Stetmann","Kimberly","Marshall"],
+  names,["Tesla","Adam","McGregor","Venom","Swift"]
+];
+const allRefs=HERO_RECOGNITION_LIBRARY.map(hero=>({
+  id:`unit-${hero.canonicalName}`,canonicalName:hero.canonicalName,variant:"normal",status:"verified"
+}));
+const equipmentFor=row=>({pieces:Array.from({length:4},(_,slot_index)=>({
+  slot_index,visible:true,visibility_confidence:.99,level:row*4+slot_index,
+  level_confidence:.99,level_evidence:"visible_equipment_label",
+  rarity:null,rarity_confidence:null,rarity_evidence:"unreadable"
+}))});
+await test("explicit row positions preserve 20 distinct pieces across varied teams and all four squad targets",()=>{
+  for(const composition of compositions)for(let squad=1;squad<=4;squad++){
+    const raw={captures:[formation(0,composition)]};
+    raw.captures[0].squads[0].power="35.66M";
+    raw.captures[0].squads[0].heroes.forEach((hero,slot)=>{
+      hero.slot_index=slot;hero.level=150+slot;hero.equipment=equipmentFor(slot);
+    });
+    raw.captures[0].squads[0].heroes.reverse();
+    const before=JSON.stringify(raw);
+    const output=sanitizeFormationBatch(raw,{count:1,now:at,scanType:`squad${squad}`,references:allRefs});
+    assert.equal(JSON.stringify(raw),before);
+    const target=output.state.squads[squad-1];
+    assert.equal(target.power,35.66);
+    assert.deepEqual(target.heroes.map(hero=>hero.name),composition);
+    assert.deepEqual(target.heroes.map(hero=>hero.level),[150,151,152,153,154]);
+    target.heroes.forEach((hero,slot)=>{
+      assert.deepEqual(parseGear(hero.gear).segments.map(piece=>[piece.slot,piece.level]),
+        [0,1,2,3].map(piece=>[piece,slot*4+piece]));
+      assert.equal(hero.scan_evidence.identity.requires_confirmation,true);
+    });
+    output.state.squads.forEach((row,index)=>{if(index!==squad-1)assert.equal(row,undefined)});
+  }
+});
+await test("partial duplicate and invalid row indexes fail closed; historical unindexed responses still work",()=>{
+  const original={captures:[formation(0)]},before=JSON.stringify(original);
+  assert.deepEqual(normalizeFormationSlots(original),original);
+  assert.equal(JSON.stringify(original),before);
+  for(const indexes of [[0,1,1,3,4],[0,1,2,3,5],[0,1,2,3,null],[0,1,2,3,"4"]]){
+    const raw=structuredClone(original);
+    raw.captures[0].squads[0].heroes.forEach((hero,index)=>{hero.slot_index=indexes[index]});
+    assert.throws(()=>normalizeFormationSlots(raw),error=>error.code==="INVALID_FORMATION_BATCH");
+    assert.throws(()=>parse(raw,1),error=>error.code==="INVALID_FORMATION_BATCH");
+  }
+  const legacy=structuredClone(original);
+  legacy.captures[0].squads[0].heroes.forEach(hero=>{hero.slot_index=null});
+  assert.deepEqual(parse(legacy,1).state.squads[0].heroes.map(hero=>hero.name),names);
+});
+await test("reordered first pass and reordered zooms bind by actual row, never array return order",()=>{
+  const raw={captures:[formation(0,tanks)]};
+  raw.captures[0].squads[0].heroes.forEach((hero,slot)=>{
+    hero.slot_index=slot;hero.portrait=tankPortrait(tanks[slot]);hero.equipment=equipmentFor(slot);
+  });
+  raw.captures[0].squads[0].heroes.reverse();
+  const zoomed={formations:[{image_index:0,portraits:tanks.map((name,slot_index)=>({
+    slot_index,portrait:tankPortrait(name)
+  })).reverse()}]};
+  const merged=mergeFormationPortraitZoomGroups(raw,zoomed,{imageIndexes:[0],references:allRefs});
+  merged.captures[0].squads[0].heroes.forEach((hero,slot)=>{
+    assert.equal(hero.portrait.zoom_evidence.selection,"agreement");
+    assert.equal(hero.portrait.zoom_evidence.slot_index,slot);
+    assert.equal(hero.portrait.zoom_evidence.full_capture.candidate_name,tanks[slot]);
+    assert.equal(hero.equipment.pieces[0].level,slot*4);
+  });
+});
+await test("appearance-qualified candidates use the same canonical matcher in full/zoom arbitration",()=>{
+  for(const name of ["Williams","Kimberly","Skyler","Tesla"]){
+    const raw={captures:[formation(0)]};
+    raw.captures[0].squads[0].heroes[0].portrait={
+      ...tankPortrait(name),candidate_name:`${name} normal`
+    };
+    const zoomed={formations:[{image_index:0,portraits:names.map((_,slot_index)=>({
+      slot_index,portrait:slot_index===0?tankPortrait("Murphy",.75):null
+    }))}]};
+    const merged=mergeFormationPortraitZoomGroups(raw,zoomed,{imageIndexes:[0],references:allRefs});
+    const portrait=merged.captures[0].squads[0].heroes[0].portrait;
+    assert.equal(portrait.zoom_evidence.selection,"full_over_weak_zoom");
+    const identity=recognizeHeroIdentity({portrait},allRefs);
+    assert.equal(identity.name,name);
+    assert.equal(identity.evidence.confidence,.75);
+    assert.equal(identity.evidence.requires_confirmation,true);
+  }
+});
+await test("unvalidated high-score visual references cannot veto strong independently visible name OCR",()=>{
+  for(const [text,visual] of [["Williams","Marshall"],["Kimberly","DVA"],["Tesla","Murphy"],["Skyler","Tesla"]]){
+    for(const reference_id of [null,"missing-reference",`unit-${text}`]){
+      const identity=recognizeHeroIdentity({name_text:text,name_evidence:"visible_text",name_confidence:.99,
+        portrait:{...tankPortrait(visual),reference_id}},allRefs);
+      assert.equal(identity.name,text);
+      assert.equal(identity.evidence.method,"visible_text");
+      assert.equal(identity.evidence.requires_confirmation,true);
+      assert.equal(identity.evidence.portrait.reference_verified,false);
+      assert.equal(identity.evidence.portrait.candidate,visual);
+      assert.equal(identity.evidence.portrait.diagnostic.accepted,false);
+    }
+  }
+});
+await test("documented Tank rows 2/3 remain unresolved with two strong valid visual contradictions",()=>{
+  const raw={captures:[formation(0,tanks),weapon("Kimberly",1,16)]};
+  raw.captures[0].squads[0].heroes.forEach((hero,slot)=>{
+    hero.slot_index=slot;hero.portrait=tankPortrait(tanks[slot]);hero.equipment=equipmentFor(slot);
+  });
+  raw.captures[0].squads[0].heroes[1].portrait=tankPortrait("Marshall");
+  raw.captures[0].squads[0].heroes[2].portrait=tankPortrait("DVA");
+  for(const slot of [1,2]){
+    Object.assign(raw.captures[0].squads[0].heroes[slot],{
+      name_text:slot===1?"Marshall":"DVA",name_evidence:"visible_text",name_confidence:.99
+    });
+  }
+  const zoomed={formations:[{image_index:0,portraits:tanks.map((name,slot_index)=>({
+    slot_index,portrait:tankPortrait(name)
+  }))}]};
+  const merged=mergeFormationPortraitZoomGroups(raw,zoomed,{imageIndexes:[0],references:allRefs});
+  const output=sanitizeFormationBatch(merged,{count:2,now:at,scanType:"squad2",references:allRefs});
+  const heroes=output.state.squads[1].heroes;
+  for(const slot of [1,2]){
+    assert.ok(!heroes[slot].name);
+    assert.equal(heroes[slot].scan_evidence.identity.candidate,null);
+    assert.equal(heroes[slot].scan_evidence.identity.portrait.diagnostic.reason,"conflicting_identity");
+    assert.equal(heroes[slot].scan_evidence.identity.portrait.diagnostic.zoom_evidence.name_ocr.confidence,.99);
+    assert.equal(heroes[slot].scan_evidence.identity.corroborating_weapon,undefined);
+  }
+  for(const [slot,hero] of heroes.entries()){
+    assert.equal(parseGear(hero.gear).segments.length,4);
+    assert.deepEqual(parseGear(hero.gear).segments.map(piece=>piece.level),[0,1,2,3].map(i=>slot*4+i));
+  }
+  assert.equal(heroes[0].name,"Murphy");
+  assert.equal(heroes[3].name,"Marshall");
+  assert.equal(heroes[4].name,"Stetmann");
 });
 console.log(`PASS ${checks} formation Vision batch checks (mocked provider; NOT real-capture recognition accuracy)`);

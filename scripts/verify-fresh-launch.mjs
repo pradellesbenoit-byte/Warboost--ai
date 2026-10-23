@@ -86,6 +86,7 @@ function fixture(){
   const context=vm.createContext({
     lang:"fr",state:structuredClone(profile),cloudSession:{user:{id:owner},access_token:"fixture-only"},
     betaState:{allowed:true},proState:{active:true},
+    activeLoadingOperations:0,idleLifecycle:null,analysisIndicator:{begin:()=>()=>{},cancel(){},refresh(){}},
     scanInputRevision:5,scanFileSelectionRevision:9,pendingScanReview:{patch:{unconfirmed:true}},
     pendingScanRestoreInFlight:Promise.resolve(),pendingScanRestoreOwner:owner,
     scanImageData:image,scanImageDataList:[image],scanImageName:"1000024350.png",
@@ -94,6 +95,10 @@ function fixture(){
     $:get,$$:()=>drawers,t:translator("fr"),renderRosterScanFiles(){},renderRosterScanDraft(){},updateTechnologyScanPreview(){},
     unmountAuthControls(){},closeAlliancePlayerProfile(){},closeAllianceEventDetail(){},returnViewController:{remember(){},clear(){}}
   });
+  const loadingStart=app.indexOf("function beginActiveLoadingOperation(");
+  const loadingEnd=app.indexOf("\nasync function fetchWarBoostScan(",loadingStart);
+  assert.ok(loadingStart>0&&loadingEnd>loadingStart);
+  vm.runInContext(app.slice(loadingStart,loadingEnd),context);
   const clear=app.slice(app.indexOf("function discardScanReviewDraft(){"),app.indexOf("async function restorePendingScans(){"));
   const close=app.slice(app.indexOf("function closeDrawers("),app.indexOf("\n",app.indexOf("function closeDrawers(")));
   vm.runInContext(`${clear}\n${close}`,context);
@@ -135,6 +140,7 @@ await test("late roster OCR result after closing cannot recreate a pending impor
   f.context.rosterScanFiles=[{}];
   Object.assign(f.context,{hasDeclaredAllianceCommandRole:()=>true,requireBetaAccess:()=>true,requireBetaConsent:()=>true,
     pendingScanOwner:()=>owner,imageToDataUrl:async()=>image,showAllianceRoleGuard(){},
+    collectRosterScanDraftFromDom(){},
     mergeRosterScanRows:()=>{throw Error("stale rows must not be merged")}});
   let resolve,captured;
   f.context.fetchWarBoostScan=()=>new Promise(r=>{resolve=r});
@@ -144,9 +150,11 @@ await test("late roster OCR result after closing cannot recreate a pending impor
   vm.runInContext(app.slice(start,app.indexOf('$("#rosterScanImportBtn")',start)),f.context);
   const running=captured();await new Promise(done=>setImmediate(done));
   assert.equal(typeof resolve,"function","fixture must reach the OCR request before closing");
+  assert.equal(f.context.activeLoadingOperations,1);
   f.controller.reset();
   resolve({response:{ok:true},json:{roster_rows:[{name:"Unconfirmed"}]}});
   await running;
+  assert.equal(f.context.activeLoadingOperations,0,"late completion must stop the real loading lifecycle");
   assert.equal(f.context.rosterScanDraft.length,0);assert.equal(f.get("#rosterScanStatus").textContent,"");
 });
 await test("already confirmed scan and offline pending cloud save survive reopening",()=>{
@@ -164,7 +172,8 @@ await test("late image decode failure cannot replace the fresh waiting status",a
   f.get("#scanType").value="squad1";
   let captured,rejectImage;
   Object.assign(f.context,{PLAYER_SCAN_BATCH_LIMIT:3,playerScanBatchLimit,MAX_FORMATION_BATCH_LENGTH,
-    beginNewScanFileSelection:()=>({owner,fileRevision:f.context.scanFileSelectionRevision,clearPending:Promise.resolve()}),
+    pendingScanOwner:()=>owner,
+    beginNewScanFileSelection:()=>({owner,revision:f.context.scanInputRevision,fileRevision:f.context.scanFileSelectionRevision,clearPending:Promise.resolve()}),
     imageToDataUrlLimited:()=>new Promise((resolve,reject)=>{rejectImage=reject})});
   const original=f.context.$;
   f.context.$=key=>key==="#scanFile"?{...original(key),addEventListener:(type,fn)=>{captured=fn}}:original(key);

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import vm from "node:vm";
-import {realpath} from "node:fs/promises";
+import {createPublicStaticFiles,publicRequestKey} from "../lib/public-static-files.mjs";
 import {mergeSharedAllianceRoster} from "../lib/shared-alliance-roster.js";
 import {createAccountDeletionHandler,deletionChallenge,verifyDeletionChallenge} from "../lib/account-deletion.js";
 import {clearDeletedAccountLocalData} from "../lib/account-deletion-ui.js";
@@ -75,19 +75,18 @@ const dir=fs.mkdtempSync(path.join(os.tmpdir(),"wb-public-files-"));
 try{
   const root=path.join(dir,"public");fs.mkdirSync(root);
   fs.writeFileSync(path.join(root,"security.html"),"fixture");
+  fs.writeFileSync(path.join(root,"manifest.webmanifest"),"{}");
+  fs.mkdirSync(path.join(root,"assets"));
   fs.writeFileSync(path.join(root,".env"),"SYNTHETIC-NOT-A-SECRET");
   fs.writeFileSync(path.join(dir,"outside.html"),"fixture");
   fs.symlinkSync(path.join(dir,"outside.html"),path.join(root,"escape.html"));
   fs.symlinkSync(path.join(root,".env"),path.join(root,"hidden.js"));
-  const source=fs.readFileSync("server.mjs","utf8");
-  const start=source.indexOf("async function publicFilePath("),end=source.indexOf("\nfunction securityHeaders",start);
-  const context=vm.createContext({ROOT:root,path,realpath});
-  vm.runInContext(source.slice(start,end),context);
-  assert.equal(await context.publicFilePath("/security.html"),path.join(root,"security.html"));
-  assert.equal(await context.publicFilePath("/../outside.html"),null);
-  assert.equal(await context.publicFilePath("/escape.html"),null);
-  assert.equal(await context.publicFilePath("/hidden.js"),null);
-  assert.equal(await context.publicFilePath("/.env"),null);
+  const files=await createPublicStaticFiles(root,{pages:["security.html"],roots:[]});
+  assert.equal(files.get("/security.html").data.toString(),"fixture");
+  assert.equal(publicRequestKey("/../outside.html").status,403);
+  assert.equal(files.has("/escape.html"),false);
+  assert.equal(files.has("/hidden.js"),false);
+  assert.equal(publicRequestKey("/.env").status,403);
 }finally{fs.rmSync(dir,{recursive:true,force:true})}
 // Exercise the actual auth + Supabase + Storage helpers with synthetic, never-real upstreams.
 Object.assign(process.env,{SUPABASE_URL:"https://deletion-fixture.invalid",SUPABASE_ANON_KEY:"fixture-public",SUPABASE_SERVICE_ROLE_KEY:"fixture-service",SESSION_SECRET:secret});

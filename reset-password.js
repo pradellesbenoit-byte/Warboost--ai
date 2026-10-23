@@ -59,8 +59,8 @@ async function init(){
     $("#recoveryLoading")?.classList.add("hidden");
     $("#newPassword")?.focus();
   }catch(error){
-    $("#recoveryLoading")?.classList.add("hidden");
     setReady(false);
+    $("#recoveryLoading")?.classList.add("hidden");
     showStatus(friendly(error));
   }
 }

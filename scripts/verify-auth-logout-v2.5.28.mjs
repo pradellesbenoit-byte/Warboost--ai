@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import {createWarBoostSupabaseAuthClient} from "../lib/browser-auth.js";
 import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "../lib/auth-ui.js";
+import "./verify-launch-privacy-races.mjs";
 
 const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
 // SDK session/logout and account-scoped storage are exercised below.
 // Do not infer logout behavior from the indentation of applySessionCore.
-assert.match(app,/logoutBtn[\s\S]*?cloud\.auth\.signOut\(\);clearSignedOutAuthUi\(\)/,"manual logout must clear auth UI after Supabase signOut");
+// The actual registered click handler, immediate privacy masking and late
+// network completion are exercised above; do not require a particular spelling.
 assert.doesNotMatch(app,/localStorage\.clear\(\)/,"logout must not clear all WarBoost local data");
 
 const values=new Map([
