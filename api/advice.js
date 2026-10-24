@@ -1,5 +1,5 @@
 import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
-import {loadKnowledge} from "./_knowledge.js";
+import {loadKnowledge} from "../server/_knowledge.js";
 import {scopedDiagnosticState,buildKnowledgeGuidance} from "../lib/knowledge-guidance.js";
 import {requireProductUser} from "../lib/pro-access.js";
 import {configured} from "../lib/supabase.js";

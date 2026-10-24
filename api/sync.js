@@ -1,4 +1,18 @@
 import {mergeNewest,normalizeState} from "../lib/normalize.js";
+import timeHandler from "../server/time.js";
+import cronHandler from "../server/cron-sync.js";
+
+// Vercel rewrites preserve the original request URL. Never dispatch from query
+// parameters: a caller of /api/sync must still pass the original user checks.
+export default async function handler(req,res){
+  let pathname;
+  try{pathname=new URL(req.url||"/api/sync","http://warboost.invalid").pathname.replace(/\/$/,"").replace(/\.js$/,"")}
+  catch{return res.status(400).json({error:"invalid_url"})}
+  if(pathname==="/api/time")return timeHandler(req,res);
+  if(pathname==="/api/cron-sync")return cronHandler(req,res);
+  if(pathname!=="/api/sync")return res.status(404).json({error:"not_found"});
+  return syncHandler(req,res);
+}
 import {reconcileCloudSquads} from "../lib/squad-freshness.js";
 import {syncAllianceRoster} from "../lib/roster-import-sync.js";
 import {rosterImportRequest} from "../lib/roster-sync.js";
@@ -18,7 +32,7 @@ import {mergePlayerAvailabilityIntoRoster,mergeEventAvailabilities,mergeAvailabi
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
 void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remains exported and audited
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
-export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
+async function syncHandler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   let rosterPersisted=false,rosterWriteAttempted=false;
   const rosterConfirmation=()=>({requested:req.body?.operation==="alliance_roster"||req.body?.state?.alliance?.roster_sync_status==="pending",persisted:rosterPersisted,
     write_state:rosterPersisted?"confirmed":rosterWriteAttempted?"unknown":"not_attempted"});

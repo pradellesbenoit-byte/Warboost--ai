@@ -32,7 +32,7 @@
     "test:squad-provenance": "node scripts/verify-squad-provenance.mjs",
     "test:hero-recognition": "node --check lib/hero-recognition.js && node scripts/verify-hero-recognition.mjs",
     "test:portrait-diagnostics": "node --check lib/portrait-diagnostics.js && node scripts/verify-portrait-diagnostics.mjs",
-    "test:hero-references": "node --check api/_hero-reference-images.js && node --check scripts/build-hero-reference-assets.mjs && node scripts/verify-hero-references.mjs",
+    "test:hero-references": "node --check server/_hero-reference-images.js && node --check scripts/build-hero-reference-assets.mjs && node scripts/verify-hero-references.mjs",
     "test:squad-scan-evidence": "node --check lib/squad-scan-evidence.js && node scripts/verify-squad-scan-evidence.mjs",
     "test:squad-mixed-captures": "node --check lib/squad-capture.js && node scripts/verify-squad-mixed-captures.mjs",
     "test:current-formation-ui": "node scripts/verify-current-formation-ui.mjs",

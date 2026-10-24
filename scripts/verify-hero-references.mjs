@@ -3,7 +3,7 @@ import {readFile} from "node:fs/promises";
 import {createHash} from "node:crypto";
 import {HERO_DEFINITIONS,catalogHeroName} from "../lib/heroes.js";
 import {HERO_REFERENCE_INDEX} from "../lib/hero-reference-index.js";
-import {loadHeroReferenceImages,heroReferenceRequestContent} from "../api/_hero-reference-images.js";
+import {loadHeroReferenceImages,heroReferenceRequestContent} from "../server/_hero-reference-images.js";
 import {recognizeHeroIdentity} from "../lib/hero-recognition.js";
 import {squadEvidence} from "../lib/squad-scan-evidence.js";
 import {sanitize,visionRequestContent} from "../api/scan.js";

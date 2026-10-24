@@ -6,7 +6,7 @@ import {reconcileEquipmentZoom,readScannedEquipment} from "../lib/equipment-scan
 import {parseGear} from "../lib/gear.js";
 import {createFormationEquipmentZooms,mergeFormationPortraitZoomGroups,normalizeFormationLayouts} from "../lib/formation-batch.js";
 import {sanitizeFormationBatch} from "../api/scan.js";
-import {loadHeroReferenceImages} from "../api/_hero-reference-images.js";
+import {loadHeroReferenceImages} from "../server/_hero-reference-images.js";
 
 // Provider replies and images below are synthetic; these verify crop provenance,
 // NOT live OCR accuracy. No profile/storage/authentication handler is invoked.

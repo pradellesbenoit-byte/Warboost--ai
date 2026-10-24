@@ -1,5 +1,5 @@
 import {readFile,writeFile,rename} from "node:fs/promises";
-import {refreshKnowledgeSnapshot,KNOWLEDGE_REFRESH_MS} from "../api/_knowledge.js";
+import {refreshKnowledgeSnapshot,KNOWLEDGE_REFRESH_MS} from "../server/_knowledge.js";
 const path=new URL("../assets/last-war-knowledge.json",import.meta.url);
 const snapshot=JSON.parse(await readFile(path,"utf8"));
 if(Date.now()-Date.parse(snapshot.last_attempt_at||"1970-01-01")<KNOWLEDGE_REFRESH_MS){

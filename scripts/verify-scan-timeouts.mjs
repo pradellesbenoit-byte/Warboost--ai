@@ -3,9 +3,9 @@ import {readFile} from "node:fs/promises";
 import {syntheticFormationPng} from "./fixtures/formation-image.mjs";
 import vm from "node:vm";
 import {translator} from "../i18n.js";
-import {createScanTiming,SCAN_SERVER_BUDGET_MS} from "../api/_scan-timing.js";
+import {createScanTiming,SCAN_SERVER_BUDGET_MS} from "../server/_scan-timing.js";
 import {openaiVision,visionRequestContent} from "../api/scan.js";
-import {loadHeroReferenceImages} from "../api/_hero-reference-images.js";
+import {loadHeroReferenceImages} from "../server/_hero-reference-images.js";
 
 // Dummy key supplied by npm; all provider traffic is mocked, never billed.
 let checks=0;

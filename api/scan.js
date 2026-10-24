@@ -9,7 +9,7 @@ import {cleanRosterOcrName,rosterIdentityKey} from "../lib/roster-identity-resol
 import {fetchWithTimeout} from "../lib/http-timeout.js";
 import {canonicalPowerMillions} from "../lib/power-units.js";
 import {confirmedSquadHints,squadEvidence,squadExtractionPrompt} from "../lib/squad-scan-evidence.js";
-import {loadHeroReferenceImages,heroReferenceRequestContent} from "./_hero-reference-images.js";
+import {loadHeroReferenceImages,heroReferenceRequestContent} from "../server/_hero-reference-images.js";
 import {configured,userConfigured,getProfile,getProfileForUser} from "../lib/supabase.js";
 import {classifyDroneScreen,sanitizeDroneScan} from "../lib/drone-scan.js";
 import {explicitLastWarManagerRank,LAST_WAR_SCAN_RANK_SOURCE} from "../lib/rank-provenance.js";
@@ -19,7 +19,7 @@ import {FORMATION_BATCH_SCHEMA,FORMATION_PORTRAIT_ZOOM_SCHEMA,MAX_FORMATION_BATC
   formationBatchPrompt,formationBatchRecords,createFormationPortraitZooms,formationPortraitZoomContent,
   mergeFormationPortraitZoomGroups,corroborateFormationPortraits} from "../lib/formation-batch.js";
 import {mergePlayerScanBatch} from "../lib/player-scan-batch.js";
-import {createScanTiming} from "./_scan-timing.js";
+import {createScanTiming} from "../server/_scan-timing.js";
 
 // Provider deadline is independent from the frontend's end-to-end scan budget.
 // Portrait refinement is optional and cannot discard the useful primary result.

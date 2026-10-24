@@ -2,6 +2,14 @@
   "buildCommand": "npm run build:web",
   "outputDirectory": "web-dist",
   "cleanUrls": true,
+  "rewrites": [
+    {"source":"/api/time","destination":"/api/sync"},
+    {"source":"/api/time/","destination":"/api/sync"},
+    {"source":"/api/time.js","destination":"/api/sync"},
+    {"source":"/api/cron-sync","destination":"/api/sync"},
+    {"source":"/api/cron-sync/","destination":"/api/sync"},
+    {"source":"/api/cron-sync.js","destination":"/api/sync"}
+  ],
   "functions": {
     "api/advice.js": {"includeFiles":"assets/last-war-knowledge.json"},
     "api/scan.js": {"includeFiles":"research/hero-references/**"}

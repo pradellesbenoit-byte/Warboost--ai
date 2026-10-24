@@ -7,11 +7,11 @@ const ZIP_BLOB="6fe1145d516c06b50fa40e8ba23d148062565041";
 const git=(...args)=>execFileSync("git",["--no-optional-locks","-c","diff.autoRefreshIndex=false",...args],{encoding:"utf8",maxBuffer:16*1024*1024});
 const changes=()=>git("diff","--name-only","--diff-filter=AM",BASE,"HEAD").trim().split("\n").filter(Boolean);
 
-test("release has three local commits from commercial main, never the beta private history",()=>{
-  assert.equal(git("branch","--show-current").trim(),"warboost-release-v2-review-20261024");
-  assert.equal(git("rev-list","--count",`${BASE}..HEAD`).trim(),"3");
-  assert.equal(git("rev-parse","HEAD^").trim(),"0b4b34cff558c855305a30f98302ecc76ab0c42c");
-  assert.equal(git("rev-parse","HEAD^^^").trim(),BASE);
+test("Hobby fix preserves all three clean release commits and never the beta private history",()=>{
+  assert.equal(git("branch","--show-current").trim(),"warboost-hobby-fix-20261024");
+  assert.equal(git("rev-list","--count",`${BASE}..HEAD`).trim(),"4");
+  assert.equal(git("rev-parse","HEAD^").trim(),"2cde1309e787f1b129f518e2c37735b592a77ef6");
+  assert.equal(git("rev-parse","HEAD^^^^").trim(),BASE);
   assert.notEqual(git("rev-parse","HEAD").trim(),REVIEW);
 });
 test("private ZIP is unreachable even in the complete release ancestry",()=>{
@@ -21,10 +21,13 @@ test("private ZIP is unreachable even in the complete release ancestry",()=>{
 });
 test("only the authorized Vercel build configuration changes; SQL and demo remain untouched",()=>{
   assert.equal(git("diff","--name-only",BASE,"HEAD","--",".replit",".github","supabase","schema.sql","demo-lastwar-presentation").trim(),"");
-  assert.equal(git("show","HEAD:vercel.json"),git("show","3de64e9:vercel.json"));
+  const current=JSON.parse(git("show","HEAD:vercel.json"));
+  assert.deepEqual(current.rewrites,["time","cron-sync"].flatMap(n=>["","/",".js"].map(s=>({source:`/api/${n}${s}`,destination:"/api/sync"}))));
+  delete current.rewrites;
+  assert.deepEqual(current,JSON.parse(git("show","3de64e9:vercel.json")));
 });
 test("runtime sources match review except V1 preservation and missing alliance RPC refusal",()=>{
-  const patched=new Set(["app.js","lib/normalize.js","lib/squad-identity.js","lib/legacy-squad-compat.js","lib/supabase.js"]);
+  const patched=new Set(["app.js","lib/normalize.js","lib/squad-identity.js","lib/legacy-squad-compat.js","lib/supabase.js","api/scan.js","api/advice.js","api/sync.js"]);
   for(const path of changes().filter(path=>/^(lib\/|api\/)|^(app\.js|index\.html|i18n\.js|analysis-indicator\.css)$/.test(path)))
     if(!patched.has(path))
     assert.equal(git("rev-parse",`HEAD:${path}`).trim(),git("rev-parse",`${REVIEW}:${path}`).trim(),path);

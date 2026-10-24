@@ -10,7 +10,7 @@ import {catalogHeroName} from "../lib/heroes.js";
 import {recognizeHeroIdentity,HERO_RECOGNITION_LIBRARY} from "../lib/hero-recognition.js";
 import {portraitDiagnosticLabel} from "../lib/portrait-diagnostics.js";
 import {createScanReviewDraft} from "../lib/scan-review.js";
-import {loadHeroReferenceImages} from "../api/_hero-reference-images.js";
+import {loadHeroReferenceImages} from "../server/_hero-reference-images.js";
 
 // Synthetic provider output and a mocked network; never calls a paid provider.
 // The npm script supplies a dummy key only to this test process.

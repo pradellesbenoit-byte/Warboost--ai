@@ -11,7 +11,7 @@ test("Vercel serves the web build, preserves API discovery, security and require
   assert.equal(config.functions["api/advice.js"].includeFiles,"assets/last-war-knowledge.json");
   assert.ok(existsSync(new URL("assets/last-war-knowledge.json",root)));
   assert.ok(existsSync(new URL("research/hero-references/manifest.json",root)));
-  assert.equal(config.rewrites,undefined); // No catch-all hiding /api routes.
+  assert.deepEqual(config.rewrites,["time","cron-sync"].flatMap(n=>["","/",".js"].map(s=>({source:`/api/${n}${s}`,destination:"/api/sync"})))); // No catch-all hiding /api routes.
   assert.ok(config.headers[0].headers.some(h=>h.key==="Content-Security-Policy"));
 });
 test("missing creation RPC fails once, without non-atomic writes or SQL fallback",async()=>{
