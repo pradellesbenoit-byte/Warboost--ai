@@ -1,0 +1,1 @@
+- [Commercial release boundaries](commercial-release.md) — existing warboost_v4/warboost.fr is the target; beta stays separate, never assume separate databases.

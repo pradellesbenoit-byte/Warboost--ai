@@ -1,0 +1,54 @@
+.proTechAdvice {
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border, #d8dfeb) 76%, #4b7cff);
+  border-radius: 16px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--panel, #fff) 94%, #dce8ff), var(--panel, #fff));
+}
+.techAdviceTitle,.techAdviceHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.techAdviceTitle h3,.techAdvicePanel h4 { margin: 0; }
+.techAdviceIntro,.techAdviceNotice,.techAdviceDisclaimer { margin: 8px 0; line-height: 1.5; }
+.techAdviceNotice {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent, #4b7cff) 9%, var(--panel, #fff));
+}
+.techAdviceCard {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border, #d8dfeb);
+  border-radius: 12px;
+  background: var(--panel, #fff);
+}
+.techAdviceCard p { margin: 8px 0 0; color: var(--muted, #667085); line-height: 1.45; }
+.techAdviceHead b { overflow-wrap: anywhere; }
+.techAdviceHead span { flex: 0 0 auto; font-size: .82rem; color: var(--muted, #667085); }
+.techAdviceGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.techAdviceLocked { margin-top: 12px; }
+.techAdviceLocked h4 { margin: 0 0 6px; }
+.techAdviceLocked ul { margin: 0; padding-left: 20px; }
+.techAdviceLocked li { margin: 5px 0; line-height: 1.45; overflow-wrap: anywhere; }
+.techAdviceDisclaimer,.techAdviceSources { color: var(--muted, #667085); font-size: .83rem; }
+.techAdviceSources { margin-top: 10px; line-height: 1.6; }
+.techAdviceSources a { color: var(--link, #2458c8); text-underline-offset: 2px; }
+.scanImageBatchList {
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #d8dfeb);
+  border-radius: 12px;
+  background: var(--panel, #fff);
+  font-size: .9rem;
+}
+.scanImageBatchList ul { margin: 6px 0 0; padding-left: 20px; }
+.scanImageBatchList li { overflow-wrap: anywhere; margin: 3px 0; }
+@media (max-width: 620px) {
+  .proTechAdvice { padding: 13px; }
+  .techAdviceGrid { grid-template-columns: minmax(0, 1fr); }
+  .techAdviceTitle { align-items: flex-start; }
+}

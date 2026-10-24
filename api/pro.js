@@ -1,176 +1,59 @@
-function pick(...names){
-  for(const name of names){
-    const value=process.env[name];
-    if(typeof value==="string" && value.trim()) return value.trim();
-  }
-  return "";
-}
+import {requireUser} from "../lib/auth.js";
+import {betaAccessForUserAsync} from "../lib/beta-access.js";
+import {entitlementForUser} from "../lib/pro-access.js";
+import {billingRow} from "../lib/billing-store.js";
+import {commercialConfig,commercialStatusForUser,createCheckoutForUser,createPortalForUser,processWebhook,readRawBody,paymentWebhookSignature} from "../lib/commercial-pro.js";
 
-function stripeKey(){ return pick("STRIPE_SECRET_KEY"); }
-function priceId(){ return pick("STRIPE_PRO_PRICE_ID","STRIPE_PRICE_ID_PRO","STRIPE_PRICE_ID"); }
+// Safe Launch defaults to OFF. Only explicit TEST mode can contact Stripe; LIVE is hard-blocked.
+// Preserve the exact signed bytes (Vercel and local server).
+export const config={api:{bodyParser:false}};
 
-function token(req){
-  return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim();
-}
-
-async function requireUser(req){
-  const access=token(req);
-  if(!access) throw Object.assign(new Error("Connexion WarBoost requise"),{status:401,code:"AUTH_REQUIRED"});
-
-  const url=pick("SUPABASE_URL","NEXT_PUBLIC_SUPABASE_URL","VITE_SUPABASE_URL").replace(/\/$/,"");
-  const publicKey=pick(
-    "SUPABASE_ANON_KEY",
-    "SUPABASE_PUBLISHABLE_KEY",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-    "VITE_SUPABASE_ANON_KEY"
-  );
-  if(!url||!publicKey) throw Object.assign(new Error("Authentification serveur non configurée"),{status:503,code:"AUTH_NOT_CONFIGURED"});
-
-  const r=await fetch(`${url}/auth/v1/user`,{headers:{apikey:publicKey,authorization:`Bearer ${access}`}});
-  const body=await r.json().catch(()=>({}));
-  if(!r.ok||!body?.id) throw Object.assign(new Error("Session WarBoost invalide ou expirée"),{status:401,code:"AUTH_INVALID"});
-  return body;
-}
-
-function origin(req){
-  const explicit=String(process.env.WARBOOST_APP_URL||"").trim().replace(/\/$/,"");
-  if(explicit)return explicit;
-  const proto=String(req.headers?.["x-forwarded-proto"]||"https").split(",")[0].trim();
-  const host=String(req.headers?.["x-forwarded-host"]||req.headers?.host||"warboost.fr").split(",")[0].trim();
-  return `${proto}://${host}`;
-}
-
-function form(data){
-  const p=new URLSearchParams();
-  Object.entries(data).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!=="")p.append(k,String(v))});
-  return p;
-}
-
-async function stripe(path,{method="GET",body}={}){
-  const key=stripeKey();
-  if(!key) throw Object.assign(new Error("Stripe n'est pas configuré sur le serveur."),{status:503,code:"STRIPE_NOT_CONFIGURED"});
-  const r=await fetch(`https://api.stripe.com/v1/${path}`,{
-    method,
-    headers:{Authorization:`Bearer ${key}`,...(body?{"Content-Type":"application/x-www-form-urlencoded"}:{})},
-    body:body?form(body):undefined
-  });
-  const j=await r.json().catch(()=>({}));
-  if(!r.ok) throw Object.assign(new Error(j?.error?.message||`Stripe HTTP ${r.status}`),{status:r.status,code:j?.error?.code||j?.error?.type||"STRIPE_ERROR"});
-  return j;
-}
-
-async function stripeDiagnostic(){
-  const key=stripeKey();
-  const pid=priceId();
-  const out={
-    ok:true,
-    env:{
-      has_stripe_secret_key:Boolean(key),
-      stripe_key_mode:key.startsWith("sk_test_")?"test":key.startsWith("sk_live_")?"live":key?"unknown":"missing",
-      has_pro_price_id:Boolean(pid),
-      price_id_format:pid.startsWith("price_")?"price":pid?"invalid":"missing"
-    },
-    stripe:{reachable:false,http_status:null,error_code:null,message:null},
-    configured:false
-  };
-  if(!key||!pid){
-    out.stripe.message=!key?"STRIPE_SECRET_KEY absente":"STRIPE_PRO_PRICE_ID absent";
-    return out;
-  }
-  try{
-    const r=await fetch(`https://api.stripe.com/v1/prices/${encodeURIComponent(pid)}`,{headers:{Authorization:`Bearer ${key}`}});
-    const j=await r.json().catch(()=>({}));
-    out.stripe.reachable=true;
-    out.stripe.http_status=r.status;
-    if(r.ok){
-      out.configured=true;
-      out.stripe.price_active=j?.active!==false;
-      out.stripe.currency=j?.currency||null;
-      out.stripe.interval=j?.recurring?.interval||null;
-      out.stripe.livemode=Boolean(j?.livemode);
-    }else{
-      out.stripe.error_code=j?.error?.code||j?.error?.type||"stripe_error";
-      out.stripe.message=j?.error?.message||`Stripe HTTP ${r.status}`;
-    }
-  }catch{
-    out.stripe.message="Connexion Stripe impossible";
-  }
-  return out;
-}
-
-async function findCustomer(email){
-  const q=new URLSearchParams({email:String(email||""),limit:"10"});
-  const list=await stripe(`customers?${q.toString()}`);
-  return list?.data?.find(c=>!c.deleted)||null;
-}
-
-async function ensureCustomer(user){
-  let c=await findCustomer(user.email);
-  if(c)return c;
-  return stripe("customers",{method:"POST",body:{email:user.email,"metadata[warboost_user_id]":user.id}});
-}
-
-async function subscriptionStatus(customerId){
-  if(!customerId)return {active:false,status:"free",subscription:null};
-  const q=new URLSearchParams({customer:customerId,status:"all",limit:"20"});
-  const list=await stripe(`subscriptions?${q.toString()}`);
-  const subs=Array.isArray(list?.data)?list.data:[];
-  const current=subs.sort((a,b)=>(b.created||0)-(a.created||0)).find(s=>["active","trialing","past_due","unpaid","paused"].includes(s.status))||subs[0]||null;
-  return {active:Boolean(current&&["active","trialing"].includes(current.status)),status:current?.status||"free",subscription:current};
-}
-
-async function planInfo(){
-  const pid=priceId();
-  if(!pid)return null;
-  try{
-    const p=await stripe(`prices/${encodeURIComponent(pid)}?expand%5B%5D=product`);
-    return {id:p.id,amount:p.unit_amount??null,currency:p.currency||"eur",interval:p.recurring?.interval||null,name:typeof p.product==="object"?p.product?.name||"WarBoost PRO":"WarBoost PRO"};
-  }catch{
-    return {id:pid,amount:null,currency:"eur",interval:null,name:"WarBoost PRO"};
-  }
-}
+function jsonBody(raw){try{return raw?JSON.parse(raw):{}}catch{return {}}}
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store, max-age=0");
+  const commerce=commercialConfig();
   try{
-    if(req.method==="GET" && String(req.query?.debug||"")==="1"){
-      return res.status(200).json(await stripeDiagnostic());
+    // TEST webhook endpoint: /api/pro?action=webhook.
+    if(req.method==="POST"&&String(req.query?.action||"")==="webhook"){
+      if(commerce.mode!=="test")return res.status(403).json({ok:false,error:"SAFE_LAUNCH_PAYMENT_DISABLED",message:"Stripe TEST uniquement ; paiements réels désactivés."});
+      const raw=await readRawBody(req),signature=paymentWebhookSignature(req);
+      const result=await processWebhook(raw,signature);return res.status(200).json(result);
     }
 
-    const user=await requireUser(req);
-    const configured=Boolean(stripeKey()&&priceId());
-
+    const user=await requireUser(req),beta=await betaAccessForUserAsync(user);
     if(req.method==="GET"){
-      if(!stripeKey()) return res.status(200).json({ok:true,configured:false,active:false,status:"free",plan:null});
-      const customer=await findCustomer(user.email);
-      const sub=await subscriptionStatus(customer?.id);
-      return res.status(200).json({ok:true,configured,active:sub.active,status:sub.status,customer_id:customer?.id||null,plan:await planInfo()});
+      const entitlement=await entitlementForUser(user,{beta});
+      const account=entitlement.schema_ready?await billingRow("warboost_billing_accounts","user_id",user.id):null;
+      return res.status(200).json({
+        ok:true,beta:entitlement.source==="beta",release:true,safe_launch:true,commercial:true,
+        configured:commerce.configured&&entitlement.schema_ready,enforced:true,allowed:true,
+        beta_configured:beta.configured,alliance_beta_allowed:beta.allowed,
+         beta_access_status:beta.access_status,beta_code_eligible:beta.code_eligible===true&&entitlement.source!=="beta",
+        consent_version:beta.consent_version,access_status:entitlement.source==="beta"?"beta-granted":"account",
+        active:entitlement.active,status:entitlement.source==="beta"?"beta":entitlement.subscription?.status||"free",
+        plan:commerce.plan,payments_enabled:false,test_payments_enabled:commerce.test_payments_enabled&&entitlement.schema_ready,
+        pro_included:entitlement.source==="beta",entitlement,subscription:entitlement.subscription,can_manage_billing:Boolean(account?.stripe_customer_id),
+        commercial_preview:commerce.mode!=="test",mode:commerce.mode,activation_requirements:commerce.activation_requirements
+      });
     }
 
-    if(req.method!=="POST") return res.status(405).json({error:"method_not_allowed"});
-    const action=String(req.query?.action||req.body?.action||"").toLowerCase();
-    if(!configured) throw Object.assign(new Error("La formule PRO n'est pas encore reliée à un prix Stripe."),{status:503,code:"PRO_NOT_CONFIGURED"});
-
-    const customer=await ensureCustomer(user);
-    if(action==="checkout"){
-      const base=origin(req);
-      const session=await stripe("checkout/sessions",{method:"POST",body:{
-        mode:"subscription",customer:customer.id,
-        "line_items[0][price]":priceId(),"line_items[0][quantity]":"1",
-        success_url:`${base}/?pro=success`,cancel_url:`${base}/?pro=cancel`,
-        allow_promotion_codes:"true",client_reference_id:user.id,
-        "metadata[warboost_user_id]":user.id,"subscription_data[metadata][warboost_user_id]":user.id
-      }});
-      return res.status(200).json({ok:true,url:session.url});
+    if(req.method==="POST"){
+      if(commerce.mode!=="test")return res.status(403).json({
+        ok:false,error:"SAFE_LAUNCH_PAYMENT_DISABLED",
+        message:"WarBoost payments are disabled in the Safe Launch beta. PRO features are included for invited testers."
+      });
+      const raw=await readRawBody(req),body=jsonBody(raw),action=String(body?.action||"").toLowerCase();
+      if(action==="checkout"){
+        const entitlement=await entitlementForUser(user,{beta});
+        if(entitlement.source==="beta")return res.status(409).json({ok:false,error:"BETA_PRO_INCLUDED",message:"Votre accès PRO bêta reste gratuit. Aucun abonnement nécessaire."});
+        return res.status(200).json({ok:true,...await createCheckoutForUser(user)});
+      }
+      if(action==="portal")return res.status(200).json({ok:true,...await createPortalForUser(user)});
+      return res.status(400).json({ok:false,error:"unknown_pro_action"});
     }
-    if(action==="portal"){
-      const session=await stripe("billing_portal/sessions",{method:"POST",body:{customer:customer.id,return_url:`${origin(req)}/`}});
-      return res.status(200).json({ok:true,url:session.url});
-    }
-    return res.status(400).json({error:"unknown_action"});
+    return res.status(405).json({error:"method_not_allowed"});
   }catch(e){
-    console.error("WarBoost PRO error",{code:e?.code||"pro_error",status:e?.status||500,message:e?.message||String(e)});
-    return res.status(e?.status||500).json({error:e?.code||"pro_error",message:e?.message||"Erreur PRO"});
+    return res.status(e?.status||500).json({error:e?.code||"pro_error",message:e?.message||"WarBoost PRO error",requirements:e?.requirements||undefined});
   }
 }

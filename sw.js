@@ -1,5 +1,61 @@
-const CACHE="warboost-v1-3-3";
-const SHELL=["/","/index.html","/styles.css","/app.js","/i18n.js","/manifest.webmanifest","/assets/warboost-icon-192.png","/assets/warboost-icon-512.png","/assets/warboost-apple-touch-icon.png"];
-self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
-self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",e=>{const u=new URL(e.request.url);if(e.request.method!=="GET"||u.pathname.startsWith("/api/"))return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match("/index.html"))))});
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-20-verified-login-isolation
+// Legacy verification marker: warboost-v2-5-28-hf8-6-19-public-beta-full-reliability
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-21-render-boundary-reliability
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-23-session-state-machine-reliability
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-24-owned-state-visibility-reliability
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-26-cross-module-state-integrity
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-27-critical-ui-repaint-reliability
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-28-mobile-ui-stabilization
+// Scan request restore: keep server-side scan completion authoritative; browser no longer aborts /api/scan at 60 s.
+const CACHE="warboost-v2-5-32-stripe-test-preparation-r1-beta-activation-atomic-r1-capacitor-wrapper-r1-fresh-launch-r1-squad-provenance-r1-full-roster-recognition-r1-real-hero-references-r1-attested-hero-variants-r1-ew-equipment-boundary-r1-mixed-squad-captures-r1-current-formation-six-r1-no-weapon-power-joint-vision-r1-legacy-layout-restored-r1-squad-target-r1-analysis-audit-r2-scan-inline-w-r2-knowledge-guidance-r2-roster-sync-diagnostic-r1-roster-only-r1-inline-loading-r1";
+// Legacy cache verification marker: warboost-v2-5-28-hf8-6-25-player-launch-integrity
+// Legacy verification marker: warboost-v2-5-28-hf8-6-18-fast-login-restore
+// Legacy verification marker: warboost-v2-5-28-hf8-6-16-auth-session-commit-reliability
+// Legacy verification marker: warboost-v2-5-28-hf8-6-15-player-presentation-reliability
+// Legacy verification marker: warboost-v2-5-28-hf8-6-14-session-apply-unblock
+// Legacy verification marker: warboost-v2-5-28-hf8-6-13-verified-cloud-access-restore
+// Legacy verification marker: warboost-v2-5-28-hf8-6-12-cloud-restore-guard
+// Legacy verification marker: warboost-v2-5-28-hf8-6-11-future-player-reliability
+// Legacy cache verification marker: warboost-v2-5-28-hf8-commercial-readiness-hf8-3-vs-decision-engine-hf8-4-alliance-lifecycle-reliability-hf8-5-vs-freshness-guard-hf8-5-final-alliance-desert-storm-hf8-6-2-reliable-roster-identity-hf8-6-3-alliance-rank-manager-hf8-6-4-rank-persistence-hf8-6-6-scan-persistence-reliability-hf8-6-7-alliance-association-reliability-hf8-6-8-association-keeps-roster-identity
+// Legacy beta-code verification marker: hf8-6-5-beta-access-code
+// Includes HF8.6.10 roster integrity + HF8.6.9 canonical state guard + all previous Safe Launch reliability safeguards.
+const SHELL=["/", "/index.html", "/styles.css", "/publisher-ui.css", "/app.js", "/publisher-ui.js", "/i18n.js", "/manifest.webmanifest", "/legal.html", "/privacy.html", "/support-admin.html", "/support-admin.js", "/reset-password.html", "/reset-password.js", "/warboost-icon-192.png", "/warboost-icon-512.png", "/warboost-apple-touch-icon.png", "/lib/browser-auth.js", "/lib/auth-ui.js", "/lib/cloud-state-recovery.js", "/lib/cloud-profile-direct.js", "/lib/session-bootstrap.js", "/lib/power-units.js", "/lib/heroes.js", "/lib/squad-identity.js", "/lib/gear.js", "/lib/activity-events.js", "/lib/alliance-identity.js", "/lib/alliance-scope.js", "/lib/alliance-roster-lifecycle.js", "/lib/desert-storm-plan.js", "/lib/progression-history.js", "/lib/alliance-participation-insights.js", "/lib/roster-import.js", "/lib/alliance-rank-management.js", "/lib/pending-scan-storage.js", "/lib/hero-history.js", "/assets/heroes/adam.svg", "/assets/heroes/ambolt.svg", "/assets/heroes/braz.svg", "/assets/heroes/cage.svg", "/assets/heroes/carlie.svg", "/assets/heroes/dva.svg", "/assets/heroes/elsa.svg", "/assets/heroes/farhad.svg", "/assets/heroes/fiona.svg", "/assets/heroes/gump.svg", "/assets/heroes/kane.svg", "/assets/heroes/kimberly.svg", "/assets/heroes/loki.svg", "/assets/heroes/lucius.svg", "/assets/heroes/marshall.svg", "/assets/heroes/mason.svg", "/assets/heroes/maxwell.svg", "/assets/heroes/mcgregor.svg", "/assets/heroes/monica.svg", "/assets/heroes/morrison.svg", "/assets/heroes/murphy.svg", "/assets/heroes/richard.svg", "/assets/heroes/sarah.svg", "/assets/heroes/scarlett.svg", "/assets/heroes/skyler.svg", "/assets/heroes/stetmann.svg", "/assets/heroes/swift.svg", "/assets/heroes/tesla.svg", "/assets/heroes/venom.svg", "/assets/heroes/violet.svg", "/assets/heroes/williams.svg"];
+SHELL.push("/lib/resource-acquisition.js?v=shop-observations-v2-5-32-hf8-6-34-r2","/lib/shop-catalog.js?v=shop-observations-v2-5-32-hf8-6-34-r2","/lib/shop-catalog.js","/lib/shop-observations-2026-09-28.js");
+SHELL.push("/lib/pending-account-cache.js","/lib/desert-storm-plan-ui.js?v=hf8630-desert-storm-plan-r2","/lib/idle-lifecycle.js?v=hf8630-idle-resume-r1","/lib/session-resume.js?v=hf8630-idle-resume-r1","/lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1","/styles.css?v=scan-review-human-r1","/app.js?v=squad-confirmed-restore-r1","/publisher-ui.js?v=hf8630-desert-storm-plan-r2");
+SHELL.push("/lib/loading-screen.js?v=warboost-startup-screen-r2","/lib/return-view.js?v=warboost-startup-screen-r1","/lib/idle-lifecycle.js?v=warboost-startup-screen-r1","/loading-screen.css?v=warboost-startup-screen-r2","/app.js?v=warboost-startup-screen-r2","/publisher-ui.js?v=hf8630-desert-storm-plan-r2");
+SHELL.push("/lib/scan-review.js","/lib/scan-review-presentation.js","/lib/scan-review-markup.js","/lib/squad-freshness.js");
+SHELL.push("/lib/player-hq.js","/app.js?v=player-hq-confirmation-r1");
+SHELL.push("/lib/player-scan-types.js");
+SHELL.push("/lib/technology-scan.js","/lib/technology-advisor.js","/technology-advice.css");
+SHELL.push("/assets/warboost-loading-scene.webp");
+SHELL.push("/lib/diagnostic-shop.js?v=diagnostic-shop-r1","/lib/diagnostic-shop-ui.js?v=diagnostic-shop-r1","/diagnostic-shop.css?v=diagnostic-shop-r1");
+SHELL.push("/lib/knowledge-guidance-ui.js","/lib/knowledge-copy.js");
+SHELL.push("/lib/roster-sync.js","/lib/roster-sync-copy.js");
+SHELL.push("/lib/diagnostic-disclosures.js?v=diagnostic-disclosures-r1","/lib/diagnostic-shop-ui.js?v=diagnostic-disclosures-r1","/diagnostic-disclosures.css?v=diagnostic-disclosures-r1");
+SHELL.push("/identity-onboarding.css?v=identity-onboarding-r1","/lib/identity-onboarding.js",
+  "/lib/identity-onboarding-ui.js","/lib/identity-onboarding-controller.js","/lib/identity-onboarding-copy.js",
+  "/app.js?v=player-hq-confirmation-r1&rev=identity-onboarding-r1");
+SHELL.push("/lib/beta-activation-ui.js","/lib/beta-invitation-copy.js",
+  "/app.js?v=player-hq-confirmation-r1&rev=stripe-test-preparation-r1-beta-activation-atomic-r1");
+SHELL.push("/app.js?v=player-hq-confirmation-r1&rev=security-account-deletion-r1&ui=legacy-layout-restored-r1&scan=squad-target-r1");
+self.addEventListener("message",e=>{if(e.data?.type==="WARBOOST_ACTIVATE")self.skipWaiting()});
+SHELL.push("/lib/alliance-member-rename.js","/lib/member-rename-ui.js");
+SHELL.push("/lib/player-scan-batch.js","/lib/player-global-diagnostic.js","/lib/player-global-diagnostic-ui.js","/player-global-diagnostic.css");
+SHELL.push("/lib/formation-batch.js");
+SHELL.push("/lib/player-known-facts.js");
+SHELL.push("/lib/mobile-runtime.js","/lib/mobile-policy.js","/lib/account-deletion-ui.js",
+  "/security.html","/delete-account.html","/delete-account-page.js","/trust-pages.css");
+for(const path of ["/lib/fresh-launch.js","/lib/squad-scan-evidence.js","/lib/squad-scan-review.js","/lib/hero-recognition.js","/lib/hero-reference-index.js","/lib/squad-capture.js"])
+  if(!SHELL.includes(path))SHELL.push(path);
+SHELL.push("/analysis-indicator.css?v=scan-inline-w-r2","/lib/analysis-indicator.js","/lib/analysis-copy.js","/lib/locales/completed.js",
+  ...["fr","es","it","de","pt","nl","zh","ja","ru","ar","pl","tr","ko","vi","th","id","uk","ro","el","cs","sv"].map(code=>`/lib/locales/${code}.js`));
+SHELL.push("/lib/account-sync-feedback.js","/lib/account-sync-copy.js","/lib/account-cloud-operation-copy.js","/lib/cloud-save-diagnostic.js","/lib/cloud-save-diagnostic-copy.js","/lib/roster-sync-copy.js");
+const ACCOUNT_SYNC_CACHE=CACHE+"-gear-repair-technical-preparation-r10";
+SHELL.push("/lib/squad-comparison.js","/lib/squad-comparison-copy.js","/lib/squad-comparison-view.js");
+SHELL.push("/lib/squad-comparison-project.js","/lib/squad-comparison-results.js","/lib/squad-comparison-detail-copy.js",
+  "/lib/squad-comparison-gear.js","/lib/squad-comparison-gear-copy.js");
+SHELL.push("/lib/squad-review-status.js","/lib/squad-review-status-copy.js","/squad-review-status.css?v=read-only-r1");
+SHELL.push("/lib/account-sync-status-copy.js");
+self.addEventListener("install",e=>e.waitUntil(caches.open(ACCOUNT_SYNC_CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
+self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==ACCOUNT_SYNC_CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener("fetch",e=>{const u=new URL(e.request.url);if(e.request.method==="HEAD"&&!u.pathname.startsWith("/api/")){e.respondWith(fetch(e.request).catch(()=>caches.open(ACCOUNT_SYNC_CACHE).then(async c=>{const cached=await c.match(new Request(e.request.url,{method:"GET"}));return cached?new Response(null,{status:cached.status,statusText:cached.statusText,headers:cached.headers}):new Response("",{status:504})})));return}if(e.request.method!=="GET"||u.pathname.startsWith("/api/"))return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(ACCOUNT_SYNC_CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.open(ACCOUNT_SYNC_CACHE).then(async c=>{const cached=await c.match(e.request);if(cached)return cached;if(e.request.mode==="navigate")return(await c.match("/")||await c.match("/index.html"))||new Response("Offline",{status:503});return new Response("",{status:504})})))});

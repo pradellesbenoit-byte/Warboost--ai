@@ -1,0 +1,118 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {appendProgressionSnapshot,progressionComparison,strongestSquadFromState} from '../lib/progression-history.js';
+import {markCanonicalRosterPresence,removeActiveRosterMember,applyRosterImportLifecycle,mergeRosterLifecycleMetadata,currentActiveRosterMembers,rosterLifecycleKey} from '../lib/alliance-roster-lifecycle.js';
+import {mergeCloudRosterWithIdentity} from '../lib/alliance-roster-merge.js';
+import {desertStormMemberKeys,normalizeDesertStormSelections} from '../lib/desert-storm-selection.js';
+import {buildDesertStormPlan} from '../lib/desert-storm-plan.js';
+import {LANGUAGES,translator} from '../i18n.js';
+
+const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const app=read('app.js'),html=read('index.html'),scan=read('api/scan.js'),sync=read('api/sync.js'),health=read('api/health.js'),sw=read('sw.js');
+const pkg=JSON.parse(read('package.json')),manifest=JSON.parse(read('manifest.webmanifest'));
+const day1='2026-09-01T10:00:00.000Z',day12='2026-09-12T10:00:00.000Z';
+
+// Progression: snapshots are preserved and compared instead of overwritten.
+const state1={player:{power_m:250,hq_level:35},drone:{level:157,power_m:8.84},squads:[{power:45,updated_at:day1},{power:30,updated_at:day1},{power:20,updated_at:day1},{power:null}]};
+const state2={player:{power_m:255,hq_level:35},drone:{level:158,power_m:9.02},squads:[{power:47,updated_at:day12},{power:31,updated_at:day12},{power:20.5,updated_at:day12},{power:null}]};
+let hist=[];hist=appendProgressionSnapshot(hist,state1,{source:'test',at:day1});hist=appendProgressionSnapshot(hist,state2,{source:'test',at:day12});
+assert.equal(hist.length,2);assert.equal(strongestSquadFromState(state2).power_m,47);
+const cmp=progressionComparison(hist,30);assert.equal(cmp.elapsed_days,11);assert.equal(cmp.account.change_m,5);assert.equal(cmp.account.pct,2);assert.equal(cmp.main_squad.change_m,2);assert.equal(cmp.main_squad.pct,4.4);
+assert.equal(cmp.account.per_day,0.45);assert.equal(cmp.main_squad.per_day,0.18);
+
+// Updating only the profile must never make an old squad observation look fresh.
+const day13='2026-09-13T10:00:00.000Z';
+const freshAccountOnly={player:{power_m:255,hq_level:35,updated_at:day12},drone:{level:157,power_m:8.84,updated_at:day1},squads:[{power:45,updated_at:day1},{power:30,updated_at:day1},{power:20,updated_at:day1},{power:null}]};
+let metricHist=[];metricHist=appendProgressionSnapshot(metricHist,{...state1,player:{...state1.player,updated_at:day1},drone:{...state1.drone,updated_at:day1}},{source:'baseline',at:day1});
+metricHist=appendProgressionSnapshot(metricHist,freshAccountOnly,{source:'profile_only',at:day12});
+let metricCmp=progressionComparison(metricHist,30);
+assert.equal(metricCmp.account.change_m,5);assert.equal(metricCmp.account.elapsed_days,11);
+assert.equal(metricCmp.main_squad.current,45);assert.equal(metricCmp.main_squad.previous,null);assert.equal(metricCmp.main_squad.updated_at,day1,'profile-only update falsely refreshed squad observation');
+const realSquadUpdate={...freshAccountOnly,squads:[{power:47,updated_at:day13},{power:30,updated_at:day1},{power:20,updated_at:day1},{power:null}]};
+metricHist=appendProgressionSnapshot(metricHist,realSquadUpdate,{source:'squad_update',at:day13});metricCmp=progressionComparison(metricHist,30);
+assert.equal(metricCmp.main_squad.change_m,2);assert.equal(metricCmp.main_squad.elapsed_days,12);assert.equal(metricCmp.main_squad.updated_at,day13);
+
+// A direct departure must survive a later stale canonical/cloud refresh.
+const member={name:'Dengrengola',server_id:'884',alliance_tag:'ALL4',role:'R1',power_m:187,hq_level:35,joined_at:'2026-01-01T00:00:00.000Z',updated_at:'2026-09-10T00:00:00.000Z',activity_events:[{event_type:'vs',event_date:'2026-09-10',participation_status:'participated',source:'player_self_report',updated_at:'2026-09-10T00:00:00.000Z'}],membership_history:[{type:'joined',at:'2026-01-01T00:00:00.000Z',source:'roster_import'}]};
+const key=rosterLifecycleKey(member);let life=removeActiveRosterMember({members:[member],review:[],former:[]},key,{now:'2026-09-12T06:33:28.553Z'});
+assert.equal(life.members.length,0);assert.equal(life.former.length,0);assert.equal(life.removal_tombstones.length,1);
+assert.ok(life.removal_tombstones[0].history.activity_events.some(x=>x.participation_status==='participated'));
+assert.ok(life.removal_tombstones[0].history.membership_history.some(x=>x.type==='joined'));
+const staleCloud={...member,updated_at:'2026-09-12T08:50:00.000Z'};
+assert.equal(currentActiveRosterMembers([staleCloud],[],[],life.removal_tombstones).length,0,'stale cloud roster resurrected removed member');
+const rejoinAt='2027-03-12T08:00:00.000Z';
+life=applyRosterImportLifecycle({members:[],review:[],removal_tombstones:life.removal_tombstones},[{...member,role:'R2',power_m:205}],{complete:true,now:rejoinAt});
+assert.equal(life.members.length,1);assert.equal(life.members[0].joined_at,rejoinAt);
+assert.equal(life.members[0].activity_events.length,0,'old activity leaked into the new membership');
+assert.equal(life.members[0].membership_history.some(x=>x.type==='left_confirmed'),false);
+assert.ok(life.removal_tombstones[0].history.activity_events.some(x=>x.participation_status==='participated'),'rejoin discarded archived activity');
+assert.equal(currentActiveRosterMembers([staleCloud],[],[],life.removal_tombstones).length,0,'a rejoined_at marker alone must not allow an old cloud row');
+assert.equal(mergeRosterLifecycleMetadata([], [staleCloud],{removal_tombstones:life.removal_tombstones}).length,0,'lifecycle merge accepted an old cloud row after rejoin');
+assert.equal(mergeCloudRosterWithIdentity([], [staleCloud],{serverId:'884',allianceTag:'ALL4',removal_tombstones:life.removal_tombstones}).roster.length,0,'cloud merge accepted a stale row after rejoin');
+assert.equal(mergeCloudRosterWithIdentity([], [{...staleCloud,server_id:'884',alliance_tag:'OTHER'}],{serverId:'884',allianceTag:'ALL4'}).roster.length,0,'cloud roster crossed alliance scope');
+assert.equal(currentActiveRosterMembers(life.members,life.review,life.former,life.removal_tombstones).length,1);
+assert.match(sync,/preserveVerifiedR5\(merged\.alliance\?\.members,rosterMerged,\{removal_tombstones:ctx\.roster_tombstones,authoritative:true\}\)/);
+assert.match(sync,/mergeSharedAllianceRoster\(currentActiveRosterMembers\(canonical,\[\],\[\],ctx\.roster_tombstones\),preservedR5\.rows,context\)/);
+
+// A current canonical snapshot wins over stale lifecycle blockers without deleting lifecycle history.
+const roster94=markCanonicalRosterPresence(Array.from({length:94},(_,i)=>({
+  name:i<2?`R5-${i+1}`:`Member-${i+1}`,role:i<2?'R5':i<9?'R4':i<79?'R3':i<90?'R2':'R1',
+  server_id:'884',alliance_tag:'ALL4',canonical_member_key:`canonical:${i}`,joined_at:'2026-01-01T00:00:00.000Z'
+})),'2026-09-19T10:00:00.000Z');
+const staleLifecycle=roster94.slice(0,3).map((member)=>({
+  ...member,canonical_presence_at:null,membership_status:'left_confirmed',
+  left_at:'2026-09-18T10:00:00.000Z',missing_from_snapshot_at:null
+}));
+const active94=currentActiveRosterMembers(roster94,[],staleLifecycle);
+assert.equal(active94.length,94,'stale lifecycle entries must not remove current canonical members');
+assert.equal(active94.filter(member=>member.role==='R5').length,2,'both canonical R5 members must remain visible');
+assert.equal(staleLifecycle.length,3,'historical lifecycle rows must remain untouched');
+assert.equal(currentActiveRosterMembers(roster94,[],[{...staleLifecycle[0],left_at:'2026-09-20T10:00:00.000Z'}]).length,93,'a strictly newer confirmed departure still blocks membership');
+let registered=[];
+for(const member of roster94.slice(0,3)){
+  const legacy=desertStormMemberKeys(member).find(candidate=>candidate!==member.canonical_member_key);
+  registered=normalizeDesertStormSelections([...registered,legacy],active94,staleLifecycle);
+}
+assert.deepEqual(registered,roster94.slice(0,3).map(member=>member.canonical_member_key),'three cumulative selections must survive lifecycle rerenders');
+
+// Combat planning: real squad power outranks higher account power when both are known.
+const mk=(name,account,squad,updated=day12)=>({name,server_id:'884',alliance_tag:'ALL4',role:'R3',hq_level:35,power_m:account,squad_power_m:squad,squad_power_updated_at:updated,updated_at:updated,lifecycle_key:`${name.toLowerCase()}|884|ALL4`});
+const highAccount=mk('High Account',300,38),strongSquad=mk('Strong Squad',250,52);
+let plan=buildDesertStormPlan([highAccount,strongSquad],[highAccount.lifecycle_key,strongSquad.lifecycle_key],{nowMs:Date.parse(day12)});
+assert.equal(plan.starters[0].name,'Strong Squad');assert.equal(plan.starters[0].plan_evidence.combat_power_source,'squad');assert.equal(plan.starters[0].plan_evidence.combat_power_m,52);
+
+// Missing squad power falls back to account power, never invents squad power, and lowers confidence.
+const fallback=mk('Fallback',320,null);delete fallback.squad_power_m;delete fallback.squad_power_updated_at;
+plan=buildDesertStormPlan([strongSquad,fallback],[strongSquad.lifecycle_key,fallback.lifecycle_key],{nowMs:Date.parse(day12)});
+const fp=plan.starters.find(x=>x.name==='Fallback');assert.equal(fp.plan_evidence.combat_power_source,'account');assert.equal(fp.plan_evidence.squad_power_known,false);assert.ok(plan.warnings.some(x=>x.code==='partial_player_data'));
+
+// Squad data older than 14 days lowers confidence and is explicitly warned.
+const stale=mk('Stale Squad',260,50,'2026-08-20T10:00:00.000Z');
+const fresh=mk('Fresh Squad',260,50,day12);
+const stalePlan=buildDesertStormPlan([stale],[stale.lifecycle_key],{nowMs:Date.parse(day12)}),freshPlan=buildDesertStormPlan([fresh],[fresh.lifecycle_key],{nowMs:Date.parse(day12)});
+assert.ok(stalePlan.warnings.some(x=>x.code==='stale_squad_data'));assert.ok(stalePlan.confidence<freshPlan.confidence);
+
+// Roster screenshot import contract: multi-capture UX, visible R5 header, visible-only OCR, review before import.
+for(const id of ['rosterScanFiles','rosterScanAnalyzeBtn','rosterScanDraft','rosterScanFullSnapshot','rosterScanImportBtn'])assert.match(html,new RegExp(`id=["']${id}["']`));
+assert.match(html,/multiple/);assert.match(scan,/scanType==="alliance_roster"/);assert.match(scan,/Include the R5 if visibly shown separately/);assert.match(scan,/Never infer hidden members, departures, ranks, HQ values or power/);
+assert.match(app,/slice\(0,12\)/);assert.match(app,/renderRosterScanDraft/);assert.match(app,/collectRosterScanDraftFromDom/);assert.match(app,/source:"roster_scan"/);assert.match(app,/rosterScanFullSnapshot/);
+
+// Quick player updates + dated progression are present without forcing a full rescan.
+for(const id of ['progressionSummary','quickProfileScanBtn','quickSquadScanBtn','quickDroneScanBtn'])assert.match(html,new RegExp(`id=["']${id}["']`));
+assert.match(app,/recordProgressionSnapshot\("manual_profile"\)/);assert.match(app,/recordProgressionSnapshot\(`scan_\$\{draft\.type\}`,now\)/);assert.match(app,/recordProgressionSnapshot\(`scan_squad\$\{id\}`,now\)/);assert.match(pkg.scripts.check,/progression-history\.js/);
+
+// All explicit languages resolve HF8.6 UI keys without exposing raw keys.
+const explicit=LANGUAGES.filter(([code])=>code!=='auto');assert.equal(explicit.length,23);
+for(const [code] of explicit){const tr=translator(code);for(const k of ['progression_title','quick_profile','quick_squad','quick_drone','progression_account','progression_squad','roster_scan_title','roster_scan_choose','roster_scan_analyze','roster_scan_import','combat_squad_short','combat_account_short','ds_warning_partial_player_data','ds_warning_stale_squad_data'])assert.notEqual(tr(k),k,`${code} missing ${k}`)}
+
+// HF8.6 metadata/cache/safeguards.
+assert.match(html,/V2\.5\.28 HF8\.6/);assert.match(manifest.name,/HF8\.6/);assert.match(pkg.description,/HF8\.6/);assert.match(sw,/hf8-6(?:-roster-scan-progression-combat-ai|-1-additive-roster-capture-queue|-2-reliable-roster-identity)/);assert.match(sw,/progression-history\.js/);assert.match(health,/ui_revision_final:"hf8\.6(?:-roster-scan-progression-combat-ai|\.1-additive-roster-capture-queue|\.2-reliable-roster-identity)"/);
+for(const guard of ['desert_storm_squad_power_primary_account_power_fallback','desert_storm_stale_squad_data_reduces_confidence','alliance_removed_member_blocked_from_event_picker_after_sync','alliance_roster_screenshot_multi_capture_import','alliance_roster_scan_r5_separate_header_supported','alliance_roster_scan_review_before_import','player_progression_dated_snapshots','player_progression_missing_update_never_no_progress','player_quick_refresh_profile_squad_drone'])assert.match(health,new RegExp(`${guard}:true`));
+assert.match(health,/safe_launch_no_scraping:true/);assert.match(health,/safe_launch_no_gameplay_automation:true/);assert.match(health,/beta_payments_disabled:true/);assert.doesNotMatch(app,/localStorage\.clear\s*\(/);
+const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12);
+const migrations=fs.readdirSync(path.join(root,'supabase')).filter(x=>/hf8[_-]?6(?:\.sql)$/i.test(x));assert.equal(migrations.length,0,'The original HF8.6 release must not require its own Supabase migration');
+const ids=[...html.matchAll(/\sid=["']([^"']+)["']/g)].map(m=>m[1]);const duplicates=[...new Set(ids.filter((id,i)=>ids.indexOf(id)!==i))];assert.deepEqual(duplicates,[],`duplicate HTML ids: ${duplicates.join(', ')}`);
+
+console.log('WarBoost V2.5.28 HF8.6 Roster Scan + Progression + Combat AI verification: PASS');

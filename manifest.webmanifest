@@ -1,7 +1,7 @@
 {
-  "name": "WarBoost",
+  "name": "WarBoost V2.5.32 HF8.6.34 — Public Beta",
   "short_name": "WarBoost",
-  "description": "WarBoost V1.3.3 Global — Adaptive PRO Shop Advisor, visible Last War shop scan ranking, precise squad and exclusive-weapon priorities, multilingual Hybrid Sync",
+  "description": "WarBoost V2.5.32 HF8.6.34 — public-beta companion with confirmed scans, alliance planning and contextual PRO guidance.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -11,12 +11,12 @@
   "lang": "en",
   "icons": [
     {
-      "src": "/assets/warboost-icon-192.png",
+      "src": "/warboost-icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/assets/warboost-icon-512.png",
+      "src": "/warboost-icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }

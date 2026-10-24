@@ -1,0 +1,27 @@
+/* Presentation-only, scoped to the read-only squad diagnostic. */
+.squadReviewDiagnostic{min-width:0;max-width:100%;overflow-wrap:anywhere;white-space:normal}
+.squadReviewDiagnostic ul{margin:.45rem 0;padding-inline-start:1.2rem}
+.squadReviewDiagnostic li{margin:.3rem 0;line-height:1.45}
+.squadReviewDiagnostic small{display:block;line-height:1.5;opacity:.85}
+.squadReviewSummary{display:block;margin-top:.4rem;font-size:.9rem;font-weight:400;line-height:1.45}
+.squadReviewDiagnostic>summary{cursor:pointer;min-height:44px;padding-block:.45rem}
+.squadReviewDiagnostic>summary:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.squadReviewDiagnostic section{margin-block:.8rem;padding-block:.5rem;border-top:1px solid rgba(150,170,200,.25)}
+.squadHead .squadName small.squadReviewHint{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.45;overflow-wrap:anywhere}
+.squadBody>.squadReviewDiagnostic{margin-block:.5rem .8rem}
+#squadCompareControls{margin-block:1rem;min-width:0}
+#squadCompareBtn{width:100%;min-height:48px;white-space:normal;text-align:start;overflow-wrap:anywhere}
+#squadCompareResult{margin-top:.65rem;line-height:1.5;overflow-wrap:anywhere}
+.squadCompareDetails{margin-block:.5rem;min-width:0}
+.squadCompareDetails>summary{min-height:44px;padding-block:.45rem;cursor:pointer}
+.squadCompareDetails>summary:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.squadCompareDetails code{font-size:.75rem;overflow-wrap:anywhere;direction:ltr;unicode-bidi:isolate}
+#squadGearRepairControls{margin-block:.8rem;min-width:0}
+#squadGearRepairBtn,.gearRepairPreview .btn{width:100%;min-height:48px;white-space:normal;text-align:start;overflow-wrap:anywhere;margin-block:.3rem}
+.gearRepairPreview{min-width:0;max-width:100%;overflow-wrap:anywhere;line-height:1.5}
+.gearRepairPreview ul{padding-inline-start:1.25rem}
+.gearRepairPreview h3{font-size:1rem;line-height:1.45}
+.gearRepairPreview label{display:flex;gap:.5rem;align-items:flex-start;padding-block:.5rem;min-height:44px}
+.gearRepairPreview input[type="checkbox"]{flex:0 0 auto;width:1.1rem;height:1.1rem;margin-top:.2rem}
+.gearRepairPreview summary{cursor:pointer;min-height:44px;padding-block:.5rem}
+.gearRepairPreview :focus-visible{outline:2px solid currentColor;outline-offset:3px}

@@ -1,0 +1,55 @@
+/* The legacy JS-created badge stays inert; analysis is shown inline instead. */
+.wb-analysis-indicator,
+.wb-analysis-indicator[hidden] {
+  display: none !important;
+}
+
+/* Keep long status/button copy readable without changing its layout model. */
+[data-wb-analysis-active="true"] {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+[data-wb-analysis-active="true"]::before {
+  content: "W";
+  content: "W" / "";
+  display: inline-block;
+  flex: 0 0 18px;
+  inline-size: 18px;
+  block-size: 18px;
+  margin-inline-end: 8px;
+  color: #53e7ff;
+  font: 900 12px/18px ui-sans-serif, system-ui, sans-serif;
+  text-align: center;
+  vertical-align: middle;
+  animation: wb-analysis-rotate 2.4s linear infinite;
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes wb-analysis-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Roster feedback belongs in normal flow immediately below its analyze button. */
+#rosterScanStatus[data-wb-analysis-active="true"] {
+  position: static;
+  inset: auto;
+}
+#rosterScanStatus[data-wb-analysis-active="true"]::before {
+  animation: wb-analysis-rotate 2.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-wb-analysis-active="true"]::before {
+    animation: none;
+    transform: none;
+  }
+  #rosterScanStatus[data-wb-analysis-active="true"]::before {
+    animation: none;
+    transform: none;
+  }
+}

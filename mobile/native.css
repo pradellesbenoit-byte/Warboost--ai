@@ -1,0 +1,5 @@
+html.warboost-native { color-scheme:dark; background:#090e1a; }
+.warboost-native body { padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+.warboost-native #proCommercialPreview,
+.warboost-native #proActionBtn,
+.warboost-native #proPortalBtn { display:none!important; }

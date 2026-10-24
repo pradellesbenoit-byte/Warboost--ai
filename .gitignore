@@ -1,0 +1,25 @@
+node_modules/
+web-dist/
+mobile-dist/
+android/.gradle/
+android/local.properties
+android/**/build/
+android/app/src/main/assets/public/
+ios/App/App/public/
+ios/App/Pods/
+ios/**/DerivedData/
+ios/**/xcuserdata/
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+*.aab
+*.apk
+*.ipa
+*.xcarchive
+
+# Private test uploads and local recovery bundles must never be published.
+/attached_assets/
+/.local/private-git-backups/
+/.local/private-scan-captures/
+/generated-artifacts/
