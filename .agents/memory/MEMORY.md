@@ -1,1 +1,2 @@
 - [Commercial release boundaries](commercial-release.md) — existing warboost_v4/warboost.fr is the target; beta stays separate, never assume separate databases.
+- [Legacy saved identities](legacy-saved-identities.md) — V1 saved hero identities must survive upgrades; missing new confirmation evidence is not permission to erase historical data.

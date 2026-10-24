@@ -32,13 +32,13 @@ test("real V1 normalizer produces four squads and twenty legacy hero records",()
   assert.equal(state.squads.flatMap(row=>row.heroes).length,20);
   assert.equal(state.player.hq_level,35);
 });
-test("reproduce P0: direct V2 normalization does not retain active V1 hero fields",()=>{
+test("fixed P0: V2 transition retains active V1 hero fields without inventing confirmation",()=>{
   const state=fixture(),next=normalizeState(clone(state));
-  assert.notEqual(next.squads[0].heroes[0].name,state.squads[0].heroes[0].name);
+  assert.equal(next.squads[0].heroes[0].name,state.squads[0].heroes[0].name);
   const result=prepareOfflineTransition({accountId:A,state});
-  assert.equal(result.compatible,false);
-  assert.ok(result.blockers.some(row=>row.path==="squads.0.heroes.0.name"));
-  assert.ok(result.blockers.some(row=>row.path==="squads.3.heroes.4.level"));
+  assert.equal(result.compatible,true);
+  assert.deepEqual(result.blockers,[]);
+  assert.equal(next.squads[0].composition_confirmed_at,null);
 });
 test("proposal never mutates V1 state or snapshot documents",()=>{
   const state=fixture(),snapshots=[{player_id:A,state:clone(state),source:"synthetic"}];

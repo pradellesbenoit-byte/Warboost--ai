@@ -25,6 +25,7 @@ import {createIdentityOnboardingController} from "./lib/identity-onboarding-cont
 import {betaCodeVisible,betaActivationErrorKey,betaActivationSucceeded} from "./lib/beta-activation-ui.js";
 let identityOnboardingController=null;
 import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad,mergeSquadIdentityHistory,squadForStableSlot} from "./lib/squad-identity.js";
+import {prepareLegacyV1State} from "./lib/legacy-squad-compat.js";
 import {reconcileCloudSquads} from "./lib/squad-freshness.js";
 import {recoverHeroData} from "./lib/hero-history.js";
 import {parseRosterImport,rosterNameKey} from "./lib/roster-import.js";
@@ -263,6 +264,8 @@ function adoptCanonicalPendingAccounts(target,source,{available=false}={}){
 }
 function mergeState(base,incoming){
   if(!incoming||typeof incoming!=="object")return base;
+  base=prepareLegacyV1State(base);
+  incoming=prepareLegacyV1State(incoming);
   const out={...base,...incoming};
   const playerFields=Object.keys({...base.player,...incoming.player}).filter(key=>!["field_updated_at","field_source","updated_at","source"].includes(key));
   out.player=mergeFreshRecord(base.player,incoming.player,playerFields,{baseFallbackAt:base.player?.updated_at,incomingFallbackAt:incoming.player?.updated_at||incoming.updated_at,baseSource:"player",incomingSource:"player"});

@@ -16,18 +16,29 @@
 - `vercel.json` et les réglages de déploiement de main restent inchangés.
   Cela ne constitue PAS une configuration V2 prête à déployer.
 
-## P0 effectivement reproduit
+## Mise à jour : correctif local de conservation V1
+
+Le P0 ci-dessous est maintenant corrigé **en local sur la release seulement**.
+Voir [preuves et limites du correctif](release-v1-preservation-fix.md).
+Les noms/positions/champs sauvegardés en V1 sont conservés avec provenance
+ancienne, sans nouvelle confirmation V2 inventée. La fixture Stripe manquante
+est désormais présente uniquement sous `scripts/fixtures/billing/`.
+Les résultats et blocages ci-dessous décrivent l'intervention initiale :
+ils ne remplacent pas les résultats actualisés du correctif.
+La production reste **NO-GO**, notamment faute de restauration réelle et de
+vérification autorisée des cibles et déclencheurs Vercel.
+
+## P0 initial effectivement reproduit, désormais corrigé localement
 
 L'ancien normalizer, exécuté depuis le commit main exact, produit des héros V1
 sans preuves de composition V2. Le normalizer V2 peut vider leurs slots actifs
 et déplacer leur identité vers ses mécanismes de revue/historique. Aucune
 conversion implicite en « confirmé » n'est autorisée.
 
-Le test `scripts/release/verify-v1-transition.mjs` reproduit cet écart et exige
-que la proposition offline le signale incompatible. Il ne corrige PAS à lui
-seul le parcours de reconnexion en production. Il faut préparer une transition
-avec conservation exacte du document original et revue explicite des identités,
-puis tester le vrai handler et l'interface sur des comptes staging autorisés.
+Le test `scripts/release/verify-v1-transition.mjs` exige désormais la conservation
+du document V1 représentatif. Cela ne valide PAS à lui seul le parcours réel
+de reconnexion : il reste à tester l'interface et les handlers sur staging
+après autorisation, sans comptes commerciaux.
 Attention : les chemins de restauration GET V2 peuvent aussi réparer/persister
 des données. Ne pas les appeler sur les comptes commerciaux pour « auditer ».
 
