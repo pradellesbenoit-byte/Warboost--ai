@@ -14,3 +14,9 @@ The configured HTTPS origin may use `github.replit.internal`. Do not reject or r
 **Why:** Native Git through that origin successfully delivered the exact local commit, without reconstructing commits through the API or handling a token.
 
 **How to apply:** Validate the exact repository, branch and expected remote SHA before pushing, and verify the result through GitHub afterward. Inspect every Vercel status context: one main push can trigger multiple existing projects, so a successful Git push does not prove either deployment success or site isolation.
+
+Verify a worktree's actual top-level directory before any Git operation; do not trust its directory name or a previous worktree listing.
+
+**Why:** A restored workspace retained private release files and worktree metadata but lost the worktree's `.git` marker. `git -C` silently operated on the parent repository instead of the intended release.
+
+**How to apply:** Require `git -C <worktree> rev-parse --show-toplevel` to equal the intended worktree path. If it differs, preserve the old directory and create a valid separate corrective worktree from the verified release commit rather than editing or pushing through the ambiguous path.
