@@ -1,12 +1,19 @@
 {
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "web-dist",
   "cleanUrls": true,
+  "functions": {
+    "api/advice.js": {"includeFiles":"assets/last-war-knowledge.json"},
+    "api/scan.js": {"includeFiles":"research/hero-references/**"}
+  },
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
         {"key":"X-Content-Type-Options","value":"nosniff"},
         {"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},
-        {"key":"Permissions-Policy","value":"camera=(self), microphone=(), geolocation=()"}
+        {"key":"Permissions-Policy","value":"camera=(self), microphone=(), geolocation=()"},
+        {"key":"Content-Security-Policy","value":"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co https://*.supabase.in; upgrade-insecure-requests"}
       ]
     }
   ]
