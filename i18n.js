@@ -3,6 +3,7 @@ import {BETA_INVITATION_COPY} from "./lib/beta-invitation-copy.js";
 import {workspaceHelpCopy} from "./lib/workspace-help.js";
 import {freeAccessCopy} from "./lib/free-access.js";
 import {scanFailureCopy} from "./lib/scan-failure-copy.js";
+import {controlledVisionCopy} from "./lib/controlled-vision-copy.js";
 import {IDENTITY_ONBOARDING_COPY,IDENTITY_ONBOARDING_KEYS} from "./lib/identity-onboarding-copy.js";
 import technologyI18nCjk from "./lib/technology-i18n-cjk.js";
 import technologyI18nEast from "./lib/technology-i18n-east.js";
@@ -884,10 +885,10 @@ Object.assign(EL,{clear_capture:"Διαγραφή στιγμιότυπου απ�
 Object.assign(CS,{clear_capture:"Odstranit snímek z tohoto zařízení",privacy_scan:"Snímek je dočasně uložen v tomto zařízení, abys ho nemusel znovu vybírat. Původní obrázek se nikdy neukládá do profilu WarBoost Cloud a automaticky vyprší."});
 Object.assign(SV,{clear_capture:"Ta bort skärmbilden från den här enheten",privacy_scan:"Skärmbilden sparas tillfälligt på den här enheten så att du slipper välja den igen. Råbilden sparas aldrig i din WarBoost Cloud-profil och upphör automatiskt."});
 export function translator(lang){
-  const pack=packs[lang]||EN,free=freeAccessCopy(lang),help=workspaceHelpCopy(lang),scanFailures=scanFailureCopy(lang);
+  const pack=packs[lang]||EN,free=freeAccessCopy(lang),help=workspaceHelpCopy(lang),scanFailures=scanFailureCopy(lang),visionTest=controlledVisionCopy(lang);
   const openAccountLabels=["beta_release_label","beta_badge","beta_signin_required","beta_invite_required"];
   return (key,vars={})=>{
-  let text=Object.hasOwn(scanFailures,key)?scanFailures[key]:
+  let text=Object.hasOwn(visionTest,key)?visionTest[key]:Object.hasOwn(scanFailures,key)?scanFailures[key]:
     key==="scan_email_required"?free.confirmEmail:key==="tagline"?`WarBoost · ${help.free}`:
     key==="beta_consent_note"?free.externalSafety:key==="beta_consent_required"?free.privacy:
     openAccountLabels.includes(key)?help.free:

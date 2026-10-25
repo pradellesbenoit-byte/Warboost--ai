@@ -4290,6 +4290,7 @@ async function analyzeExclusiveScan(){
   const finishAnalysis=beginActiveLoadingOperation("scan");
   try{
     const j=await analyzePlayerCaptureBatch({type:scanType,images:scanImageDataList.length?scanImageDataList:[image],
+      controlled:$("#controlledVisionTest")?.checked===true,confirmControlled:()=>window.confirm(t("vision_test_confirm")),
       isCurrent:()=>scanRequestIsCurrent(request),onProgress:(n,total)=>{status.textContent=`${t("scan_processing")} ${n}/${total}`},
       request:payload=>fetchWarBoostScan({scan_type:scanType,locale:lang,...payload,...(/^squad[1-4]$/.test(scanType)?{}:{current_state:state})})});
     if(!j)return;
@@ -4326,6 +4327,7 @@ async function analyzeReviewedScan(){
   const finishAnalysis=beginActiveLoadingOperation("scan");
   try{
     const j=await analyzePlayerCaptureBatch({type:scanType,images,isCurrent:()=>scanRequestIsCurrent(request),
+      controlled:$("#controlledVisionTest")?.checked===true,confirmControlled:()=>window.confirm(t("vision_test_confirm")),
       onProgress:(n,total)=>{if(scanRequestIsCurrent(request))status.textContent=/^squad[1-4]$/.test(scanType)?t("scan_processing"):`${t("scan_processing")} ${n}/${total}`},
       request:payload=>fetchWarBoostScan({scan_type:scanType,locale:lang,...payload,current_state:state})});
     if(!j)return;

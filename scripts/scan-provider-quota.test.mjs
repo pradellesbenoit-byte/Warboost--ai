@@ -30,6 +30,7 @@ function fixture({pro=false,provider=null,authError=null,reserved=true,throttled
     return {synthetic:true};
   };
   const context={
+    controlledVisionRequested:()=>false,
     validateScanImageBatch,
     requirePersonalScanUser:request=>requirePersonalScanUser(request,deps),
     env:name=>{

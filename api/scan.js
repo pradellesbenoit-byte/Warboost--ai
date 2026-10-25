@@ -21,6 +21,7 @@ import {FORMATION_BATCH_SCHEMA,FORMATION_PORTRAIT_ZOOM_SCHEMA,MAX_FORMATION_BATC
   mergeFormationPortraitZoomGroups,corroborateFormationPortraits} from "../lib/formation-batch.js";
 import {mergePlayerScanBatch} from "../lib/player-scan-batch.js";
 import {createScanTiming} from "../server/_scan-timing.js";
+import {controlledVisionRequested,authorizeControlledVision,runControlledVision} from "../server/_controlled-vision.js";
 
 // Provider deadline is independent from the frontend's end-to-end scan budget.
 // Portrait refinement is optional and cannot discard the useful primary result.
@@ -373,10 +374,10 @@ export function sanitizeFormationBatch(extracted,{count,now,scanType,knownHeroes
   return {...merged,conflicts:[...new Set([...(merged.conflicts||[]),...equipmentConflicts])],
     unmatched_equipment:unmatchedEquipment,batch_analysis:true,capture_count:count};
 }
-export async function openaiResponseJson({key,model,content,schemaName,schema,maxTokens,signal,store}){
+export async function openaiResponseJson({key,project,model,content,schemaName,schema,maxTokens,signal,store}){
   const r=await fetchWithTimeout("https://api.openai.com/v1/responses",{method:"POST",
-    signal,
-    headers:{"content-type":"application/json",authorization:`Bearer ${key}`},
+    signal,redirect:"error",
+    headers:{"content-type":"application/json",authorization:`Bearer ${key}`,...(project?{"OpenAI-Project":project}:{})},
     body:JSON.stringify({model,reasoning:{effort:"none"},max_output_tokens:maxTokens,
       ...(store===false?{store:false}:{}),
       ...(schema?{text:{format:{type:"json_schema",name:schemaName,strict:true,schema}}}:{}),
@@ -446,10 +447,14 @@ export default async function handler(req,res){
     if(!scanTypeValid)return res.status(400).json({error:"invalid_scan_type",message:"Type d’analyse invalide."});
     const imageBatch=validateScanImageBatch(scanType,req.body);
     if(!imageBatch.ok)return res.status(imageBatch.status).json({error:imageBatch.error,message:imageBatch.message});
-    const {user}=await timing.measure("access",()=>requirePersonalScanUser(req,{beforeScan:()=>{
+    const controlled=controlledVisionRequested(req);
+    const access=await timing.measure("access",()=>controlled
+      ?authorizeControlledVision(req,{scanType,images:imageBatch.images})
+      :requirePersonalScanUser(req,{beforeScan:()=>{
       if(!env("OPENAI_API_KEY")&&!env("WARBOOST_VISION_ENDPOINT"))
         throw Object.assign(new Error("WarBoost Vision n’est pas configuré sur ce déploiement."),{status:503,code:"SCAN_NOT_CONFIGURED",quota_reserved:false});
     }}));
+    const {user}=access;
     const verifiedContext=verifiedRosterContext(scanType,currentState,user),allianceTag=verifiedContext?.alliance?.tag||"";
     const images=imageBatch.images;
     const image=images[0];
@@ -457,7 +462,7 @@ export default async function handler(req,res){
     if(!slot.allowed){res.setHeader("Retry-After",String(slot.retryAfterSeconds));return res.status(429).json({error:"scan_rate_limited",code:"SCAN_RATE_LIMITED",message:"Trop d’analyses rapprochées. Réessaie dans un instant.",retry_after_seconds:slot.retryAfterSeconds})}
     releaseGuard=slot.release;
     let knownHeroes=[];
-    if(/^squad[1-4]$/.test(scanType)&&(configured()||userConfigured())){
+    if(!controlled&&/^squad[1-4]$/.test(scanType)&&(configured()||userConfigured())){
       try{
         const token=String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"");
         const saved=await timing.measure("profile_context",()=>userConfigured()?getProfileForUser(user.id,token,{timeoutMs:2000}):getProfile(user.id,{timeoutMs:2000}));
@@ -468,10 +473,19 @@ export default async function handler(req,res){
       }
     }
     let extracted=null,engine="openai",firstError=null;
-    const referenceBank=/^squad[1-4]$/.test(scanType)?await timing.measure("references",()=>loadHeroReferenceImages()):{references:[],atlases:[],available:false};
-    if(/^squad[1-4]$/.test(scanType)&&!referenceBank.available)console.warn("WarBoost hero references unavailable; unverified proposals require manual review");
-    if(env("OPENAI_API_KEY")){try{extracted=await openaiVision({image,images,scanType,locale,allianceTag,knownHeroes,referenceBank,timing})}catch(error){firstError=error}}
-    if(!extracted&&env("WARBOOST_VISION_ENDPOINT")){engine="custom";try{extracted=await timing.measure("vision_fallback",()=>customVision({image,images,scanType,locale,verifiedContext:/^squad[1-4]$/.test(scanType)?{confirmed_squad_names:knownHeroes}:verifiedContext}))}catch(error){if(!firstError)firstError=error}}
+    const referenceBank=!controlled&&/^squad[1-4]$/.test(scanType)?await timing.measure("references",()=>loadHeroReferenceImages()):{references:[],atlases:[],available:false};
+    if(controlled){
+      engine="controlled-openai";
+      extracted=await runControlledVision({cfg:access.cfg,scanType,call:cfg=>openaiResponseJson({
+        key:cfg.key,project:cfg.project,model:cfg.model,maxTokens:cfg.maxTokens,store:false,
+        content:visionRequestContent({image,images,scanType,locale,allianceTag:"",knownHeroes:[],referenceBank}),
+        ...(/^squad1$/.test(scanType)?{schemaName:"warboost_formation_batch",schema:FORMATION_BATCH_SCHEMA}:{})
+      })});
+    }else{
+      if(/^squad[1-4]$/.test(scanType)&&!referenceBank.available)console.warn("WarBoost hero references unavailable; unverified proposals require manual review");
+      if(env("OPENAI_API_KEY")){try{extracted=await openaiVision({image,images,scanType,locale,allianceTag,knownHeroes,referenceBank,timing})}catch(error){firstError=error}}
+      if(!extracted&&env("WARBOOST_VISION_ENDPOINT")){engine="custom";try{extracted=await timing.measure("vision_fallback",()=>customVision({image,images,scanType,locale,verifiedContext:/^squad[1-4]$/.test(scanType)?{confirmed_squad_names:knownHeroes}:verifiedContext}))}catch(error){if(!firstError)firstError=error}}
+    }
     if(!extracted){console.error("WarBoost scan provider unavailable",{code:safeErrorCode(firstError||{code:"SCAN_NOT_CONFIGURED"}),status:Number(firstError?.status)||503,type:scanTypeForLog,duration_ms:Math.max(0,Date.now()-startedAt)});const message=firstError?.code==="VISION_TIMEOUT"?"L’analyse a dépassé le délai. Réessaie avec la même capture.":firstError?.message||"WarBoost Vision n’est pas configuré sur ce déploiement.";return res.status(503).json({error:"scan_provider_unavailable",code:firstError?.code||"SCAN_NOT_CONFIGURED",message})}
     const now=new Date().toISOString();
     const quality={source:"screenshot_ocr",freshness:{observed_at:now,basis:"server_scan_time",screenshot_age:"unknown"},single_pass:true,requires_confirmation:true};
