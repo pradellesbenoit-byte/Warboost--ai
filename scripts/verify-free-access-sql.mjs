@@ -22,7 +22,8 @@ function concurrent(text){return new Promise((resolve,reject)=>{
   child.on("close",code=>{clearTimeout(deadline);code?reject(Error(error||"local SQL timeout")):resolve(output.trim())});child.stdin.end(text);
 })}
 const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
-const A=id(1),B=id(2),R5=id(3),OtherR5=id(4),R4=id(5),R3=id(6),one=id(10),two=id(11);
+// Non-UUID legacy player keys exercise TEXT end to end; business IDs stay UUID.
+const A="synthetic-player-a",B="synthetic-player-b",R5="synthetic-owner-a",OtherR5="synthetic-owner-b",R4="synthetic-r4",R3="synthetic-r3",one=id(10),two=id(11);
 let groups=0,started=false;
 function group(name,check){check();groups++;console.log(`PASS ${name}`)}
 function denied(text,pattern){assert.throws(()=>sql(text),pattern)}
@@ -34,14 +35,22 @@ try{
     create role service_role nologin nosuperuser;
     create role policy_owner nologin nosuperuser nocreaterole;
     grant usage,create on schema public to policy_owner;
-    create table public.wb1_profiles(player_id uuid primary key,state jsonb,updated_at timestamptz default now());
-    create table public.wb1_alliances(id uuid primary key,tag text,server_id text,owner_player_id uuid,roster jsonb,roster_updated_at timestamptz,updated_at timestamptz default now());
-    create table public.wb1_alliance_members(player_id uuid primary key,alliance_id uuid,role text,updated_at timestamptz default now());
-    alter table public.wb1_profiles owner to policy_owner;
-    alter table public.wb1_alliances owner to policy_owner;
-    alter table public.wb1_alliance_members owner to policy_owner;
-    grant select,update,insert on public.wb1_profiles,public.wb1_alliances,public.wb1_alliance_members to policy_owner;
   `);
+  sql(fs.readFileSync(new URL("./fixtures/free-access-real-schema.sql",import.meta.url),"utf8"));
+  const legacyShape=()=>sql(`select jsonb_agg(x order by name) from (
+    select c.oid::regclass::text as name,
+      (select jsonb_agg(pg_get_constraintdef(k.oid) order by k.conname) from pg_constraint k where k.conrelid=c.oid) as keys,
+      (select jsonb_agg(jsonb_build_array(attname,format_type(atttypid,atttypmod)) order by attnum)
+       from pg_attribute where attrelid=c.oid and attnum>0 and not attisdropped) as columns
+    from pg_class c where c.oid in ('wb1_profiles'::regclass,'wb1_alliances'::regclass,'wb1_alliance_members'::regclass)
+  ) x`);
+  const baseShape=legacyShape();
+  group("observed TEXT/UUID/composite PK fixture reproduces all three original incompatibilities",()=>{
+    denied("begin;create table bad_free_fk(user_id uuid references wb1_profiles(player_id));rollback;",/incompatible types/);
+    denied("select 1 from wb1_profiles where player_id='00000000-0000-4000-8000-000000000001'::uuid",/operator does not exist: text = uuid/);
+    denied(`insert into wb1_alliance_members values('synthetic','${one}','R1',now()) on conflict(player_id) do update set role='R1'`,/no unique or exclusion constraint/);
+    assert.equal(sql(`select count(*) from pg_constraint where conrelid='wb1_alliance_members'::regclass and contype='u'`),"0");
+  });
   sql("set role policy_owner;\n"+fs.readFileSync(new URL("../supabase/migration_free_access_preparation.sql",import.meta.url),"utf8"));
   const roster=(server,manager)=>[
     {name:"Player I",server_id:server,alliance_tag:"ONE",role:"R1"},
@@ -121,6 +130,24 @@ try{
     assert.equal(sql(`select count(*) from wb1_alliance_members where player_id='${A}'`),"1");
     assert.equal(sql(`select status from wb1_alliance_access_requests where id='${bRequest}'`),"rejected");
   });
+  const approvalRace=await Promise.all([
+    concurrent(`begin;set role service_role;select wb1_alliance_access_request('${A}','request');select pg_sleep(0.1);commit;`),
+    concurrent(`set role service_role;select wb1_alliance_access_request('${A}','request');`)
+  ]);
+  group("concurrent requests and approvals use TEXT keys and the real composite membership PK",()=>{
+    assert.equal(approvalRace.length,2);
+    assert.equal(sql(`select count(*) from wb1_alliance_access_requests where player_id='${A}'`),"1");
+  });
+  const reviewedRace=await Promise.all([concurrent(review(R4)),concurrent(review(R5))]);
+  group("two managers replay approval without duplicating or moving membership",()=>{
+    assert.equal(reviewedRace.every(r=>JSON.parse(r).already_reviewed),true);
+    assert.equal(sql(`select count(*) from wb1_alliance_members where player_id='${A}'`),"1");
+    sql(`insert into wb1_alliance_members values('${A}','${two}','R1',now())`);
+    denied(review(R4),/ALLIANCE_SWITCH_REVIEW_REQUIRED/);
+    // Our RPC must refuse ambiguous legacy membership, not delete/move either row.
+    assert.equal(sql(`select count(*) from wb1_alliance_members where player_id='${A}'`),"2");
+    sql(`delete from wb1_alliance_members where player_id='${A}' and alliance_id='${two}'`);
+  });
   group("quota: three accepted, fourth denied; repeat request cannot re-run provider",()=>{
     for(let i=0;i<3;i++)assert.equal(JSON.parse(sql(`set role service_role;select public.wb1_reserve_free_scan('${A}','${id(100+i)}')`)).reserved,true);
     assert.equal(JSON.parse(sql(`select public.wb1_reserve_free_scan('${A}','${id(103)}')`)).reserved,false);
@@ -132,7 +159,7 @@ try{
   assert.equal(sql(`select count(*) from wb1_free_scan_usage where user_id='${A}'`),"2");
   groups++;console.log("PASS concurrent quota transactions on two native PostgreSQL connections");
   group("deployment-wide FREE quota remains bounded across many fake accounts",()=>{
-    sql(`do $$declare u uuid;begin for i in 1..35 loop u:=('00000000-0000-4000-8000-'||lpad((1000+i)::text,12,'0'))::uuid;insert into wb1_profiles(player_id,state) values(u,'{}');perform public.wb1_reserve_free_scan(u,('00000000-0000-4000-8000-'||lpad((2000+i)::text,12,'0'))::uuid);end loop;end$$`);
+    sql(`do $$declare u text;begin for i in 1..35 loop u:='synthetic-budget-'||i::text;insert into wb1_profiles(player_id,state) values(u,'{}');perform public.wb1_reserve_free_scan(u,('00000000-0000-4000-8000-'||lpad((2000+i)::text,12,'0'))::uuid);end loop;end$$`);
     assert.equal(sql("select count(*) from wb1_free_scan_usage"),"30");
   });
   group("account deletion removes private requests/usage, but does not reset global quota",()=>{
@@ -141,7 +168,7 @@ try{
     assert.equal(sql(`select count(*) from wb1_alliance_access_requests where player_id='${A}'`),"0");
     assert.equal(sql("select reserved from wb1_free_scan_daily"),"30");
   });
-  const founder=id(500),secondFounder=id(501),otherScope=id(502);
+  const founder="synthetic-founder",secondFounder="synthetic-founder-two",otherScope="synthetic-other-scope";
   sql(`insert into wb1_profiles(player_id,state) values
     ('${founder}','{"player":{"name":"Founder I","server_id":"900","role":"R5"},"alliance":{"tag":"NEW"}}'),
     ('${secondFounder}','{"player":{"name":"Other","server_id":"900","role":"R4"},"alliance":{"tag":"NEW"}}'),
@@ -187,7 +214,12 @@ try{
       denied(`set role ${role};select * from wb1_alliance_founder_spaces`,/permission denied/);
     }
     denied(`set role service_role;select * from wb1_alliance_founder_spaces`,/permission denied/);
-    denied("begin;grant execute on function wb1_founder_space(uuid,text,jsonb,integer) to authenticated;select wb1_assert_free_access_contract();commit;",/FREE_ACCESS_FUNCTION_CONTRACT/);
+    denied("begin;grant execute on function wb1_founder_space(text,text,jsonb,integer) to authenticated;select wb1_assert_free_access_contract();commit;",/FREE_ACCESS_FUNCTION_CONTRACT/);
+    denied("begin;alter table wb1_alliance_members drop constraint wb1_alliance_members_pkey;select wb1_assert_free_access_contract();commit;",/FREE_BASE_KEY_CONTRACT/);
+    denied("begin;alter table wb1_alliances alter column owner_player_id type uuid using null::uuid;select wb1_assert_free_access_contract();commit;",/FREE_BASE_COLUMN_CONTRACT/);
+    denied("begin;grant execute on function wb1_assert_free_base_contract() to service_role;select wb1_assert_free_access_contract();commit;",/FREE_ACCESS_SERVICE_CONTRACT/);
+    denied("begin;alter table wb1_profiles disable row level security;select wb1_assert_free_access_contract();commit;",/FREE_BASE_RLS_CONTRACT/);
+    denied("begin;create function wb1_founder_space(uuid,text,jsonb,integer) returns void language sql as $$select$$;select wb1_assert_free_access_contract();commit;",/FREE_ACCESS_OVERLOAD_CONTRACT/);
     denied("begin;alter table wb1_alliance_founder_spaces alter column revision drop not null;select wb1_assert_free_access_contract();commit;",/FREE_ACCESS_TABLE_CONTRACT/);
     denied("begin;alter table wb1_alliance_founder_spaces drop constraint wb1_alliance_founder_spaces_founder_id_fkey;select wb1_assert_free_access_contract();commit;",/FREE_ACCESS_CONSTRAINT_CONTRACT/);
     sql("select wb1_assert_free_access_contract()");
@@ -197,7 +229,7 @@ try{
   });
   const additive=fs.readFileSync(new URL("../supabase/migration_free_workspace_budget.sql",import.meta.url),"utf8");
   sql("set role policy_owner;\n"+additive);
-  const owner=id(700),memberA=id(701),ownerB=id(702),memberB=id(703),impostor=id(704),ownerC=id(705);
+  const owner="workspace-owner-a",memberA="workspace-member-a",ownerB="workspace-owner-b",memberB="workspace-member-b",impostor="workspace-other",ownerC="workspace-owner-c";
   for(const [who,name,server,tag] of [[owner,"Owner A","1200","OPEN"],[memberA,"Member I","1200","OPEN"],
     [ownerB,"Owner B","1201","OPEN"],[memberB,"Member I","1201","OPEN"],[impostor,"Other","1200","OPEN"],[ownerC,"Owner C","1200","OTHER"],[id(706),"Existing","884","ONE"]]){
     sql(`insert into wb1_profiles values('${who}','${JSON.stringify({player:{name,server_id:server},alliance:{tag}})}',now())`);
@@ -249,6 +281,7 @@ try{
     denied("begin;grant select on wb1_autonomous_spaces to authenticated;select wb1_assert_workspace_budget_contract();commit;",/WORKSPACE_TABLE_CONTRACT/);
     denied("begin;alter table wb1_autonomous_members drop constraint wb1_autonomous_members_space_id_fkey;select wb1_assert_workspace_budget_contract();commit;",/WORKSPACE_CONSTRAINT_CONTRACT/);
     denied("begin;alter table wb1_free_budget_policy alter column global_daily drop not null;select wb1_assert_workspace_budget_contract();commit;",/WORKSPACE_COLUMN_CONTRACT/);
+    denied("begin;create function wb1_workspace_access(uuid,text,uuid) returns void language sql as $$select$$;select wb1_assert_workspace_budget_contract();commit;",/WORKSPACE_OVERLOAD_CONTRACT/);
     sql(fs.readFileSync(new URL("../supabase/audit_free_workspace_budget.sql",import.meta.url),"utf8"));
   });
   const ip="a".repeat(64),ipOther="b".repeat(64);
@@ -288,6 +321,29 @@ try{
     assert.equal(sql("select jsonb_agg(t order by player_id) from wb1_autonomous_members t"),before);
     assert.notEqual(sql("select global_daily from wb1_free_budget_policy"),"30");
     sql("select wb1_assert_workspace_budget_contract()");
+  });
+  group("complete migration chain replay preserves policy, memberships and quota counters",()=>{
+    const before=sql(`select jsonb_build_array(
+      (select jsonb_agg(t order by player_id) from wb1_autonomous_members t),
+      (select jsonb_agg(t order by alliance_id,player_id) from wb1_alliance_members t),
+      (select jsonb_agg(t order by usage_day) from wb1_free_scan_daily t),
+      (select row_to_json(t) from wb1_free_budget_policy t))`);
+    sql("set role policy_owner;\n"+fs.readFileSync(new URL("../supabase/migration_free_access_preparation.sql",import.meta.url),"utf8"));
+    sql("set role policy_owner;\n"+additive);
+    assert.equal(sql(`select jsonb_build_array(
+      (select jsonb_agg(t order by player_id) from wb1_autonomous_members t),
+      (select jsonb_agg(t order by alliance_id,player_id) from wb1_alliance_members t),
+      (select jsonb_agg(t order by usage_day) from wb1_free_scan_daily t),
+      (select row_to_json(t) from wb1_free_budget_policy t))`),before);
+    assert.equal(JSON.parse(sql(`select wb1_reserve_free_scan('${owner}','${id(999)}')`)).reserved,false);
+  });
+  group("both administrator audits pass after ordered migrations; legacy keys and columns unchanged",()=>{
+    sql(fs.readFileSync(new URL("../supabase/audit_free_access_preparation.sql",import.meta.url),"utf8"));
+    sql(fs.readFileSync(new URL("../supabase/audit_free_workspace_budget.sql",import.meta.url),"utf8"));
+    assert.equal(legacyShape(),baseShape);
+    assert.equal(sql(`select count(*) from pg_proc where pronamespace='public'::regnamespace and proname in
+      ('wb1_reserve_free_scan','wb1_reserve_free_scan_v2','wb1_access_manager','wb1_alliance_access_request',
+       'wb1_review_alliance_access','wb1_founder_space','wb1_workspace_access') and proargtypes[0]='uuid'::regtype`),"0");
   });
   console.log(JSON.stringify({native_postgresql:true,groups,pass:groups,fail:0,external_calls:0}));
 }finally{

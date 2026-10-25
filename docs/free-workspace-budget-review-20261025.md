@@ -1,5 +1,10 @@
 # Ouverture autonome et budget FREE — préparation locale
 
+**Correctif de compatibilité du schéma réel :** voir
+[free-schema-text-compatibility.md](free-schema-text-compatibility.md).
+Les nombres ci-dessous décrivent l'intervention précédente, pas une validation
+de Supabase : sa fixture UUID a masqué les clés TEXT et la PK composite réelles.
+
 Suite de `9db63ddcaf9f31e47a87a0007b0027e0ef7cb3c6`, sur
 `warboost-free-access-review-20261025`. Aucun SQL Supabase appliqué, aucune
 inscription, aucun appel Vision/Stripe, aucun changement des sites.

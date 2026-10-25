@@ -4,8 +4,42 @@ begin;
 set local lock_timeout='2s';
 set local statement_timeout='4s';
 select pg_advisory_xact_lock(hashtextextended('warboost-free-access-schema-v1',0));
+-- Existing managed schema is a prerequisite, never a conversion target.
+-- Player/account keys are TEXT; only alliance/request/reservation IDs are UUID.
+create or replace function public.wb1_assert_free_base_contract()
+returns void language plpgsql security definer set search_path=pg_catalog
+as $$
+declare expected record;
+begin
+  for expected in select * from (values
+    ('wb1_profiles','player_id','text'),('wb1_profiles','state','jsonb'),
+    ('wb1_alliance_members','player_id','text'),('wb1_alliance_members','alliance_id','uuid'),
+    ('wb1_alliance_members','role','text'),('wb1_alliance_members','updated_at','timestamp with time zone'),
+    ('wb1_alliances','id','uuid'),('wb1_alliances','owner_player_id','text'),
+    ('wb1_alliances','tag','text'),('wb1_alliances','server_id','text'),('wb1_alliances','roster','jsonb'),
+    ('wb1_alliances','roster_updated_at','timestamp with time zone'),('wb1_alliances','updated_at','timestamp with time zone')
+  ) v(tbl,col,typ) loop
+    if not exists(select 1 from pg_attribute where attrelid=to_regclass('public.'||expected.tbl)
+      and attname=expected.col and not attisdropped and format_type(atttypid,atttypmod)=expected.typ)
+      then raise exception 'FREE_BASE_COLUMN_CONTRACT'; end if;
+  end loop;
+  for expected in select * from (values
+    ('wb1_profiles','PRIMARY KEY (player_id)'),
+    ('wb1_alliances','PRIMARY KEY (id)'),
+    ('wb1_alliance_members','PRIMARY KEY (alliance_id, player_id)')
+  ) v(tbl,definition) loop
+    if not exists(select 1 from pg_constraint where conrelid=to_regclass('public.'||expected.tbl)
+      and contype='p' and convalidated and pg_get_constraintdef(oid)=expected.definition)
+      then raise exception 'FREE_BASE_KEY_CONTRACT'; end if;
+  end loop;
+  if exists(select 1 from pg_class where oid in ('public.wb1_profiles'::regclass,
+    'public.wb1_alliances'::regclass,'public.wb1_alliance_members'::regclass) and not relrowsecurity)
+    then raise exception 'FREE_BASE_RLS_CONTRACT'; end if;
+end $$;
+revoke all on function public.wb1_assert_free_base_contract() from public,anon,authenticated,service_role;
+select public.wb1_assert_free_base_contract();
 create table if not exists public.wb1_free_scan_usage (
-  user_id uuid not null references public.wb1_profiles(player_id) on delete cascade,
+  user_id text not null references public.wb1_profiles(player_id) on delete cascade,
   request_id uuid primary key,
   usage_day date not null default (now() at time zone 'UTC')::date,
   created_at timestamptz not null default now()
@@ -25,7 +59,7 @@ grant select on public.wb1_free_scan_daily to service_role;
 
 -- Three personal FREE scans/account/day, max 30 FREE scans/day across the deployment.
 -- Reservation is consumed before Vision, including failures. Never refund/retry automatically.
-create or replace function public.wb1_reserve_free_scan(p_user_id uuid,p_request_id uuid)
+create or replace function public.wb1_reserve_free_scan(p_user_id text,p_request_id uuid)
 returns jsonb language plpgsql security definer set search_path=pg_catalog
 as $$
 declare d date:=(now() at time zone 'UTC')::date;
@@ -45,11 +79,11 @@ end $$;
 
 create table if not exists public.wb1_alliance_access_requests (
   id uuid not null unique default gen_random_uuid(),
-  player_id uuid not null references public.wb1_profiles(player_id) on delete cascade,
+  player_id text not null references public.wb1_profiles(player_id) on delete cascade,
   alliance_id uuid not null references public.wb1_alliances(id),
   nickname text not null check(length(nickname) between 1 and 80),
   status text not null default 'pending' check(status in ('pending','approved','rejected')),
-  reviewed_by uuid,
+  reviewed_by text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key(player_id,alliance_id)
@@ -59,7 +93,7 @@ revoke all on public.wb1_alliance_access_requests from public,anon,authenticated
 grant select,insert,update on public.wb1_alliance_access_requests to service_role;
 
 -- Private helper: canonical linkage + matching membership/role, or existing owner.
-create or replace function public.wb1_access_manager(p_user_id uuid,p_alliance_id uuid)
+create or replace function public.wb1_access_manager(p_user_id text,p_alliance_id uuid)
 returns boolean language sql security definer set search_path=pg_catalog
 as $$
   select exists(
@@ -77,7 +111,7 @@ as $$
   );
 $$;
 
-create or replace function public.wb1_alliance_access_request(p_user_id uuid,p_action text)
+create or replace function public.wb1_alliance_access_request(p_user_id text,p_action text)
 returns jsonb language plpgsql security definer set search_path=pg_catalog
 as $$
 declare s jsonb; requested_server text; requested_tag text; nickname text; target uuid; n integer; result jsonb;
@@ -121,20 +155,26 @@ begin
   return jsonb_build_object('request',result,'membership_granted',false);
 end $$;
 
-create or replace function public.wb1_review_alliance_access(p_user_id uuid,p_request_id uuid,p_accept boolean)
+create or replace function public.wb1_review_alliance_access(p_user_id text,p_request_id uuid,p_accept boolean)
 returns jsonb language plpgsql security definer set search_path=pg_catalog
 as $$
 declare q public.wb1_alliance_access_requests; a public.wb1_alliances;
-  s jsonb; member jsonb; position integer; n integer; target uuid; applicant uuid; stamp timestamptz:=clock_timestamp();
+  s jsonb; member jsonb; position integer; n integer; target uuid; applicant text; stamp timestamptz:=clock_timestamp();
 begin
   if p_accept is null then raise exception 'ALLIANCE_ACTION_INVALID'; end if;
   -- Stable ordering: alliance -> request. Never trust a browser-supplied role/user/roster.
   select alliance_id,player_id into target,applicant from public.wb1_alliance_access_requests where id=p_request_id;
   if target is null then raise exception 'ALLIANCE_REQUEST_NOT_FOUND'; end if;
   perform pg_advisory_xact_lock(hashtextextended('wb-access-user:'||applicant::text,0));
+  -- The real membership PK is (alliance_id,player_id), NOT a global player key.
+  -- Serialize the check and insert against ALL membership writers; do not add
+  -- a global unique constraint or move an existing membership to another scope.
+  lock table public.wb1_alliance_members in share row exclusive mode;
   select * into a from public.wb1_alliances where id=target for no key update;
   if not public.wb1_access_manager(p_user_id,target) then raise exception 'ALLIANCE_MANAGER_REQUIRED'; end if;
   select * into q from public.wb1_alliance_access_requests where id=p_request_id for update;
+  if exists(select 1 from public.wb1_alliance_members where player_id=q.player_id and alliance_id<>a.id)
+    then raise exception 'ALLIANCE_SWITCH_REVIEW_REQUIRED'; end if;
   if q.status='approved' then
     if not exists(select 1 from public.wb1_alliance_members m,jsonb_array_elements(a.roster) r
       where m.player_id=q.player_id and m.alliance_id=a.id and r->>'player_id'=q.player_id::text
@@ -167,8 +207,6 @@ begin
     then raise exception 'ALLIANCE_IDENTITY_ALREADY_LINKED'; end if;
   if exists(select 1 from jsonb_array_elements(a.roster) r where r->>'player_id'=q.player_id::text and r is distinct from member)
     then raise exception 'ALLIANCE_IDENTITY_AMBIGUOUS'; end if;
-  if exists(select 1 from public.wb1_alliance_members where player_id=q.player_id and alliance_id<>a.id)
-    then raise exception 'ALLIANCE_SWITCH_REVIEW_REQUIRED'; end if;
   member:=member||jsonb_build_object('player_id',q.player_id,'warboost_linked',true,
     'identity_basis','lastwar_nickname_server_alliance','identity_linked_at',stamp);
   stamp:=greatest(stamp,coalesce(a.roster_updated_at,stamp)+interval '1 millisecond');
@@ -176,7 +214,7 @@ begin
     roster_updated_at=stamp,updated_at=stamp where id=a.id;
   insert into public.wb1_alliance_members(player_id,alliance_id,role,updated_at)
     values(q.player_id,a.id,member->>'role',stamp)
-    on conflict(player_id) do update set alliance_id=excluded.alliance_id,role=excluded.role,updated_at=stamp;
+    on conflict(alliance_id,player_id) do update set role=excluded.role,updated_at=stamp;
   update public.wb1_alliance_access_requests set status='approved',reviewed_by=p_user_id,updated_at=stamp where id=q.id;
   return jsonb_build_object('status','approved','membership_granted',true);
 end $$;
@@ -186,7 +224,7 @@ end $$;
 -- Multiple founders may prepare independent drafts for the same unclaimed scope;
 -- the first declarant cannot reserve or seize that scope.
 create table if not exists public.wb1_alliance_founder_spaces (
-  founder_id uuid primary key references public.wb1_profiles(player_id) on delete cascade,
+  founder_id text primary key references public.wb1_profiles(player_id) on delete cascade,
   server_id text not null check(server_id ~ '^[0-9]{1,20}$'),
   alliance_tag text not null check(length(alliance_tag) between 1 and 24),
   status text not null default 'provisional' check(status='provisional'),
@@ -196,7 +234,7 @@ create table if not exists public.wb1_alliance_founder_spaces (
   updated_at timestamptz not null default now()
 );
 alter table public.wb1_alliance_founder_spaces enable row level security;
-create or replace function public.wb1_founder_space(p_user_id uuid,p_action text,p_roster jsonb default null,p_revision integer default null)
+create or replace function public.wb1_founder_space(p_user_id text,p_action text,p_roster jsonb default null,p_revision integer default null)
 returns jsonb language plpgsql security definer set search_path=pg_catalog
 as $$
 declare s jsonb; v_server text; v_tag text; existing_count integer; draft public.wb1_alliance_founder_spaces;
@@ -254,15 +292,21 @@ returns void language plpgsql security definer set search_path=pg_catalog
 as $$
 declare t text; f regprocedure; expected record;
 begin
+  perform public.wb1_assert_free_base_contract();
+  -- Reject stale UUID overloads rather than leaving an unintended privileged API.
+  if exists(select 1 from pg_proc where pronamespace='public'::regnamespace
+    and proname in ('wb1_reserve_free_scan','wb1_access_manager','wb1_alliance_access_request',
+      'wb1_review_alliance_access','wb1_founder_space') group by proname having count(*)<>1)
+    then raise exception 'FREE_ACCESS_OVERLOAD_CONTRACT'; end if;
   for expected in select * from (values
-    ('wb1_free_scan_usage','user_id','uuid'),('wb1_free_scan_usage','request_id','uuid'),
+    ('wb1_free_scan_usage','user_id','text'),('wb1_free_scan_usage','request_id','uuid'),
     ('wb1_free_scan_usage','usage_day','date'),('wb1_free_scan_usage','created_at','timestamp with time zone'),
     ('wb1_free_scan_daily','usage_day','date'),('wb1_free_scan_daily','reserved','integer'),
-    ('wb1_alliance_access_requests','id','uuid'),('wb1_alliance_access_requests','player_id','uuid'),
+    ('wb1_alliance_access_requests','id','uuid'),('wb1_alliance_access_requests','player_id','text'),
     ('wb1_alliance_access_requests','alliance_id','uuid'),('wb1_alliance_access_requests','nickname','text'),
-    ('wb1_alliance_access_requests','status','text'),('wb1_alliance_access_requests','reviewed_by','uuid'),
+    ('wb1_alliance_access_requests','status','text'),('wb1_alliance_access_requests','reviewed_by','text'),
     ('wb1_alliance_access_requests','created_at','timestamp with time zone'),('wb1_alliance_access_requests','updated_at','timestamp with time zone'),
-    ('wb1_alliance_founder_spaces','founder_id','uuid'),('wb1_alliance_founder_spaces','server_id','text'),
+    ('wb1_alliance_founder_spaces','founder_id','text'),('wb1_alliance_founder_spaces','server_id','text'),
     ('wb1_alliance_founder_spaces','alliance_tag','text'),('wb1_alliance_founder_spaces','status','text'),
     ('wb1_alliance_founder_spaces','roster_draft','jsonb'),('wb1_alliance_founder_spaces','revision','integer'),
     ('wb1_alliance_founder_spaces','created_at','timestamp with time zone'),('wb1_alliance_founder_spaces','updated_at','timestamp with time zone')
@@ -303,31 +347,33 @@ begin
       then raise exception 'FREE_ACCESS_CONSTRAINT_CONTRACT'; end if;
   end loop;
   foreach f in array array[
-    'public.wb1_reserve_free_scan(uuid,uuid)'::regprocedure,
-    'public.wb1_access_manager(uuid,uuid)'::regprocedure,
-    'public.wb1_alliance_access_request(uuid,text)'::regprocedure,
-    'public.wb1_review_alliance_access(uuid,uuid,boolean)'::regprocedure,
-    'public.wb1_founder_space(uuid,text,jsonb,integer)'::regprocedure,
+    'public.wb1_reserve_free_scan(text,uuid)'::regprocedure,
+    'public.wb1_access_manager(text,uuid)'::regprocedure,
+    'public.wb1_alliance_access_request(text,text)'::regprocedure,
+    'public.wb1_review_alliance_access(text,uuid,boolean)'::regprocedure,
+    'public.wb1_founder_space(text,text,jsonb,integer)'::regprocedure,
+    'public.wb1_assert_free_base_contract()'::regprocedure,
     'public.wb1_assert_free_access_contract()'::regprocedure] loop
     if not exists(select 1 from pg_proc p where p.oid=f and p.prosecdef and p.proconfig @> array['search_path=pg_catalog']
       and p.proowner=(select proowner from pg_proc where oid='public.wb1_assert_free_access_contract()'::regprocedure))
       or has_function_privilege('anon',f,'EXECUTE') or has_function_privilege('authenticated',f,'EXECUTE')
       then raise exception 'FREE_ACCESS_FUNCTION_CONTRACT'; end if;
-    if has_function_privilege('service_role',f,'EXECUTE') is distinct from (f<>'public.wb1_access_manager(uuid,uuid)'::regprocedure)
+    if has_function_privilege('service_role',f,'EXECUTE') is distinct from
+      (f not in ('public.wb1_access_manager(text,uuid)'::regprocedure,'public.wb1_assert_free_base_contract()'::regprocedure))
       then raise exception 'FREE_ACCESS_SERVICE_CONTRACT'; end if;
   end loop;
 end $$;
 revoke all on public.wb1_free_scan_usage,public.wb1_free_scan_daily,public.wb1_alliance_access_requests,public.wb1_alliance_founder_spaces from public,anon,authenticated,service_role;
-revoke all on function public.wb1_reserve_free_scan(uuid,uuid) from public,anon,authenticated;
-revoke all on function public.wb1_access_manager(uuid,uuid) from public,anon,authenticated,service_role;
-revoke all on function public.wb1_alliance_access_request(uuid,text) from public,anon,authenticated;
-revoke all on function public.wb1_review_alliance_access(uuid,uuid,boolean) from public,anon,authenticated;
-revoke all on function public.wb1_founder_space(uuid,text,jsonb,integer) from public,anon,authenticated;
+revoke all on function public.wb1_reserve_free_scan(text,uuid) from public,anon,authenticated;
+revoke all on function public.wb1_access_manager(text,uuid) from public,anon,authenticated,service_role;
+revoke all on function public.wb1_alliance_access_request(text,text) from public,anon,authenticated;
+revoke all on function public.wb1_review_alliance_access(text,uuid,boolean) from public,anon,authenticated;
+revoke all on function public.wb1_founder_space(text,text,jsonb,integer) from public,anon,authenticated;
 revoke all on function public.wb1_assert_free_access_contract() from public,anon,authenticated;
-grant execute on function public.wb1_reserve_free_scan(uuid,uuid) to service_role;
-grant execute on function public.wb1_alliance_access_request(uuid,text) to service_role;
-grant execute on function public.wb1_review_alliance_access(uuid,uuid,boolean) to service_role;
-grant execute on function public.wb1_founder_space(uuid,text,jsonb,integer) to service_role;
+grant execute on function public.wb1_reserve_free_scan(text,uuid) to service_role;
+grant execute on function public.wb1_alliance_access_request(text,text) to service_role;
+grant execute on function public.wb1_review_alliance_access(text,uuid,boolean) to service_role;
+grant execute on function public.wb1_founder_space(text,text,jsonb,integer) to service_role;
 grant execute on function public.wb1_assert_free_access_contract() to service_role;
 select public.wb1_assert_free_access_contract();
 commit;

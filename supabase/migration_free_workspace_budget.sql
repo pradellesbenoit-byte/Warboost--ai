@@ -28,10 +28,10 @@ alter table public.wb1_free_scan_ip_daily enable row level security;
 revoke all on public.wb1_free_budget_policy,public.wb1_free_scan_ip_daily from public,anon,authenticated,service_role;
 
 -- Keep the old signature FAIL CLOSED; only the new IP-aware backend may spend FREE.
-create or replace function public.wb1_reserve_free_scan(p_user_id uuid,p_request_id uuid)
+create or replace function public.wb1_reserve_free_scan(p_user_id text,p_request_id uuid)
 returns jsonb language sql security definer set search_path=pg_catalog
 as $$ select jsonb_build_object('reserved',false,'reason','BUDGET_BACKEND_UPGRADE_REQUIRED') $$;
-create or replace function public.wb1_reserve_free_scan_v2(p_user_id uuid,p_request_id uuid,p_ip_digest text)
+create or replace function public.wb1_reserve_free_scan_v2(p_user_id text,p_request_id uuid,p_ip_digest text)
 returns jsonb language plpgsql security definer set search_path=pg_catalog
 as $$
 declare d date:=(now() at time zone 'UTC')::date; policy public.wb1_free_budget_policy;
@@ -59,14 +59,14 @@ end $$;
 -- Separate WarBoost governance. Never confers game rank, canonical manager
 -- predicates, PRO, canonical membership or access to legacy alliance data.
 create table if not exists public.wb1_autonomous_spaces(
- owner_id uuid primary key references public.wb1_alliance_founder_spaces(founder_id),
+ owner_id text primary key references public.wb1_alliance_founder_spaces(founder_id),
  server_id text not null, alliance_tag text not null,
  created_at timestamptz not null default now(),
  unique(server_id,alliance_tag)
 );
 create table if not exists public.wb1_autonomous_members(
- space_id uuid not null references public.wb1_autonomous_spaces(owner_id),
- player_id uuid primary key references public.wb1_profiles(player_id) on delete cascade,
+ space_id text not null references public.wb1_autonomous_spaces(owner_id),
+ player_id text primary key references public.wb1_profiles(player_id) on delete cascade,
  nickname text not null, status text not null check(status in ('pending','approved','rejected')),
  created_at timestamptz not null default now(), reviewed_at timestamptz
 );
@@ -74,11 +74,11 @@ alter table public.wb1_autonomous_spaces enable row level security;
 alter table public.wb1_autonomous_members enable row level security;
 revoke all on public.wb1_autonomous_spaces,public.wb1_autonomous_members from public,anon,authenticated,service_role;
 
-create or replace function public.wb1_workspace_access(p_user_id uuid,p_action text,p_target uuid default null)
+create or replace function public.wb1_workspace_access(p_user_id text,p_action text,p_target text default null)
 returns jsonb language plpgsql security definer set search_path=pg_catalog
 as $$
 #variable_conflict use_variable
-declare s jsonb; v_server text; v_tag text; v_name text; owner_id uuid;
+declare s jsonb; v_server text; v_tag text; v_name text; owner_id text;
  draft public.wb1_alliance_founder_spaces; m public.wb1_autonomous_members; result jsonb;
 begin
  if p_user_id is null then raise exception 'AUTH_REQUIRED'; end if;
@@ -168,9 +168,9 @@ end $$;
 create or replace trigger wb1_workspace_roster_guard_trg before update of roster_draft on public.wb1_alliance_founder_spaces
 for each row execute function public.wb1_workspace_roster_guard();
 
-revoke all on function public.wb1_reserve_free_scan_v2(uuid,uuid,text),public.wb1_workspace_access(uuid,text,uuid),
+revoke all on function public.wb1_reserve_free_scan_v2(text,uuid,text),public.wb1_workspace_access(text,text,text),
  public.wb1_workspace_roster_guard() from public,anon,authenticated;
-grant execute on function public.wb1_reserve_free_scan_v2(uuid,uuid,text),public.wb1_workspace_access(uuid,text,uuid) to service_role;
+grant execute on function public.wb1_reserve_free_scan_v2(text,uuid,text),public.wb1_workspace_access(text,text,text) to service_role;
 revoke all on function public.wb1_workspace_roster_guard() from service_role;
 
 create or replace function public.wb1_assert_workspace_budget_contract()
@@ -178,6 +178,9 @@ returns void language plpgsql security definer set search_path=pg_catalog as $$
 declare t text; p regprocedure; expected_owner oid; expected record;
 begin
  perform public.wb1_assert_free_access_contract();
+ if exists(select 1 from pg_proc where pronamespace='public'::regnamespace
+   and proname in ('wb1_workspace_access','wb1_reserve_free_scan_v2') group by proname having count(*)<>1)
+ then raise exception 'WORKSPACE_OVERLOAD_CONTRACT'; end if;
  select relowner into expected_owner from pg_class where oid='public.wb1_alliance_founder_spaces'::regclass;
  foreach t in array array['wb1_free_budget_policy','wb1_free_scan_ip_daily','wb1_autonomous_spaces','wb1_autonomous_members'] loop
    if not exists(select 1 from pg_class c where c.oid=('public.'||t)::regclass
@@ -192,9 +195,9 @@ begin
    ('wb1_free_budget_policy','per_account','integer'),('wb1_free_budget_policy','global_daily','integer'),
    ('wb1_free_budget_policy','per_ip','integer'),('wb1_free_budget_policy','updated_at','timestamp with time zone'),
    ('wb1_free_scan_ip_daily','usage_day','date'),('wb1_free_scan_ip_daily','ip_digest','text'),('wb1_free_scan_ip_daily','reserved','integer'),
-   ('wb1_autonomous_spaces','owner_id','uuid'),('wb1_autonomous_spaces','server_id','text'),
+   ('wb1_autonomous_spaces','owner_id','text'),('wb1_autonomous_spaces','server_id','text'),
    ('wb1_autonomous_spaces','alliance_tag','text'),('wb1_autonomous_spaces','created_at','timestamp with time zone'),
-   ('wb1_autonomous_members','space_id','uuid'),('wb1_autonomous_members','player_id','uuid'),
+   ('wb1_autonomous_members','space_id','text'),('wb1_autonomous_members','player_id','text'),
    ('wb1_autonomous_members','nickname','text'),('wb1_autonomous_members','status','text'),
    ('wb1_autonomous_members','created_at','timestamp with time zone'),('wb1_autonomous_members','reviewed_at','timestamp with time zone')
  ) v(tbl,col,typ) loop
@@ -216,16 +219,16 @@ begin
    if not exists(select 1 from pg_constraint where conrelid=('public.'||expected.tbl)::regclass and convalidated
      and pg_get_constraintdef(oid)=expected.def) then raise exception 'WORKSPACE_CONSTRAINT_CONTRACT'; end if;
  end loop;
- foreach p in array array['public.wb1_workspace_access(uuid,text,uuid)'::regprocedure,
-   'public.wb1_reserve_free_scan_v2(uuid,uuid,text)'::regprocedure,
+ foreach p in array array['public.wb1_workspace_access(text,text,text)'::regprocedure,
+   'public.wb1_reserve_free_scan_v2(text,uuid,text)'::regprocedure,
    'public.wb1_workspace_roster_guard()'::regprocedure,
    'public.wb1_assert_workspace_budget_contract()'::regprocedure] loop
    if not exists(select 1 from pg_proc where oid=p and prosecdef and proowner=expected_owner and proconfig @> array['search_path=pg_catalog'])
      or has_function_privilege('anon',p,'EXECUTE') or has_function_privilege('authenticated',p,'EXECUTE')
      then raise exception 'WORKSPACE_FUNCTION_CONTRACT'; end if;
  end loop;
- if not has_function_privilege('service_role','public.wb1_workspace_access(uuid,text,uuid)','EXECUTE')
-   or not has_function_privilege('service_role','public.wb1_reserve_free_scan_v2(uuid,uuid,text)','EXECUTE')
+ if not has_function_privilege('service_role','public.wb1_workspace_access(text,text,text)','EXECUTE')
+   or not has_function_privilege('service_role','public.wb1_reserve_free_scan_v2(text,uuid,text)','EXECUTE')
    or has_function_privilege('service_role','public.wb1_workspace_roster_guard()','EXECUTE')
    or has_function_privilege('service_role','public.wb1_assert_workspace_budget_contract()','EXECUTE')
  then raise exception 'WORKSPACE_SERVICE_ACL_CONTRACT'; end if;

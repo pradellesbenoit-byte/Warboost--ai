@@ -1,4 +1,5 @@
 -- Read-only administrator audit. No identities, emails, tokens or individual IP digests.
+-- Checks TEXT actor/target/space keys and UUID scan request keys via both contracts.
 begin read only;
 set local statement_timeout='4s';
 select public.wb1_assert_workspace_budget_contract();

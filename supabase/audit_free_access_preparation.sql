@@ -1,5 +1,7 @@
 -- LOCAL PROPOSAL ONLY. Run only with separate installation/audit approval on
 -- the explicitly selected TEST project. No account/profile contents returned.
+-- Includes legacy TEXT player/owner keys, UUID alliance IDs, composite membership
+-- PK (alliance_id,player_id), RLS and refusal of stale UUID RPC overloads.
 begin read only;
 set local lock_timeout='2s';
 set local statement_timeout='4s';
