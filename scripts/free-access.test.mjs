@@ -8,6 +8,8 @@ import {createIdentityOnboardingService} from "../lib/identity-onboarding-servic
 import {requirePersonalScanUser} from "../lib/personal-scan-access.js";
 import {createAllianceAccessHandler,createFounderSpaceHandler} from "../lib/alliance-access-service.js";
 import {parseFounderDraft,formatFounderDraft,resetForeignFounderDraft} from "../lib/founder-draft.js";
+import {workspaceHelpCopy,renderWorkspaceHelp} from "../lib/workspace-help.js";
+import {workspaceRequestsHtml,draftFeedback,rosterFeedback} from "../lib/workspace-feedback.js";
 import {entitlementForUser,requireProductUser} from "../lib/pro-access.js";
 import {getAllianceRoster} from "../lib/supabase.js";
 const verified={id:"synthetic-a",email:"a@example.invalid",email_confirmed_at:"2026-01-01T00:00:00Z"};
@@ -42,15 +44,17 @@ function founderDOM(){
   const panel={dataset:{},classList:{add(){},remove(){}}},editor={value:"",dataset:{}};
   const nodes={"#freeFounderPanel":panel,"#freeFounderRoster":editor},calls=[],messages=[];
   const context={cloudSession:{user:verified},state:{player_id:verified.id},lang:"fr",freeAccessCopy,
+    workspaceHelpCopy,renderWorkspaceHelp,workspaceRequestsHtml,draftFeedback,rosterFeedback,
+    sessionApplyKey:s=>s?.user?.id||"",document:{querySelectorAll:()=>[],addEventListener(){}},
     parseFounderDraft,formatFounderDraft,resetForeignFounderDraft,requireBetaAccess:()=>true,requireBetaConsent:()=>true,
     $:id=>nodes[id],pushServerState:async()=>({ok:true}),authHeaders:x=>x,confirm:()=>true,
     inviteMessage:(...args)=>messages.push(args),fetchJsonBounded:async(url,request)=>{
       calls.push({url,body:JSON.parse(request.body)});
-      return {response:{ok:true},json:{ok:true,provisional:true,membership_granted:false,game_role_verified:false,revision:0,roster_draft:[]}};
+      return {response:{ok:true},json:{ok:true,provisional:true,membership_granted:false,game_role_verified:false,revision:0,roster_draft:[],requests:[],status:"pending"}};
     }};
   vm.createContext(context);
   const source=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
-  vm.runInContext(source.slice(source.indexOf("async function submitFreeAllianceAction("),source.indexOf("// Capture overrides old")),context);
+  vm.runInContext(source.slice(source.indexOf("let freeAllianceBusy=false;"),source.indexOf("// Capture overrides old")),context);
   return {context,panel,editor,calls,messages,nodes,run:(action,id)=>context.submitFreeAllianceAction(action,id)};
 }
 test("actual workspace browser handlers use dedicated route, explicit owner approval and safe text rendering",async()=>{

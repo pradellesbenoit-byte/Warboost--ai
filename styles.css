@@ -1,3 +1,16 @@
+/* Autonomous workspace forms: labels must not inherit compact inline layouts. */
+#freeFounderPanel label{display:block;position:static;float:none;width:100%;height:auto;white-space:normal;margin-block:12px 8px;line-height:1.5}
+#freeFounderRoster{display:block;box-sizing:border-box;position:static;width:100%;max-width:100%;min-width:0;min-height:140px;resize:vertical;font:inherit;line-height:1.5}
+#freeFounderPanel,#freeSpacePanel{min-width:0;overflow-wrap:anywhere}
+#freeFounderPanel .smallBtn,#freeSpacePanel .smallBtn,.workspaceRequest .smallBtn{min-height:44px;max-width:100%;white-space:normal;margin-block:6px}
+#freeSpaceRoster{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;unicode-bidi:plaintext}
+.workspaceHelp{line-height:1.6;overflow-wrap:anywhere;text-align:start}
+.workspaceHelp summary{cursor:pointer;min-height:44px;display:list-item;padding-block:10px}
+.workspaceHelp p{white-space:normal;margin-block:12px}
+.workspaceHelp[dir="rtl"]{direction:rtl}
+.workspaceRequest{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-block:8px}
+.workspaceRequest span{flex:1 1 100%;overflow-wrap:anywhere}
+@media(max-width:480px){#freeFounderPanel>.smallBtn,#freeSpacePanel>.smallBtn{display:block;width:100%}}
 .qg35HomeCard{border-color:rgba(142,112,255,.5);background:linear-gradient(145deg,rgba(89,64,177,.16),rgba(10,16,29,.92))}
 .scanReviewPanel{margin-top:10px;min-width:0;padding:12px;border:1px solid #315078;background:linear-gradient(145deg,#0a1424,#0b111e);border-radius:16px}
 .scanReviewPanel .sectionTitle{margin-bottom:7px}

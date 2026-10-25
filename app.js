@@ -1,6 +1,8 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {freeAccountAllowed,freeAccessCopy} from "./lib/free-access.js";
 import {parseFounderDraft,formatFounderDraft,resetForeignFounderDraft} from "./lib/founder-draft.js";
+import {workspaceHelpCopy,renderWorkspaceHelp} from "./lib/workspace-help.js";
+import {workspaceRequestsHtml,draftFeedback,rosterFeedback} from "./lib/workspace-feedback.js";
 import {createAnalysisIndicator,analysisFailureMessage,beginLoadingButton} from "./lib/analysis-indicator.js";
 import {loadingTargetIds,requestLoadingTargetIds} from "./lib/loading-targets.js";
 import {accountSyncErrorKind,accountSyncView,verifiedAccountStateReply,verifiedAccountWriteReply,createCloudOperations,transientCloudFailure,deviceCloudSaveMetadata,confirmedWriteReceipt,mergeDeviceCloudSaveMetadata,staleProfileRestore} from "./lib/account-sync-feedback.js";
@@ -1468,9 +1470,52 @@ function renderAuth(){
   if(!logged&&msg&&["config-missing","config-unreachable","client-error","auth-unreachable"].includes(cloudInit.status)){msg.className="notice warn";msg.textContent=cloudAuthFailureMessage()}
   renderBeta();renderPro();
 }
+let freeAllianceBusy=false;
+const freeWorkspaceViews={};
+let freeWorkspaceViewOwner="";
+function renderFreeWorkspaceFeedback(){
+  const owner=String(cloudSession?.user?.id||""),copy=freeAccessCopy(lang),help=workspaceHelpCopy(lang);
+  if(owner!==freeWorkspaceViewOwner){
+    for(const key of Object.keys(freeWorkspaceViews))delete freeWorkspaceViews[key];
+    freeWorkspaceViewOwner=owner;
+  }
+  for(const container of document.querySelectorAll("[data-workspace-help]")){
+    if(container.lang!==lang)renderWorkspaceHelp(container,lang);
+  }
+  for(const el of document.querySelectorAll("[data-free-access-banner]"))el.textContent=help.free;
+  // Replace obsolete invitation labels at their presentation boundary, not the
+  // independent external Last War integration/security gate.
+  for(const el of document.querySelectorAll('[data-i18n="beta_release_label"],[data-i18n="beta_badge"]'))el.textContent=help.free;
+  const editor=$("#freeFounderRoster"),feedback=$("#freeDraftFeedback");
+  if(editor&&feedback)feedback.textContent=$("#freeFounderPanel")?.dataset.owner===owner?draftFeedback(editor,lang):"";
+  if($("#freeFounderNote"))$("#freeFounderNote").textContent=help.security;
+  for(const [id,actions] of [["freeSpaceRequests",["approve_space","reject_space"]],["freeAllianceRequests",["approve","reject"]]]){
+    const box=$("#"+id),cached=freeWorkspaceViews[id];
+    if(!box)continue;
+    if(!owner||cached?.owner!==owner){box.textContent="";continue}
+    box.innerHTML=workspaceRequestsHtml(cached.rows,lang,esc,actions,copy);
+    for(const button of box.querySelectorAll?.("button")||[])button.disabled=freeAllianceBusy;
+  }
+  const roster=freeWorkspaceViews.roster;
+  if(roster?.owner===owner&&owner){
+    const view=rosterFeedback(roster.rows,state.player,lang);
+    if($("#freeSpaceRoster")){$("#freeSpaceRoster").textContent=view.text;$("#freeSpaceRoster").dataset.owner=owner}
+    if($("#freeSpaceFeedback"))$("#freeSpaceFeedback").textContent=view.notice;
+    if($("#freeSpaceRankNotice"))$("#freeSpaceRankNotice").textContent=view.rankNotice;
+  }else for(const id of ["freeSpaceRoster","freeSpaceFeedback","freeSpaceRankNotice"])if($("#"+id))$("#"+id).textContent="";
+}
+document.addEventListener("input",event=>{
+  if(event.target?.id==="freeFounderRoster"&&$("#freeDraftFeedback"))$("#freeDraftFeedback").textContent=draftFeedback(event.target,lang);
+});
 async function submitFreeAllianceAction(action,requestId){
+  if(freeAllianceBusy)return;
   if(!requireBetaAccess()||!requireBetaConsent())return;
-  const owner=String(cloudSession?.user?.id||""),copy=freeAccessCopy(lang);
+  const owner=String(cloudSession?.user?.id||""),copy=freeAccessCopy(lang),help=workspaceHelpCopy(lang);
+  const requestSession=sessionApplyKey(cloudSession);
+  freeAllianceBusy=true;
+  renderFreeWorkspaceFeedback();
+  for(const button of document.querySelectorAll("#freeFounderSave,#freeFounderCreate,#freeAllianceRequestBtn,#freeAllianceRequestsRefresh,[data-free-alliance-action]"))button.disabled=true;
+  let refreshCanonical=false;
   try{
     const founder=action==="create"||action==="save_draft",workspace=action.endsWith("_space"),panel=$("#freeFounderPanel"),editor=$("#freeFounderRoster");
     if(action==="save_draft"&&panel?.dataset.owner!==owner)return;
@@ -1479,45 +1524,56 @@ async function submitFreeAllianceAction(action,requestId){
     if(action==="request"||action==="create"||action==="request_space"||action==="open_space"){
       const saved=await pushServerState();if(!saved?.ok)throw new Error("cloud_save_unconfirmed");
     }
-    if(owner!==String(cloudSession?.user?.id||"")||owner!==String(state.player_id||""))return;
+    if(owner!==String(cloudSession?.user?.id||"")||owner!==String(state.player_id||"")||requestSession!==sessionApplyKey(cloudSession))return;
     const result=await fetchJsonBounded(founder||workspace?"/api/invite":"/api/join",{
       method:"POST",headers:authHeaders({"content-type":"application/json"}),
       body:JSON.stringify(founder?{action,roster:action==="save_draft"?parseFounderDraft(editor.value):undefined,
         revision:action==="save_draft"?Number(panel.dataset.revision):undefined}:{action,request_id:requestId})
     },18000);
-    if(owner!==String(cloudSession?.user?.id||"")||owner!==String(state.player_id||""))return;
+    if(owner!==String(cloudSession?.user?.id||"")||owner!==String(state.player_id||"")||requestSession!==sessionApplyKey(cloudSession))return;
     if(!result.response.ok||!result.json?.ok){
       inviteMessage(result.json?.error==="ALLIANCE_MANAGER_VERIFICATION_REQUIRED"?copy.verification:copy.error);
       return;
     }
     if(workspace){
       if(result.json.game_role_verified!==false)throw new Error("unexpected_workspace_contract");
+      if(["open_space","list_space","approve_space","reject_space"].includes(action)&&
+        (!Array.isArray(result.json.requests)||result.json.requests.some(row=>!row||typeof row.id!=="string"||typeof row.nickname!=="string"||!["pending","approved","rejected"].includes(row.status))))throw new Error("unexpected_workspace_contract");
+      if(action==="request_space"&&!["pending","approved","rejected"].includes(result.json.status))throw new Error("unexpected_workspace_contract");
       if(action==="view_space"){
-        const box=$("#freeSpaceRoster");if(box){box.textContent=formatFounderDraft(result.json.roster_draft);box.dataset.owner=owner}
+        if(!Array.isArray(result.json.roster_draft))throw new Error("unexpected_workspace_contract");
+        freeWorkspaceViews.roster={owner,rows:result.json.roster_draft};
       }else if(Array.isArray(result.json.requests)){
-        const box=$("#freeSpaceRequests");if(box){box.dataset.owner=owner;box.innerHTML=result.json.requests.map(row=>`<div>${esc(row.nickname)} — ${esc(row.status)} <button type="button" class="smallBtn" data-free-alliance-action="approve_space" data-request-id="${esc(row.id)}">${esc(copy.approve)}</button> <button type="button" class="smallBtn" data-free-alliance-action="reject_space" data-request-id="${esc(row.id)}">${esc(copy.reject)}</button></div>`).join("")||esc(copy.empty)}
+        freeWorkspaceViews.freeSpaceRequests={owner,rows:result.json.requests};
       }
-      inviteMessage(action==="request_space"?copy.pending:copy.workspaceNotice,true);
+      inviteMessage(action==="view_space"?rosterFeedback(result.json.roster_draft,state.player,lang).notice:action==="request_space"?help[result.json.status]||help.pending:help.security,true);
     }else if(founder){
       if(result.json.existing){if(panel)panel.classList.add("hidden");inviteMessage(copy.existing);return}
       if(result.json.provisional!==true||result.json.membership_granted!==false||result.json.game_role_verified!==false)throw new Error("unexpected_founder_contract");
+      if(!Array.isArray(result.json.roster_draft)||!Number.isSafeInteger(result.json.revision)||result.json.revision<0)throw new Error("unexpected_founder_contract");
       panel.dataset.owner=owner;panel.dataset.revision=String(result.json.revision);
       const savedText=formatFounderDraft(result.json.roster_draft);
       if(editor.value===submittedText)editor.value=savedText;
       editor.dataset.savedText=savedText;
-      panel.classList.remove("hidden");inviteMessage(copy.provisional,true);
+      panel.classList.remove("hidden");inviteMessage(action==="save_draft"?draftFeedback(editor,lang):help.security,true);
     }else if(action==="list"){
-      const box=$("#freeAllianceRequests");
-      if(box)box.innerHTML=(result.json.requests||[]).map(row=>`<div>${esc(row.nickname)} <button type="button" class="smallBtn" data-free-alliance-action="approve" data-request-id="${esc(row.id)}">${esc(copy.approve)}</button> <button type="button" class="smallBtn" data-free-alliance-action="reject" data-request-id="${esc(row.id)}">${esc(copy.reject)}</button></div>`).join("")||esc(copy.empty);
+      freeWorkspaceViews.freeAllianceRequests={owner,rows:result.json.requests||[]};
     }else if(action==="request"){
       if(result.json.request?.status==="approved"){await pullServerState();if(owner===String(cloudSession?.user?.id||""))inviteMessage(copy.approved,true)}
       else inviteMessage(copy.pending,true);
     }
     else{
       inviteMessage(action==="create"?copy.create:copy.review,true);
-      if(action!=="create")await submitFreeAllianceAction("list");
+      if(action!=="create")refreshCanonical=true;
     }
-  }catch{if(owner===String(cloudSession?.user?.id||""))inviteMessage(copy.error)}
+  }catch(error){
+    if(owner===String(cloudSession?.user?.id||"")&&requestSession===sessionApplyKey(cloudSession))inviteMessage(error?.message==="ALLIANCE_DRAFT_INVALID"?help.invalid.replace("{line}",String(error.line||1)):copy.error);
+  }finally{
+    freeAllianceBusy=false;
+    for(const button of document.querySelectorAll("#freeFounderSave,#freeFounderCreate,#freeAllianceRequestBtn,#freeAllianceRequestsRefresh,[data-free-alliance-action]"))button.disabled=false;
+    renderFreeWorkspaceFeedback();
+  }
+  if(refreshCanonical&&owner===String(cloudSession?.user?.id||""))await submitFreeAllianceAction("list");
 }
 // Capture overrides old invitation-sharing handlers. No code is shared and no automatic join.
 document.addEventListener("click",event=>{
@@ -1540,6 +1596,7 @@ function renderBeta(){
   if($("#freeAllianceRequestBtn"))$("#freeAllianceRequestBtn").textContent=copy.request;
   if($("#freeFounderCreate"))$("#freeFounderCreate").textContent=copy.create;
   if($("#freeAllianceRequestsRefresh"))$("#freeAllianceRequestsRefresh").textContent=copy.review;
+  renderFreeWorkspaceFeedback();
   const title=$("#freeAccountTitle"),privacy=$("#freePrivacyText"),note=$("#freeAccountNote");
   if(title)title.textContent=copy.title;if(privacy)privacy.textContent=copy.privacy;if(note)note.textContent=copy.note;
   if($("#identityOnboardingAlliance"))$("#identityOnboardingAlliance").placeholder=/^fr/.test(lang)?"Facultative":"Optional";

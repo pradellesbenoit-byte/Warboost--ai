@@ -356,7 +356,7 @@ let authStatus=200;
 globalThis.fetch=async(input,init={})=>{
   const url=String(input);assert.ok(url.startsWith("https://sync-fixture.invalid/"));
   upstreams.push({path:new URL(url).pathname,method:init.method||"GET"});
-  if(url.includes("/auth/v1/user"))return new Response(JSON.stringify(authStatus===200?{id:"owner"}:{error:"invalid"}),{status:authStatus});
+   if(url.includes("/auth/v1/user"))return new Response(JSON.stringify(authStatus===200?{id:"owner",email:"owner@example.invalid",email_confirmed_at:stamp}:{error:"invalid"}),{status:authStatus});
   assert.ok(url.includes("/rest/v1/"));
   return new Response(JSON.stringify([{player_id:"owner",state:{player_id:"owner",squads:[{id:1,power:44.43}]},updated_at:stamp}]));
 };
