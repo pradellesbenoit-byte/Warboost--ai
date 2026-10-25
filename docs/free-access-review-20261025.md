@@ -1,60 +1,73 @@
-# Ouverture FREE sans code — préparation locale, non publiée
+# FREE sans code et multi-alliance — préparation locale
 
-## Source et statut
+## État
 
-- Branche : `warboost-free-access-review-20261025`.
-- Base commerciale : `14c500465b3ec32cb7b5c91dd055e2d250330a7d`, main vérifié au démarrage.
-- Travail isolé dans `.local/warboost-free-access-review-20261025`, pas dans la branche des anciens commits privés.
-- Ni push ni déploiement. Aucun compte, message, paiement ou appel IA réel.
-- **NO-GO publication complète** : SQL additionnel non installé, démarrage de nouvelles alliances non vérifié, parcours réel non exécuté.
+- Branche `warboost-free-access-review-20261025`, base commerciale `14c500465b3ec32cb7b5c91dd055e2d250330a7d`.
+- Reprise du commit `ac6d4b0cd9d2896c9199fb15fc49eebf6d837161`, sans réimporter les anciens commits/ZIP privés.
+- Préparation locale uniquement : aucun push, déploiement, compte ou appel Supabase/Stripe/Vision réel.
+- **GO pour revue locale, NO-GO pour publication sans revue SQL et recette réelle autorisées.**
 
-## Implémenté
+## Politique conservée
 
-1. Compte personnel FREE sans code : e-mail confirmé côté serveur + consentement existant, scoped par compte. Le header/version de consentement existant est conservé pour les sessions antérieures.
-2. Le profil exige pseudo et serveur, mais pas d'alliance. Les validations/CAS et données d'escouades restent en place.
-3. Le statut bêta par défaut du navigateur ne donne plus PRO. Les grants historiques, cohorte figée, révocations, abonnements TEST et contrôles serveur PRO sont conservés.
-4. Scans FREE personnels : profil, escouades 1–4, drone, technologie, exclusives. Validation d'image avant consommation du quota. Réservation serveur atomique : 3/jour/compte, plafond FREE partagé 30/jour UTC. Un échec consomme la réservation, aucun retry fournisseur automatique. PRO acquis conserve le chemin antérieur et les protections d'abus existantes ; aucun nouveau PRO n'est attribué.
-5. Les scans roster/autres analyses avancées et les conseils IA restent soumis aux droits PRO serveur. Le quota FREE est fail-closed : sans RPC installée, erreur explicite, pas d'appel Vision.
-6. Adhésion sans code : demande fondée sur le profil cloud de l'acteur authentifié ; validation R4/R5/owner, identité canonique unique exacte, grade canonique connu, aucun changement d'alliance implicite, aucune adoption d'un compte déjà lié.
-7. La validation SQL est atomique : roster, membership et demande ; verrou alliance puis demande, advancement de `roster_updated_at` pour CAS. Les marqueurs de retrait ne deviennent pas des adhésions.
-8. Un serveur/tag saisi dans un profil ne permet plus à `getAllianceRoster` d'hydrater un roster et les profils privés d'une autre alliance. Une adhésion/propriété/association préexistante attestée est nécessaire.
-9. UI : champs de code général supprimés ; demande d'adhésion et liste de validation ; erreurs sans fausse réussite ; l'ancien partage de code est intercepté, un ancien lien ne donne plus d'adhésion.
-10. Assistance personnelle ouverte sans invitation ; activation de code général retirée (410), gestion historique admin conservée.
-11. Les nouveaux textes FREE utilisent français/anglais et un fallback anglais explicite dans les autres langues. Ce n'est pas une traduction complète des nouveaux textes dans 22 langues.
+Inscription personnelle FREE sans code, invitation, parrainage ni autorisation administrateur : e-mail confirmé côté serveur + consentement. Pseudo et serveur requis, alliance facultative. PRO et autorité d'alliance restent séparés. Les grants historiques bêta, sauvegardes et sessions ne sont pas modifiés. Pas de paiement LIVE ; le prix de 4,99 € n'est pas activé.
 
-## Blocages à ne pas masquer
+Les scans personnels FREE utilisent une réservation persistante : 3/jour/compte, 30/jour UTC partagés. Réservation avant fournisseur, après validation d'image ; échec consommé, pas de remboursement/retry automatique. Le compteur global survit à la suppression d'un compte. PRO acquis garde son chemin et les protections antérieures, sans nouvel octroi automatique.
 
-- **Création d'une nouvelle alliance** : un roster ou grade saisi par son auteur n'est pas une preuve indépendante. Le bootstrap renvoie `ALLIANCE_MANAGER_VERIFICATION_REQUIRED`, sans écrire. La récupération d'espaces existants conserve les vérifications canoniques. Concevoir/revoir une attestation indépendante avant d'annoncer que tous les R4/R5 peuvent créer seuls leur espace.
-- **SQL préparé seulement** : `supabase/migration_free_access_preparation.sql`. Trois nouvelles tables privées et fonctions réservées service_role. Aucun grant PRO, aucune donnée auth, aucun trigger auth.users, aucun changement de schéma existant.
-- Il faut une revue séparée et une autorisation explicite pour installer sur TEST, avec project_id contrôlé par l'outil. Ne pas réappliquer les migrations opérateur précédemment installées. Ne pas installer en production sur la base de ce document.
-- Sans ce SQL, les scans FREE et demandes/validations d'adhésion restent indisponibles (503). Inscription et sauvegarde personnelle ne nécessitent pas ces nouvelles tables.
-- Vérifier sur TEST la compatibilité des types/contraintes, l'ownership des tables wb1 et les droits du rôle installateur, RLS/ACL effectives et suppression de compte. La fonction privée d'autorisation n'est pas exposée à authenticated/anon/service_role directement.
-- La nouvelle demande n'effectue pas une réintégration d'un membre retiré ; un ancien approved sans membership exige une revue de réintégration. Les changements d'alliance ne sont pas automatiques.
-- Les inscriptions automatisées multi-comptes exigent également les réglages Auth/rate-limits/CAPTCHA du fournisseur, non inspectés ni modifiés ici. Le plafond global FREE reste borné même après suppression de compte.
-- Pas de preuve nouvelle des e-mails, OTP/magic-link, vrais JWT A/B, vraies RLS Supabase, Android, captures Last War ou sauvegarde réelle. Aucune inspection de données client/Secrets.
-- Aucun prix ni paiement LIVE activé. Les 4,99 €/mois restent une intention.
+## Nouveauté : fondateur WarBoost ≠ R4/R5 vérifié
 
-## Vérifications exécutées
+Depuis Compte, tout joueur confirmé disposant d'un profil cohérent peut créer/retrouver **un espace provisoire privé** pour son serveur/tag, sans prouver un grade du jeu.
 
-Exécution avec environnement vidé (`env -i`, PATH/HOME seulement et, si nécessaires, variables explicitement synthétiques). Les validations Node chargent `scripts/release/no-network.cjs`; les stubs remplacent fetch et ne transmettent rien au réseau.
+- Table séparée `wb1_alliance_founder_spaces`, un espace par compte.
+- Aucun insert/update dans `wb1_alliances`, aucun membership ni rôle R4/R5, aucun lien de compte créé.
+- Aucun accès aux profils, événements, membres ou rosters existants. Le brouillon ne peut pas servir de preuve canonique pour les anciennes API.
+- Plusieurs fondateurs peuvent préparer leur propre brouillon pour le même scope : aucun premier déclarant ne réserve ce scope globalement.
+- Si un espace canonique existe : retour minimal « espace existant », puis demande d'adhésion sans code. Aucun détail privé de cet espace n'est renvoyé.
+- Brouillon explicite : maximum 100 noms, grades du jeu facultatifs et **déclarés**, pas de défaut R1. Seuls `name` et `declared_game_role` sont acceptés. Aucun player_id, lien de compte ou privilège.
+- Identité de scope immuable : changement du profil refuse la réaffectation automatique de l'ancien brouillon ; il reste conservé en base. Une gestion explicite d'archivage/changement de scope pourra être préparée ultérieurement.
+- Création idempotente ; sauvegarde avec révision/CAS. Conflit ou réponse perdue : pas de nouvelle création, pas de faux succès, saisie conservée. Rechargement d'un brouillon modifié exige confirmation.
+- Les réponses tardives ne sont pas appliquées à un autre compte ; une saisie plus récente n'est pas remplacée par l'accusé d'une ancienne sauvegarde. Déconnexion/changement de compte masque et vide le DOM privé.
 
-- `node --test scripts/free-access.test.mjs` : **26 PASS, 0 FAIL**.
-- `node scripts/verify-roster-scan-mobile.mjs` : **13 PASS, 0 FAIL**.
-- `node scripts/verify-scan-handlers-mobile.mjs` : **19 PASS, 0 FAIL**.
-- `node scripts/verify-precommercial-auth.mjs` : **18 PASS, 0 FAIL**.
-- Total ci-dessus : **76 tests Node** ; DOM/états et réponses Auth/cloud simulés, pas de navigateur Android réel.
-- `node scripts/verify-stripe-test.mjs` : **21 scénarios PASS**, PostgreSQL embarqué + faux fournisseur ; aucun appel Stripe TEST/LIVE réel.
-- `node scripts/verify-free-access-sql.mjs` : **12 groupes PASS** sur **PostgreSQL natif 16.15 jetable**, socket Unix uniquement ; concurrence du quota avec deux connexions. Ni Supabase ni PostgreSQL 17 de TEST. Permissions testées avec propriétaire non-superuser.
-- Cinq scripts supplémentaires PASS : `verify-identity-onboarding`, `verify-alliance-authorization`, `verify-mobile-auth-isolation`, `verify-alliance-roster-removal`, `verify-shared-alliance-roster`.
-- `npm run check` PASS, `npm run build:web` PASS : 8 pages et 151 modules navigateur. Syntaxe des 3 nouveaux modules PASS ; `git diff --check` PASS.
-- Les premières exécutions ont signalé des fixtures obsolètes : alliance obligatoirement non vide, utilisateur Auth fictif sans confirmation e-mail, attente de refus PRO sur un scan personnel vide. Elles ont été corrigées pour vérifier la nouvelle politique sans supprimer les contrôles négatifs. Le test natif a aussi exigé de représenter correctement l'ownership applicatif et les droits REFERENCES.
+**Limite volontaire :** ce n'est pas encore une alliance collaborative vérifiée. Le fondateur peut préparer son roster privé, pas publier un roster officiel, approuver des adhésions ou commander les événements au titre de R4/R5. Sans source indépendante Last War, aucune promotion automatique n'est justifiable. Une future procédure de promotion devra être revue séparément ; elle ne peut pas absorber ni remplacer un espace existant.
 
-## Recette ultérieure, après approbation distincte
+## Alliances existantes
 
-1. Revoir le SQL et le mécanisme de vérification du premier responsable ; ne pas prétendre que la création autonome d'une alliance est terminée.
-2. Installer/inspecter uniquement sur WarBoost-Test après autorisation : RLS/ACL, quotas, compte sans alliance, deux scopes même tag/serveurs différents, adhésion approuvée/refusée, compte lié ailleurs, concurrence et suppression ciblée.
-3. Tester email confirmé, reconnexion, quatre escouades et restauration avec comptes fictifs approuvés ; aucun compte réel ni nouvel appel Vision sans autorisation.
-4. Valider l'interface Android sur origine HTTPS privée réellement isolée. Aucun Preview normal n'a été démarré.
-5. Revoir le diff/SQL/risques puis obtenir un accord séparé avant toute production.
+Demandes sans code, fondées sur le profil cloud de l'acteur authentifié. L'approbation exige un owner existant ou un R4/R5 déjà lié au roster canonique. Identité exacte unique, scope inchangé, grade canonique connu, absence de lien étranger ou marqueur de retrait.
 
-Rollback futur : désactiver les nouvelles opérations en gardant la sauvegarde personnelle FREE et les grants historiques ; ne pas effacer les nouvelles tables ou les données d'adhésion en cours pour « revenir en arrière ». Préparer une sauvegarde restaurable et un script de retour revu avant installation. Aucun rollback de données réel démontré ici.
+Verrou utilisateur, puis alliance, demande et profil : sérialisation des validations concurrentes. Roster, membership et demande modifiés atomiquement ; `roster_updated_at` avance pour CAS. Une ancienne demande approved sans membership correspondant ne produit plus un faux succès et ne réintègre personne.
+
+Le serveur/tag déclaré seul ne permet pas à `getAllianceRoster` de charger les autres profils. Le nouveau parcours ne montre plus de demande de code/invitation générale. Quelques IDs DOM anciens restent cachés uniquement pour compatibilité de démarrage ; ils ne constituent pas un accès.
+
+## SQL proposé — NE PAS installer sans accord
+
+- `supabase/migration_free_access_preparation.sql`
+- `supabase/audit_free_access_preparation.sql` (transaction read-only, catalogue/ACL, aucune identité renvoyée)
+
+Quatre nouvelles tables privées sous RLS sans policy client ; accès direct révoqué à PUBLIC, anon, authenticated **et service_role**. Cinq RPC publiques uniquement EXECUTE service_role, helper manager privé non exposé. SECURITY DEFINER avec search_path pg_catalog, objets qualifiés et propriétaires contrôlés. Aucun SQL dynamique ni trigger auth.users, aucun changement des anciennes tables ou grants PRO.
+
+Migration transactionnelle et rejouable : IF NOT EXISTS + remplacement des seules fonctions proposées, verrou de migration, timeouts, audit de types/non-null/PK/unique/FK/CASCADE/RLS/ACL/propriétaires. Une collision de schéma incompatible fait échouer la transaction. Aucune suppression, troncature ou remise à zéro des données. La suppression d'un profil cascade ses demandes/consommations/brouillon, mais pas le compteur global.
+
+Avant installation : autorisation distincte, outil ciblé explicitement WarBoost-Test `zaioadmbhqzeihkvdjsd`, validation des droits REFERENCES et ownership, sauvegarde et plan de retour. Ce fichier SQL n'authentifie pas lui-même le projet : ne pas se fier à son nom/commentaire pour choisir une base. Production `jwjqcgexvqradjefskvh` non autorisée ici. Ne pas réappliquer les migrations opérateur déjà installées.
+
+Sans installation, les nouvelles RPC renvoient une indisponibilité explicite ; aucun appel IA n'est alors déclenché. Pas de promesse d'ouverture effective aujourd'hui.
+
+Rollback à revoir avant toute installation : retirer temporairement les nouvelles opérations via l'application et révoquer leurs EXECUTE service_role, sans DROP de table ni suppression de données/memberships. Conserver sauvegarde personnelle FREE et grants historiques. Les transactions déjà autorisées peuvent terminer : prévoir une fenêtre maîtrisée. Aucune restauration réelle démontrée ici.
+
+## Vérifications locales finales
+
+Environnement vidé (`env -i`, PATH/HOME et variables synthétiques si nécessaires), bloqueur `scripts/release/no-network.cjs` sur les tests Node ; aucun fournisseur contacté.
+
+- `scripts/free-access.test.mjs` : **31 PASS, 0 FAIL**, dont handlers navigateur réels sous DOM/VM simulé, FREE/PRO, e-mail, comptes A/B, quatre escouades, nouveaux brouillons et refus.
+- `verify-roster-scan-mobile` : **13 PASS** ; `verify-scan-handlers-mobile` : **19 PASS** ; `verify-precommercial-auth` : **18 PASS**.
+- **81 tests Node** au total ci-dessus.
+- `verify-free-access-sql` : **17 groupes PASS**, PostgreSQL natif **16.15** jetable, socket Unix seulement, propriétaire non-superuser. Deux connexions réelles pour quota et CAS fondateur ; réexécution sur tables remplies, audit read-only, ACL et altérations adverses.
+- `verify-stripe-test` : **21 scénarios PASS**, PostgreSQL embarqué et fournisseur simulé. Aucun Stripe TEST/LIVE réel.
+- Cinq scripts PASS : identité, autorisations alliance, isolation mobile, retrait roster, roster partagé.
+- `npm run check`, `npm run build:web`, syntaxe et `git diff --check` : PASS. Build : 8 pages, 152 modules navigateur.
+
+Deux erreurs SQL locales ont été détectées pendant la préparation (expression CASE et variable `tag` ambiguë), puis corrigées avant le passage natif final. Elles n'ont jamais été appliquées sur une base réelle.
+
+## Encore non validé
+
+Installation sur Supabase PostgreSQL 17, droits exacts du projet, e-mails/OTP/magic links, vrais JWT/RLS A/B, inscription réelle sans code, parcours Android/iPhone, pixels Last War, limites anti-abus Auth/CAPTCHA du fournisseur, sauvegarde réellement restaurable. Aucun Preview normal démarré.
+
+Prochaine étape : revue/autorisation SQL TEST, puis essai réel isolé avec comptes fictifs sous accord séparé. Ni main, ni warboost.fr, beta.warboost.fr ou demo ne sont modifiés par cette préparation.

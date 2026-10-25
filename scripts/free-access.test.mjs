@@ -6,7 +6,8 @@ import {freeAccountAllowed,assertFreeAccount,freeAccessCopy} from "../lib/free-a
 import {validPlayerIdentity} from "../lib/identity-onboarding.js";
 import {createIdentityOnboardingService} from "../lib/identity-onboarding-service.js";
 import {requirePersonalScanUser} from "../lib/personal-scan-access.js";
-import {createAllianceAccessHandler} from "../lib/alliance-access-service.js";
+import {createAllianceAccessHandler,createFounderSpaceHandler} from "../lib/alliance-access-service.js";
+import {parseFounderDraft,formatFounderDraft,resetForeignFounderDraft} from "../lib/founder-draft.js";
 import {entitlementForUser,requireProductUser} from "../lib/pro-access.js";
 import {getAllianceRoster} from "../lib/supabase.js";
 const verified={id:"synthetic-a",email:"a@example.invalid",email_confirmed_at:"2026-01-01T00:00:00Z"};
@@ -17,6 +18,69 @@ test("FREE is not a beta invitation or a manager declaration",()=>{
   assert.equal(freeAccountAllowed({...verified,role:"R5",email_confirmed_at:null}),false);
   assert.equal(freeAccountAllowed({...verified,email_confirmed_at:"invalid"}),false);
   assert.throws(()=>assertFreeAccount(null),{code:"EMAIL_CONFIRMATION_REQUIRED"});
+});
+test("founder handler derives actor from verified session, ignores claimed rank/scope and creates no membership",async()=>{
+  const calls=[],res=response(),rpc=async(...args)=>{calls.push(args);return {provisional:true,game_role_verified:false,membership_granted:false}};
+  await createFounderSpaceHandler({authorize,rpc})({method:"POST",body:{action:"create",user_id:"foreign",server_id:"999",role:"R5",invite_code:"ignored"}},res);
+  assert.equal(res.code,200);assert.equal(res.body.membership_granted,false);
+  assert.deepEqual(calls,[["wb1_founder_space",{p_user_id:verified.id,p_action:"create",p_roster:null,p_revision:null}]]);
+});
+test("founder is authenticated, actions bounded and failures never expose data or claim success",async()=>{
+  for(const body of [{action:"register"},{action:"save_draft",roster:[],revision:-1},{action:"save_draft",roster:{},revision:0}]){
+    const res=response();await createFounderSpaceHandler({authorize,rpc:async()=>{throw Error("must not call")}})({method:"POST",body},res);assert.equal(res.code,400);
+  }
+  const res=response();await createFounderSpaceHandler({authorize:async()=>{throw Object.assign(Error("private"),{status:403})},rpc:async()=>{throw Error("must not call")}})({method:"POST",body:{action:"create"}},res);
+  assert.equal(res.code,403);assert.equal(res.body.ok,false);assert.equal(JSON.stringify(res.body).includes("private"),false);
+});
+test("founder drafts preserve I/l/1, never default game rank and survive serialization",()=>{
+  const rows=parseFounderDraft("Player I; R5\nPlayer l\nPlayer 1; R3");
+  assert.equal(rows[1].declared_game_role,null);
+  assert.deepEqual(parseFounderDraft(formatFounderDraft(JSON.parse(JSON.stringify(rows)))),rows);
+  for(const input of ["X; owner","X;R5; foreign","X\nx",Array.from({length:101},(_,i)=>`P${i}`).join("\n")])assert.throws(()=>parseFounderDraft(input));
+});
+function founderDOM(){
+  const panel={dataset:{},classList:{add(){},remove(){}}},editor={value:"",dataset:{}};
+  const nodes={"#freeFounderPanel":panel,"#freeFounderRoster":editor},calls=[],messages=[];
+  const context={cloudSession:{user:verified},state:{player_id:verified.id},lang:"fr",freeAccessCopy,
+    parseFounderDraft,formatFounderDraft,resetForeignFounderDraft,requireBetaAccess:()=>true,requireBetaConsent:()=>true,
+    $:id=>nodes[id],pushServerState:async()=>({ok:true}),authHeaders:x=>x,confirm:()=>true,
+    inviteMessage:(...args)=>messages.push(args),fetchJsonBounded:async(url,request)=>{
+      calls.push({url,body:JSON.parse(request.body)});
+      return {response:{ok:true},json:{ok:true,provisional:true,membership_granted:false,game_role_verified:false,revision:0,roster_draft:[]}};
+    }};
+  vm.createContext(context);
+  const source=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
+  vm.runInContext(source.slice(source.indexOf("async function submitFreeAllianceAction("),source.indexOf("// Capture overrides old")),context);
+  return {context,panel,editor,calls,messages,run:action=>context.submitFreeAllianceAction(action)};
+}
+test("actual browser founder handler saves only draft, retains edits on refusal and reloads without privilege",async()=>{
+  const dom=founderDOM();await dom.run("create");
+  assert.equal(dom.calls[0].url,"/api/invite");assert.equal(dom.panel.dataset.owner,verified.id);
+  dom.editor.value="Player I; R5\nPlayer l";
+  await dom.run("save_draft");assert.equal(dom.calls[1].body.action,"save_draft");
+  assert.equal(dom.calls[1].body.roster[1].declared_game_role,null);
+  dom.editor.value="Unsaved";dom.context.fetchJsonBounded=async()=>({response:{ok:false},json:{ok:false,error:"conflict"}});
+  await dom.run("save_draft");assert.equal(dom.editor.value,"Unsaved");
+  dom.context.confirm=()=>false;const before=dom.messages.length;await dom.run("create");assert.equal(dom.messages.length,before);
+  let finish;dom.context.fetchJsonBounded=()=>new Promise(resolve=>finish=resolve);
+  const pending=dom.run("save_draft");dom.editor.value="Newer typing";
+  finish({response:{ok:true},json:{ok:true,provisional:true,membership_granted:false,game_role_verified:false,revision:1,roster_draft:[{name:"Unsaved"}]}});
+  await pending;assert.equal(dom.editor.value,"Newer typing");assert.equal(dom.panel.dataset.revision,"1");
+  const html=fs.readFileSync(new URL("../index.html",import.meta.url),"utf8");
+  assert.ok(html.indexOf('id="accountDrawer"')<html.indexOf('id="freeFounderCreate"'));
+  assert.match(html,/<div hidden aria-hidden="true"><button id="shareInviteBtn"/);
+});
+test("late founder response cannot enter another account; account change clears private DOM",async()=>{
+  const dom=founderDOM();let finish;
+  dom.context.fetchJsonBounded=()=>new Promise(resolve=>finish=resolve);
+  const pending=dom.run("create");await new Promise(resolve=>setImmediate(resolve));
+  dom.context.cloudSession={user:{id:"synthetic-b"}};dom.context.state={player_id:"synthetic-b"};
+  finish({response:{ok:true},json:{ok:true,provisional:true,membership_granted:false,game_role_verified:false,revision:0,roster_draft:[{name:"private"}]}});
+  await pending;assert.equal(dom.panel.dataset.owner,undefined);assert.equal(dom.editor.value,"");
+  dom.panel.dataset.owner=verified.id;dom.editor.value="Private draft";
+  assert.equal(resetForeignFounderDraft(dom.panel,dom.editor,"synthetic-b"),true);assert.equal(dom.editor.value,"");
+  dom.panel.dataset.owner="synthetic-b";dom.editor.value="Own draft";
+  assert.equal(resetForeignFounderDraft(dom.panel,dom.editor,"synthetic-b"),false);assert.equal(dom.editor.value,"Own draft");
 });
 test("no-alliance onboarding and two servers are accepted",()=>{
   for(const server_id of ["884","885"])assert.equal(validPlayerIdentity({name:"Player",server_id,alliance_tag:""}),true);

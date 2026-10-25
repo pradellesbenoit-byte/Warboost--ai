@@ -1,5 +1,6 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
 import {freeAccountAllowed,freeAccessCopy} from "./lib/free-access.js";
+import {parseFounderDraft,formatFounderDraft,resetForeignFounderDraft} from "./lib/founder-draft.js";
 import {createAnalysisIndicator,analysisFailureMessage,beginLoadingButton} from "./lib/analysis-indicator.js";
 import {loadingTargetIds,requestLoadingTargetIds} from "./lib/loading-targets.js";
 import {accountSyncErrorKind,accountSyncView,verifiedAccountStateReply,verifiedAccountWriteReply,createCloudOperations,transientCloudFailure,deviceCloudSaveMetadata,confirmedWriteReceipt,mergeDeviceCloudSaveMetadata,staleProfileRestore} from "./lib/account-sync-feedback.js";
@@ -1471,20 +1472,33 @@ async function submitFreeAllianceAction(action,requestId){
   if(!requireBetaAccess()||!requireBetaConsent())return;
   const owner=String(cloudSession?.user?.id||""),copy=freeAccessCopy(lang);
   try{
+    const founder=action==="create"||action==="save_draft",panel=$("#freeFounderPanel"),editor=$("#freeFounderRoster");
+    if(action==="save_draft"&&panel?.dataset.owner!==owner)return;
+    if(action==="create"&&panel?.dataset.owner===owner&&editor.value!==editor.dataset.savedText&&!confirm(copy.replaceDraft))return;
+    const submittedText=editor?.value;
     if(action==="request"||action==="create"){
       const saved=await pushServerState();if(!saved?.ok)throw new Error("cloud_save_unconfirmed");
     }
     if(owner!==String(cloudSession?.user?.id||"")||owner!==String(state.player_id||""))return;
-    const result=await fetchJsonBounded(action==="create"?"/api/invite":"/api/join",{
+    const result=await fetchJsonBounded(founder?"/api/invite":"/api/join",{
       method:"POST",headers:authHeaders({"content-type":"application/json"}),
-      body:JSON.stringify({action,request_id:requestId})
+      body:JSON.stringify(founder?{action,roster:action==="save_draft"?parseFounderDraft(editor.value):undefined,
+        revision:action==="save_draft"?Number(panel.dataset.revision):undefined}:{action,request_id:requestId})
     },18000);
     if(owner!==String(cloudSession?.user?.id||"")||owner!==String(state.player_id||""))return;
     if(!result.response.ok||!result.json?.ok){
       inviteMessage(result.json?.error==="ALLIANCE_MANAGER_VERIFICATION_REQUIRED"?copy.verification:copy.error);
       return;
     }
-    if(action==="list"){
+    if(founder){
+      if(result.json.existing){if(panel)panel.classList.add("hidden");inviteMessage(copy.existing);return}
+      if(result.json.provisional!==true||result.json.membership_granted!==false||result.json.game_role_verified!==false)throw new Error("unexpected_founder_contract");
+      panel.dataset.owner=owner;panel.dataset.revision=String(result.json.revision);
+      const savedText=formatFounderDraft(result.json.roster_draft);
+      if(editor.value===submittedText)editor.value=savedText;
+      editor.dataset.savedText=savedText;
+      panel.classList.remove("hidden");inviteMessage(copy.provisional,true);
+    }else if(action==="list"){
       const box=$("#freeAllianceRequests");
       if(box)box.innerHTML=(result.json.requests||[]).map(row=>`<div>${esc(row.nickname)} <button type="button" class="smallBtn" data-free-alliance-action="approve" data-request-id="${esc(row.id)}">${esc(copy.approve)}</button> <button type="button" class="smallBtn" data-free-alliance-action="reject" data-request-id="${esc(row.id)}">${esc(copy.reject)}</button></div>`).join("")||esc(copy.empty);
     }else if(action==="request"){
@@ -1499,17 +1513,22 @@ async function submitFreeAllianceAction(action,requestId){
 }
 // Capture overrides old invitation-sharing handlers. No code is shared and no automatic join.
 document.addEventListener("click",event=>{
-  const button=event.target.closest?.("#shareInviteBtn,#freeAllianceRequestBtn,#freeAllianceRequestsRefresh,[data-free-alliance-action]");
+  const button=event.target.closest?.("#freeFounderCreate,#freeAllianceRequestBtn,#freeAllianceRequestsRefresh,#freeFounderSave,[data-free-alliance-action]");
   if(!button)return;
   event.preventDefault();event.stopImmediatePropagation();
-  const action=button.id==="shareInviteBtn"?"create":button.id==="freeAllianceRequestBtn"?"request":button.id==="freeAllianceRequestsRefresh"?"list":button.dataset.freeAllianceAction;
+  const action=button.id==="freeFounderSave"?"save_draft":button.id==="freeFounderCreate"?"create":button.id==="freeAllianceRequestBtn"?"request":button.id==="freeAllianceRequestsRefresh"?"list":button.dataset.freeAllianceAction;
   if(["approve","reject"].includes(action)&&!confirm(freeAccessCopy(lang)[action]))return;
   void submitFreeAllianceAction(action,button.dataset.requestId);
 },true);
 function renderBeta(){
   const copy=freeAccessCopy(lang);
+  const founderPanel=$("#freeFounderPanel"),founderEditor=$("#freeFounderRoster");
+  resetForeignFounderDraft(founderPanel,founderEditor,String(cloudSession?.user?.id||""));
+  if($("#freeFounderNote"))$("#freeFounderNote").textContent=copy.provisional;
+  if($("#freeFounderLabel"))$("#freeFounderLabel").textContent=copy.draftLabel;
+  if($("#freeFounderSave"))$("#freeFounderSave").textContent=copy.saveDraft;
   if($("#freeAllianceRequestBtn"))$("#freeAllianceRequestBtn").textContent=copy.request;
-  if($("#shareInviteBtn"))$("#shareInviteBtn").textContent=copy.create;
+  if($("#freeFounderCreate"))$("#freeFounderCreate").textContent=copy.create;
   if($("#freeAllianceRequestsRefresh"))$("#freeAllianceRequestsRefresh").textContent=copy.review;
   const title=$("#freeAccountTitle"),privacy=$("#freePrivacyText"),note=$("#freeAccountNote");
   if(title)title.textContent=copy.title;if(privacy)privacy.textContent=copy.privacy;if(note)note.textContent=copy.note;

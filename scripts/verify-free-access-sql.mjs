@@ -83,6 +83,9 @@ try{
     sql(`update wb1_profiles set state=jsonb_set(state,'{player,server_id}','"885"') where player_id='${A}'`);
     denied(review(R4),/ALLIANCE_REQUEST_IDENTITY_CHANGED/);
     sql(`update wb1_profiles set state=jsonb_set(state,'{player,server_id}','"884"') where player_id='${A}'`);
+    sql(`update wb1_profiles set state=jsonb_set(state,'{alliance,tag}','"OTHER"') where player_id='${A}'`);
+    denied(review(R4),/ALLIANCE_REQUEST_IDENTITY_CHANGED/);
+    sql(`update wb1_profiles set state=jsonb_set(state,'{alliance,tag}','"ONE"') where player_id='${A}'`);
   });
   group("already linked canonical identity cannot be stolen",()=>{
     sql(`update wb1_alliances set roster=jsonb_set(roster,'{0,player_id}','"${B}"') where id='${one}'`);
@@ -107,6 +110,9 @@ try{
   });
   group("duplicate approval is idempotent; second server owner can reject without touching first",()=>{
     assert.equal(JSON.parse(sql(review(R4))).already_reviewed,true);
+    sql(`delete from wb1_alliance_members where player_id='${A}'`);
+    denied(review(R4),/ALLIANCE_REJOIN_REVIEW_REQUIRED/);
+    sql(`insert into wb1_alliance_members values('${A}','${one}','R1',now())`);
     const bRequest=sql(`select id from wb1_alliance_access_requests where player_id='${B}'`);
     sql(`select public.wb1_review_alliance_access('${OtherR5}','${bRequest}',false)`);
     assert.equal(sql(`select count(*) from wb1_alliance_members where player_id='${A}'`),"1");
@@ -131,6 +137,60 @@ try{
     assert.equal(sql(`select count(*) from wb1_free_scan_usage where user_id='${A}'`),"0");
     assert.equal(sql(`select count(*) from wb1_alliance_access_requests where player_id='${A}'`),"0");
     assert.equal(sql("select reserved from wb1_free_scan_daily"),"30");
+  });
+  const founder=id(500),secondFounder=id(501),otherScope=id(502);
+  sql(`insert into wb1_profiles(player_id,state) values
+    ('${founder}','{"player":{"name":"Founder I","server_id":"900","role":"R5"},"alliance":{"tag":"NEW"}}'),
+    ('${secondFounder}','{"player":{"name":"Other","server_id":"900","role":"R4"},"alliance":{"tag":"NEW"}}'),
+    ('${otherScope}','{"player":{"name":"Other","server_id":"901"},"alliance":{"tag":"DIFF"}}')`);
+  const founderCall=(who,action,roster=null,revision=null)=>`set role service_role;select public.wb1_founder_space('${who}','${action}',${roster===null?"null":`'${JSON.stringify(roster)}'::jsonb`},${revision??"null"})`;
+  group("founder is provisional, cannot seize existing scope or claim verified R5",()=>{
+    const result=JSON.parse(sql(founderCall(founder,"create")));
+    assert.equal(result.provisional,true);assert.equal(result.game_role_verified,false);assert.equal(result.membership_granted,false);
+    assert.equal(sql(`select count(*) from wb1_alliances where server_id='900'`),"0");
+    assert.equal(sql(`select count(*) from wb1_alliance_members where player_id='${founder}'`),"0");
+    assert.equal(JSON.parse(sql(founderCall(B,"create"))).request_membership,true);
+    assert.equal(sql(`select count(*) from wb1_alliance_founder_spaces where founder_id='${B}'`),"0");
+    assert.equal(sql(`select wb1_access_manager('${founder}','${one}')`),"f");
+  });
+  group("founder drafts are isolated even for same scope; cannot reserve global scope",()=>{
+    for(const who of [secondFounder,otherScope])sql(founderCall(who,"create"));
+    sql(founderCall(founder,"save_draft",[{name:"Player I",declared_game_role:"R5"},{name:"Player l",declared_game_role:null}],0));
+    for(const who of [secondFounder,otherScope])assert.deepEqual(JSON.parse(sql(founderCall(who,"mine"))).roster_draft,[]);
+    assert.equal(sql(`select count(*) from wb1_alliance_founder_spaces`),"3");
+    assert.equal(sql(`select count(*) from wb1_alliance_members where player_id='${founder}'`),"0");
+  });
+  group("founder refuses identity changes, account links, invalid role and extra properties",()=>{
+    for(const row of [{name:"X",player_id:B},{name:"X",role:"R5"},{name:"X",declared_game_role:"owner"},{name:"X",warboost_linked:true}])
+      denied(founderCall(founder,"save_draft",[row],1),/ALLIANCE_DRAFT_INVALID/);
+    denied(founderCall(founder,"save_draft",Array.from({length:101},(_,i)=>({name:`P${i}`})),1),/ALLIANCE_DRAFT_LIMIT/);
+    denied(founderCall(founder,"save_draft",[{name:"X"},{name:"x"}],1),/ALLIANCE_DRAFT_DUPLICATE/);
+    sql(`update wb1_profiles set state=jsonb_set(state,'{player,server_id}','"902"') where player_id='${founder}'`);
+    denied(founderCall(founder,"mine"),/ALLIANCE_DRAFT_IDENTITY_CHANGED/);
+    sql(`update wb1_profiles set state=jsonb_set(state,'{player,server_id}','"900"') where player_id='${founder}'`);
+  });
+  const writers=await Promise.allSettled([1,2].map(i=>concurrent(founderCall(founder,"save_draft",[{name:`Concurrent${i}`}],1))));
+  assert.equal(writers.filter(r=>r.status==="fulfilled").length,1);
+  assert.equal(writers.filter(r=>r.status==="rejected"&&/ALLIANCE_DRAFT_CONFLICT/.test(r.reason.message)).length,1);
+  groups++;console.log("PASS two concurrent founder updates: one CAS acknowledgement, no lost update");
+  group("migration is idempotent with populated tables; audit and ACL fail closed",()=>{
+    const before=sql("select jsonb_agg(t order by founder_id) from wb1_alliance_founder_spaces t");
+    sql("set role policy_owner;\n"+fs.readFileSync(new URL("../supabase/migration_free_access_preparation.sql",import.meta.url),"utf8"));
+    assert.equal(sql("select jsonb_agg(t order by founder_id) from wb1_alliance_founder_spaces t"),before);
+    assert.equal(sql("select reserved from wb1_free_scan_daily"),"30");
+    sql(fs.readFileSync(new URL("../supabase/audit_free_access_preparation.sql",import.meta.url),"utf8"));
+    for(const role of ["anon","authenticated"]){
+      denied(`set role ${role};select public.wb1_founder_space('${founder}','mine')`,/permission denied/);
+      denied(`set role ${role};select * from wb1_alliance_founder_spaces`,/permission denied/);
+    }
+    denied(`set role service_role;select * from wb1_alliance_founder_spaces`,/permission denied/);
+    denied("begin;grant execute on function wb1_founder_space(uuid,text,jsonb,integer) to authenticated;select wb1_assert_free_access_contract();commit;",/FREE_ACCESS_FUNCTION_CONTRACT/);
+    denied("begin;alter table wb1_alliance_founder_spaces alter column revision drop not null;select wb1_assert_free_access_contract();commit;",/FREE_ACCESS_TABLE_CONTRACT/);
+    denied("begin;alter table wb1_alliance_founder_spaces drop constraint wb1_alliance_founder_spaces_founder_id_fkey;select wb1_assert_free_access_contract();commit;",/FREE_ACCESS_CONSTRAINT_CONTRACT/);
+    sql("select wb1_assert_free_access_contract()");
+    sql(`delete from wb1_profiles where player_id='${founder}'`);
+    assert.equal(sql(`select count(*) from wb1_alliance_founder_spaces where founder_id='${founder}'`),"0");
+    assert.equal(sql(`select count(*) from wb1_alliance_founder_spaces`),"2");
   });
   console.log(JSON.stringify({native_postgresql:true,groups,pass:groups,fail:0,external_calls:0}));
 }finally{
