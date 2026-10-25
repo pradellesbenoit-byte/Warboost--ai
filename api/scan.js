@@ -446,7 +446,10 @@ export default async function handler(req,res){
     if(!scanTypeValid)return res.status(400).json({error:"invalid_scan_type",message:"Type d’analyse invalide."});
     const imageBatch=validateScanImageBatch(scanType,req.body);
     if(!imageBatch.ok)return res.status(imageBatch.status).json({error:imageBatch.error,message:imageBatch.message});
-    const {user}=await timing.measure("access",()=>requirePersonalScanUser(req));
+    const {user}=await timing.measure("access",()=>requirePersonalScanUser(req,{beforeScan:()=>{
+      if(!env("OPENAI_API_KEY")&&!env("WARBOOST_VISION_ENDPOINT"))
+        throw Object.assign(new Error("WarBoost Vision n’est pas configuré sur ce déploiement."),{status:503,code:"SCAN_NOT_CONFIGURED"});
+    }}));
     const verifiedContext=verifiedRosterContext(scanType,currentState,user),allianceTag=verifiedContext?.alliance?.tag||"";
     const images=imageBatch.images;
     const image=images[0];
@@ -491,6 +494,6 @@ export default async function handler(req,res){
       return res.status(422).json({error:"scan_no_useful_data",drone_screen_type:droneScreenType,message:"La capture est bien reçue, mais les données utiles ne sont pas assez lisibles. Garde cette capture et réessaie."});
     }
     return res.status(200).json({ok:true,engine,scanned_at:now,state,...(droneScreenType?{drone_screen_type:droneScreenType}:{}),quality:{...quality,requires_confirmation:/^squad[1-4]$/i.test(scanType)||scanType==="exclusive"||["profile","drone","awakening","shop","vs","season","technology","alliance_roster"].includes(scanType),partial_results_allowed:scanType==="exclusive",identity_enrichment_skipped:true}});
-  }catch(error){console.error("WarBoost scan R2",{code:safeErrorCode(error),status:Number(error?.status)||500,type:scanTypeForLog,duration_ms:Math.max(0,Date.now()-startedAt)});return res.status(error?.status||500).json({error:"scan_failed",code:error?.code||"SCAN_FAILED",message:error?.message||"La capture n’a pas pu être analysée."})}
+  }catch(error){console.error("WarBoost scan R2",{code:safeErrorCode(error),status:Number(error?.status)||500,type:scanTypeForLog,duration_ms:Math.max(0,Date.now()-startedAt)});return res.status(error?.status||500).json({error:error?.code==="SCAN_NOT_CONFIGURED"?"scan_provider_unavailable":"scan_failed",code:error?.code||"SCAN_FAILED",message:error?.message||"La capture n’a pas pu être analysée."})}
   finally{releaseGuard();timing.finish()}
 }
