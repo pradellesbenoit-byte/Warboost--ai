@@ -12,7 +12,7 @@ import {entitlementForUser,requireProductUser} from "../lib/pro-access.js";
 import {getAllianceRoster} from "../lib/supabase.js";
 const verified={id:"synthetic-a",email:"a@example.invalid",email_confirmed_at:"2026-01-01T00:00:00Z"};
 const authorize=async()=>({user:verified});
-const basic={authorize,entitlement:async()=>({active:false}),consume:async()=>({reserved:true})};
+const basic={authorize,entitlement:async()=>({active:false}),consume:async()=>({reserved:true}),networkDigest:()=>"a".repeat(64)};
 test("FREE is not a beta invitation or a manager declaration",()=>{
   assert.equal(freeAccountAllowed(verified),true);
   assert.equal(freeAccountAllowed({...verified,role:"R5",email_confirmed_at:null}),false);
@@ -51,8 +51,25 @@ function founderDOM(){
   vm.createContext(context);
   const source=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
   vm.runInContext(source.slice(source.indexOf("async function submitFreeAllianceAction("),source.indexOf("// Capture overrides old")),context);
-  return {context,panel,editor,calls,messages,run:action=>context.submitFreeAllianceAction(action)};
+  return {context,panel,editor,calls,messages,nodes,run:(action,id)=>context.submitFreeAllianceAction(action,id)};
 }
+test("actual workspace browser handlers use dedicated route, explicit owner approval and safe text rendering",async()=>{
+ const dom=founderDOM();dom.nodes["#freeSpaceRequests"]={dataset:{},innerHTML:""};
+ dom.nodes["#freeSpaceRoster"]={dataset:{},textContent:""};
+ dom.context.esc=value=>String(value).replaceAll("<","&lt;");
+ await dom.run("open_space");assert.equal(dom.calls.at(-1).url,"/api/invite");
+ await dom.run("request_space");assert.equal(dom.calls.at(-1).body.action,"request_space");
+ dom.context.fetchJsonBounded=async()=>({response:{ok:true},json:{ok:true,game_role_verified:false,
+   requests:[{id:"synthetic-request",nickname:"<img>",status:"pending"}]}});
+ await dom.run("list_space");assert.match(dom.nodes["#freeSpaceRequests"].innerHTML,/&lt;img>/);
+ assert.match(dom.nodes["#freeSpaceRequests"].innerHTML,/approve_space/);
+ let approved;
+ dom.context.fetchJsonBounded=async(url,request)=>{approved=JSON.parse(request.body);return {response:{ok:true},json:{ok:true,game_role_verified:false,requests:[]}}};
+ await dom.run("approve_space","synthetic-request");assert.equal(approved.request_id,"synthetic-request");
+ dom.context.fetchJsonBounded=async()=>({response:{ok:true},json:{ok:true,game_role_verified:false,roster_draft:[{name:"Member I"}]}});
+ await dom.run("view_space");assert.equal(dom.nodes["#freeSpaceRoster"].textContent,"Member I");
+ assert.equal(dom.nodes["#freeSpaceRoster"].dataset.owner,verified.id);
+});
 test("actual browser founder handler saves only draft, retains edits on refusal and reloads without privilege",async()=>{
   const dom=founderDOM();await dom.run("create");
   assert.equal(dom.calls[0].url,"/api/invite");assert.equal(dom.panel.dataset.owner,verified.id);
@@ -90,7 +107,7 @@ for(const type of ["profile","squad1","squad2","squad3","squad4","technology","d
   test(`FREE personal ${type} reserves a persistent quota`,async()=>{
     let count=0;
     const result=await requirePersonalScanUser({body:{scan_type:type}},{...basic,consume:async(name,body)=>{
-      assert.equal(name,"wb1_reserve_free_scan");assert.equal(body.p_user_id,verified.id);count++;return {reserved:true};
+      assert.equal(name,"wb1_reserve_free_scan_v2");assert.equal(body.p_user_id,verified.id);assert.equal(body.p_ip_digest,"a".repeat(64));count++;return {reserved:true};
     }});
     assert.equal(result.user.id,verified.id);assert.equal(count,1);
   });

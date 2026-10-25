@@ -1,3 +1,11 @@
+# Note de suivi
+
+Ce rapport conserve les preuves de la préparation au commit `9db63dd`.
+La suite « espace WarBoost autonome + budget configurable » est décrite dans
+[`free-workspace-budget-review-20261025.md`](free-workspace-budget-review-20261025.md).
+Le plafond fixe et la restriction au seul brouillon décrits ci-dessous sont
+historiques ; ne pas utiliser ce rapport seul comme procédure d'installation.
+
 # FREE sans code et multi-alliance — préparation locale
 
 ## État

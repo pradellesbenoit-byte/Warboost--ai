@@ -16,7 +16,10 @@ const sql=text=>run("psql",["-X","-qAt","-v","ON_ERROR_STOP=1"],text);
 function concurrent(text){return new Promise((resolve,reject)=>{
   const child=spawn("psql",["-X","-qAt","-v","ON_ERROR_STOP=1"],{env,stdio:["pipe","pipe","pipe"]});
   let output="",error="";child.stdout.on("data",b=>output+=b);child.stderr.on("data",b=>error+=b);
-  child.on("error",reject);child.on("exit",code=>code?reject(Error(error)):resolve(output.trim()));child.stdin.end(text);
+  const deadline=setTimeout(()=>child.kill("SIGKILL"),15000);
+  child.on("error",error=>{clearTimeout(deadline);reject(error)});
+  // exit can precede the final stdout data event: only close proves pipes drained.
+  child.on("close",code=>{clearTimeout(deadline);code?reject(Error(error||"local SQL timeout")):resolve(output.trim())});child.stdin.end(text);
 })}
 const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 const A=id(1),B=id(2),R5=id(3),OtherR5=id(4),R4=id(5),R3=id(6),one=id(10),two=id(11);
@@ -191,6 +194,100 @@ try{
     sql(`delete from wb1_profiles where player_id='${founder}'`);
     assert.equal(sql(`select count(*) from wb1_alliance_founder_spaces where founder_id='${founder}'`),"0");
     assert.equal(sql(`select count(*) from wb1_alliance_founder_spaces`),"2");
+  });
+  const additive=fs.readFileSync(new URL("../supabase/migration_free_workspace_budget.sql",import.meta.url),"utf8");
+  sql("set role policy_owner;\n"+additive);
+  const owner=id(700),memberA=id(701),ownerB=id(702),memberB=id(703),impostor=id(704),ownerC=id(705);
+  for(const [who,name,server,tag] of [[owner,"Owner A","1200","OPEN"],[memberA,"Member I","1200","OPEN"],
+    [ownerB,"Owner B","1201","OPEN"],[memberB,"Member I","1201","OPEN"],[impostor,"Other","1200","OPEN"],[ownerC,"Owner C","1200","OTHER"],[id(706),"Existing","884","ONE"]]){
+    sql(`insert into wb1_profiles values('${who}','${JSON.stringify({player:{name,server_id:server},alliance:{tag}})}',now())`);
+  }
+  const work=(who,action,target=null)=>`set role service_role;select wb1_workspace_access('${who}','${action}',${target?`'${target}'`:"null"});`;
+  const createDraft=(who)=>sql(founderCall(who,"create"));
+  for(const who of [owner,ownerB,ownerC]){createDraft(who);sql(founderCall(who,"save_draft",[{name:"Member I",declared_game_role:"R5"}],0))}
+  group("independent spaces: founder governance is not a canonical R4/R5 or PRO grant",()=>{
+    for(const who of [owner,ownerB,ownerC]){
+      const r=JSON.parse(sql(work(who,"open_space")));assert.equal(r.warboost_owner,true);assert.equal(r.game_role_verified,false);
+      assert.equal(sql(`select count(*) from wb1_alliances where owner_player_id='${who}'`),"0");
+      assert.equal(sql(`select count(*) from wb1_alliance_members where player_id='${who}'`),"0");
+    }
+    sql(work(owner,"open_space")); // idempotent
+    assert.equal(sql("select count(*) from wb1_autonomous_spaces"),"3");
+    denied(work(id(706),"open_space"),/EXISTING_CANONICAL_SPACE/);
+    createDraft(impostor);denied(work(impostor,"open_space"),/WORKSPACE_EXISTS_REQUEST_MEMBERSHIP/);
+  });
+  group("pending users cannot read; exact server/tag and owner approval isolate two alliances",()=>{
+    for(const who of [memberA,memberB]){
+      assert.equal(JSON.parse(sql(work(who,"request_space"))).status,"pending");
+      denied(work(who,"view_space"),/WORKSPACE_APPROVAL_REQUIRED/);
+    }
+    denied(work(ownerB,"approve_space",memberA),/WORKSPACE_REQUEST_NOT_FOUND/);
+    denied(work(memberA,"approve_space",memberA),/WORKSPACE_OWNER_REQUIRED/);
+    sql(work(owner,"approve_space",memberA));sql(work(ownerB,"approve_space",memberB));
+    sql(work(owner,"approve_space",memberA)); // idempotent, not a second linked account
+    assert.equal(JSON.parse(sql(work(memberA,"view_space"))).roster_draft[0].name,"Member I");
+    assert.equal(sql(`select count(*) from wb1_alliance_members where player_id in ('${memberA}','${memberB}')`),"0");
+    denied(work(impostor,"view_space"),/WORKSPACE_APPROVAL_REQUIRED/);
+  });
+  group("identity edits, I/l substitution, foreign requests and silent roster loss are refused",()=>{
+    sql(`update wb1_profiles set state=jsonb_set(state,'{player,name}','"Member l"') where player_id='${memberA}'`);
+    denied(work(owner,"approve_space",memberA),/WORKSPACE_IDENTITY_CHANGED/);
+    denied(work(memberA,"view_space"),/WORKSPACE_APPROVAL_REQUIRED/);
+    sql(`update wb1_profiles set state=jsonb_set(state,'{player,name}','"Member I"') where player_id='${memberA}'`);
+    denied(founderCall(owner,"save_draft",[],1),/WORKSPACE_ACCEPTED_MEMBER_REVIEW_REQUIRED/);
+    sql(work(owner,"reject_space",memberA));denied(work(memberA,"view_space"),/WORKSPACE_APPROVAL_REQUIRED/);
+    sql(founderCall(owner,"save_draft",[{name:"Member I"}],1));
+    sql(work(owner,"approve_space",memberA));
+    sql(work(impostor,"request_space"));denied(work(owner,"approve_space",impostor),/WORKSPACE_ROSTER_IDENTITY_REQUIRED/);
+  });
+  group("direct table/client RPC access denied; new audit detects ACL drift",()=>{
+    for(const role of ["anon","authenticated","service_role"]){
+      denied(`set role ${role};select * from wb1_autonomous_members`,/permission denied/);
+      denied(`set role ${role};update wb1_free_budget_policy set global_daily=1000`,/permission denied/);
+    }
+    denied(`set role authenticated;select wb1_workspace_access('${owner}','view_space')`,/permission denied/);
+    denied("begin;grant select on wb1_autonomous_spaces to authenticated;select wb1_assert_workspace_budget_contract();commit;",/WORKSPACE_TABLE_CONTRACT/);
+    denied("begin;alter table wb1_autonomous_members drop constraint wb1_autonomous_members_space_id_fkey;select wb1_assert_workspace_budget_contract();commit;",/WORKSPACE_CONSTRAINT_CONTRACT/);
+    denied("begin;alter table wb1_free_budget_policy alter column global_daily drop not null;select wb1_assert_workspace_budget_contract();commit;",/WORKSPACE_COLUMN_CONTRACT/);
+    sql(fs.readFileSync(new URL("../supabase/audit_free_workspace_budget.sql",import.meta.url),"utf8"));
+  });
+  const ip="a".repeat(64),ipOther="b".repeat(64);
+  const reserve=(who,req,network=ip)=>`set role service_role;select wb1_reserve_free_scan_v2('${who}','${req}','${network}');`;
+  group("FREE budget configurable without deployment; consumed counters and old signature cannot bypass",()=>{
+    assert.equal(JSON.parse(sql(`set role service_role;select wb1_reserve_free_scan('${owner}','${id(800)}')`)).reserved,false);
+    // Previous 30 reservations still consumed. Raising the cap does not reset them.
+    assert.equal(JSON.parse(sql(reserve(owner,id(801)))).reason,"FREE_GLOBAL_BUDGET_REACHED");
+    sql("update wb1_free_budget_policy set global_daily=100,per_ip=2");
+    assert.equal(JSON.parse(sql(reserve(owner,id(802)))).reserved,true);
+    assert.equal(JSON.parse(sql(reserve(memberA,id(803)))).reserved,true);
+    assert.equal(JSON.parse(sql(reserve(ownerB,id(804)))).reason,"FREE_NETWORK_LIMIT_REACHED");
+    assert.equal(JSON.parse(sql(reserve(ownerB,id(805),ipOther))).reserved,true);
+    sql("update wb1_free_budget_policy set enabled=false");
+    assert.equal(JSON.parse(sql(reserve(ownerC,id(806),ipOther))).reason,"FREE_BUDGET_DISABLED");
+    sql("update wb1_free_budget_policy set enabled=true,per_ip=100");
+    assert.equal(JSON.parse(sql(reserve(owner,id(807)))).reserved,true);
+    assert.equal(JSON.parse(sql(reserve(owner,id(808)))).reserved,true);
+    assert.equal(JSON.parse(sql(reserve(owner,id(809)))).reason,"FREE_ACCOUNT_LIMIT_REACHED");
+    denied(reserve(owner,id(808)),/SCAN_REQUEST_ALREADY_USED/);
+    denied(reserve(owner,id(810),"invalid"),/TRUSTED_IP_REQUIRED/);
+  });
+  sql("update wb1_free_budget_policy set global_daily=(select reserved+1 from wb1_free_scan_daily)");
+  const budgetRace=await Promise.all([concurrent(reserve(ownerB,id(820),ipOther)),concurrent(reserve(ownerC,id(821),ipOther))]);
+  assert.equal(budgetRace.filter(r=>JSON.parse(r).reserved).length,1);
+  groups++;console.log("PASS native two-connection budget race: exactly one remaining slot");
+  const revision=Number(sql(`select revision from wb1_alliance_founder_spaces where founder_id='${owner}'`));
+  const draftRace=await Promise.allSettled([
+    concurrent(founderCall(owner,"save_draft",[{name:"Member I"},{name:"Extra"}],revision)),
+    concurrent(work(owner,"approve_space",memberA))
+  ]);
+  assert.equal(draftRace.filter(r=>r.status==="fulfilled").length,2);
+  groups++;console.log("PASS native two-connection roster edit/approval lock order without deadlock");
+  group("additive migration preserves members, history and adjusted budget when reapplied",()=>{
+    const before=sql("select jsonb_agg(t order by player_id) from wb1_autonomous_members t");
+    sql("set role policy_owner;\n"+additive);
+    assert.equal(sql("select jsonb_agg(t order by player_id) from wb1_autonomous_members t"),before);
+    assert.notEqual(sql("select global_daily from wb1_free_budget_policy"),"30");
+    sql("select wb1_assert_workspace_budget_contract()");
   });
   console.log(JSON.stringify({native_postgresql:true,groups,pass:groups,fail:0,external_calls:0}));
 }finally{

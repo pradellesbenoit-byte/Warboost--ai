@@ -1472,15 +1472,15 @@ async function submitFreeAllianceAction(action,requestId){
   if(!requireBetaAccess()||!requireBetaConsent())return;
   const owner=String(cloudSession?.user?.id||""),copy=freeAccessCopy(lang);
   try{
-    const founder=action==="create"||action==="save_draft",panel=$("#freeFounderPanel"),editor=$("#freeFounderRoster");
+    const founder=action==="create"||action==="save_draft",workspace=action.endsWith("_space"),panel=$("#freeFounderPanel"),editor=$("#freeFounderRoster");
     if(action==="save_draft"&&panel?.dataset.owner!==owner)return;
     if(action==="create"&&panel?.dataset.owner===owner&&editor.value!==editor.dataset.savedText&&!confirm(copy.replaceDraft))return;
     const submittedText=editor?.value;
-    if(action==="request"||action==="create"){
+    if(action==="request"||action==="create"||action==="request_space"||action==="open_space"){
       const saved=await pushServerState();if(!saved?.ok)throw new Error("cloud_save_unconfirmed");
     }
     if(owner!==String(cloudSession?.user?.id||"")||owner!==String(state.player_id||""))return;
-    const result=await fetchJsonBounded(founder?"/api/invite":"/api/join",{
+    const result=await fetchJsonBounded(founder||workspace?"/api/invite":"/api/join",{
       method:"POST",headers:authHeaders({"content-type":"application/json"}),
       body:JSON.stringify(founder?{action,roster:action==="save_draft"?parseFounderDraft(editor.value):undefined,
         revision:action==="save_draft"?Number(panel.dataset.revision):undefined}:{action,request_id:requestId})
@@ -1490,7 +1490,15 @@ async function submitFreeAllianceAction(action,requestId){
       inviteMessage(result.json?.error==="ALLIANCE_MANAGER_VERIFICATION_REQUIRED"?copy.verification:copy.error);
       return;
     }
-    if(founder){
+    if(workspace){
+      if(result.json.game_role_verified!==false)throw new Error("unexpected_workspace_contract");
+      if(action==="view_space"){
+        const box=$("#freeSpaceRoster");if(box){box.textContent=formatFounderDraft(result.json.roster_draft);box.dataset.owner=owner}
+      }else if(Array.isArray(result.json.requests)){
+        const box=$("#freeSpaceRequests");if(box){box.dataset.owner=owner;box.innerHTML=result.json.requests.map(row=>`<div>${esc(row.nickname)} — ${esc(row.status)} <button type="button" class="smallBtn" data-free-alliance-action="approve_space" data-request-id="${esc(row.id)}">${esc(copy.approve)}</button> <button type="button" class="smallBtn" data-free-alliance-action="reject_space" data-request-id="${esc(row.id)}">${esc(copy.reject)}</button></div>`).join("")||esc(copy.empty)}
+      }
+      inviteMessage(action==="request_space"?copy.pending:copy.workspaceNotice,true);
+    }else if(founder){
       if(result.json.existing){if(panel)panel.classList.add("hidden");inviteMessage(copy.existing);return}
       if(result.json.provisional!==true||result.json.membership_granted!==false||result.json.game_role_verified!==false)throw new Error("unexpected_founder_contract");
       panel.dataset.owner=owner;panel.dataset.revision=String(result.json.revision);
@@ -1517,13 +1525,15 @@ document.addEventListener("click",event=>{
   if(!button)return;
   event.preventDefault();event.stopImmediatePropagation();
   const action=button.id==="freeFounderSave"?"save_draft":button.id==="freeFounderCreate"?"create":button.id==="freeAllianceRequestBtn"?"request":button.id==="freeAllianceRequestsRefresh"?"list":button.dataset.freeAllianceAction;
-  if(["approve","reject"].includes(action)&&!confirm(freeAccessCopy(lang)[action]))return;
+  if(["approve","reject","approve_space","reject_space","open_space"].includes(action)&&!confirm(action==="open_space"?freeAccessCopy(lang).workspaceNotice:freeAccessCopy(lang)[action.startsWith("approve")?"approve":"reject"]))return;
   void submitFreeAllianceAction(action,button.dataset.requestId);
 },true);
 function renderBeta(){
   const copy=freeAccessCopy(lang);
   const founderPanel=$("#freeFounderPanel"),founderEditor=$("#freeFounderRoster");
   resetForeignFounderDraft(founderPanel,founderEditor,String(cloudSession?.user?.id||""));
+  for(const selector of ["#freeSpaceRequests","#freeSpaceRoster"]){const box=$(selector);if(box?.dataset.owner!==String(cloudSession?.user?.id||"")){if(box)box.textContent=""}}
+  for(const [id,key] of [["freeSpaceOpen","workspaceOpen"],["freeSpaceRequest","workspaceRequest"],["freeSpaceView","workspaceView"],["freeSpaceList","workspaceList"],["freeSpaceNotice","workspaceNotice"]])if($("#"+id))$("#"+id).textContent=copy[key];
   if($("#freeFounderNote"))$("#freeFounderNote").textContent=copy.provisional;
   if($("#freeFounderLabel"))$("#freeFounderLabel").textContent=copy.draftLabel;
   if($("#freeFounderSave"))$("#freeFounderSave").textContent=copy.saveDraft;

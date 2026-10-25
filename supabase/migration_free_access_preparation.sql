@@ -204,6 +204,7 @@ declare s jsonb; v_server text; v_tag text; existing_count integer; draft public
 begin
   if p_user_id is null then raise exception 'AUTH_REQUIRED'; end if;
   if p_action not in ('create','mine','save_draft') or p_action is null then raise exception 'ALLIANCE_ACTION_INVALID'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('wb-autonomous-spaces-v1',0));
   perform pg_advisory_xact_lock(hashtextextended('wb-access-user:'||p_user_id::text,0));
   select state into s from public.wb1_profiles where player_id=p_user_id for share;
   v_server:=s#>>'{player,server_id}'; v_tag:=upper(btrim(s#>>'{alliance,tag}'));
