@@ -3,9 +3,9 @@ name: Mandatory Last War identity
 description: Beta identity onboarding scope, authoritative identity preservation and packaging decisions.
 ---
 
-Beta accounts must complete a Last War nickname, server and alliance before ordinary app access. Existing complete profiles must never be interrupted; partial profiles retain their existing information. Keep sign-in, beta invitations, consent and R4/R5 authorization unchanged.
+Accounts must complete a Last War nickname and server before ordinary personal app access; alliance is optional under the [code-free FREE policy](code-free-access-policy.md). Existing complete profiles must never be interrupted; partial profiles retain their existing information. Keep consent and verified R4/R5 authorization independent of FREE access.
 
-**Why:** The user wants to avoid beta accounts without player identity and associate scans, alliance and player data correctly.
+**Why:** The user wants scans associated with the correct player, but explicitly superseded alliance-required/private-beta onboarding with autonomous FREE access for players without an alliance.
 
 **How to apply:** Resume the required screen until the identity is saved. Do not use a dismissible or device-wide “already onboarded” flag, disconnect the player, create a replacement profile, or automatically merge accounts. Check all supported languages and an unsupported-language fallback.
 
