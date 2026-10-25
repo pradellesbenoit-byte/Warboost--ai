@@ -1,11 +1,7 @@
-import {randomBytes} from "node:crypto";
-import {configured,createAllianceWithOwner,findInvite,findAllianceByScope,getAllianceMembership,getAllianceById,getOwnedAlliance,getProfile,joinAlliance,updateAllianceScopeRoster} from "../lib/supabase.js";
-import {requireBetaUser} from "../lib/beta-access.js";
+import {configured,findAllianceByScope,getAllianceMembership,getAllianceById,getOwnedAlliance,getProfile,joinAlliance,updateAllianceScopeRoster} from "../lib/supabase.js";
+import {requireProductUser} from "../lib/pro-access.js";
 import {managerProofFromState,joinProofForAlliance,publicAllianceScope,isManagerRole,mergeCanonicalRoster} from "../lib/alliance-scope.js";
 
-function cleanTag(v){return String(v||"WB").replace(/[^A-Z0-9]/gi,"").toUpperCase().slice(0,8)||"WB"}
-function cleanName(v,fallback){return String(v||fallback||"WarBoost").trim().slice(0,80)||fallback||"WarBoost"}
-function inviteCode(server,tag){const s=String(server||"").replace(/\D/g,"").slice(0,8)||"S",t=cleanTag(tag);return `S${s}-${t}-${randomBytes(3).toString("hex").toUpperCase()}`}
 function fail(status,code,message){return Object.assign(new Error(message||code),{status,code})}
 
 async function profileState(playerId){const row=await getProfile(playerId);return row?.state||null}
@@ -24,7 +20,7 @@ export default async function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   if(!configured())return res.status(503).json({error:"database_not_configured"});
   try{
-    const {user}=await requireBetaUser(req,{consent:true});
+    const {user}=await requireProductUser(req,{consent:true});
     const current=await getAllianceMembership(user.id);
     if(current){
       if(!isManagerRole(current.role))throw fail(403,"manager_role_required","R5/R4 required to share a WarBoost alliance invitation.");
@@ -71,19 +67,8 @@ export default async function handler(req,res){
     if(scoped.length>1)throw fail(409,"alliance_scope_ambiguous_admin_required");
     if(scoped.length===1)throw fail(409,"alliance_space_exists_invitation_required","This server/alliance already has a WarBoost space. Ask an R5/R4 of that space for an invitation.");
 
-    const tag=proof.scope.alliance_tag,name=cleanName(req.body?.name,tag),server=proof.scope.server_id;
-    for(let attempt=0;attempt<6;attempt++){
-      const code=inviteCode(server,tag);if(await findInvite(code))continue;
-      try{
-        const row=await createAllianceWithOwner({tag,name,server_id:server,invite_code:code,owner_player_id:user.id,roster:proof.roster,owner_role:proof.roster_role});
-        if(!row?.id)continue;
-        return res.status(200).json({ok:true,existing:false,alliance:publicAllianceScope(row),invite_code:row.invite_code||code,role:proof.roster_role,scope_verified:true});
-      }catch(e){
-        const raw=`${e?.body?.code||""} ${e?.body?.message||""} ${e?.message||""}`.toLowerCase();
-        if(e?.status===409||/23505|duplicate|unique/.test(raw))continue;
-        throw e;
-      }
-    }
-    return res.status(503).json({error:"invite_code_generation_failed"});
+    // This profile/roster can be supplied by its author. It is NOT independent proof of R4/R5.
+    // Never bootstrap ownership from a self-declared rank, screenshot or arbitrary roster.
+    throw fail(409,"ALLIANCE_MANAGER_VERIFICATION_REQUIRED","La création d’un nouvel espace nécessite une vérification indépendante de l’identité et du grade R4/R5. Aucun code bêta n’est requis pour le compte FREE.");
   }catch(e){return res.status(e.status||500).json({error:e.code||"invite_failed",message:e.message})}
 }

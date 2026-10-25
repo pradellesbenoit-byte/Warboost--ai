@@ -1,6 +1,7 @@
 import {createHash,randomBytes,timingSafeEqual} from "node:crypto";
 import {requireUser} from "../lib/auth.js";
 import {betaAccessForUserAsync} from "../lib/beta-access.js";
+import {assertFreeAccount} from "../lib/free-access.js";
 import {fetchWithTimeout} from "../lib/http-timeout.js";
 import {activateBetaInvitationAtomic,betaInvitationError} from "../lib/beta-invitation-store.js";
 import accountDeletionHandler from "../lib/account-deletion-handler.js";
@@ -147,7 +148,8 @@ export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
   if(!configured())return res.status(503).json({error:"SUPPORT_NOT_CONFIGURED",message:"Le stockage support WarBoost n'est pas encore configuré."});
   try{
-    const user=await requireUser(req),admin=isAdmin(user),beta=await betaAccessForUserAsync(user);
+    const user=await requireUser(req),admin=isAdmin(user);
+    const beta=admin?await betaAccessForUserAsync(user):{access_status:"account"};
     if(req.method==="GET"){
       const wantAdmin=String(req.query?.admin||"")==="1",wantInvites=String(req.query?.invites||"")==="1";
       if((wantAdmin||wantInvites)&&!admin)return res.status(403).json({error:"SUPPORT_ADMIN_REQUIRED"});
@@ -169,7 +171,7 @@ export default async function handler(req,res){
     if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
     const action=safeText(req.body?.action,40)||"create";
 
-    if(action==="beta_code_activate"){const result=await activateByBetaCode({code:req.body?.code,user,beta});return res.status(200).json({ok:true,...result})}
+    if(action==="beta_code_activate")return res.status(410).json({error:"BETA_CODE_RETIRED",message:"Le compte FREE ne nécessite aucun code. Les droits PRO historiques sont conservés."});
 
     if(action==="invite_add"){
       if(!admin)return res.status(403).json({error:"SUPPORT_ADMIN_REQUIRED"});
@@ -187,8 +189,7 @@ export default async function handler(req,res){
     }
 
     if(action==="create"){
-      if(!beta.configured)return res.status(503).json({error:"BETA_INVITES_NOT_CONFIGURED"});
-      if(!beta.allowed)return res.status(403).json({error:"BETA_INVITE_REQUIRED"});
+      assertFreeAccount(user);
       const category=cleanCategory(req.body?.category),subject=safeText(req.body?.subject,140),description=safeText(req.body?.description,6000),diagnosticsConsented=req.body?.diagnostics_consent===true;
       if(!category)return res.status(400).json({error:"SUPPORT_CATEGORY_REQUIRED"});
       if(subject.length<3||description.length<30)return res.status(400).json({error:"SUPPORT_FIELDS_REQUIRED"});

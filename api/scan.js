@@ -1,4 +1,5 @@
 import {requireProductUser} from "../lib/pro-access.js";
+import {requirePersonalScanUser} from "../lib/personal-scan-access.js";
 import {canonicalHeroName,catalogHeroName,canonicalExclusiveWeaponHeroName} from "../lib/heroes.js";
 import {sanitizeGear} from "../lib/gear.js";
 import {readScannedEquipment,mergeEquipmentReadings} from "../lib/equipment-scan.js";
@@ -439,14 +440,14 @@ export default async function handler(req,res){
   const startedAt=Date.now();
   const timing=createScanTiming({startedAt});
   try{
-    const {user}=await timing.measure("access",()=>requireProductUser(req,{consent:true,pro:true}));
     const scanType=String(req.body?.scan_type||"profile").toLowerCase(),locale=String(req.body?.locale||"fr"),currentState=req.body?.current_state&&typeof req.body.current_state==="object"?req.body.current_state:null;
     const scanTypeValid=/^(profile|squad[1-4]|drone|exclusive|awakening|shop|vs|season|technology|alliance_roster|secret_mobile_squad)$/.test(scanType);
     scanTypeForLog=scanTypeValid?scanType:"invalid";
     if(!scanTypeValid)return res.status(400).json({error:"invalid_scan_type",message:"Type d’analyse invalide."});
-    const verifiedContext=verifiedRosterContext(scanType,currentState,user),allianceTag=verifiedContext?.alliance?.tag||"";
     const imageBatch=validateScanImageBatch(scanType,req.body);
     if(!imageBatch.ok)return res.status(imageBatch.status).json({error:imageBatch.error,message:imageBatch.message});
+    const {user}=await timing.measure("access",()=>requirePersonalScanUser(req));
+    const verifiedContext=verifiedRosterContext(scanType,currentState,user),allianceTag=verifiedContext?.alliance?.tag||"";
     const images=imageBatch.images;
     const image=images[0];
     const slot=scanAbuseGuard.acquire(user?.id);

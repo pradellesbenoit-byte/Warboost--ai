@@ -1,4 +1,5 @@
 import {requireUser} from "../lib/auth.js";
+import {assertFreeAccount} from "../lib/free-access.js";
 import {betaAccessForUserAsync} from "../lib/beta-access.js";
 import {entitlementForUser} from "../lib/pro-access.js";
 import {billingRow} from "../lib/billing-store.js";
@@ -21,7 +22,7 @@ export default async function handler(req,res){
       const result=await processWebhook(raw,signature);return res.status(200).json(result);
     }
 
-    const user=await requireUser(req),beta=await betaAccessForUserAsync(user);
+    const user=assertFreeAccount(await requireUser(req)),beta=await betaAccessForUserAsync(user);
     if(req.method==="GET"){
       const entitlement=await entitlementForUser(user,{beta});
       const account=entitlement.schema_ready?await billingRow("warboost_billing_accounts","user_id",user.id):null;
@@ -29,7 +30,7 @@ export default async function handler(req,res){
         ok:true,beta:entitlement.source==="beta",release:true,safe_launch:true,commercial:true,
         configured:commerce.configured&&entitlement.schema_ready,enforced:true,allowed:true,
         beta_configured:beta.configured,alliance_beta_allowed:beta.allowed,
-         beta_access_status:beta.access_status,beta_code_eligible:beta.code_eligible===true&&entitlement.source!=="beta",
+         beta_access_status:beta.access_status,beta_code_eligible:false,open_registration:true,
         consent_version:beta.consent_version,access_status:entitlement.source==="beta"?"beta-granted":"account",
         active:entitlement.active,status:entitlement.source==="beta"?"beta":entitlement.subscription?.status||"free",
         plan:commerce.plan,payments_enabled:false,test_payments_enabled:commerce.test_payments_enabled&&entitlement.schema_ready,

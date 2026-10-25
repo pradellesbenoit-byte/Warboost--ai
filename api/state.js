@@ -228,7 +228,7 @@ export default async function handler(req,res){
     const access=accessToken(req),fastRestore=req.method==="GET"&&fastRestoreRequested(req);
     // Explicit read-only check: no invitation acceptance, repair, merge or profile write.
     if(req.method==="GET"&&req.query?.action==="sync_status"){
-      const user=await requireUser(req);
+      const {user}=await requireProductUser(req,{consent:true});
       if(betaConsentHeader(req)!==BETA_CONSENT_VERSION)
         return res.status(428).json({error:"BETA_CONSENT_REQUIRED"});
       const row=configured()?await getProfile(String(user.id),{timeoutMs:4000}):
@@ -242,15 +242,14 @@ export default async function handler(req,res){
     // while the browser aborted at 6.5 s; on a Vercel cold start this could never reliably finish.
     if(fastRestore){
       const authStarted=Date.now();let user;
-      try{user=await requireUser(req);trace({stage:"AUTH_USER",ms:Math.max(0,Date.now()-authStarted),status:"ok",error:null})}
+      try{({user}=await requireProductUser(req,{consent:true}));trace({stage:"AUTH_USER",ms:Math.max(0,Date.now()-authStarted),status:"ok",error:null})}
       catch(error){trace({stage:"AUTH_USER",ms:Math.max(0,Date.now()-authStarted),status:"error",error:String(error?.code||error?.name||"auth_failed")});throw error}
       if(betaConsentHeader(req)!==BETA_CONSENT_VERSION)return res.status(428).json({error:"BETA_CONSENT_REQUIRED",message:"Consentement bêta requis avant l'envoi de données",restore_trace:orderedRestoreTrace(restoreTrace)});
       const playerId=String(user.id),profileStarted=Date.now();
       const profilePromise=(configured()?getProfile(playerId,{timeoutMs:4000}):getProfileForUser(playerId,access,{timeoutMs:4000}))
         .then(row=>{trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"ok",error:null});return row})
         .catch(error=>{trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"error",error:String(error?.code||error?.name||"profile_read_failed")});throw error});
-      const betaPromise=betaAccessForUserAsync(user,{trace,inviteTimeoutMs:3500,acceptTimeoutMs:900});
-      const [beta,row]=await Promise.all([betaPromise,profilePromise]);
+      const row=await profilePromise;
       // Personal restore is authenticated and consent-bound, not invitation-bound.
       // The beta lookup remains diagnostic only; canonical alliance authorization below is unchanged.
       if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});

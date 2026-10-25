@@ -58,13 +58,12 @@ try{
   });
   const customerA=(await fixture.pg.query("select stripe_customer_id from warboost_billing_accounts where user_id=$1",[userA])).rows[0].stripe_customer_id;
   let subscription=fixture.sub(customerA);subscription.metadata={user_id:userA};fixture.subscriptions.set(subscription.id,subscription);
-  await test("Success browser return alone stays FREE; FREE blocked by BOTH scan and advice APIs",async()=>{
+  await test("Success browser return alone stays FREE; PRO advice blocked and invalid scans do not spend quota",async()=>{
     assert.equal((await entitlementForUser(user(userA))).active,false);
     const pro=await call(proHandler,userA,{query:{billing:"test-success"}});
     assert.equal(pro.data.active,false);assert.equal(pro.data.allowed,true);
-    for(const handler of [scanHandler,adviceHandler]){
-      const r=await call(handler,userA,{method:"POST",body:{}});assert.equal(r.code,403);assert.equal(r.data.code||r.data.error,"PRO_REQUIRED");
-    }
+    const advice=await call(adviceHandler,userA,{method:"POST",body:{}});assert.equal(advice.code,403);assert.equal(advice.data.code||advice.data.error,"PRO_REQUIRED");
+    const scan=await call(scanHandler,userA,{method:"POST",body:{}});assert.equal(scan.code,400);assert.equal(scan.data.error,"invalid_image");
   });
   await test("Valid signed webhook activates new payer without old beta invitation",async()=>{
     const e=fixture.event("checkout.session.completed",{object:"checkout.session",customer:customerA,subscription:subscription.id,client_reference_id:userA});

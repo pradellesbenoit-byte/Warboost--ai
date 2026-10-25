@@ -1,5 +1,5 @@
 import {configured,getProfile,getAllianceMembership,getAllianceById,getAllianceRoster,setAllianceMemberRole,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
-import {requireBetaUser} from "../lib/beta-access.js";
+import {requireProductUser} from "../lib/pro-access.js";
 import {normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import {cloudRankManagerAccess,confirmedCanonicalSelfRole,previewSelfIdentityLink,canonicalRosterMemberKey,resolveCanonicalRosterMember,dedupeCanonicalRosterRows,normalizeAllianceRank} from "../lib/alliance-rank-management.js";
 import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/alliance-authorization.js";
@@ -49,7 +49,7 @@ export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store");
   if(!configured())return res.status(503).json({error:"database_not_configured"});
   try{
-    const {user}=await requireBetaUser(req,{consent:true});
+    const {user}=await requireProductUser(req,{consent:true});
     if(req.method==="GET"&&String(req.query?.action||"")==="roster_diagnostic"){
        const profile=await getProfile(user.id),identity=profileIdentity(profile),membership=await getAllianceMembership(user.id),ctx=await getAllianceRoster(user.id,{serverId:identity.server_id,allianceTag:identity.alliance_tag});
       if(!ctx?.alliance)return res.status(404).json({error:"alliance_not_found"});

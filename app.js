@@ -1,4 +1,5 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
+import {freeAccountAllowed,freeAccessCopy} from "./lib/free-access.js";
 import {createAnalysisIndicator,analysisFailureMessage,beginLoadingButton} from "./lib/analysis-indicator.js";
 import {loadingTargetIds,requestLoadingTargetIds} from "./lib/loading-targets.js";
 import {accountSyncErrorKind,accountSyncView,verifiedAccountStateReply,verifiedAccountWriteReply,createCloudOperations,transientCloudFailure,deviceCloudSaveMetadata,confirmedWriteReceipt,mergeDeviceCloudSaveMetadata,staleProfileRestore} from "./lib/account-sync-feedback.js";
@@ -803,13 +804,13 @@ returnViewController=createReturnViewController({documentRef:document,windowRef:
 function betaConsentStorageKey(){const id=String(cloudSession?.user?.id||"").trim();return id?`${BETA_CONSENT_KEY}:${id}`:null}
 function betaConsentAccepted(){const key=betaConsentStorageKey();return Boolean(key&&localStorage.getItem(key)==="1")}
 function authHeaders(extra={}){return {...extra,...(cloudSession?.access_token?{authorization:`Bearer ${cloudSession.access_token}`}:{}) ,...(betaConsentAccepted()?{"x-warboost-beta-consent":BETA_CONSENT_VERSION}:{})}}
-function betaAccessAllowed(){return Boolean(cloudSession?.user)&&(!betaState.enforced||betaState.allowed)}
+function betaAccessAllowed(){return freeAccountAllowed(cloudSession?.user)}
 function runtimeAccessState(){return deriveRuntimeAccessState({userId:String(cloudSession?.user?.id||""),stateOwnerId:String(state?.player_id||""),betaAllowed:betaAccessAllowed(),consentAccepted:betaConsentAccepted(),betaAccessStatus:betaState?.access_status})}
 function betaPrivateDataVisible(){return runtimeAccessState().privateVisible}
-function safeLaunchBetaMode(){return proState?.entitlement?.source==="beta"||proState?.beta!==false}
+function safeLaunchBetaMode(){return proState?.active===true&&proState?.entitlement?.source==="beta"}
 function safeLaunchBetaProIncluded(){return Boolean(safeLaunchBetaMode()&&cloudSession?.user&&betaAccessAllowed()&&betaConsentAccepted())}
-function proFeatureAllowed(){return safeLaunchBetaProIncluded()||Boolean(!safeLaunchBetaMode()&&proState?.active)}
-function betaAccessMessage(){const access=runtimeAccessState();if(!access.logged)return t("beta_signin_required");if(!betaState.enforced)return t("beta_allowlist_setup");if(access.phase==="syncing")return t("syncing");if(betaState.restore_error&&access.consented&&!cloudProfileVerified&&!access.privateVisible)return `${t("beta_restore_failed")}${lastBootstrapFailure()?.stage?` · ${lastBootstrapFailure().stage}`:""}`;if(betaState.beta_access_status==="revoked")return t("beta_access_revoked");if(betaState.beta_access_status==="expired")return t("beta_access_expired");if(betaState.beta_access_status==="owner-mismatch")return t("beta_invitation_other_account");if(betaCodeVisible(betaState,{logged:true,betaGranted:proState?.beta===true}))return t("beta_code_required");if(access.phase==="access-denied"){if(betaState.access_status==="revoked")return t("beta_access_revoked");if(betaState.access_status==="expired")return t("beta_access_expired");return t("beta_code_required")}if(access.phase==="consent-required")return t("beta_consent_required");if(access.phase==="ready")return accountSyncMessage();return t("syncing")}
+function proFeatureAllowed(){return betaAccessAllowed()&&betaConsentAccepted()&&proState?.active===true}
+function betaAccessMessage(){if(!cloudSession?.user)return t("beta_signin_required");if(!betaAccessAllowed())return /^fr/.test(lang)?"Confirme ton adresse e-mail.":"Confirm your email address.";if(!betaConsentAccepted())return freeAccessCopy(lang).privacy;if(betaState.restore_error&&!cloudProfileVerified)return t("beta_restore_failed");return accountSyncMessage()}
 let accountSyncCheckBusy=false;
 const accountSyncOperations=createCloudOperations();
 let accountSaveBusy=false,cloudRetryFailures=0;
@@ -1466,12 +1467,58 @@ function renderAuth(){
   if(!logged&&msg&&["config-missing","config-unreachable","client-error","auth-unreachable"].includes(cloudInit.status)){msg.className="notice warn";msg.textContent=cloudAuthFailureMessage()}
   renderBeta();renderPro();
 }
+async function submitFreeAllianceAction(action,requestId){
+  if(!requireBetaAccess()||!requireBetaConsent())return;
+  const owner=String(cloudSession?.user?.id||""),copy=freeAccessCopy(lang);
+  try{
+    if(action==="request"||action==="create"){
+      const saved=await pushServerState();if(!saved?.ok)throw new Error("cloud_save_unconfirmed");
+    }
+    if(owner!==String(cloudSession?.user?.id||"")||owner!==String(state.player_id||""))return;
+    const result=await fetchJsonBounded(action==="create"?"/api/invite":"/api/join",{
+      method:"POST",headers:authHeaders({"content-type":"application/json"}),
+      body:JSON.stringify({action,request_id:requestId})
+    },18000);
+    if(owner!==String(cloudSession?.user?.id||"")||owner!==String(state.player_id||""))return;
+    if(!result.response.ok||!result.json?.ok){
+      inviteMessage(result.json?.error==="ALLIANCE_MANAGER_VERIFICATION_REQUIRED"?copy.verification:copy.error);
+      return;
+    }
+    if(action==="list"){
+      const box=$("#freeAllianceRequests");
+      if(box)box.innerHTML=(result.json.requests||[]).map(row=>`<div>${esc(row.nickname)} <button type="button" class="smallBtn" data-free-alliance-action="approve" data-request-id="${esc(row.id)}">${esc(copy.approve)}</button> <button type="button" class="smallBtn" data-free-alliance-action="reject" data-request-id="${esc(row.id)}">${esc(copy.reject)}</button></div>`).join("")||esc(copy.empty);
+    }else if(action==="request"){
+      if(result.json.request?.status==="approved"){await pullServerState();if(owner===String(cloudSession?.user?.id||""))inviteMessage(copy.approved,true)}
+      else inviteMessage(copy.pending,true);
+    }
+    else{
+      inviteMessage(action==="create"?copy.create:copy.review,true);
+      if(action!=="create")await submitFreeAllianceAction("list");
+    }
+  }catch{if(owner===String(cloudSession?.user?.id||""))inviteMessage(copy.error)}
+}
+// Capture overrides old invitation-sharing handlers. No code is shared and no automatic join.
+document.addEventListener("click",event=>{
+  const button=event.target.closest?.("#shareInviteBtn,#freeAllianceRequestBtn,#freeAllianceRequestsRefresh,[data-free-alliance-action]");
+  if(!button)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  const action=button.id==="shareInviteBtn"?"create":button.id==="freeAllianceRequestBtn"?"request":button.id==="freeAllianceRequestsRefresh"?"list":button.dataset.freeAllianceAction;
+  if(["approve","reject"].includes(action)&&!confirm(freeAccessCopy(lang)[action]))return;
+  void submitFreeAllianceAction(action,button.dataset.requestId);
+},true);
 function renderBeta(){
+  const copy=freeAccessCopy(lang);
+  if($("#freeAllianceRequestBtn"))$("#freeAllianceRequestBtn").textContent=copy.request;
+  if($("#shareInviteBtn"))$("#shareInviteBtn").textContent=copy.create;
+  if($("#freeAllianceRequestsRefresh"))$("#freeAllianceRequestsRefresh").textContent=copy.review;
+  const title=$("#freeAccountTitle"),privacy=$("#freePrivacyText"),note=$("#freeAccountNote");
+  if(title)title.textContent=copy.title;if(privacy)privacy.textContent=copy.privacy;if(note)note.textContent=copy.note;
+  if($("#identityOnboardingAlliance"))$("#identityOnboardingAlliance").placeholder=/^fr/.test(lang)?"Facultative":"Optional";
   const pill=$("#betaAccessPill"),status=$("#betaAccessStatus"),row=$("#betaConsentRow"),checkbox=$("#betaConsent"),codeBox=$("#betaCodeBox"),retry=$("#betaRestoreRetryBtn"),checking=Boolean(cloudSession?.user&&betaState.access_status==="checking"),restoreFailed=Boolean(cloudSession?.user&&betaConsentAccepted()&&!cloudProfileVerified&&betaState.restore_error);
-  const canUseCode=betaCodeVisible(betaState,{logged:Boolean(cloudSession?.user),betaGranted:proState?.beta===true});
+  const canUseCode=false;
   const invited=Boolean(cloudSession?.user&&betaState.alliance_beta_allowed===true);
-  if(pill){pill.textContent=!cloudSession?.user?t("beta_signin_short"):checking?t("syncing"):restoreFailed?t("update"):invited?t("beta_invited_short"):canUseCode?t("beta_code_short"):proState?.beta===true?"PRO β":"FREE";pill.className=`pill ${invited&&!restoreFailed?"active":"warn"}`}
-  if(status){status.className=`notice${invited&&!restoreFailed?"":" warn"}`;status.textContent=betaAccessMessage()}
+  if(pill){pill.textContent=!cloudSession?.user?t("beta_signin_short"):checking?t("syncing"):restoreFailed?t("update"):safeLaunchBetaMode()?"PRO β":"FREE";pill.className=`pill ${betaAccessAllowed()&&!restoreFailed?"active":"warn"}`}
+  if(status){status.className=`notice${betaAccessAllowed()&&!restoreFailed?"":" warn"}`;status.textContent=!cloudSession?.user?t("beta_signin_required"):!betaAccessAllowed()?(/^(fr)/.test(lang)?"Confirme ton adresse e-mail.":"Confirm your email address."):!betaConsentAccepted()?copy.privacy:accountSyncMessage()}
   if(status&&runtimeAccessState().phase==="ready"&&currentAccountSyncView().kind!=="verified")status.classList.add("warn");
   if(retry){retry.classList.toggle("hidden",!restoreFailed);retry.disabled=cloudHydrationPending}
   let check=$("#accountSyncCheckBtn");
@@ -1491,8 +1538,8 @@ function renderBeta(){
   if(codeBox)codeBox.classList.toggle("hidden",!canUseCode);
   if(row)row.classList.toggle("hidden",!cloudSession?.user||!betaAccessAllowed());
   if(checkbox)checkbox.checked=betaConsentAccepted();
-  $$('.moduleCard').forEach(x=>{const locked=Boolean(checking||!cloudSession?.user||(betaState.enforced&&!betaState.allowed)||(restoreFailed&&!betaPrivateDataVisible()));x.classList.toggle("betaLocked",locked);x.setAttribute("aria-disabled",locked?"true":"false")});
-  const fab=$("#betaFeedbackBtn");if(fab)fab.classList.toggle("hidden",Boolean(!cloudSession?.user||(betaState.enforced&&!betaState.allowed)));
+  $$('.moduleCard').forEach(x=>{const locked=Boolean(!betaAccessAllowed()||(restoreFailed&&!betaPrivateDataVisible()));x.classList.toggle("betaLocked",locked);x.setAttribute("aria-disabled",locked?"true":"false")});
+  const fab=$("#betaFeedbackBtn");if(fab)fab.classList.toggle("hidden",!betaAccessAllowed());
 }
 function authMessage(text,ok=false){const el=$("#authMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
 

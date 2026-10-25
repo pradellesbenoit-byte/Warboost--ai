@@ -47,7 +47,7 @@ export async function billingFixture(){
       if(u.pathname==="/auth/v1/user"){
         const id=String(opts.headers?.authorization||"").replace("Bearer ","");
         const rows=(await pg.query("select * from auth.users where id=$1",[id])).rows;
-        return rows[0]?json(rows[0]):json({},401);
+        return rows[0]?json({...rows[0],email_confirmed_at:"2026-01-01T00:00:00Z"}):json({},401);
       }
       try{
         const rpc=u.pathname.match(/^\/rest\/v1\/rpc\/([a-z0-9_]+)$/);

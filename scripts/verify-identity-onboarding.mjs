@@ -7,7 +7,8 @@ import {IDENTITY_ONBOARDING_KEYS} from "../lib/identity-onboarding-copy.js";
 
 const identity={name:"QA Pilot",server_id:"123",alliance_tag:"QAA"};
 assert.ok(validPlayerIdentity(identity));
-for(const key of Object.keys(identity))assert.equal(validPlayerIdentity({...identity,[key]:" "}),false);
+for(const key of ["name","server_id"])assert.equal(validPlayerIdentity({...identity,[key]:" "}),false);
+assert.equal(validPlayerIdentity({...identity,alliance_tag:" "}),true);
 for(const server_id of ["0","abc","12x","-1","1.5"])assert.equal(validPlayerIdentity({...identity,server_id}),false);
 assert.equal(validPlayerIdentity({...identity,name:"[QAA]"}),false);
 const context={userId:"a",ownerId:"a",betaAllowed:true,consentAccepted:true,identity:{}};
