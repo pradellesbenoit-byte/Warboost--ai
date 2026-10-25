@@ -7,7 +7,7 @@ import {workspaceHelpCopy,WORKSPACE_HELP_LANGUAGES,renderWorkspaceHelp} from "..
 import {workspaceRequestsHtml,draftFeedback,rosterFeedback} from "../lib/workspace-feedback.js";
 import {freeAccessCopy} from "../lib/free-access.js";
 import {accountSyncView} from "../lib/account-sync-feedback.js";
-import {LANGUAGES,translator} from "../i18n.js";
+import {LANGUAGES,translator,resolveLanguage,localeFor,dirFor} from "../i18n.js";
 const source=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 function element(value=""){
@@ -67,6 +67,79 @@ test("every configured language resolves to a translated notice, including both 
   assert.equal(translator(code)("beta_badge"),workspaceHelpCopy(code).free);
  }
 });
+for(const locale of WORKSPACE_HELP_LANGUAGES){
+ test(`${locale}: every FREE/workspace label is translated, header is code-free, safety is preserved`,()=>{
+  const copy=freeAccessCopy(locale),english=freeAccessCopy("en");
+  assert.deepEqual(Object.keys(copy).sort(),Object.keys(english).sort());
+  for(const [key,value] of Object.entries(copy)){
+   assert.equal(typeof value,"string");assert.ok(value.trim(),key);
+   if(locale!=="en"&&!(locale==="de"&&key==="optional"))assert.notEqual(value,english[key],`${locale}.${key}`);
+  }
+  for(const chosen of [locale,`${locale.toUpperCase()}-synthetic`]){
+   assert.equal(freeAccessCopy(chosen).request,copy.request);
+  }
+  const t=translator(locale==="en"?"en-GB":locale);
+  assert.equal(t("tagline"),`WarBoost · ${workspaceHelpCopy(locale).free}`);
+  assert.equal(t("beta_consent_note"),copy.externalSafety);
+  assert.equal(t("beta_consent_required"),copy.privacy);
+  assert.match(copy.externalSafety,/Last War/);
+  assert.doesNotMatch(t("tagline"),/sur invitation|por invitaci[oó]n|by invitation/i);
+ });
+}
+test("actual manual language handler updates FR/ES/AR labels, decisions, messages and help without changing input",async()=>{
+ const h=harness();
+ for(const id of ["freeAllianceRequestBtn","freeFounderCreate","freeFounderSave","freeFounderLabel","freeSpaceNotice",
+  "freeSpaceOpen","freeSpaceRequest","freeSpaceView","freeSpaceList","freeAllianceRequestsRefresh",
+  "freeAccountTitle","freePrivacyText","freeAccountNote","identityOnboardingAlliance","languageSelect"])h.nodes[id]=element();
+ const tagline={dataset:{i18n:"tagline"},textContent:""},badge={dataset:{i18n:"beta_badge"},textContent:""};
+ const help={lang:"",ownerDocument:{createElement:tag=>({tag})},replaceChildren(...children){this.children=children}};
+ h.nodes.freeFounderRoster.value="Player I ; R3.";
+ const originalInput=h.nodes.freeFounderRoster.value;
+ const originalDocument=h.context.document;
+ const selectors=originalDocument.querySelectorAll;
+ h.context.document={...originalDocument,documentElement:{},querySelectorAll:selector=>
+  selector==="[data-workspace-help]"?[help]:selector==="[data-i18n]"?[tagline,badge]:selectors(selector)};
+ h.context.$$=selector=>h.context.document.querySelectorAll(selector);
+ Object.assign(h.context,{resolveLanguage,localeFor,dirFor,translator,LANGUAGES,
+  languageChoice:"fr",renderScanTypeOptions(){},renderClock(){},render(){},renderAuth(){},
+  renderBeta:()=>vm.runInContext("renderFreeWorkspaceFeedback()",h.context),
+  renderPro(){},renderVoiceSettings(){},renderSupportAccess(){},renderSupportTickets(){}});
+ const apply=source.split("\n").find(line=>line.startsWith("function applyLanguage(){"));
+ assert.ok(apply);vm.runInContext(apply,h.context);
+ vm.runInContext("applyLanguage()",h.context);
+ await h.run("save_draft"); // an already displayed localized validation error
+ h.context.reply=async()=>({response:{ok:true},json:{ok:true,game_role_verified:false,requests:[
+  {id:"synthetic-pending",nickname:"Player I",status:"pending"},
+  {id:"synthetic-approved",nickname:"Player l",status:"approved"},
+  {id:"synthetic-rejected",nickname:"Player 1",status:"rejected"}
+ ]}});
+ await h.run("list_space");
+ await h.run("save_draft"); // show the validation error while keeping loaded decisions
+ for(const code of ["es","fr","ar","es"]){
+  h.context.languageChoice=code;vm.runInContext("applyLanguage()",h.context);
+  const copy=freeAccessCopy(code);
+  assert.equal(h.nodes.freeAllianceRequestBtn.textContent,copy.request);
+  assert.equal(h.nodes.freeFounderCreate.textContent,copy.create);
+  assert.equal(h.nodes.freeFounderSave.textContent,copy.saveDraft);
+  assert.equal(h.nodes.freeFounderLabel.textContent,copy.draftLabel);
+  assert.equal(h.nodes.freePrivacyText.textContent,copy.privacy);
+  assert.equal(h.nodes.freeSpaceNotice.textContent,copy.workspaceNotice);
+  assert.equal(h.nodes.identityOnboardingAlliance.placeholder,copy.optional);
+  assert.equal(h.nodes.languageSelect.value,code);
+  assert.equal(h.context.document.documentElement.dir,code==="ar"?"rtl":"ltr");
+  assert.equal(tagline.textContent,`WarBoost · ${workspaceHelpCopy(code).free}`);
+  assert.equal(help.children[0].textContent,workspaceHelpCopy(code).title);
+  assert.equal(h.messages.at(-1).text,workspaceHelpCopy(code).invalid.replace("{line}","1"));
+  for(const status of ["pending","approved","rejected"])assert.ok(h.nodes.freeSpaceRequests.innerHTML.includes(workspaceHelpCopy(code)[status]));
+  assert.ok(h.nodes.freeSpaceRequests.innerHTML.includes(esc(copy.approve)));
+  assert.ok(h.nodes.freeSpaceRequests.innerHTML.includes(esc(copy.reject)));
+  assert.equal((h.nodes.freeSpaceRequests.innerHTML.match(/<button /g)||[]).length,2);
+  assert.ok(h.nodes.freeSpaceRequests.innerHTML.includes("Player I"));
+  assert.equal(h.nodes.freeFounderRoster.value,originalInput);
+ }
+ assert.equal(h.calls.length,1);
+ assert.equal(h.context.state.player.role,"R5");
+});
 test("exact R1–R5 grammar, optional rank, original line number, no input rewrite",()=>{
  assert.equal(parseFounderDraft("Player I ; R3")[0].declared_game_role,"R3");
  assert.equal(parseFounderDraft("Player I")[0].declared_game_role,null);
@@ -111,7 +184,7 @@ test("real save handler rejects R3. before HTTP and preserves exact typed text",
  await h.run("save_draft");
  assert.equal(h.calls.length,0);assert.equal(h.nodes.freeFounderRoster.value,"Player I ; R3.");
  assert.match(h.messages.at(-1).text,/Ligne 1/);assert.match(h.messages.at(-1).text,/R3/);
- assert.equal(h.messages.at(-1).ok,undefined);
+ assert.equal(h.messages.at(-1).ok,false);
 });
 test("real save handler acknowledges only successful server revision, preserving four squads",async()=>{
  const h=harness();h.nodes.freeFounderRoster.value="Player I ; R3";

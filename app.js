@@ -813,7 +813,7 @@ function betaPrivateDataVisible(){return runtimeAccessState().privateVisible}
 function safeLaunchBetaMode(){return proState?.active===true&&proState?.entitlement?.source==="beta"}
 function safeLaunchBetaProIncluded(){return Boolean(safeLaunchBetaMode()&&cloudSession?.user&&betaAccessAllowed()&&betaConsentAccepted())}
 function proFeatureAllowed(){return betaAccessAllowed()&&betaConsentAccepted()&&proState?.active===true}
-function betaAccessMessage(){if(!cloudSession?.user)return t("beta_signin_required");if(!betaAccessAllowed())return /^fr/.test(lang)?"Confirme ton adresse e-mail.":"Confirm your email address.";if(!betaConsentAccepted())return freeAccessCopy(lang).privacy;if(betaState.restore_error&&!cloudProfileVerified)return t("beta_restore_failed");return accountSyncMessage()}
+function betaAccessMessage(){if(!cloudSession?.user)return t("beta_signin_required");if(!betaAccessAllowed())return freeAccessCopy(lang).confirmEmail;if(!betaConsentAccepted())return freeAccessCopy(lang).privacy;if(betaState.restore_error&&!cloudProfileVerified)return t("beta_restore_failed");return accountSyncMessage()}
 let accountSyncCheckBusy=false;
 const accountSyncOperations=createCloudOperations();
 let accountSaveBusy=false,cloudRetryFailures=0;
@@ -1473,10 +1473,40 @@ function renderAuth(){
 let freeAllianceBusy=false;
 const freeWorkspaceViews={};
 let freeWorkspaceViewOwner="";
+let freeAllianceFeedback=null;
+function showFreeAllianceMessage(key,ok=false,vars={},source="access"){
+  freeAllianceFeedback={key,ok,vars,source,owner:String(cloudSession?.user?.id||"")};
+  renderFreeAllianceMessage();
+}
+function renderFreeAllianceMessage(){
+  const message=freeAllianceFeedback;
+  if(!message||message.owner!==String(cloudSession?.user?.id||""))return;
+  const copy=message.source==="help"?workspaceHelpCopy(lang):freeAccessCopy(lang);
+  let text=copy[message.key];
+  for(const [key,value] of Object.entries(message.vars))text=text.replaceAll(`{${key}}`,String(value));
+  if(message.rendered===text)return;
+  message.rendered=text;
+  inviteMessage(text,message.ok);
+}
+function renderFreeAccessLabels(){
+  const copy=freeAccessCopy(lang);
+  for(const [id,key] of [
+    ["freeSpaceOpen","workspaceOpen"],["freeSpaceRequest","workspaceRequest"],
+    ["freeSpaceView","workspaceView"],["freeSpaceList","workspaceList"],["freeSpaceNotice","workspaceNotice"],
+    ["freeFounderLabel","draftLabel"],["freeFounderSave","saveDraft"],
+    ["freeAllianceRequestBtn","request"],["freeFounderCreate","create"],
+    ["freeAllianceRequestsRefresh","review"],["freeAccountTitle","title"],
+    ["freePrivacyText","privacy"],["freeAccountNote","note"]
+  ])if($("#"+id))$("#"+id).textContent=copy[key];
+  if($("#identityOnboardingAlliance"))$("#identityOnboardingAlliance").placeholder=copy.optional;
+}
 function renderFreeWorkspaceFeedback(){
   const owner=String(cloudSession?.user?.id||""),copy=freeAccessCopy(lang),help=workspaceHelpCopy(lang);
+  renderFreeAccessLabels();
   if(owner!==freeWorkspaceViewOwner){
     for(const key of Object.keys(freeWorkspaceViews))delete freeWorkspaceViews[key];
+    freeAllianceFeedback=null;
+    if($("#inviteStatus"))$("#inviteStatus").textContent="";
     freeWorkspaceViewOwner=owner;
   }
   for(const container of document.querySelectorAll("[data-workspace-help]")){
@@ -1503,6 +1533,7 @@ function renderFreeWorkspaceFeedback(){
     if($("#freeSpaceFeedback"))$("#freeSpaceFeedback").textContent=view.notice;
     if($("#freeSpaceRankNotice"))$("#freeSpaceRankNotice").textContent=view.rankNotice;
   }else for(const id of ["freeSpaceRoster","freeSpaceFeedback","freeSpaceRankNotice"])if($("#"+id))$("#"+id).textContent="";
+  renderFreeAllianceMessage();
 }
 document.addEventListener("input",event=>{
   if(event.target?.id==="freeFounderRoster"&&$("#freeDraftFeedback"))$("#freeDraftFeedback").textContent=draftFeedback(event.target,lang);
@@ -1532,7 +1563,7 @@ async function submitFreeAllianceAction(action,requestId){
     },18000);
     if(owner!==String(cloudSession?.user?.id||"")||owner!==String(state.player_id||"")||requestSession!==sessionApplyKey(cloudSession))return;
     if(!result.response.ok||!result.json?.ok){
-      inviteMessage(result.json?.error==="ALLIANCE_MANAGER_VERIFICATION_REQUIRED"?copy.verification:copy.error);
+      showFreeAllianceMessage(result.json?.error==="ALLIANCE_MANAGER_VERIFICATION_REQUIRED"?"verification":"error");
       return;
     }
     if(workspace){
@@ -1546,28 +1577,31 @@ async function submitFreeAllianceAction(action,requestId){
       }else if(Array.isArray(result.json.requests)){
         freeWorkspaceViews.freeSpaceRequests={owner,rows:result.json.requests};
       }
-      inviteMessage(action==="view_space"?rosterFeedback(result.json.roster_draft,state.player,lang).notice:action==="request_space"?help[result.json.status]||help.pending:help.security,true);
+      showFreeAllianceMessage(action==="view_space"?(result.json.roster_draft.length?"opened":"emptyRoster"):action==="request_space"?result.json.status:"security",true,{},"help");
     }else if(founder){
-      if(result.json.existing){if(panel)panel.classList.add("hidden");inviteMessage(copy.existing);return}
+      if(result.json.existing){if(panel)panel.classList.add("hidden");showFreeAllianceMessage("existing");return}
       if(result.json.provisional!==true||result.json.membership_granted!==false||result.json.game_role_verified!==false)throw new Error("unexpected_founder_contract");
       if(!Array.isArray(result.json.roster_draft)||!Number.isSafeInteger(result.json.revision)||result.json.revision<0)throw new Error("unexpected_founder_contract");
       panel.dataset.owner=owner;panel.dataset.revision=String(result.json.revision);
       const savedText=formatFounderDraft(result.json.roster_draft);
       if(editor.value===submittedText)editor.value=savedText;
       editor.dataset.savedText=savedText;
-      panel.classList.remove("hidden");inviteMessage(action==="save_draft"?draftFeedback(editor,lang):help.security,true);
+      panel.classList.remove("hidden");showFreeAllianceMessage(action==="save_draft"?(editor.value===editor.dataset.savedText?"saved":"dirty"):"security",true,{},"help");
     }else if(action==="list"){
       freeWorkspaceViews.freeAllianceRequests={owner,rows:result.json.requests||[]};
     }else if(action==="request"){
-      if(result.json.request?.status==="approved"){await pullServerState();if(owner===String(cloudSession?.user?.id||""))inviteMessage(copy.approved,true)}
-      else inviteMessage(copy.pending,true);
+      if(result.json.request?.status==="approved"){await pullServerState();if(owner===String(cloudSession?.user?.id||""))showFreeAllianceMessage("approved",true)}
+      else showFreeAllianceMessage("pending",true);
     }
     else{
-      inviteMessage(action==="create"?copy.create:copy.review,true);
+      showFreeAllianceMessage(action==="create"?"create":"review",true);
       if(action!=="create")refreshCanonical=true;
     }
   }catch(error){
-    if(owner===String(cloudSession?.user?.id||"")&&requestSession===sessionApplyKey(cloudSession))inviteMessage(error?.message==="ALLIANCE_DRAFT_INVALID"?help.invalid.replace("{line}",String(error.line||1)):copy.error);
+    if(owner===String(cloudSession?.user?.id||"")&&requestSession===sessionApplyKey(cloudSession)){
+      if(error?.message==="ALLIANCE_DRAFT_INVALID")showFreeAllianceMessage("invalid",false,{line:error.line||1},"help");
+      else showFreeAllianceMessage("error");
+    }
   }finally{
     freeAllianceBusy=false;
     for(const button of document.querySelectorAll("#freeFounderSave,#freeFounderCreate,#freeAllianceRequestBtn,#freeAllianceRequestsRefresh,[data-free-alliance-action]"))button.disabled=false;
@@ -1589,22 +1623,12 @@ function renderBeta(){
   const founderPanel=$("#freeFounderPanel"),founderEditor=$("#freeFounderRoster");
   resetForeignFounderDraft(founderPanel,founderEditor,String(cloudSession?.user?.id||""));
   for(const selector of ["#freeSpaceRequests","#freeSpaceRoster"]){const box=$(selector);if(box?.dataset.owner!==String(cloudSession?.user?.id||"")){if(box)box.textContent=""}}
-  for(const [id,key] of [["freeSpaceOpen","workspaceOpen"],["freeSpaceRequest","workspaceRequest"],["freeSpaceView","workspaceView"],["freeSpaceList","workspaceList"],["freeSpaceNotice","workspaceNotice"]])if($("#"+id))$("#"+id).textContent=copy[key];
-  if($("#freeFounderNote"))$("#freeFounderNote").textContent=copy.provisional;
-  if($("#freeFounderLabel"))$("#freeFounderLabel").textContent=copy.draftLabel;
-  if($("#freeFounderSave"))$("#freeFounderSave").textContent=copy.saveDraft;
-  if($("#freeAllianceRequestBtn"))$("#freeAllianceRequestBtn").textContent=copy.request;
-  if($("#freeFounderCreate"))$("#freeFounderCreate").textContent=copy.create;
-  if($("#freeAllianceRequestsRefresh"))$("#freeAllianceRequestsRefresh").textContent=copy.review;
   renderFreeWorkspaceFeedback();
-  const title=$("#freeAccountTitle"),privacy=$("#freePrivacyText"),note=$("#freeAccountNote");
-  if(title)title.textContent=copy.title;if(privacy)privacy.textContent=copy.privacy;if(note)note.textContent=copy.note;
-  if($("#identityOnboardingAlliance"))$("#identityOnboardingAlliance").placeholder=/^fr/.test(lang)?"Facultative":"Optional";
   const pill=$("#betaAccessPill"),status=$("#betaAccessStatus"),row=$("#betaConsentRow"),checkbox=$("#betaConsent"),codeBox=$("#betaCodeBox"),retry=$("#betaRestoreRetryBtn"),checking=Boolean(cloudSession?.user&&betaState.access_status==="checking"),restoreFailed=Boolean(cloudSession?.user&&betaConsentAccepted()&&!cloudProfileVerified&&betaState.restore_error);
   const canUseCode=false;
   const invited=Boolean(cloudSession?.user&&betaState.alliance_beta_allowed===true);
   if(pill){pill.textContent=!cloudSession?.user?t("beta_signin_short"):checking?t("syncing"):restoreFailed?t("update"):safeLaunchBetaMode()?"PRO β":"FREE";pill.className=`pill ${betaAccessAllowed()&&!restoreFailed?"active":"warn"}`}
-  if(status){status.className=`notice${betaAccessAllowed()&&!restoreFailed?"":" warn"}`;status.textContent=!cloudSession?.user?t("beta_signin_required"):!betaAccessAllowed()?(/^(fr)/.test(lang)?"Confirme ton adresse e-mail.":"Confirm your email address."):!betaConsentAccepted()?copy.privacy:accountSyncMessage()}
+  if(status){status.className=`notice${betaAccessAllowed()&&!restoreFailed?"":" warn"}`;status.textContent=!cloudSession?.user?t("beta_signin_required"):!betaAccessAllowed()?copy.confirmEmail:!betaConsentAccepted()?copy.privacy:accountSyncMessage()}
   if(status&&runtimeAccessState().phase==="ready"&&currentAccountSyncView().kind!=="verified")status.classList.add("warn");
   if(retry){retry.classList.toggle("hidden",!restoreFailed);retry.disabled=cloudHydrationPending}
   let check=$("#accountSyncCheckBtn");

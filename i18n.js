@@ -1,6 +1,7 @@
 import technologyI18nWest from "./lib/technology-i18n-west.js";
 import {BETA_INVITATION_COPY} from "./lib/beta-invitation-copy.js";
 import {workspaceHelpCopy} from "./lib/workspace-help.js";
+import {freeAccessCopy} from "./lib/free-access.js";
 import {IDENTITY_ONBOARDING_COPY,IDENTITY_ONBOARDING_KEYS} from "./lib/identity-onboarding-copy.js";
 import technologyI18nCjk from "./lib/technology-i18n-cjk.js";
 import technologyI18nEast from "./lib/technology-i18n-east.js";
@@ -881,9 +882,13 @@ Object.assign(RO,{clear_capture:"Șterge captura de pe acest dispozitiv",privacy
 Object.assign(EL,{clear_capture:"Διαγραφή στιγμιότυπου από αυτή τη συσκευή",privacy_scan:"Το στιγμιότυπο διατηρείται προσωρινά σε αυτή τη συσκευή ώστε να μην χρειάζεται να το επιλέξεις ξανά. Η αρχική εικόνα δεν αποθηκεύεται ποτέ στο προφίλ WarBoost Cloud και λήγει αυτόματα."});
 Object.assign(CS,{clear_capture:"Odstranit snímek z tohoto zařízení",privacy_scan:"Snímek je dočasně uložen v tomto zařízení, abys ho nemusel znovu vybírat. Původní obrázek se nikdy neukládá do profilu WarBoost Cloud a automaticky vyprší."});
 Object.assign(SV,{clear_capture:"Ta bort skärmbilden från den här enheten",privacy_scan:"Skärmbilden sparas tillfälligt på den här enheten så att du slipper välja den igen. Råbilden sparas aldrig i din WarBoost Cloud-profil och upphör automatiskt."});
-export function translator(lang){const pack=packs[lang]||EN;return (key,vars={})=>{
+export function translator(lang){
+  const pack=packs[lang]||EN,free=freeAccessCopy(lang),help=workspaceHelpCopy(lang);
   const openAccountLabels=["beta_release_label","beta_badge","beta_signin_required","beta_invite_required"];
-  let text=openAccountLabels.includes(key)?workspaceHelpCopy(lang).free:
+  return (key,vars={})=>{
+  let text=key==="tagline"?`WarBoost · ${help.free}`:
+    key==="beta_consent_note"?free.externalSafety:key==="beta_consent_required"?free.privacy:
+    openAccountLabels.includes(key)?help.free:
     COMPLETED_LOCALES[lang]?.[key]??BETA_INVITATION_COPY[lang]?.[key]??pack[key]??BETA_INVITATION_COPY["en-GB"][key]??EN[key]??key;
   for(const [k,v] of Object.entries(vars))text=text.replaceAll(`{${k}}`,String(v));return text;
 }}
