@@ -103,3 +103,34 @@ La suite Stripe n'a pas été relancée : aucun code de paiement n'est modifié.
 
 **GO pour revue de cette préparation, NO-GO pour activer aujourd'hui.**
 Guide opérateur/Android : `docs/controlled-vision-android.md`.
+
+## Correctif d'aiguillage après revue de `209e361`
+
+Défaut reproduit : `Boolean("off")` et `Boolean("on")` détournaient les scans
+ordinaires vers le banc contrôlé. La sélection ne dépend désormais que du
+booléen strict `req.body.controlled_vision === true`. Le garde serveur exige
+toujours `WARBOOST_CONTROLLED_VISION === "on"` et tous les contrôles privés ;
+aucun contrôle d'autorisation n'a été retiré.
+
+Avant correction, les deux suites ciblées avec les nouvelles régressions
+comptaient **114 tests : 92 PASS, 22 FAIL**. Après correction, les six suites
+Node de la commande ci-dessus comptent **279 PASS, 0 FAIL, 0 ignoré** (37 tests
+ajoutés). Les nouvelles fixtures exécutent le vrai sélecteur et le handler
+avec des configurations synthétiques `off`, `on`, chaîne vide et champ client
+absent/false/true ; les unitaires rejettent aussi les valeurs client non booléennes.
+Les parcours normaux FREE/PRO, fournisseur absent pré-quota, authentification,
+consentement, email, droits roster, limite de quota et throttling sont conservés.
+Les requêtes expérimentales OFF ou avec configuration incomplète n'atteignent
+ni le quota, ni le fournisseur ; le chemin ON autorisé reste couvert pour les
+quatre types. La protection à quatre tentatives et les 22 traductions restent
+testées, sans appel réel.
+
+**10 groupes PostgreSQL natifs PASS, 0 FAIL**, y compris deux connexions réelles ;
+SQL inchangé, exécuté seulement en base locale jetable. `npm run check`,
+`npm run build:web` et `git diff --check` : **PASS**. Build : 8 pages et
+157 modules navigateur. Environnement synthétique et bloqueur réseau utilisés
+pour ces commandes comme précédemment. Aucun test Android ou fournisseur réel,
+aucun changement de Secrets, de configuration distante, de SQL distant ou de
+déploiement. Guide révisé : `off` bloque uniquement les demandes explicites
+expérimentales, pas le pipeline ordinaire ; la clé Preview reste indépendante.
+Les prérequis et le **NO-GO activation** ci-dessus restent applicables.

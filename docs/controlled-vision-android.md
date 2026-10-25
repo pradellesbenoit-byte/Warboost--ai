@@ -13,6 +13,13 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
 - La case « Test Vision contrôlé » est décochée. Elle ne confère aucun droit :
   le serveur vérifie branche/environnement/origine, configuration, authentification
   GoTrue TEST, e-mail confirmé, consentement et empreinte du compte autorisé.
+- L'aiguillage exige strictement `controlled_vision=true` dans la requête.
+  Le flag serveur `WARBOOST_CONTROLLED_VISION=on` autorise ce parcours seulement
+  après les autres contrôles privés ; il ne le sélectionne jamais automatiquement.
+  Avec un champ absent ou `false`, les scans gardent leur parcours FREE/PRO
+  ordinaire, que le flag serveur soit `off`, `on` ou absent/vide. Sans fournisseur
+  ordinaire configuré, ils renvoient `SCAN_NOT_CONFIGURED` avant leur quota FREE ;
+  la clé spéciale Preview n'est jamais un fallback pour eux.
 - Un seul compte autorisé ; une campagne globale ; quatre **tentatives au plus**,
   une par type : `squad1`, `drone`, `technology`, `exclusive`. Une capture par
   tentative, pas de lot, pas de scan roster/alliance, ni de droits R4/R5 accordés.
@@ -93,7 +100,7 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
 
    | Nom serveur | Exigence |
    | --- | --- |
-   | `WARBOOST_CONTROLLED_VISION` | `off` initialement ; `on` seulement après accord |
+   | `WARBOOST_CONTROLLED_VISION` | `off` initialement ; `on` seulement après accord ; ne sélectionne jamais le parcours ordinaire |
    | `WARBOOST_VISION_TEST_ORIGIN` | origine HTTPS exacte du Preview `.vercel.app`, aucun chemin |
    | `WARBOOST_VISION_TEST_SUPABASE_URL` | `https://zaioadmbhqzeihkvdjsd.supabase.co` |
    | `WARBOOST_VISION_TEST_OPENAI_KEY` | clé privée `sk-proj-…` du projet distinct |
@@ -164,9 +171,12 @@ projet API distinct ; les montants peuvent apparaître avec retard.
   project_id TEST imposé : `rollback_controlled_vision_test.sql` fait cet arrêt
   sans supprimer l'historique et sans empêcher finish. Cela ne peut pas annuler
   un appel déjà parti. Ne jamais supprimer une tentative pour récupérer du budget.
-- Mettre ensuite `WARBOOST_CONTROLLED_VISION=off` (ne pas simplement effacer le
-  marqueur), invalider la clé dédiée si nécessaire dans son projet. Vérifier
-  OFF sur la nouvelle configuration Preview avant de rouvrir d'autres parcours.
+- Mettre ensuite `WARBOOST_CONTROLLED_VISION=off`, invalider la clé dédiée si
+  nécessaire dans son projet. Vérifier OFF sur la nouvelle configuration Preview :
+  une demande explicite expérimentale est refusée sans réservation ni appel IA.
+  OFF n'est pas un interrupteur global des autres fonctions IA : les requêtes
+  ordinaires continuent leur parcours FREE/PRO avec leur propre configuration.
+  Ni `off` ni l'absence du flag n'autorise une requête expérimentale.
 - Aucune action directe sur les comptes/profils/sauvegardes n'est nécessaire.
   La sauvegarde volontaire d'une revue modifie ses propres données TEST :
   elle n'est jamais une autorisation de toucher les données des joueurs.

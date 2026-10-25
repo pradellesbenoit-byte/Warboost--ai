@@ -4,7 +4,7 @@ import vm from "node:vm";
 import {createHash} from "node:crypto";
 import fs from "node:fs";
 import handler,{validateScanImageBatch,openaiResponseJson} from "../api/scan.js";
-import {authorizeControlledVision,controlledVisionConfig,controlledLedger,runControlledVision,TEST_BASE,REVIEW_BRANCH} from "../server/_controlled-vision.js";
+import {controlledVisionRequested,authorizeControlledVision,controlledVisionConfig,controlledLedger,runControlledVision,TEST_BASE,REVIEW_BRANCH} from "../server/_controlled-vision.js";
 import {controlledVisionCopy,CONTROLLED_VISION_LOCALES} from "../lib/controlled-vision-copy.js";
 import {translator,dirFor} from "../i18n.js";
 import {analysisFailureMessage} from "../lib/analysis-indicator.js";
@@ -32,6 +32,17 @@ const check=(r=req(),env=config(),u=user)=>authorizeControlledVision(r,{scanType
     assert.equal(url,`${TEST_BASE}/auth/v1/user`);assert.equal(init.redirect,"error");
     return {ok:true,json:async()=>u};
   }});
+
+for(const flag of ["off","on","",undefined]){
+  test(`selector requires explicit boolean true independently of server flag=${JSON.stringify(flag)}`,()=>{
+    const env={WARBOOST_CONTROLLED_VISION:flag};
+    for(const value of [undefined,false,null,"true","false",1,0,{}])
+      assert.equal(controlledVisionRequested({body:{controlled_vision:value}},env),false);
+    assert.equal(controlledVisionRequested({body:{}},env),false);
+    assert.equal(controlledVisionRequested({},env),false);
+    assert.equal(controlledVisionRequested({body:{controlled_vision:true}},env),true);
+  });
+}
 
 for(const [name,patch] of Object.entries({
   OFF:{WARBOOST_CONTROLLED_VISION:"off"},missingKey:{WARBOOST_VISION_TEST_OPENAI_KEY:""},
@@ -147,7 +158,7 @@ test("lost finish response is not retried",async()=>{
 test("actual handler: controlled mode excludes normal FREE/PRO paths, hints, zooms and fallback",async()=>{
   let paidCalls=0,reserves=0;const r=req(),db=memoryLedger();
   const context={
-    validateScanImageBatch,controlledVisionRequested:()=>true,
+    validateScanImageBatch,controlledVisionRequested,
     authorizeControlledVision:(request,options)=>authorizeControlledVision(request,{...options,env:config(),
       transport:async()=>({ok:true,json:async()=>user})}),
     runControlledVision:args=>runControlledVision({...args,ledger:async(c,b)=>{if(b.p_action==="reserve")reserves++;return db.rpc(c,b)}}),

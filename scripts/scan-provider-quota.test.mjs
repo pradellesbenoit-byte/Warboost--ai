@@ -3,10 +3,11 @@ import test from "node:test";
 import vm from "node:vm";
 import handler,{validateScanImageBatch} from "../api/scan.js";
 import {requirePersonalScanUser} from "../lib/personal-scan-access.js";
+import {controlledVisionRequested,authorizeControlledVision} from "../server/_controlled-vision.js";
 
 // Execute the complete current handler, not a second implementation of its
 // sequence. Only dependencies are replaced; no environment credentials or HTTP.
-function fixture({pro=false,provider=null,authError=null,reserved=true,throttled=false,providerFails=false,providerEmpty=false}={}){
+function fixture({pro=false,provider=null,authError=null,reserved=true,throttled=false,providerFails=false,providerEmpty=false,controlledFlag}={}){
   const events=[],reservations=[],calls=[];
   const req={method:"POST",headers:{"x-synthetic-consent":"yes"},body:{scan_type:"profile",image_data_url:"data:image/png;base64,c3ludGhldGlj"}};
   const deps={
@@ -30,7 +31,14 @@ function fixture({pro=false,provider=null,authError=null,reserved=true,throttled
     return {synthetic:true};
   };
   const context={
-    controlledVisionRequested:()=>false,
+    // Real selector, synthetic environment only. Never read runtime Secrets.
+    controlledVisionRequested:request=>controlledVisionRequested(request,{WARBOOST_CONTROLLED_VISION:controlledFlag}),
+    authorizeControlledVision:(request,options)=>{
+      events.push("controlled");
+      return authorizeControlledVision(request,{...options,env:{WARBOOST_CONTROLLED_VISION:controlledFlag},
+        transport:async()=>assert.fail("Unexpected controlled auth/network")});
+    },
+    runControlledVision:()=>assert.fail("Unexpected controlled quota/provider"),
     validateScanImageBatch,
     requirePersonalScanUser:request=>requirePersonalScanUser(request,deps),
     env:name=>{
@@ -132,3 +140,57 @@ test("late SCAN_NOT_CONFIGURED after a configured provider returns empty never c
   assert.equal(Object.hasOwn(result.body,"quota_reserved"),false);
   assert.equal(f.reservations.length,1);
 });
+
+for(const controlledFlag of ["off","on",""]){
+  for(const pro of [false,true])for(const provider of [null,"openai","custom"]){
+    test(`actual handler routing: flag=${JSON.stringify(controlledFlag)}, ${pro?"PRO":"FREE"}, provider=${provider}`,async()=>{
+      for(const explicitFalse of [false,true]){
+        const f=fixture({controlledFlag,pro,provider});
+        if(explicitFalse)f.req.body.controlled_vision=false;
+        const result=await f.execute();
+        assert.equal(f.events.includes("controlled"),false);
+        assert.equal(f.events.includes("auth"),true);
+        assert.equal(result.status,provider?200:503);
+        if(!provider){
+          assert.equal(result.body.code,"SCAN_NOT_CONFIGURED");
+          assert.equal(result.body.quota_reserved,false);
+        }
+        assert.equal(f.reservations.length,provider&&!pro?1:0);
+        assert.equal(f.calls.length,provider?1:0);
+      }
+    });
+  }
+  for(const [code,status] of [["AUTH_REQUIRED",401],["BETA_CONSENT_REQUIRED",428],["EMAIL_CONFIRMATION_REQUIRED",403]]){
+    test(`ordinary auth/consent not bypassed: flag=${JSON.stringify(controlledFlag)}, ${code}`,async()=>{
+      const f=fixture({controlledFlag,provider:"openai",authError:{code,status}});
+      const result=await f.execute();
+      assert.equal(result.status,status);assert.equal(result.body.code,code);
+      assert.equal(f.events.includes("controlled"),false);
+      assert.equal(f.events.some(event=>event.startsWith("config:")),false);
+      assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
+    });
+  }
+  test(`ordinary quota/rank/rate protections remain: flag=${JSON.stringify(controlledFlag)}`,async()=>{
+    const quota=fixture({controlledFlag,provider:"openai",reserved:false});
+    assert.equal((await quota.execute()).body.code,"FREE_SCAN_QUOTA_EXCEEDED");
+    assert.equal(quota.calls.length,0);
+    const rank=fixture({controlledFlag,provider:"openai"});
+    rank.req.body.scan_type="alliance_roster";
+    assert.equal((await rank.execute()).body.code,"PRO_REQUIRED");
+    assert.equal(rank.reservations.length,0);assert.equal(rank.calls.length,0);
+    const rate=fixture({controlledFlag,provider:"openai",throttled:true});
+    assert.equal((await rate.execute()).body.code,"SCAN_RATE_LIMITED");
+    assert.equal(rate.calls.length,0);
+  });
+}
+for(const controlledFlag of ["off","","on"]){
+  test(`explicit experimental request refuses unavailable config before auth/quota/AI: flag=${JSON.stringify(controlledFlag)}`,async()=>{
+    const f=fixture({controlledFlag,provider:"openai",pro:true});
+    f.req.body.scan_type="drone";f.req.body.controlled_vision=true;f.req.body.controlled_vision_confirm=true;
+    const result=await f.execute();
+    assert.equal(result.status,503);assert.equal(result.body.code,"VISION_TEST_OFF");
+    assert.equal(f.events.includes("controlled"),true);
+    assert.equal(f.events.includes("auth"),false);
+    assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
+  });
+}

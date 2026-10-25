@@ -16,8 +16,9 @@ function scopedKey(value,role){
     return claims.ref===TEST_PROJECT&&claims.role===role;
   }catch{return false}
 }
-export const controlledVisionRequested=(req,env=process.env)=>
-  req.body?.controlled_vision===true||Boolean(env.WARBOOST_CONTROLLED_VISION);
+// Routing is explicit per request. Server configuration only authorizes the
+// experimental path below; it must never reroute ordinary FREE/PRO scans.
+export const controlledVisionRequested=req=>req.body?.controlled_vision===true;
 
 export function controlledVisionConfig(env=process.env){
   if(env.WARBOOST_CONTROLLED_VISION!=="on")throw fail("VISION_TEST_OFF");
