@@ -54,3 +54,4 @@
 - [Private test captures](private-test-captures.md) — private uploads stay out of pending Git history; synthetic geometry tests do not establish real OCR accuracy.
 - [Knowledge guidance policy](knowledge-guidance-policy.md) — discovery is not confirmed gameplay; advice uses exact squad evidence, with no paid monitoring or automatic production changes.
 - [Code-free FREE access](code-free-access-policy.md) — personal access needs no beta code or alliance; keep PRO and manager authority independent and verified.
+- [SQL fixture provenance](sql-fixture-provenance.md) — native PostgreSQL passes do not prove Supabase compatibility unless fixtures reflect audited types and keys.
