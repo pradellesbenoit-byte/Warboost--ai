@@ -6,7 +6,7 @@ import {requirePersonalScanUser} from "../lib/personal-scan-access.js";
 
 // Execute the complete current handler, not a second implementation of its
 // sequence. Only dependencies are replaced; no environment credentials or HTTP.
-function fixture({pro=false,provider=null,authError=null,reserved=true,throttled=false,providerFails=false}={}){
+function fixture({pro=false,provider=null,authError=null,reserved=true,throttled=false,providerFails=false,providerEmpty=false}={}){
   const events=[],reservations=[],calls=[];
   const req={method:"POST",headers:{"x-synthetic-consent":"yes"},body:{scan_type:"profile",image_data_url:"data:image/png;base64,c3ludGhldGlj"}};
   const deps={
@@ -26,6 +26,7 @@ function fixture({pro=false,provider=null,authError=null,reserved=true,throttled
   const vision=async()=>{
     events.push("provider");calls.push("synthetic-provider");
     if(providerFails)throw Object.assign(new Error("Synthetic failure"),{code:"VISION_HTTP_ERROR",status:503});
+    if(providerEmpty)return null;
     return {synthetic:true};
   };
   const context={
@@ -65,6 +66,7 @@ for(const pro of [false,true]){
     const f=fixture({pro}),result=await f.execute();
     assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_NOT_CONFIGURED");
     assert.equal(result.body.error,"scan_provider_unavailable");
+    assert.equal(result.body.quota_reserved,false);
     assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
     assert.ok(f.events.indexOf("auth")<f.events.indexOf("config:OPENAI_API_KEY"));
   });
@@ -122,4 +124,10 @@ test("actual quota helper: failed provider preflight cannot consume FREE quota",
     beforeScan:()=>{preflight++;throw Object.assign(new Error("No provider"),{code:"SCAN_NOT_CONFIGURED",status:503})}
   }),{code:"SCAN_NOT_CONFIGURED"});
   assert.equal(preflight,1);assert.equal(consumed,0);
+});
+test("late SCAN_NOT_CONFIGURED after a configured provider returns empty never claims no debit",async()=>{
+  const f=fixture({provider:"openai",providerEmpty:true}),result=await f.execute();
+  assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_NOT_CONFIGURED");
+  assert.equal(Object.hasOwn(result.body,"quota_reserved"),false);
+  assert.equal(f.reservations.length,1);
 });

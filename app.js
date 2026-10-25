@@ -3,7 +3,7 @@ import {freeAccountAllowed,freeAccessCopy} from "./lib/free-access.js";
 import {parseFounderDraft,formatFounderDraft,resetForeignFounderDraft} from "./lib/founder-draft.js";
 import {workspaceHelpCopy,renderWorkspaceHelp} from "./lib/workspace-help.js";
 import {workspaceRequestsHtml,draftFeedback,rosterFeedback} from "./lib/workspace-feedback.js";
-import {createAnalysisIndicator,analysisFailureMessage,beginLoadingButton} from "./lib/analysis-indicator.js";
+import {createAnalysisIndicator,analysisFailureMessage,scanResponseError,beginLoadingButton} from "./lib/analysis-indicator.js";
 import {loadingTargetIds,requestLoadingTargetIds} from "./lib/loading-targets.js";
 import {accountSyncErrorKind,accountSyncView,verifiedAccountStateReply,verifiedAccountWriteReply,createCloudOperations,transientCloudFailure,deviceCloudSaveMetadata,confirmedWriteReceipt,mergeDeviceCloudSaveMetadata,staleProfileRestore} from "./lib/account-sync-feedback.js";
 import {squadReviewStatus,squadReviewHeader,squadReviewRowHtml,accountSquadReviewHtml} from "./lib/squad-review-status.js";
@@ -4296,7 +4296,7 @@ async function analyzeExclusiveScan(){
     const r={ok:true};
     if(!scanRequestIsCurrent(request))return;
     if(!r.ok){
-      const message=j?.message||j?.error||t("scan_error");
+      const message=analysisFailureMessage(j,t);
       status.className="notice warn";status.textContent=t("scan_exclusive_analysis_failed",{message});return;
     }
     const rows=Array.isArray(j?.state?.exclusive_weapons)?j.state.exclusive_weapons:[];
@@ -4340,7 +4340,7 @@ async function analyzeReviewedScan(){
       if(!renderScanReview(draft)){status.className="notice warn";status.textContent=t("scan_error");return}
        if(scanType==="technology"){void clearPendingTechnologyFiles(owner);void clearPendingSingleScan(owner)}
       status.className="notice";status.dataset.scanReviewStatusKey="scan_review_ready";status.textContent=t("scan_review_ready")+(j.captures?` ${squadCaptureSummary(j.captures,j.complementary_evidence,lang)}`:"")+(j.conflicts?.length?" "+t("scan_batch_disagreements"):"");
-    }else{status.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){status.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else if(scanType==="drone"&&j.error==="drone_no_supported_fields"){const key=j.drone_screen_type==="skill_chip"?"scan_drone_skill_chip_no_fields":"scan_drone_components_no_fields";status.dataset.scanReviewStatusKey=key;status.textContent=t(key)}else status.textContent=j.code==="SCAN_NOT_CONFIGURED"?t("scan_unconfigured"):(j.message||t("scan_error"))}
+    }else{status.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){status.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else if(scanType==="drone"&&j.error==="drone_no_supported_fields"){const key=j.drone_screen_type==="skill_chip"?"scan_drone_skill_chip_no_fields":"scan_drone_components_no_fields";status.dataset.scanReviewStatusKey=key;status.textContent=t(key)}else status.textContent=analysisFailureMessage(j,t)}
   }catch(e){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=analysisFailureMessage(e,t)}}
   finally{finishAnalysis();btn.disabled=false;btn.textContent=t("analyze")}
 }
@@ -4789,7 +4789,7 @@ $("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{
       if(!isCurrent())return;
       if(!r.ok){
         if(r.status===422&&j?.error==="scan_no_useful_data"){unreadable++;continue}
-        throw new Error(j.message||j.error||"scan_failed");
+        throw scanResponseError(r,j,{completedRequests:i});
       }
       rows=mergeRosterScanRows(rows,j.roster_rows||[]);
       // Keep every completed image even if a later image times out. Owner/revision
