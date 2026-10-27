@@ -85,6 +85,7 @@ import {applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingD
 import {buildScanReviewGroups,serializeScanReviewGear} from "./lib/scan-review-presentation.js";
 import {renderScanReviewMarkup} from "./lib/scan-review-markup.js";
 import {mergeTechnologyBranches,finalizeTechnologyReview} from "./lib/technology-scan.js";
+import {createTechnologyManualUI} from "./lib/technology-manual-ui.js";
 import {buildTechnologyAdvice} from "./lib/technology-advisor.js";
 import {mergeFreshRecord,stampConfirmedRecord} from "./lib/field-freshness.js";
 import {playerAdviceInputSignature} from "./lib/player-advice-signature.js";
@@ -543,6 +544,25 @@ function recordProgressionSnapshot(source="update",at=new Date().toISOString()){
   state.progression_snapshots=appendProgressionSnapshot(state.progression_snapshots,state,{source,at});
 }
 function progressionMetricText(metric){if(!metric||metric.current===null)return "—";const change=metric.change_m===null?"":`${metric.change_m>=0?"+":""}${new Intl.NumberFormat(locale,{maximumFractionDigits:2}).format(metric.change_m)} M${metric.pct!==null?` (${metric.pct>=0?"+":""}${metric.pct}%)`:""}`;return `${fmtPower(metric.current)}${change?` · ${change}`:""}`}
+let technologyManualUI=null;
+function renderTechnologyManual(){
+  const root=$("#playerTechnologyManual");if(!root)return;
+  if(!technologyManualUI)technologyManualUI=createTechnologyManualUI({
+    root,getState:()=>state,getLocale:()=>locale,
+    getCloudStatus:()=>cloudSession?.user?.id!==state.player_id||state.sync?.pending_cloud_save||cloudDirty?"pending":
+      state.sync?.status==="ok"&&state.sync?.last_sync&&cloudProfileVerified?"confirmed":"pending",
+    save:(next,owner)=>{
+      if(state.player_id!==owner||cloudSession?.user?.id&&cloudSession.user.id!==owner)return false;
+      const previous=state.technology,previousSync=state.sync,previousDirty=cloudDirty;
+      state.technology=next.technology;
+      state.sync={...state.sync,pending_cloud_save:true};cloudDirty=true;
+      const ok=saveState({renderUi:false});
+      if(!ok&&state.player_id===owner){state.technology=previous;state.sync=previousSync;cloudDirty=previousDirty;}
+      return ok;
+    }
+  });
+  technologyManualUI.render();
+}
 function renderPlayerProgression(){
   const box=$("#progressionSummary"),pill=$("#progressionFreshness");if(!box)return;const rows=state.progression_snapshots||[],latest=rows[rows.length-1],cmp=progressionComparison(rows,30),strongest=strongestSquadFromState(state);
   const freshness=strongest.updated_at||state?.drone?.updated_at||state?.updated_at||null;if(pill)pill.textContent=freshness?updatedLabel(freshness):t("sync_needed");
@@ -2278,6 +2298,8 @@ function render(){
   // V2.5.20 privacy boundary: saved local/cloud data is preserved in state but is never rendered
   // until an invited WarBoost session is active and beta consent is accepted.
   if(!reveal){
+    const technologyRoot=$("#playerTechnologyManual");if(technologyRoot)technologyRoot.textContent="";
+    technologyManualUI?.reset();
     // Legacy privacy verification markers retained after HF8.6.22 render isolation:
     // $("#playerMeta").textContent=t("to_connect"); $("#allianceMeta").textContent="—";
     // Account fields are a security boundary: clear them immediately, independently of every other module render.
@@ -2324,6 +2346,7 @@ function render(){
   safeRenderStep("ACCOUNT_FIELDS",renderAccountFields);
   safeRenderStep("PLAYER_ONBOARDING",renderPlayerOnboarding);
   safeRenderStep("SQUADS",renderSquads);
+  safeRenderStep("TECHNOLOGY_MANUAL",renderTechnologyManual);
   safeRenderStep("PLAYER_PROGRESSION",renderPlayerProgression);
   safeRenderStep("EXCLUSIVE_WEAPONS",renderExclusiveWeapons);
   safeRenderStep("PLAYER_ACTIVITY",renderPlayerActivity);

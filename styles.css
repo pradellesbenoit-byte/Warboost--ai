@@ -1,3 +1,13 @@
+.technologyManual summary{cursor:pointer;font-weight:700;padding-block:12px;min-height:44px}
+.technologyManualGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px}
+.technologyManual fieldset{min-width:0;margin:0;padding:12px;border:1px solid var(--line,#506078);border-radius:12px}
+.technologyManual legend{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.technologyManual label{display:block;position:static;float:none;width:100%;margin-block:8px 4px;white-space:normal}
+.technologyManual input,.technologyManual select{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;min-height:44px;font:inherit}
+.technologyManual [hidden]{display:none!important}
+.technologyManual .buttonRow{display:flex;flex-wrap:wrap;gap:8px;margin-block-start:10px}
+.technologyManual button{min-height:44px;white-space:normal;overflow-wrap:anywhere;flex:1}
+.technologyManual [role=status]{overflow-wrap:anywhere}
 /* Autonomous workspace forms: labels must not inherit compact inline layouts. */
 #freeFounderPanel label{display:block;position:static;float:none;width:100%;height:auto;white-space:normal;margin-block:12px 8px;line-height:1.5}
 #freeFounderRoster{display:block;box-sizing:border-box;position:static;width:100%;max-width:100%;min-width:0;min-height:140px;resize:vertical;font:inherit;line-height:1.5}

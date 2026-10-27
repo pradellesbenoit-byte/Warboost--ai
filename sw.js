@@ -26,7 +26,8 @@ SHELL.push("/lib/loading-screen.js?v=warboost-startup-screen-r2","/lib/return-vi
 SHELL.push("/lib/scan-review.js","/lib/scan-review-presentation.js","/lib/scan-review-markup.js","/lib/squad-freshness.js");
 SHELL.push("/lib/player-hq.js","/app.js?v=player-hq-confirmation-r1");
 SHELL.push("/lib/player-scan-types.js");
-SHELL.push("/lib/technology-scan.js","/lib/technology-advisor.js","/technology-advice.css");
+SHELL.push("/lib/technology-scan.js","/lib/technology-advisor.js","/technology-advice.css",
+  "/lib/technology-manual.js","/lib/technology-manual-copy.js","/lib/technology-manual-ui.js");
 SHELL.push("/assets/warboost-loading-scene.webp");
 SHELL.push("/lib/diagnostic-shop.js?v=diagnostic-shop-r1","/lib/diagnostic-shop-ui.js?v=diagnostic-shop-r1","/diagnostic-shop.css?v=diagnostic-shop-r1");
 SHELL.push("/lib/knowledge-guidance-ui.js","/lib/knowledge-copy.js");
