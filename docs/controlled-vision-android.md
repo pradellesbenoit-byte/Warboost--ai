@@ -31,6 +31,17 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
   La clé dédiée n'est lue que dans `server/_controlled-vision.js`.
   Aucun fallback, outil, recherche, seconde passe portrait/équipement ou retry.
   `store:false`, modèle autorisé unique `gpt-6-luna`, 6 000 tokens de sortie max.
+- Pour une escouade, les atlas publics du projet déjà vérifiés par manifeste et
+  SHA256 sont joints à cette même requête, sans nouvel appel IA ni lecture de
+  profil. Les cinq lignes restent ordonnées et séparées du drone. Une référence
+  vérifiée ne signifie pas une correspondance de portrait certifiée : chaque
+  proposition visuelle exige confirmation humaine ; les variantes non attestées
+  restent incertaines. Les données absentes ne sont pas remplies par les atlas.
+  Ces images de référence ajoutent des tokens d'entrée : quatre appels ne
+  garantissent toujours pas un montant monétaire maximal.
+- Une campagne déjà consommée (4/4) et désactivée reste terminée. Cette correction
+  locale ne réarme ni les compteurs, ni les flags, ni la clé. Aucun nouvel essai
+  réel n'est autorisé par la préparation du correctif.
 - Le compteur est persistant, commun aux instances et non remboursable. Une
   tentative échouée bloque également la campagne (verrou sans expiration).
   Un redémarrage de serveur ne remet rien à zéro.

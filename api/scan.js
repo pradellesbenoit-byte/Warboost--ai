@@ -473,7 +473,9 @@ export default async function handler(req,res){
       }
     }
     let extracted=null,engine="openai",firstError=null;
-    const referenceBank=!controlled&&/^squad[1-4]$/.test(scanType)?await timing.measure("references",()=>loadHeroReferenceImages()):{references:[],atlases:[],available:false};
+    // Local, hash-verified atlases belong in the same request, including the
+    // controlled single-pass path. They are not cloud hints or another AI call.
+    const referenceBank=/^squad[1-4]$/.test(scanType)?await timing.measure("references",()=>loadHeroReferenceImages()):{references:[],atlases:[],available:false};
     if(controlled){
       engine="controlled-openai";
       extracted=await runControlledVision({cfg:access.cfg,scanType,call:cfg=>openaiResponseJson({
@@ -494,7 +496,7 @@ export default async function handler(req,res){
     // Its claims cannot inherit verification from atlases sent to OpenAI.
     if(/^squad[1-4]$/.test(scanType)){
       const batch=sanitizeFormationBatch(extracted,{count:images.length,now,scanType,knownHeroes,
-        references:engine==="openai"?referenceBank.references:[]});
+        references:["openai","controlled-openai"].includes(engine)?referenceBank.references:[]});
       return res.status(200).json({ok:true,engine,scanned_at:now,...batch,
         quality:{...quality,partial_results_allowed:true,requires_confirmation:true}});
     }

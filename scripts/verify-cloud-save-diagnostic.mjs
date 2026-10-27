@@ -35,7 +35,10 @@ globalThis.fetch=async(input,init={})=>{
   const url=new URL(String(input));assert.equal(url.origin,"https://cloud-diagnostic-fixture.invalid");
   const method=init.method||"GET";calls.push({path:url.pathname,method});
   if(url.pathname==="/auth/v1/user")
-    return new Response(JSON.stringify(scenario.authStatus?{error:"invalid"}:{id:"fixture-owner"}),{status:scenario.authStatus||200});
+    return new Response(JSON.stringify(scenario.authStatus?{error:"invalid"}:{
+      id:"fixture-owner",email:"fixture@example.invalid",
+      ...(scenario.unconfirmed?{}:{email_confirmed_at:stamp})
+    }),{status:scenario.authStatus||200});
   if(url.pathname==="/rest/v1/wb1_profiles"){
     if(scenario.throwError)throw scenario.throwError;
     if(method==="GET"&&scenario.readStatus)return new Response(JSON.stringify({code:scenario.sql,message:privateText}),{status:scenario.readStatus});
@@ -59,6 +62,14 @@ async function post(overrides={}){
   return {status,json};
 }
 try{
+  scenario={unconfirmed:true};
+  const unconfirmed=await post();
+  check("actual POST refuses an unconfirmed email before any cloud read/write",()=>{
+    assert.equal(unconfirmed.status,403);
+    // State API intentionally exposes only its closed public diagnostic code.
+    assert.equal(unconfirmed.json.error,"access_denied");
+    assert.deepEqual(calls.map(call=>call.path),["/auth/v1/user"]);
+  });
   for(const [name,status,sql,expectedStatus,code,kind] of [
     ["SQL permission",403,"42501",503,"database_permissions_missing","database_permissions"],
     ["missing table",404,"42P01",503,"database_schema_missing","database_schema"],

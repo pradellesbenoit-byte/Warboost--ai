@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import {createHash} from "node:crypto";
 import fs from "node:fs";
-import handler,{validateScanImageBatch,openaiResponseJson} from "../api/scan.js";
+import handler,{validateScanImageBatch,openaiResponseJson,visionRequestContent,sanitizeFormationBatch} from "../api/scan.js";
+import {loadHeroReferenceImages} from "../server/_hero-reference-images.js";
 import {controlledVisionRequested,authorizeControlledVision,controlledVisionConfig,controlledLedger,runControlledVision,TEST_BASE,REVIEW_BRANCH} from "../server/_controlled-vision.js";
 import {controlledVisionCopy,CONTROLLED_VISION_LOCALES} from "../lib/controlled-vision-copy.js";
 import {translator,dirFor} from "../i18n.js";
@@ -156,7 +157,18 @@ test("lost finish response is not retried",async()=>{
 // Executes the current endpoint function with real controlled guards and only
 // synthetic auth/SQL/provider transports. Never reads runtime credentials.
 test("actual handler: controlled mode excludes normal FREE/PRO paths, hints, zooms and fallback",async()=>{
-  let paidCalls=0,reserves=0;const r=req(),db=memoryLedger();
+  let paidCalls=0,reserves=0,referenceLoads=0;const r=req(),db=memoryLedger();
+  const bank=await loadHeroReferenceImages();
+  assert.equal(bank.available,true);
+  const names=["Carlie","Lucius","DVA","Morrison","Skyler"];
+  const raw={captures:[{image_index:0,screen_type:"formation_details",squads:[{
+    heroes:names.map(name=>({
+      name_text:null,name_evidence:"unreadable",name_confidence:null,
+      portrait:{candidate_name:name,confidence:.96,variant:"normal",
+        reference_id:bank.references.find(ref=>ref.canonicalName===name&&ref.variant==="normal").id,
+        visible_features:["visible face shape","visible hair outline"]}
+    }))
+  }],exclusive_weapons:[]}]};
   const context={
     validateScanImageBatch,controlledVisionRequested,
     authorizeControlledVision:(request,options)=>authorizeControlledVision(request,{...options,env:config(),
@@ -165,16 +177,21 @@ test("actual handler: controlled mode excludes normal FREE/PRO paths, hints, zoo
     requirePersonalScanUser:()=>assert.fail("ordinary quota/PRO bypass"),
     env:()=>assert.fail("ordinary provider config read"),
     verifiedRosterContext:()=>null,configured:()=>assert.fail("ordinary cloud read"),
-    userConfigured:()=>assert.fail("ordinary cloud read"),loadHeroReferenceImages:()=>assert.fail("references"),
+    userConfigured:()=>assert.fail("ordinary cloud read"),loadHeroReferenceImages:async()=>{referenceLoads++;return bank},
     openaiVision:()=>assert.fail("portrait pipeline"),customVision:()=>assert.fail("fallback"),
     openaiResponseJson:async args=>{
       paidCalls++;assert.equal(args.model,"gpt-6-luna");assert.equal(args.store,false);
       assert.equal(args.maxTokens,6000);assert.equal(args.project,"proj_synthetic");
+      if(r.body.scan_type==="squad1"){
+        assert.ok(args.content.some(row=>row.text?.startsWith("REFERENCE ATLAS ONLY")));
+        assert.equal(args.content.filter(row=>row.type==="input_image").length,1+bank.atlases.length);
+        return raw;
+      }
       return {synthetic:true};
     },
-    visionRequestContent:()=>[{type:"input_text",text:"synthetic"}],
+    visionRequestContent,
     FORMATION_BATCH_SCHEMA:{type:"object"},
-    sanitizeFormationBatch:()=>({batch_analysis:true,capture_count:1,state:{squads:[{heroes:[]}]}}),
+    sanitizeFormationBatch,
     scanAbuseGuard:{acquire:()=>({allowed:true,release(){}})},
     createScanTiming:()=>({measure:async(_label,fn)=>fn(),finish(){}}),
     sanitize:()=>({drone:{level:1}}),classifyDroneScreen:()=>"drone",
@@ -187,8 +204,17 @@ test("actual handler: controlled mode excludes normal FREE/PRO paths, hints, zoo
     await invoke(r,response);
     assert.equal(response.statusCode,200);assert.equal(body.engine,"controlled-openai");
     assert.equal(body.quality.requires_confirmation,true);
+    if(type==="squad1"){
+      assert.deepEqual(Array.from(body.state.squads[0].heroes,hero=>hero.name),names);
+      for(const hero of body.state.squads[0].heroes){
+        assert.equal(hero.scan_evidence.identity.requires_confirmation,true);
+        assert.equal(hero.scan_evidence.identity.portrait.reference_verified,true);
+        assert.equal(hero.scan_evidence.identity.portrait.match_verified,false);
+        for(const field of ["level","stars","power","gear"])assert.ok(hero[field]===undefined||hero[field]===null||hero[field]==="");
+      }
+    }
   }
-  assert.equal(paidCalls,4);assert.equal(reserves,4);
+  assert.equal(paidCalls,4);assert.equal(reserves,4);assert.equal(referenceLoads,1);
   context.scanAbuseGuard={acquire:()=>({allowed:false,retryAfterSeconds:2})};
   await invoke(r,response);assert.equal(response.statusCode,429);assert.equal(paidCalls,4);assert.equal(reserves,4);
 });

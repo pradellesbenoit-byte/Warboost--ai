@@ -3985,7 +3985,9 @@ function scanReviewFormEdits(draft){
     }else{
       const input=container.querySelector(`[data-scan-review-id="${id}"]`);
       if(!input)return {error:"scan_review_form_missing",path:row.path};
-      if(row.field==="name"&&row.path.includes("heroes")&&row.evidence?.requires_confirmation){
+      if(row.field==="name"&&row.path.length===5&&row.path[0]==="squads"&&
+        Number.isInteger(row.path[1])&&row.path[1]>=0&&row.path[1]<4&&row.path[2]==="heroes"&&
+        Number.isInteger(row.path[3])&&row.path[3]>=0&&row.path[3]<5&&row.evidence?.requires_confirmation){
         const acknowledged=container.querySelector(`[data-scan-review-identity-ack="${id}"]`)?.checked===true;
         if(!acknowledged){issues.push({path:row.path,reason:"uncertain"});edits.push({path:row.path,value:""});continue}
       }
