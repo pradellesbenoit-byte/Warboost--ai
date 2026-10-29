@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import {HERO_CATALOG,catalogHeroName,heroDisplayName,canonicalHeroName} from "../lib/heroes.js";
 import {HERO_RECOGNITION_LIBRARY,HERO_APPEARANCE_CONTEXTS,recognitionHeroName,recognizeHeroIdentity,heroRecognitionPrompt} from "../lib/hero-recognition.js";
+import {reviewablePortraitProposal} from "../lib/portrait-diagnostics.js";
 import {squadEvidence,confirmedSquadHints} from "../lib/squad-scan-evidence.js";
 import {sanitize,promptFor} from "../api/scan.js";
 import {applyReviewedSquad} from "../lib/squad-scan-review.js";
@@ -92,6 +93,54 @@ test("invalid/low visual scores, unsupported contexts and insufficient features 
   assert.equal(squadEvidence({portrait:{...visual("DVA").portrait,visible_features:["one detail"]}}).name,null);
   assert.equal(squadEvidence({name:"DVA",name_evidence:"portrait",name_confidence:.99}).name,null);
   assert.equal(squadEvidence({portrait:{...visual("DVA").portrait,reference_verified:true}}).evidence.identity.portrait.reference_verified,false);
+});
+test("unscored verified portrait is a review proposal only; it never fills the hero slot",()=>{
+  const ref=HERO_RECOGNITION_LIBRARY.find(hero=>hero.canonicalName==="DVA").appearances
+    .find(appearance=>appearance.id==="normal").references[0];
+  assert.ok(ref,"fixture uses an existing verified DVA reference");
+  const raw=visual("DVA","normal",null);raw.portrait.reference_id=ref.id;
+  const identity=recognizeHeroIdentity(raw,[ref]);
+  assert.equal(identity.name,null);
+  assert.equal(identity.evidence.candidate,null);
+  assert.equal(identity.evidence.tier,"low");
+  assert.equal(identity.evidence.requires_confirmation,true);
+  assert.equal(reviewablePortraitProposal(identity.evidence).name,"DVA");
+  assert.equal(reviewablePortraitProposal({...identity.evidence,portrait:{
+    ...identity.evidence.portrait,reference_verified:false
+  }}),null);
+  assert.equal(reviewablePortraitProposal({...identity.evidence,text:"Williams"}),null);
+  assert.equal(reviewablePortraitProposal({...identity.evidence,portrait:{
+    ...identity.evidence.portrait,visible_features:["only one detail"]
+  }}),null);
+  const conflict=structuredClone(identity.evidence);
+  conflict.portrait.diagnostic.zoom_evidence={selection:"conflict"};
+  assert.equal(reviewablePortraitProposal(conflict),null);
+});
+test("low-confidence visual proposal is visible in review but blank until explicit per-slot confirmation",()=>{
+  const ref=HERO_RECOGNITION_LIBRARY.find(hero=>hero.canonicalName==="DVA").appearances
+    .find(appearance=>appearance.id==="normal").references[0];
+  const raw=visual("DVA","normal",null);raw.portrait.reference_id=ref.id;
+  const identity=recognizeHeroIdentity(raw,[ref]);
+  const payload={squads:[{heroes:[{name:identity.name,scan_evidence:{identity:identity.evidence}}]}]};
+  const draft={squads:payload.squads};
+  const groups=buildScanReviewGroups("squad1",draft,[{identity:identity.evidence}]);
+  const row=groups.flatMap(group=>group.rows).find(item=>item.field==="name");
+  assert.equal(row.value,"");
+  assert.equal(row.evidence.requires_confirmation,true);
+  const html=renderScanReviewMarkup(groups,key=>({
+    scan_review_identity_reference_proposal:"Verified-reference visual proposal",
+    scan_review_identity_confidence:"Identity confidence",
+    scan_review_confidence_unknown:"not supplied",
+    scan_review_identity_low:"Low — please verify",
+    scan_review_identity_accept:"I confirm this hero",
+    scan_review_portrait_diagnostic:"Portrait diagnostic",
+    hero_choose:"Choose hero"
+  }[key]||key),value=>String(value).replaceAll("&","&amp;").replaceAll("<","&lt;"));
+  assert.match(html.html,/Verified-reference visual proposal : DVA/);
+  assert.match(html.html,/I confirm this hero/);
+  assert.match(html.html,/value="">/);
+  assert.match(html.html,/<select/);
+  assert.doesNotMatch(html.html,/<option value="DVA" selected/);
 });
 test("strong validated contradictions stay blank; unvalidated portraits cannot veto legible OCR",()=>{
   assert.equal(squadEvidence({...text("DVA"),name:"Mason"}).name,null);

@@ -57,7 +57,7 @@ await test("real OpenAI request builder sends six indexed captures and atlases i
   assert.match(content[0].text,/Never identify by[\s\S]*stars, level, power/);
   assert.match(content[0].text,/current value to the LEFT of the arrow[\s\S]*exclude the green preview/i);
   let count=0,body;
-  const original=globalThis.fetch;
+const original=globalThis.fetch;
   globalThis.fetch=async(url,options)=>{
     count++;assert.equal(url,"https://api.openai.com/v1/responses");
     body=JSON.parse(options.body);
@@ -85,8 +85,9 @@ await test("synthetic formation yields five crops tied to its source image and e
   assert.deepEqual(await createFormationPortraitZooms(images[0],0),[],"invalid image bytes cannot create a zoom request");
   assert.deepEqual(await createFormationPortraitZooms(capture,6),[],"zoom indexes cannot escape the six-capture batch");
 });
-await test("second synthetic formation crops five exact portrait rows and masks level/star UI from zooms",async()=>{
+await test("second synthetic formation preserves the complete face crop in all five bound rows",async()=>{
   const bytes=await syntheticFormationPng({palette:"tank"});
+  const colors=[[64,176,128],[128,160,48],[192,96,64],[112,64,192],[64,160,192]];
   const capture=`data:image/png;base64,${bytes.toString("base64")}`;
   const zooms=await createFormationPortraitZooms(capture,0);
   assert.equal(zooms.length,5);
@@ -96,10 +97,8 @@ await test("second synthetic formation crops five exact portrait rows and masks 
     const {data,info}=await sharp(Buffer.from(zooms[slot].image_url.split(",")[1],"base64"))
       .raw().toBuffer({resolveWithObject:true});
     const pixel=(x,y)=>[...data.subarray((y*info.width+x)*info.channels,(y*info.width+x)*info.channels+3)];
-    assert.deepEqual(pixel(192,300),[20,24,32],"level and star UI below the portrait is masked");
-    assert.notDeepEqual(pixel(192,150),[20,24,32],"the upper portrait remains visible");
-    assert.notDeepEqual(pixel(192,225),[20,24,32],"nose/moustache above the Lv label is not blanketed");
-    assert.deepEqual(pixel(192,260),[20,24,32],"the Lv digits remain masked");
+    for(const y of [20,150,225,260,300,380])
+      assert.deepEqual(pixel(192,y),colors[slot],`portrait pixels remain intact at row ${slot+1}, y=${y}`);
   }
 });
 await test("zoom extraction maps each row crop to its own source pixels",async()=>{
