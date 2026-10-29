@@ -4,7 +4,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 import {TECHNOLOGY_KEYS,applyManualTechnology,technologyFingerprint,technologyEntry} from "../lib/technology-manual.js";
 import {technologyManualCopy,TECHNOLOGY_MANUAL_LOCALES} from "../lib/technology-manual-copy.js";
-import {createTechnologyManualUI} from "../lib/technology-manual-ui.js";
+import {createTechnologyManualUI,technologyDisplayDate} from "../lib/technology-manual-ui.js";
 import {normalizeTechnologyBranches,mergeTechnologyBranches} from "../lib/technology-scan.js";
 import {normalizeState,mergeNewest} from "../lib/normalize.js";
 import {hasMeaningfulCoreState,hydrateCloudState} from "../lib/cloud-state-recovery.js";
@@ -70,10 +70,12 @@ test("legacy saved values display without inventing a branch for ambiguous maste
 });
 
 // Minimal event DOM: actual delegated controller, no reimplementation of handlers.
-function harness(){
+function harness(sharedStorage=new Map()){
  let state=fixture(),locale="fr",cloud="pending",saveOk=true,saves=0;
  const listeners={},status={textContent:""},details={open:true};
- const root={innerHTML:"",ownerDocument:{activeElement:null},contains:el=>Boolean(el)&&el===root.active,
+ const browserListeners={};
+ const storage={getItem:key=>sharedStorage.get(key)||null,setItem:(key,value)=>sharedStorage.set(key,value),removeItem:key=>sharedStorage.delete(key)};
+ const root={innerHTML:"",ownerDocument:{activeElement:null,defaultView:{sessionStorage:storage,addEventListener:(event,fn)=>browserListeners[event]=fn}},contains:el=>Boolean(el)&&el===root.active,
    setAttribute(){},querySelector:selector=>selector==="details"?details:status,
    addEventListener:(event,fn)=>listeners[event]=fn};
  const ui=createTechnologyManualUI({root,getState:()=>state,getLocale:()=>locale,getCloudStatus:()=>cloud,
@@ -85,7 +87,7 @@ function harness(){
      closest:selector=>selector==="[data-tech-key]"?row:action?{dataset:{techAction:action}}:null};
    listeners[kind]({target});
  }
- return {root,status,ui,event,get state(){return state},set state(v){state=v},set locale(v){locale=v},set cloud(v){cloud=v},set saveOk(v){saveOk=v},get saves(){return saves}};
+ return {root,status,ui,event,details,browserListeners,get state(){return state},set state(v){state=v},set locale(v){locale=v},set cloud(v){cloud=v},set saveOk(v){saveOk=v},get saves(){return saves}};
 }
 
 for(const locale of TECHNOLOGY_MANUAL_LOCALES)test(`localized mobile form: ${locale}`,()=>{
@@ -112,11 +114,75 @@ test("real UI events save, cancel, invalid input, reload, cloud acknowledgment, 
  assert.ok(h.status.textContent.includes(technologyManualCopy("fr").text[8]));
  assert.ok(!h.status.textContent.includes(technologyManualCopy("fr").text[9]));
  h.cloud="confirmed";h.ui.render();assert.equal(h.status.textContent,technologyManualCopy("fr").text[9]);
- h.state=JSON.parse(JSON.stringify(h.state));h.ui.render();assert.match(h.root.innerHTML,/value="0"/);
+ h.state=JSON.parse(JSON.stringify(h.state));h.ui.render();assert.match(h.root.innerHTML,/>0 %</);
+ h.event("click","heroes","toggle");assert.match(h.root.innerHTML,/value="0"/);
  h.saveOk=false;h.event("change","heroes","state","max");h.event("click","heroes","save");
  assert.equal(h.state.technology.branches.heroes.state,"percent");
  assert.equal(h.status.textContent,technologyManualCopy("fr").text[13]);
  assert.match(h.root.innerHTML,/<option value="max" selected/);
+});
+
+test("compact list: 18 rows, no editor initially, exactly one on explicit touch; saved values not drafts in summary",()=>{
+ const h=harness();
+ assert.equal((h.root.innerHTML.match(/data-tech-action="toggle"/g)||[]).length,18);
+ assert.equal((h.root.innerHTML.match(/<fieldset/g)||[]).length,0);
+ assert.ok(!h.root.innerHTML.includes('data-tech-action="save"'));
+ for(const key of TECHNOLOGY_KEYS){
+   h.event("click",key,"toggle");
+   assert.equal((h.root.innerHTML.match(/<fieldset/g)||[]).length,1);
+   assert.equal((h.root.innerHTML.match(/aria-expanded="true"/g)||[]).length,1);
+ }
+ h.event("click","heroes","toggle");h.event("change","heroes","state","percent");
+ h.event("input","heroes","percent","94");h.event("click","economy","toggle");
+ assert.ok(h.root.innerHTML.includes(technologyManualCopy("fr").draft));
+ assert.ok(!h.root.innerHTML.includes(">94 %<"));assert.equal(h.saves,0);
+ h.event("click","heroes","toggle");assert.match(h.root.innerHTML,/value="94"/);
+ h.event("click","heroes","cancel");assert.equal((h.root.innerHTML.match(/<fieldset/g)||[]).length,0);
+});
+
+test("draft survives section close, repaint and tab refresh; account switch/reset erase it without saving",()=>{
+ const storage=new Map(),h=harness(storage);
+ h.event("click","heroes","toggle");h.event("change","heroes","state","percent");h.event("input","heroes","percent","94");
+ h.details.open=false;h.ui.render();h.details.open=true;h.ui.render();assert.match(h.root.innerHTML,/value="94"/);
+ let warned=false;h.browserListeners.beforeunload({preventDefault(){warned=true;}});assert.equal(warned,true);
+ const refreshed=harness(storage);assert.match(refreshed.root.innerHTML,/value="94"/);assert.equal(refreshed.saves,0);
+ refreshed.state={...fixture(),player_id:"synthetic-B"};refreshed.ui.render();
+ assert.ok(!refreshed.root.innerHTML.includes('value="94"'));assert.equal(storage.size,0);
+ refreshed.event("change","economy","state","max");refreshed.ui.reset();assert.equal(storage.size,0);
+});
+
+test("all saved states, valid dates and known sources display without changing the stored state",()=>{
+ const h=harness();
+ h.state.technology.branches={
+   heroes:{state:"percent",percent:94,source:"manual",updated_at:"2026-10-28T05:48:13.076Z"},
+   economy:{state:"percent",percent:0,source:"scan",updated_at:at},
+   units:{state:"max",updated_at:"invalid"},development:{state:"locked",prerequisite:"HQ"},
+   team_1:{state:"percent",percent:100}
+ };
+ const before=JSON.stringify(h.state);h.ui.render();
+ for(const text of ["94 %","0 %","100 %","Niveau Max","Verrouillée","Non renseigné","Saisie manuelle","Scan"])
+   assert.ok(h.root.innerHTML.includes(text),text);
+ assert.ok(!h.root.innerHTML.includes("2026-10-28T05:48"));assert.equal(JSON.stringify(h.state),before);
+ assert.equal(technologyDisplayDate({updated_at:"2026-10-28T05:48:13.076Z"},"fr","Europe/Paris"),"28/10/2026 à 06:48");
+ for(const locale of TECHNOLOGY_MANUAL_LOCALES){
+   const copy=technologyManualCopy(locale);assert.ok(copy.draft&&copy.scan);
+   const date=technologyDisplayDate({updated_at:at},locale,"UTC");assert.ok(date&&!date.includes("T10:"));
+   h.locale=locale;h.ui.render();assert.equal((h.root.innerHTML.match(/data-tech-action="toggle"/g)||[]).length,18);
+ }
+ for(const value of [undefined,null,"","bad-date"])
+   assert.equal(technologyDisplayDate({updated_at:value},"fr"),"");
+ assert.ok(technologyDisplayDate({confirmed_at:at},"en-GB","UTC"));
+ assert.ok(technologyDisplayDate({updated_at:"invalid",confirmed_at:at},"fr","UTC"));
+});
+
+test("restored draft still rejects a newer cloud value; no autosave or account transfer",()=>{
+ const storage=new Map(),h=harness(storage);
+ h.event("change","heroes","state","percent");h.event("input","heroes","percent","94");
+ const restored=harness(storage);restored.state=edit(restored.state,"heroes","max");restored.ui.render();
+ restored.event("click","heroes","save");assert.equal(restored.saves,0);
+ assert.equal(restored.status.textContent,technologyManualCopy("fr").text[12]);
+ assert.equal(restored.state.technology.branches.heroes.state,"max");
+ restored.event("click","heroes","cancel");assert.equal(storage.size,0);
 });
 
 test("real UI refuses stale concurrent edits and does not leak drafts across accounts",()=>{
