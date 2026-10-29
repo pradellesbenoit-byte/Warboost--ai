@@ -7,7 +7,7 @@ import {BETA_CONSENT_VERSION} from "../lib/beta-access.js";
 export const TEST_PROJECT="zaioadmbhqzeihkvdjsd";
 export const TEST_BASE=`https://${TEST_PROJECT}.supabase.co`;
 export const REVIEW_BRANCH="warboost-free-access-review-20261025";
-export const CONTROLLED_TYPES=Object.freeze(["squad1","drone","technology","exclusive"]);
+export const CONTROLLED_TYPES=Object.freeze(["squad1"]);
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const fail=(code,status=503)=>Object.assign(new Error("Controlled Vision unavailable"),{code,status});
 function scopedKey(value,role){
@@ -31,7 +31,7 @@ export function controlledVisionConfig(env=process.env){
      origin.origin!==env.WARBOOST_VISION_TEST_ORIGIN||origin.username||origin.password)
     throw fail("VISION_TEST_OFF");
   if(env.WARBOOST_VISION_TEST_SUPABASE_URL!==TEST_BASE||
-     !uuid.test(env.WARBOOST_VISION_TEST_CAMPAIGN||"")||
+      !uuid.test(env.WARBOOST_VISION_TEST_CAMPAIGN_V2||"")||
      !/^[a-f0-9]{64}$/.test(env.WARBOOST_VISION_TESTER_DIGEST||"")||
      env.WARBOOST_VISION_TEST_BUDGET_APPROVED!=="hard-limit-2-usd-reviewed"||
      env.WARBOOST_VISION_TEST_MODEL!=="gpt-6-luna")
@@ -49,7 +49,7 @@ export function controlledVisionConfig(env=process.env){
   for(const name of ["OPENAI_API_KEY","WARBOOST_VISION_ENDPOINT","WARBOOST_VISION_SECRET"])
     if(env[name])throw fail("VISION_TEST_OFF");
   return Object.freeze({origin:origin.origin,base:TEST_BASE,
-    campaign:env.WARBOOST_VISION_TEST_CAMPAIGN,tester:env.WARBOOST_VISION_TESTER_DIGEST,
+     campaign:env.WARBOOST_VISION_TEST_CAMPAIGN_V2,tester:env.WARBOOST_VISION_TESTER_DIGEST,
     anon:env.WARBOOST_TEST_SUPABASE_ANON_KEY,service:env.WARBOOST_TEST_SUPABASE_SERVICE_ROLE_KEY,
     key:env.WARBOOST_VISION_TEST_OPENAI_KEY,project:env.WARBOOST_VISION_TEST_OPENAI_PROJECT,
     model:"gpt-6-luna",maxTokens:6000});
@@ -81,14 +81,15 @@ export async function authorizeControlledVision(req,{scanType,images,env=process
 }
 
 export async function controlledLedger(cfg,body,transport=fetchWithTimeout){
-  return requestJson(`${TEST_BASE}/rest/v1/rpc/wb1_vision_test_control`,{
+  return requestJson(`${TEST_BASE}/rest/v1/rpc/wb1_vision_test_control_v2`,{
     method:"POST",headers:{apikey:cfg.service,authorization:`Bearer ${cfg.service}`,"content-type":"application/json"},
-    body:JSON.stringify({p_campaign:cfg.campaign,p_tester_digest:cfg.tester,...body})
+    body:JSON.stringify({p_campaign_v2:cfg.campaign,p_tester_digest:cfg.tester,...body})
   },transport);
 }
 // Reserve durably BEFORE any paid request. A crashed worker leaves a permanent
 // busy lease; no TTL can free it while an upstream request might still be alive.
 export async function runControlledVision({cfg,scanType,call,ledger=controlledLedger}){
+  if(!CONTROLLED_TYPES.includes(scanType))throw fail("VISION_TEST_BLOCKED",400);
   const requestId=randomUUID();
   const ticket=await ledger(cfg,{p_action:"reserve",p_request:requestId,p_scan_type:scanType,p_success:null});
   if(ticket?.reserved!==true||ticket.request_id!==requestId)throw fail("VISION_TEST_LIMIT",429);

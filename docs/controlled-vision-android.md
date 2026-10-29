@@ -1,7 +1,7 @@
 # Test Vision contrôlé — préparation uniquement
 
-**OFF par défaut. Aucune migration installée, clé créée, capture envoyée ni
-dépense autorisée par ce document.** Ne pas utiliser main, warboost.fr, la démo
+**OFF par défaut. La migration v2 n'est pas installée ; aucune nouvelle clé,
+capture ou dépense n'est autorisée par ce document.** Ne pas utiliser main, warboost.fr, la démo
 ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
 
 ## Ce que fait le banc
@@ -20,9 +20,10 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
   ordinaire, que le flag serveur soit `off`, `on` ou absent/vide. Sans fournisseur
   ordinaire configuré, ils renvoient `SCAN_NOT_CONFIGURED` avant leur quota FREE ;
   la clé spéciale Preview n'est jamais un fallback pour eux.
-- Un seul compte autorisé ; une campagne globale ; quatre **tentatives au plus**,
-  une par type : `squad1`, `drone`, `technology`, `exclusive`. Une capture par
-  tentative, pas de lot, pas de scan roster/alliance, ni de droits R4/R5 accordés.
+- Le nouveau banc préparé autorise au plus **une seule tentative** pour `squad1`
+  et une seule capture. Drone, Technologie, arme exclusive, autres escouades,
+  roster et scans d'alliance sont refusés en mode contrôlé. Aucun droit R4/R5
+  n'est accordé.
 - Budget de démonstration distinct du quota FREE normal. Il n'accorde ni PRO
   ni scan alliance ; les quotas FREE compte/IP/globaux et droits historiques
   restent inchangés pour le parcours normal. Le limiteur de cadence existant
@@ -37,11 +38,12 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
   vérifiée ne signifie pas une correspondance de portrait certifiée : chaque
   proposition visuelle exige confirmation humaine ; les variantes non attestées
   restent incertaines. Les données absentes ne sont pas remplies par les atlas.
-  Ces images de référence ajoutent des tokens d'entrée : quatre appels ne
-  garantissent toujours pas un montant monétaire maximal.
-- Une campagne déjà consommée (4/4) et désactivée reste terminée. Cette correction
-  locale ne réarme ni les compteurs, ni les flags, ni la clé. Aucun nouvel essai
-  réel n'est autorisé par la préparation du correctif.
+  Ces images de référence ajoutent des tokens d'entrée : même un appel unique ne
+  garantit pas un montant monétaire maximal.
+- L'ancien registre à quatre tentatives, consommé (4/4) et désactivé, reste intact.
+  Le nouveau schéma est séparé et versionné ; la préparation locale ne le migre
+  pas, ne crée aucune nouvelle ligne de campagne, et ne réarme ni compteur,
+  flag ou clé. Aucun nouvel essai réel n'est autorisé par ce travail.
 - Le compteur est persistant, commun aux instances et non remboursable. Une
   tentative échouée bloque également la campagne (verrou sans expiration).
   Un redémarrage de serveur ne remet rien à zéro.
@@ -60,7 +62,7 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
 
 1. Faire revoir puis installer **seulement sur WarBoost-Test**
    `zaioadmbhqzeihkvdjsd` :
-   `supabase/migration_controlled_vision_test.sql`.
+   `supabase/migration_controlled_vision_squad1_v2.sql`.
    Le connecteur SQL admin doit imposer lui-même le project_id TEST, rôle
    `postgres`. La transaction exige le GUC local
    `warboost.approved_project_ref='zaioadmbhqzeihkvdjsd'`.
@@ -68,16 +70,19 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
    projet**. L'installer à l'intérieur de la même transaction/session que le
    script (le fichier contient BEGIN/COMMIT). Ne pas se fier au texte du GUC seul.
    La migration ne crée aucune ligne de campagne et laisse tout OFF.
-2. Exécuter l'audit SQL fourni sur TEST : RLS sur les deux tables, aucun droit
+2. Exécuter `supabase/audit_controlled_vision_squad1_v2.sql` sur TEST : RLS sur
+   les nouvelles tables, aucun droit
    direct de anon/authenticated/service_role, RPC EXECUTE service_role seul,
    SECURITY DEFINER postgres, search_path pg_catalog et timeouts fixés.
    Ne pas modifier les tables Auth, profils, quotas FREE, alliances ou grants.
-3. Faire configurer une **unique** ligne de campagne par admin TEST, avec UUID
+3. Après une autorisation distincte et tous les prérequis budgétaires, un admin
+   TEST pourra configurer une **unique** ligne V2 avec UUID
    aléatoire, SHA256 UTF-8 de l'identifiant GoTrue du seul testeur autorisé
    (calcul privé, pas de publication), expiration courte (par exemple une heure),
-   `used=0`, `busy_request=NULL`, `enabled=false`. Aucune fonction publique ne
-   crée, réinitialise ni renouvelle cette ligne. Vérifier préalablement l'absence
-   d'ancienne campagne/tentative de ce banc. Une réinstallation ne remet rien à zéro.
+   `used=0`, `busy_request=NULL`, `enabled=false`. Rien ne crée cette ligne dans
+   la migration : aucune RPC client ne crée, réinitialise ni renouvelle de
+   campagne. L'ancien registre V1 4/4 reste séparé et inchangé ; ne pas l'effacer
+   ou le réutiliser. Une réinstallation V2 ne remet aucun compteur à zéro.
 4. Vérifier que client ET serveur Preview utilisent exclusivement Supabase TEST,
    avec compte testeur déjà autorisé et consentement. Ne pas envoyer de mail,
    créer de compte ou changer ses droits sous couvert de préparer ce banc.
@@ -96,7 +101,7 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
    Model usage à `gpt-6-luna` et limiter la cadence. Si le réglage n'est pas
    disponible pour le compte, **NO-GO : ne pas activer**.
 3. Attention : selon OpenAI, l'application de ce plafond peut être retardée et
-   le total enregistré peut légèrement dépasser la valeur. **Ni quatre appels,
+   le total enregistré peut légèrement dépasser la valeur. **Même un appel,
    ni notre variable d'approbation, ni l'alerte ne garantissent une facture
    mathématiquement ≤ 2 USD.** Si aucune tolérance au dépassement n'est admise,
    rester OFF jusqu'à obtention d'un mécanisme fournisseur réellement satisfaisant.
@@ -117,7 +122,7 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
    | `WARBOOST_VISION_TEST_OPENAI_KEY` | clé privée `sk-proj-…` du projet distinct |
    | `WARBOOST_VISION_TEST_OPENAI_PROJECT` | identifiant `proj_…` correspondant |
    | `WARBOOST_VISION_TEST_MODEL` | `gpt-6-luna` uniquement |
-   | `WARBOOST_VISION_TEST_CAMPAIGN` | UUID de la seule campagne privée |
+    | `WARBOOST_VISION_TEST_CAMPAIGN_V2` | UUID de l'unique campagne V2 privée ; la variable V1 n'est jamais utilisée |
    | `WARBOOST_VISION_TESTER_DIGEST` | empreinte privée du seul compte autorisé |
    | `WARBOOST_VISION_TEST_BUDGET_APPROVED` | `hard-limit-2-usd-reviewed`, seulement après contrôle humain |
    | `WARBOOST_TEST_SUPABASE_ANON_KEY` | clé JWT anon TEST, jamais production |
@@ -136,39 +141,43 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
    Aucun déploiement n'a été fait ici. Vérifier l'isolation et le contrôle
    d'accès avant de communiquer l'URL sur téléphone.
 
-## Quatre essais, après autorisation et activation supervisée
+## Une tentative future, uniquement après autorisation distincte
 
-Un opérateur met la seule ligne SQL `enabled=true` sous contrôle de projet ;
-le propriétaire autorise `WARBOOST_CONTROLLED_VISION=on` sur Preview. Une case
-ou un paramètre du navigateur ne peut pas remplacer ces contrôles.
+Le code V2 accepte uniquement `squad1` avec une seule capture, et un seul appel
+OpenAI sans retry. L'ancien registre 4/4 est historique et ne sera ni modifié ni
+réutilisé. Le nouveau registre V2 est vide après migration ; un administrateur
+devra créer une unique campagne désactivée seulement après examen du projet
+fournisseur, puis l'activer par une étape séparée. Rien de cela n'a été fait ici.
 
-Sur téléphone, ouvrir l'URL privée de recette, se connecter au compte TEST,
-choisir la bonne langue, ouvrir Scan et cocher « Test Vision contrôlé ».
-À chaque analyse, une confirmation indique qu'elle peut être facturée même
-en cas d'échec. **Ne jamais recommencer automatiquement.**
+Après autorisations et contrôles futurs, ouvrir la Preview privée, se connecter
+au compte TEST autorisé, choisir « Escouade 1 », puis utiliser la case qui
+n'apparaît que pour cette catégorie. La confirmation rappelle le risque de coût.
+Examiner les cinq propositions avant toute confirmation humaine et sauvegarde ;
+aucune seconde analyse ni autre type de scan n'est prévu dans cette campagne.
+Conserver les captures sur le téléphone, pas dans le dépôt ni un rapport public.
+OpenAI recevrait nécessairement les pixels ; `store:false` ne garantit pas une
+rétention nulle chez le fournisseur.
 
-1. **Escouade 1** : une capture « Détails de formation » lisible, éventuellement
-   avions. Contrôler les cinq noms/positions, la classe et les quatre équipements
-   visibles par héros. Les portraits/valeurs incertains restent à vérifier ;
-   aucune seconde passe n'est autorisée. Ne pas se fier aux noms d'exemple.
-2. **Drone** : une capture de l'écran principal, contrôler niveau/puissance
-   visibles, pas les nombres d'un écran composants/chip à leur place.
-3. **Technologie** : une seule capture ; vérifier chaque intitulé et sa valeur,
-   le vrai 0 %, « Niveau Max » et « Verrouillée » sans les assimiler.
-4. **Arme exclusive** : une capture lisible avec nom/titre/niveau/bonus visibles.
-   Ne pas prendre la puissance de l'écran d'arme pour celle du héros.
+Le plafond de requêtes (une seule) **n'est pas un plafond monétaire garanti**.
+Le modèle reçoit aussi les images de référence de portraits, qui ajoutent des
+tokens d'entrée. Toute campagne élargie exigerait un nouvel accord.
 
-Examiner les résultats dans la revue, annuler en cas de doute. La confirmation
-humaine avant sauvegarde reste obligatoire. Conserver ses captures **sur son
-téléphone**, pas dans le dépôt ni un rapport public ; masquer les données privées
-inutiles avant envoi. OpenAI reçoit nécessairement les pixels envoyés ;
-`store:false` ne garantit pas une rétention nulle chez le fournisseur.
+## Diagnostic SCAN_NOT_CONFIGURED
 
-Ce premier plafond ne permet **pas** de valider de vraies captures Technologie
-multi-écrans : le lot est volontairement refusé. La fusion prudente reste testée
-localement ; une campagne élargie exigerait un nouvel accord, pas un contournement.
-Après chaque tentative, comparer le compteur technique et les coûts dans le
-projet API distinct ; les montants peuvent apparaître avec retard.
+Le `503 SCAN_NOT_CONFIGURED` observé signifie que le fournisseur standard
+d'analyse n'est pas configuré dans l'environnement Preview. Le handler vérifie
+ce point avant la réservation du quota FREE : selon le journal rapporté, aucun
+quota n'a été consommé. Ce code ne prouve ni panne ni remise à zéro du registre
+Vision contrôlé. Pour diagnostiquer plus tard, vérifier dans les paramètres
+Preview de la bonne branche si le fournisseur prévu y est configuré, sans
+afficher, copier ou envoyer la valeur. Ne jamais recopier une clé de production.
+La clé réservée au mode contrôlé reste isolée et n'est pas un fallback du scan
+normal.
+
+Aucun endpoint de préparation n'a été ajouté : sans accès sûr aux réglages
+fournisseur ni à une campagne enregistrée, un tel endpoint ne pourrait pas
+prouver le plafond financier ou l'autorisation humaine ; il risquerait surtout
+de révéler des métadonnées d'environnement.
 
 ## Arrêt / échec / reprise
 
@@ -179,7 +188,7 @@ projet API distinct ; les montants peuvent apparaître avec retard.
   Une vérification privée des compteurs/fournisseur par opérateur est requise.
   Aucun outil de réinitialisation automatique n'est fourni.
 - Éteindre d'abord la campagne SQL (`enabled=false`), sous le même verrou et avec
-  project_id TEST imposé : `rollback_controlled_vision_test.sql` fait cet arrêt
+  project_id TEST imposé : `stop_controlled_vision_squad1_v2.sql` fait cet arrêt
   sans supprimer l'historique et sans empêcher finish. Cela ne peut pas annuler
   un appel déjà parti. Ne jamais supprimer une tentative pour récupérer du budget.
 - Mettre ensuite `WARBOOST_CONTROLLED_VISION=off`, invalider la clé dédiée si

@@ -1198,7 +1198,10 @@ function requireScanSquadTarget(type,status=$("#scanStatus")){
 }
 function updateScanCaptureMode(){
   const scanType=$("#scanType")?.value||"profile",isSquad=isSquadScanType(scanType),input=$("#scanFile"),label=$("#scanCaptureLabel"),help=$("#technologyScanHelp"),limit=playerScanBatchLimit(scanType);
-  const selector=$("#scanType"),ack=$("#scanSquadTargetConfirmed");
+  const selector=$("#scanType"),ack=$("#scanSquadTargetConfirmed"),visionTestRow=$("#controlledVisionTestRow"),visionTest=$("#controlledVisionTest");
+  const visionTestAvailable=scanType==="squad1";
+  if(visionTestRow)visionTestRow.hidden=!visionTestAvailable;
+  if(visionTest){visionTest.disabled=!visionTestAvailable;if(!visionTestAvailable)visionTest.checked=false}
   if(selector?.dataset.previousType!==scanType){discardScanReviewDraft();if(ack)ack.checked=false}
   if(selector)selector.dataset.previousType=scanType;
   if(input)input.multiple=true;
