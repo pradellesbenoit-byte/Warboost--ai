@@ -49,7 +49,8 @@ for(const [name,patch] of Object.entries({
   OFF:{WARBOOST_CONTROLLED_VISION:"off"},missingKey:{WARBOOST_VISION_TEST_OPENAI_KEY:""},
   missingV2Campaign:{WARBOOST_VISION_TEST_CAMPAIGN_V2:""},
   ordinaryKeyFallback:{WARBOOST_VISION_TEST_OPENAI_KEY:"",OPENAI_API_KEY:"synthetic"},
-  ordinaryProvider:{OPENAI_API_KEY:"synthetic"},customProvider:{WARBOOST_VISION_ENDPOINT:"https://synthetic.invalid"},
+  customProvider:{WARBOOST_VISION_ENDPOINT:"https://synthetic.invalid"},
+  customSecret:{WARBOOST_VISION_SECRET:"synthetic"},
   production:{VERCEL_ENV:"production"},otherBranch:{VERCEL_GIT_COMMIT_REF:"main"},
   prodURL:{SUPABASE_URL:"https://jwjqcgexvqradjefskvh.supabase.co"},
   badDedicatedURL:{WARBOOST_VISION_TEST_SUPABASE_URL:"https://synthetic.invalid"},
@@ -65,6 +66,12 @@ for(const [name,patch] of Object.entries({
     await assert.rejects(check(req(),{...config(),...patch}),{code:"VISION_TEST_OFF"});
   });
 }
+test("inherited ordinary OpenAI key is ignored; controlled path uses only its dedicated key",()=>{
+  const dedicated=`sk-proj-${"d".repeat(40)}`;
+  const cfg=controlledVisionConfig({...config(),OPENAI_API_KEY:"ordinary-synthetic",WARBOOST_VISION_TEST_OPENAI_KEY:dedicated});
+  assert.equal(cfg.key,dedicated);
+  assert.equal(controlledVisionRequested({body:{controlled_vision:false},headers:{}},{WARBOOST_CONTROLLED_VISION:"on"}),false);
+});
 test("authorized GoTrue account only, no PRO assertion or billing lookup",async()=>{
   assert.equal((await check()).user.id,user.id);
   await assert.rejects(check(req(),config(),{...user,id:"other"}),{code:"VISION_TEST_BLOCKED"});

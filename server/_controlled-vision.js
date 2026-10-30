@@ -46,7 +46,10 @@ export function controlledVisionConfig(env=process.env){
   // Reject inconsistent legacy URL aliases instead of authenticating on prod.
   for(const name of ["SUPABASE_URL","NEXT_PUBLIC_SUPABASE_URL","VITE_SUPABASE_URL"])
     if(env[name]&&env[name]!==TEST_BASE)throw fail("VISION_TEST_OFF");
-  for(const name of ["OPENAI_API_KEY","WARBOOST_VISION_ENDPOINT","WARBOOST_VISION_SECRET"])
+  // The ordinary OpenAI key may be inherited by Preview for the normal
+  // pipeline. It is intentionally ignored here: only the dedicated test key
+  // above is ever returned or used by the controlled provider.
+  for(const name of ["WARBOOST_VISION_ENDPOINT","WARBOOST_VISION_SECRET"])
     if(env[name])throw fail("VISION_TEST_OFF");
   return Object.freeze({origin:origin.origin,base:TEST_BASE,
      campaign:env.WARBOOST_VISION_TEST_CAMPAIGN_V2,tester:env.WARBOOST_VISION_TESTER_DIGEST,

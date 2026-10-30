@@ -130,9 +130,12 @@ ou Supabase production. Ne pas réutiliser une clé OpenAI des joueurs.
 
    `VERCEL_ENV=preview` et `VERCEL_GIT_COMMIT_REF` viennent de Vercel.
    Les URLs Supabase standard éventuellement présentes doivent aussi être TEST ;
-   toute URL contradictoire bloque. Les anciens `OPENAI_API_KEY`,
-   `WARBOOST_VISION_ENDPOINT` et `WARBOOST_VISION_SECRET` doivent être absents
-   dans cet environnement. Aucune clé standard n'est un fallback.
+   toute URL contradictoire bloque. `OPENAI_API_KEY` peut être présent pour le
+   pipeline ordinaire, mais le chemin contrôlé l'ignore toujours et n'utilise
+   jamais cette clé : seule `WARBOOST_VISION_TEST_OPENAI_KEY` dédiée est
+   requise pour ce chemin. `WARBOOST_VISION_ENDPOINT` et
+   `WARBOOST_VISION_SECRET` doivent rester absents du Preview. Aucune clé
+   standard n'est un fallback.
    Les clés publishable opaques ne prouvent pas leur projet : ce premier banc
    exige les clés JWT TEST dont la provenance déclarée peut être contrôlée puis
    dont la validité réelle est vérifiée par Supabase. Le décodage des claims
