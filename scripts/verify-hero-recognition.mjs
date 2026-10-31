@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import {HERO_CATALOG,catalogHeroName,heroDisplayName,canonicalHeroName} from "../lib/heroes.js";
 import {HERO_RECOGNITION_LIBRARY,HERO_APPEARANCE_CONTEXTS,recognitionHeroName,recognizeHeroIdentity,heroRecognitionPrompt} from "../lib/hero-recognition.js";
+import {HERO_REFERENCE_INDEX} from "../lib/hero-reference-index.js";
 import {reviewablePortraitProposal} from "../lib/portrait-diagnostics.js";
 import {squadEvidence,confirmedSquadHints} from "../lib/squad-scan-evidence.js";
 import {sanitize,promptFor} from "../api/scan.js";
@@ -12,7 +13,7 @@ import {applyOwnedScanReview} from "../lib/scan-review.js";
 
 const expected={
   tank:["Kimberly","Marshall","Williams","Murphy","Stetmann","Mason","Violet","Scarlett","Monica","Richard","Farhad","Gump","Loki"],
-  aircraft:["DVA","Morrison","Carlie","Lucius","Schuyler","Sarah","Cage","Ambolt","Maxwell"],
+  aircraft:["DVA","Morrison","Carlie","Lucius","Skyler","Sarah","Cage","Ambolt","Maxwell"],
   missile:["Tesla","Fiona","Swift","Adam","McGregor","Venom","Elsa","Kane","Braz"]
 };
 const at="2026-10-07T00:00:00Z";
@@ -27,7 +28,12 @@ test("exact 31-hero roster, correct classes, unique stable identities and no pri
     assert.deepEqual(HERO_RECOGNITION_LIBRARY.filter(h=>h.type===type).map(h=>h.displayName).sort(),[...names].sort());
   assert.ok(HERO_RECOGNITION_LIBRARY.every(h=>!Object.hasOwn(h,"priority")));
   assert.equal(catalogHeroName("Schuyler"),"Skyler");
-  assert.equal(heroDisplayName("Skyler"),"Schuyler");
+  assert.equal(catalogHeroName("Shuyler"),"Skyler");
+  assert.equal(heroDisplayName("Skyler"),"Skyler");
+  assert.equal(heroDisplayName("Schuyler"),"Skyler");
+  const skylerReference=HERO_REFERENCE_INDEX.find(reference=>reference.canonicalName==="Skyler"&&reference.sourcePage.includes("lastwar.wiki"));
+  assert.equal(skylerReference.displayName,"Skyler");
+  assert.match(skylerReference.sourcePage,/\/schuyler\/$/,"keep the reviewed source URL while showing canonical Skyler");
 });
 for(const hero of HERO_RECOGNITION_LIBRARY){
   test(`${hero.displayName}: identical strong/medium/low policy and all aliases`,()=>{
@@ -260,6 +266,28 @@ test("actual form collector excludes unchecked proposals but accepts individual 
   assert.equal(applied.complete,true);
   assert.deepEqual(confirmedSquadHints(applied.state,1,"owner"),["Williams",...names.slice(1)]);
   assert.equal(applyOwnedScanReview(draft,"another-owner",form.edits),null);
+});
+test("Skyler is the visible scan-review label; legacy aliases normalize without losing manual correction",()=>{
+  const skyler=squadEvidence(text("Schuyler"));
+  assert.equal(skyler.name,"Skyler");
+  assert.equal(heroDisplayName("Schuyler"),"Skyler");
+  assert.equal(canonicalHeroName("Shuyler"),"Skyler");
+  const evidence=structuredClone(skyler.evidence.identity);
+  evidence.text="Schuyler";
+  evidence.portrait.candidate="Schuyler";
+  evidence.portrait.diagnostic={reported_candidate:"Schuyler",canonical_name:"Skyler"};
+  const groups=buildScanReviewGroups("squad1",{squads:[{heroes:[{name:skyler.name}]}]},[evidence]);
+  const markup=renderScanReviewMarkup(groups,key=>key,String);
+  assert.match(markup.html,/<option value="Skyler" selected>Skyler<\/option>/);
+  assert.doesNotMatch(markup.html,/>Schuyler</);
+  assert.doesNotMatch(markup.html,/Schuyler/);
+  // Manual scan-review edits remain authoritative; the existing form-collector scenario
+  // above separately exercises the real dropdown collector and acknowledgement path.
+  const draft={owner:"owner",type:"squad1",patch:{squads:[{heroes:[{name:"Skyler"}]}]},displayRows:markup.rows};
+  const corrected=applyOwnedScanReview(draft,"owner",[
+    {path:["squads",0,"heroes",0,"name"],value:"Williams"}
+  ]);
+  assert.equal(corrected.patch.squads[0].heroes[0].name,"Williams");
 });
 test("low confidence does not expose an unsupported visual identity as a name suggestion",()=>{
   const observation=squadEvidence(visual("Kimberly","normal",.4));
