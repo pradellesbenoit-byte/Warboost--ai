@@ -16,6 +16,27 @@
 .technologyManual .buttonRow{display:flex;flex-wrap:wrap;gap:8px;margin-block-start:10px}
 .technologyManual button{min-height:44px;white-space:normal;overflow-wrap:anywhere;flex:1}
 .technologyManual [role=status]{overflow-wrap:anywhere}
+.technologyAdvisor{min-width:0;overflow-wrap:anywhere}
+.technologyAdvisorDisclosure{border:1px solid var(--line,#506078);border-radius:14px;background:rgba(12,19,33,.7);padding:0 12px}
+.technologyAdvisorDisclosure>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;cursor:pointer;font-weight:700}
+.technologyAdvisorDisclosure>summary:focus-visible{outline:2px solid var(--cyan,#53e7ff);outline-offset:2px;border-radius:8px}
+.technologyAdvisorChevron{flex:none;transition:transform .15s ease}
+.technologyAdvisorDisclosure[open] .technologyAdvisorChevron{transform:rotate(180deg)}
+.technologyAdvisorContent{padding:0 0 12px;min-width:0}
+.technologyAdvisorContent h4{margin:12px 0 7px}
+.technologyAdvisorIntro,.technologyAdvisorDisclaimer,.technologyAdvisorNotice{line-height:1.5;overflow-wrap:anywhere}
+.technologyAdvisorContext{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.technologyAdvisorCard{min-width:0;padding:11px;border:1px solid rgba(83,231,255,.22);border-radius:12px;background:rgba(8,16,28,.72);margin-block:8px}
+.technologyAdvisorCardHead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.technologyAdvisorCardHead span{font-size:.9em;color:var(--muted,#b9cadc)}
+.technologyAdvisorCard p{line-height:1.45;overflow-wrap:anywhere}
+.technologyAdvisorFormation{color:#bcecff}
+.technologyAdvisorAction{margin-bottom:0}
+.technologyAdvisorNotice,.technologyAdvisorMax,.technologyAdvisorLocked{padding:9px 10px;border:1px solid var(--line,#506078);border-radius:10px;line-height:1.45}
+.technologyAdvisorMax ul,.technologyAdvisorLocked ul{margin-block:7px 0;padding-inline-start:1.25em}
+.technologyAdvisorDisclaimer{font-size:.82em;color:var(--muted,#b9cadc)}
+.technologyAdvisorDisclosure[dir="rtl"]{direction:rtl;text-align:start}
+@media(prefers-reduced-motion:reduce){.technologyAdvisorChevron{transition:none}}
 /* Autonomous workspace forms: labels must not inherit compact inline layouts. */
 #freeFounderPanel label{display:block;position:static;float:none;width:100%;height:auto;white-space:normal;margin-block:12px 8px;line-height:1.5}
 #freeFounderRoster{display:block;box-sizing:border-box;position:static;width:100%;max-width:100%;min-width:0;min-height:140px;resize:vertical;font:inherit;line-height:1.5}

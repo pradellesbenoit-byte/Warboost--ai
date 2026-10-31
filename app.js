@@ -88,6 +88,7 @@ import {renderScanReviewMarkup} from "./lib/scan-review-markup.js";
 import {mergeTechnologyBranches,finalizeTechnologyReview} from "./lib/technology-scan.js";
 import {createTechnologyManualUI} from "./lib/technology-manual-ui.js";
 import {buildTechnologyAdvice} from "./lib/technology-advisor.js";
+import {createTechnologyAdvisorUI} from "./lib/technology-advisor-ui.js";
 import {mergeFreshRecord,stampConfirmedRecord} from "./lib/field-freshness.js";
 import {playerAdviceInputSignature} from "./lib/player-advice-signature.js";
 import {renderKnowledgeGuidance} from "./lib/knowledge-guidance-ui.js";
@@ -548,6 +549,7 @@ function recordProgressionSnapshot(source="update",at=new Date().toISOString()){
 }
 function progressionMetricText(metric){if(!metric||metric.current===null)return "—";const change=metric.change_m===null?"":`${metric.change_m>=0?"+":""}${new Intl.NumberFormat(locale,{maximumFractionDigits:2}).format(metric.change_m)} M${metric.pct!==null?` (${metric.pct>=0?"+":""}${metric.pct}%)`:""}`;return `${fmtPower(metric.current)}${change?` · ${change}`:""}`}
 let technologyManualUI=null;
+let technologyAdvisorUI=null;
 function renderTechnologyManual(){
   const root=$("#playerTechnologyManual");if(!root)return;
   if(!technologyManualUI)technologyManualUI=createTechnologyManualUI({
@@ -561,10 +563,24 @@ function renderTechnologyManual(){
       state.sync={...state.sync,pending_cloud_save:true};cloudDirty=true;
       const ok=saveState({renderUi:false});
       if(!ok&&state.player_id===owner){state.technology=previous;state.sync=previousSync;cloudDirty=previousDirty;}
+       if(ok)technologyAdvisorUI?.render();
       return ok;
     }
   });
   technologyManualUI.render();
+  const adviceRoot=$("#playerTechnologyAdvisor");
+  if(adviceRoot){
+    if(!betaPrivateDataVisible()){
+      technologyAdvisorUI?.reset();
+    }else{
+      if(!technologyAdvisorUI)technologyAdvisorUI=createTechnologyAdvisorUI({
+        root:adviceRoot,getState:()=>state,getLocale:()=>lang,
+        getPrivateVisible:betaPrivateDataVisible,getSelectedSquadId:()=>state.diagnostic_squad_id||1,
+        getTranslate:(key,vars)=>t(key,vars),getObjectiveLabel:adaptiveObjectiveLabel
+      });
+      technologyAdvisorUI.render();
+    }
+  }
 }
 function renderPlayerProgression(){
   const box=$("#progressionSummary"),pill=$("#progressionFreshness");if(!box)return;const rows=state.progression_snapshots||[],latest=rows[rows.length-1],cmp=progressionComparison(rows,30),strongest=strongestSquadFromState(state);
@@ -2384,6 +2400,7 @@ function render(){
   if(!reveal){
     const technologyRoot=$("#playerTechnologyManual");if(technologyRoot)technologyRoot.textContent="";
     technologyManualUI?.reset();
+    technologyAdvisorUI?.reset();
     // Legacy privacy verification markers retained after HF8.6.22 render isolation:
     // $("#playerMeta").textContent=t("to_connect"); $("#allianceMeta").textContent="—";
     // Account fields are a security boundary: clear them immediately, independently of every other module render.

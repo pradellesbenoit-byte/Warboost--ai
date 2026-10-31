@@ -5,6 +5,8 @@ import {sanitizeTechnologyCards,mergeTechnologyBranches,finalizeTechnologyReview
 import {createScanReviewDraft,applyScanReviewEdits,scanReviewEntries} from "../lib/scan-review.js";
 import {buildScanReviewGroups} from "../lib/scan-review-presentation.js";
 import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
+import {buildPersonalTechnologyAdvice,createTechnologyAdvisorUI,renderPersonalTechnologyAdvice,technologyAdvisorSquad} from "../lib/technology-advisor-ui.js";
+import {TECHNOLOGY_ADVISOR_LOCALES,technologyAdvisorCopy} from "../lib/technology-advisor-copy.js";
 import {normalizeState} from "../lib/normalize.js";
 import {translator} from "../i18n.js";
 import technologyI18nWest from "../lib/technology-i18n-west.js";
@@ -175,6 +177,144 @@ test("troop specialization only ranks for the confirmed main troop type",()=>{
   const unknown=buildTechnologyAdvice(stateWith("pvp",branches));
   assert.equal(unknown.context.main_type,null);
   assert.equal(unknown.main,null);
+});
+
+const confirmedSquad=(id,names)=>({
+  id,composition_source:"explicit_confirmation",composition_confirmed_at:"2026-10-31T10:00:00.000Z",
+  confirmed_composition:names,heroes:names.map(name=>({name}))
+});
+const playerAdviceState=(names,{objective="pvp",branches={}}={})=>({
+  player_id:"account-a",player:{hq_level:31},player_context:{objective},season:{number:4},
+  squads:[confirmedSquad(1,names)],technology:{branches}
+});
+test("personal adviser uses only five saved confirmed Tank, aircraft or missile heroes and requires a 3/5 majority",()=>{
+  const cases=[
+    {names:["Kimberly","Murphy","Williams","Marshall","Farhad"],type:"tank",count:5},
+    {names:["DVA","Carlie","Lucius","Skyler","Morrison"],type:"aircraft",count:5},
+    {names:["Tesla","Swift","Adam","Fiona","McGregor"],type:"missile",count:5},
+    {names:["Carlie","DVA","Lucius","Kimberly","Murphy"],type:"aircraft",count:3}
+  ];
+  for(const item of cases){
+    const formation=technologyAdvisorSquad({squads:[confirmedSquad(1,item.names)]},1);
+    assert.equal(formation.type,item.type);assert.equal(formation.typeCount,item.count);
+  }
+  const split=technologyAdvisorSquad({squads:[confirmedSquad(1,["Carlie","DVA","Kimberly","Murphy","Tesla"])]},1);
+  assert.equal(split.type,null);
+  const unconfirmed={
+    id:1,heroes:["Carlie","DVA","Lucius","Skyler","Morrison"].map(name=>({name})),
+    composition_conflict:{scan_pending:{heroes:["Carlie","DVA","Lucius","Skyler","Morrison"].map(name=>({proposed_name:name,status:"unlinked"}))}}
+  };
+  assert.equal(technologyAdvisorSquad({squads:[unconfirmed]},1).type,null);
+  assert.equal(technologyAdvisorSquad({squads:[confirmedSquad(1,["Carlie","DVA","Lucius","","Morrison"])]},1).type,null);
+});
+
+test("selected primary squad is used only with explicit composition; no weapon level can infer formation type",()=>{
+  const state={player_id:"account-a",diagnostic_squad_id:2,squads:[
+    confirmedSquad(1,["Kimberly","Murphy","Williams","Marshall","Farhad"]),
+    confirmedSquad(2,["Carlie","DVA","Lucius","Skyler","Morrison"])
+  ],alliance:{roster:[{name:"AllianceTank",hero_names:["Kimberly","Murphy","Williams","Marshall","Farhad"]}]},technology:{branches:{aircraft_specialization:techBranch("aircraft_specialization",0)}}};
+  assert.equal(buildPersonalTechnologyAdvice(state).squadId,2);
+  assert.equal(buildPersonalTechnologyAdvice(state).formation.type,"aircraft");
+  state.squads[1].composition_source="legacy_saved_v1";
+  assert.equal(buildPersonalTechnologyAdvice(state).squadId,1);
+  assert.equal(buildPersonalTechnologyAdvice(state).formation.type,"tank");
+  const weaponOnly=confirmedSquad(1,["Unknown A","Unknown B","Unknown C","Unknown D","Unknown E"]);
+  weaponOnly.heroes=[{name:"Unknown A",exclusive:"30"}];
+  assert.equal(technologyAdvisorSquad({squads:[weaponOnly]},1).type,null);
+});
+
+test("canonical Skyler alias resolves through the saved confirmed composition",()=>{
+  const model=buildPersonalTechnologyAdvice(playerAdviceState(["DVA","Carlie","Lucius","Schuyler","Morrison"]));
+  assert.equal(model.formation.type,"aircraft");
+  assert.deepEqual(model.formation.heroes,["DVA","Carlie","Lucius","Skyler","Morrison"]);
+});
+
+test("personal advice keeps real zero, excludes max, lists locked prerequisites, and separates Oil/T10/VS/T11 paths",()=>{
+  const state=playerAdviceState(["Carlie","DVA","Lucius","Skyler","Morrison"],{objective:"season",branches:{
+    aircraft_specialization:techBranch("aircraft_specialization",0),
+    development:techBranch("development",15),
+    oil_era:{name:"The Oil Era",state:"locked",prerequisite:"Confirm the visible prerequisite"},
+    heroes:{name:"Heroes",state:"max",updated_at:"2026-10-31T00:00:00.000Z"}
+  }});
+  let model=buildPersonalTechnologyAdvice(state);
+  assert.equal(model.advice.main.key,"development");
+  assert.equal(model.advice.locked.some(item=>item.key==="oil_era"&&item.prerequisite==="Confirm the visible prerequisite"),true);
+  assert.equal(model.maxBranches.some(item=>item.key==="heroes"),true);
+  state.technology.branches.oil_era={...techBranch("oil_era",0),name:"The Oil Era"};
+  model=buildPersonalTechnologyAdvice(state);
+  assert.equal(model.advice.main.key,"oil_era");
+  state.player_context.objective="t10";
+  state.technology.branches.special_forces=techBranch("special_forces",10);
+  assert.equal(buildPersonalTechnologyAdvice(state).advice.main.key,"special_forces");
+  state.technology.branches.alliance_duel=techBranch("alliance_duel",20);
+  state.player_context.objective="vs";
+  assert.equal(buildPersonalTechnologyAdvice(state).advice.main.key,"alliance_duel");
+  state.player_context.objective="t11";
+  assert.equal(buildPersonalTechnologyAdvice(state).advice.status,"separate_path");
+  assert.equal(buildPersonalTechnologyAdvice(state).advice.path_key,"technology_advice_t11_route");
+});
+
+test("personal technology adviser output is HTML-escaped, account-local, closed by default, and uses explicit RTL",()=>{
+  const make=(player_id,branchName)=>({
+    player_id,player:{hq_level:31},player_context:{objective:"power"},squads:[confirmedSquad(1,["Carlie","DVA","Lucius","Skyler","Morrison"])],
+    technology:{branches:{development:{name:branchName,state:"percent",percent:0,updated_at:"2026-10-31T10:00:00.000Z"}}}
+  });
+  const hostile=make("account-a","Development");
+  hostile.technology.branches.oil_era={name:"The Oil Era",state:"locked",prerequisite:"<img src=x onerror=alert(1)>"};
+  const before=JSON.stringify(hostile);
+  const a=buildPersonalTechnologyAdvice(hostile);
+  const b=buildPersonalTechnologyAdvice(make("account-b","Different"));
+  assert.equal(a.owner,"account-a");assert.equal(b.owner,"account-b");
+  const testTranslate=(key,vars={})=>key==="squad"?"Escouade":key==="technology_advice_locked_requirement"?`Prérequis visible : ${vars.requirement}`:key;
+  const markup=renderPersonalTechnologyAdvice(a,{locale:"fr",t:testTranslate,objectiveLabel:value=>value});
+  assert.match(markup,/0 %/);assert.doesNotMatch(markup,/<details[^>]*\sopen(?:\s|=|>)/i);
+  assert.doesNotMatch(markup,/<img\b/i);
+  assert.match(markup,/&lt;img/);
+  assert.match(renderPersonalTechnologyAdvice(a,{locale:"ar",t:key=>key}),/dir="rtl"/);
+  assert.doesNotMatch(markup,/<button|fetch\(|\/api\//i);
+  assert.equal(JSON.stringify(hostile),before,"advice rendering must not write calculated priorities into player state");
+  assert.deepEqual([...TECHNOLOGY_ADVISOR_LOCALES].sort(),["ar","cs","de","el","en","es","fr","id","it","ja","ko","nl","pl","pt","ro","ru","sv","th","tr","uk","vi","zh"].sort());
+  for(const locale of TECHNOLOGY_ADVISOR_LOCALES){
+    const copy=technologyAdvisorCopy(locale);
+    for(const key of ["title","intro","confirmHeroes","noBranches","next","formation","max"])assert.ok(copy[key],`${locale} missing ${key}`);
+    for(const type of ["tank","aircraft","missile"])assert.ok(copy.types[type],`${locale} missing ${type}`);
+  }
+});
+
+test("a 4/5 aircraft formation justifies aircraft research and names the exact in-game branch",()=>{
+  const state=playerAdviceState(["Carlie","DVA","Lucius","Skyler","Kimberly"],{objective:"pvp",branches:{
+    aircraft_specialization:techBranch("aircraft_specialization",0),
+    tank_specialization:techBranch("tank_specialization",20)
+  }});
+  const model=buildPersonalTechnologyAdvice(state);
+  assert.equal(model.formation.type,"aircraft");
+  assert.equal(model.advice.main.key,"aircraft_specialization");
+  const testTranslate=key=>key==="squad"?"Escouade":key;
+  const html=renderPersonalTechnologyAdvice(model,{locale:"fr",t:testTranslate,objectiveLabel:value=>value});
+  assert.match(html,/4\/5 héros confirmés sont de type Avion/);
+  assert.match(html,/Centre Technologie → Spécialisation avion/i);
+  assert.match(html,/0 %/);
+});
+
+test("personal adviser clears when private access is absent and resets its open state across account changes",()=>{
+  let allowed=false,state=playerAdviceState(["Carlie","DVA","Lucius","Skyler","Morrison"]);
+  let markup="old private markup";
+  const root={open:false,
+    get innerHTML(){return markup},
+    set innerHTML(value){markup=value;this.open=/<details[^>]*\sopen(?:\s|=|>)/i.test(value)},
+    replaceChildren(){this.innerHTML=""},
+    querySelector(){return markup.includes("technologyAdvisorDisclosure")?{open:this.open}:null}
+  };
+  const ui=createTechnologyAdvisorUI({
+    root,getState:()=>state,getLocale:()=>"fr",getPrivateVisible:()=>allowed,
+    getSelectedSquadId:()=>1,getTranslate:key=>key==="squad"?"Escouade":key,getObjectiveLabel:value=>value
+  });
+  ui.render();assert.equal(root.innerHTML,"");
+  allowed=true;ui.render();assert.match(root.innerHTML,/Escouade 1/);
+  root.open=true;
+  state={...state,player_id:"account-b"};
+  ui.render();assert.doesNotMatch(root.innerHTML,/<details[^>]*\sopen(?:\s|=|>)/i);
+  allowed=false;ui.render();assert.equal(root.innerHTML,"");
 });
 
 test("T11 is routed to the separate Armament Institute, not a Tech Center branch",()=>{
