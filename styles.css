@@ -23,6 +23,8 @@
 .technologyAdvisorChevron{flex:none;transition:transform .15s ease}
 .technologyAdvisorDisclosure[open] .technologyAdvisorChevron{transform:rotate(180deg)}
 .technologyAdvisorContent{padding:0 0 12px;min-width:0}
+.technologyAdvisorConfirmHeroes{min-height:44px;margin:8px 0}
+[data-inline-hero-open]{min-height:44px;width:100%;margin:8px 0}
 .technologyAdvisorContent h4{margin:12px 0 7px}
 .technologyAdvisorIntro,.technologyAdvisorDisclaimer,.technologyAdvisorNotice{line-height:1.5;overflow-wrap:anywhere}
 .technologyAdvisorContext{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}

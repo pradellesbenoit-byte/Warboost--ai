@@ -8,6 +8,7 @@ import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
 import {buildPersonalTechnologyAdvice,createTechnologyAdvisorUI,renderPersonalTechnologyAdvice,technologyAdvisorSquad} from "../lib/technology-advisor-ui.js";
 import {TECHNOLOGY_ADVISOR_LOCALES,technologyAdvisorCopy} from "../lib/technology-advisor-copy.js";
 import {normalizeState} from "../lib/normalize.js";
+import {confirmedCompositionForSquad,reconcileConfirmedSquad,savedSquadCompositionCandidate,otherSquadsWithCompositionHeroes} from "../lib/squad-identity.js";
 import {translator} from "../i18n.js";
 import technologyI18nWest from "../lib/technology-i18n-west.js";
 import technologyI18nCjk from "../lib/technology-i18n-cjk.js";
@@ -200,6 +201,13 @@ test("personal adviser uses only five saved confirmed Tank, aircraft or missile 
   }
   const split=technologyAdvisorSquad({squads:[confirmedSquad(1,["Carlie","DVA","Kimberly","Murphy","Tesla"])]},1);
   assert.equal(split.type,null);
+  const alreadyConfirmed=technologyAdvisorSquad({squads:[confirmedSquad(1,["Carlie","DVA","Lucius","Skyler","Morrison"])]},1);
+  assert.equal(alreadyConfirmed.identitiesConfirmed,true);
+  assert.equal(alreadyConfirmed.canConfirmSavedHeroes,false);
+  const explicitButNeedsReview={...confirmedSquad(1,["Carlie","DVA","Lucius","Skyler","Morrison"]),needs_rescan:true};
+  const review=technologyAdvisorSquad({squads:[explicitButNeedsReview]},1);
+  assert.equal(review.type,null);
+  assert.equal(review.canConfirmSavedHeroes,true);
   const unconfirmed={
     id:1,heroes:["Carlie","DVA","Lucius","Skyler","Morrison"].map(name=>({name})),
     composition_conflict:{scan_pending:{heroes:["Carlie","DVA","Lucius","Skyler","Morrison"].map(name=>({proposed_name:name,status:"unlinked"}))}}
@@ -221,6 +229,54 @@ test("selected primary squad is used only with explicit composition; no weapon l
   const weaponOnly=confirmedSquad(1,["Unknown A","Unknown B","Unknown C","Unknown D","Unknown E"]);
   weaponOnly.heroes=[{name:"Unknown A",exclusive:"30"}];
   assert.equal(technologyAdvisorSquad({squads:[weaponOnly]},1).type,null);
+});
+
+test("saved five names remain candidates until explicit confirmation and then refine advice after reload",()=>{
+  const names=["Carlie","DVA","Lucius","Skyler","Morrison"];
+  const legacyHeroes=names.map(name=>({name,level:155,stars:5,power:9100000,gear:{weapon:40}}));
+  const unconfirmed={id:1,needs_rescan:false,composition_source:"legacy_saved_v1",
+    power:45.6,heroes:legacyHeroes,confirmed_composition:[],composition_confirmed_at:null,
+    legacy_v1:{version:1,source_version:"1.3.3",owner_id:"account-a",squad_id:1,
+      saved_at:"2026-10-01T00:00:00.000Z",heroes:JSON.parse(JSON.stringify(legacyHeroes)),retired_slots:[]}};
+  assert.equal(confirmedCompositionForSquad(unconfirmed,1),null);
+  assert.deepEqual(savedSquadCompositionCandidate(unconfirmed,1),names);
+  const before={player_id:"account-a",player:{hq_level:null},player_context:{objective:"pvp"},
+    squads:[unconfirmed],technology:{branches:{aircraft_specialization:techBranch("aircraft_specialization",0)}}};
+  const model=buildPersonalTechnologyAdvice(before);
+  assert.equal(model.formation.type,null);
+  assert.equal(model.formation.canConfirmSavedHeroes,true);
+  const translate=(key)=>({squad:"Escouade",hq:"QG",to_fill:"À renseigner"}[key]||key);
+  const markup=renderPersonalTechnologyAdvice(model,{locale:"fr",t:translate});
+  assert.match(markup,/data-technology-confirm-squad="1"/);
+  assert.match(markup,/QG · À renseigner/);
+  assert.doesNotMatch(markup,/aircraft_specialization/,"unconfirmed names cannot activate troop specialization advice");
+
+  const saved=reconcileConfirmedSquad(before,{squadId:1,names,updatedAt:"2026-10-31T12:00:00.000Z"}).state;
+  assert.deepEqual(confirmedCompositionForSquad(saved.squads[0],1),names);
+  assert.equal(saved.squads[0].composition_source,"explicit_confirmation");
+  assert.equal(saved.squads[0].needs_rescan,false);
+  assert.equal(saved.squads[0].power,45.6);
+  assert.deepEqual(saved.squads[0].heroes.map(hero=>hero.level),Array(5).fill(155));
+  assert.deepEqual(saved.squads[0].heroes.map(hero=>hero.gear.weapon),Array(5).fill(40));
+  const reloaded=normalizeState(JSON.parse(JSON.stringify(saved)));
+  assert.equal(technologyAdvisorSquad(reloaded,1).type,"aircraft");
+  assert.equal(buildPersonalTechnologyAdvice(reloaded).advice.main.key,"aircraft_specialization");
+
+  const otherAccount={player_id:"account-b",squads:[{id:1,heroes:[]}],technology:{branches:{}}};
+  assert.equal(savedSquadCompositionCandidate(otherAccount.squads[0],1),null);
+  assert.equal(technologyAdvisorSquad(otherAccount,1).canConfirmSavedHeroes,false);
+});
+
+test("saved composition confirmation warns about heroes already assigned to another squad",()=>{
+  const names=["Carlie","DVA","Lucius","Skyler","Morrison"];
+  assert.deepEqual(otherSquadsWithCompositionHeroes([
+    {id:1,heroes:names.map(name=>({name}))},
+    {id:2,heroes:[{name:"Schuyler"},{name:"Kimberly"}]},
+    {id:3,heroes:[{name:"DVA"}]}
+  ],1,names),[2,3]);
+  assert.equal(technologyAdvisorCopy("fr").crossSquadWarning.includes("{squads}"),true);
+  for(const locale of TECHNOLOGY_ADVISOR_LOCALES)
+    assert.ok(technologyAdvisorCopy(locale).crossSquadWarning.includes("{squads}"),`missing cross-squad warning for ${locale}`);
 });
 
 test("canonical Skyler alias resolves through the saved confirmed composition",()=>{

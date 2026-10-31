@@ -5,12 +5,14 @@ import * as identity from "../lib/squad-identity.js";
 import {applyReviewedSquad} from "../lib/squad-scan-review.js";
 import {confirmedSquadHints,squadEvidence} from "../lib/squad-scan-evidence.js";
 import {normalizeState,mergeNewest} from "../lib/normalize.js";
+import {prepareLegacyV1State} from "../lib/legacy-squad-compat.js";
 import {hydrateCloudState} from "../lib/cloud-state-recovery.js";
 import {reconcileCloudSquads} from "../lib/squad-freshness.js";
 import {mergeFreshRecord} from "../lib/field-freshness.js";
 import {canonicalHeroName} from "../lib/heroes.js";
 import {confirmedHeroPower,heroPowerIsConfirmed} from "../lib/hero-power.js";
 import {canonicalPowerMillions} from "../lib/power-units.js";
+import {mergeLateGameProgression} from "../lib/late-game-progression.js";
 
 const old="2026-09-01T00:00:00Z",now="2026-10-07T00:00:00Z",names=["Mason","Murphy","Violet","Kimberly","Monica"];
 const real=["DVA","Carlie","Lucius","Morrison","Skyler"];
@@ -112,7 +114,7 @@ test("swapping historical data cannot manufacture explicit identity; real/empty 
 const app=fs.readFileSync("app.js","utf8");
 function source(name){const start=app.indexOf(`function ${name}(`);assert.ok(start>=0);const end=app.indexOf("\nfunction ",start+9);return app.slice(start,end<0?app.length:end)}
 const carry=(a,b)=>b??a??[];
-const ctx=vm.createContext({...identity,canonicalPowerMillions,confirmedHeroPower,heroPowerIsConfirmed,mergeFreshRecord,
+const ctx=vm.createContext({...identity,canonicalPowerMillions,confirmedHeroPower,heroPowerIsConfirmed,mergeFreshRecord,prepareLegacyV1State,mergeLateGameProgression,
   canonicalStoredHeroName:canonicalHeroName,APP_VERSION:"fixture",initialState:()=>profile(blank(1)),
   LEGACY_DATA_KEYS:["wb10_profile"],localStorage:{getItem:key=>key==="wb10_profile"?"fixture":null},
   readLegacyJson:key=>key==="wb10_profile"?Object.fromEntries(names.map((name,i)=>[`heroName${i+1}`,name])):null,

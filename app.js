@@ -28,7 +28,7 @@ import {profileIdentity,applyIdentityProfile} from "./lib/identity-onboarding.js
 import {createIdentityOnboardingController} from "./lib/identity-onboarding-controller.js";
 import {betaCodeVisible,betaActivationErrorKey,betaActivationSucceeded} from "./lib/beta-activation-ui.js";
 let identityOnboardingController=null;
-import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad,mergeSquadIdentityHistory,squadForStableSlot} from "./lib/squad-identity.js";
+import {reconcileConfirmedSquad,repairLegacySquadIdentity,mergeConfirmedExclusiveWeaponPowers,backfillConfirmedHeroPowers,swapSquads,selectPrimarySquad,squadHasData,fixedHeroSlots,normalizeSquadSlots,confirmedCompositionForSquad,savedSquadCompositionCandidate,otherSquadsWithCompositionHeroes,mergeSquadIdentityHistory,squadForStableSlot} from "./lib/squad-identity.js";
 import {prepareLegacyV1State} from "./lib/legacy-squad-compat.js";
 import {reconcileCloudSquads} from "./lib/squad-freshness.js";
 import {recoverHeroData} from "./lib/hero-history.js";
@@ -89,6 +89,7 @@ import {mergeTechnologyBranches,finalizeTechnologyReview} from "./lib/technology
 import {createTechnologyManualUI} from "./lib/technology-manual-ui.js";
 import {buildTechnologyAdvice} from "./lib/technology-advisor.js";
 import {createTechnologyAdvisorUI} from "./lib/technology-advisor-ui.js";
+import {technologyAdvisorCopy} from "./lib/technology-advisor-copy.js";
 import {mergeFreshRecord,stampConfirmedRecord} from "./lib/field-freshness.js";
 import {playerAdviceInputSignature} from "./lib/player-advice-signature.js";
 import {renderKnowledgeGuidance} from "./lib/knowledge-guidance-ui.js";
@@ -889,7 +890,7 @@ async function skipHeroConfirmation(){
   closeHeroConfirmation(false);
 }
 
-function inlineHeroConfirmationHtml(sq,squadId){const rows=Array.from({length:5},(_,i)=>{const h=sq.heroes?.[i]||emptyHero(i+1),saved=isGenericHeroName(h?.name)?"":canonicalStoredHeroName(h.name);return `<div class="inlineHeroConfirmRow"><span class="inlineHeroSlot">${i+1}</span><select class="fieldSelect inlineHeroSelect" data-inline-hero-slot="${i}">${heroConfirmOptions(saved)}</select></div>`}).join("");return `<div class="inlineHeroConfirm" data-inline-confirm="${squadId}"><div class="inlineHeroConfirmHead"><div><b>${esc(t("hero_confirm_title",{squad:squadId}))}</b><small>${esc(t("hero_confirm_help"))}</small></div><span class="pill">${esc(t("hero_confirm_badge"))}</span></div><div class="inlineHeroConfirmRows">${rows}</div><div class="notice warn hidden" data-inline-hero-status></div><button class="primaryAction inlineHeroSaveBtn" type="button" data-inline-hero-save="${squadId}">${esc(t("hero_save"))}</button></div>`}
+function inlineHeroConfirmationHtml(sq,squadId,{hidden=false}={}){const rows=Array.from({length:5},(_,i)=>{const h=sq.heroes?.[i]||emptyHero(i+1),saved=isGenericHeroName(h?.name)?"":canonicalStoredHeroName(h.name);return `<div class="inlineHeroConfirmRow"><span class="inlineHeroSlot">${i+1}</span><select class="fieldSelect inlineHeroSelect" data-inline-hero-slot="${i}">${heroConfirmOptions(saved)}</select></div>`}).join("");return `<div class="inlineHeroConfirm${hidden?" hidden":""}" data-inline-confirm="${squadId}"><div class="inlineHeroConfirmHead"><div><b>${esc(t("hero_confirm_title",{squad:squadId}))}</b><small>${esc(t("hero_confirm_help"))}</small></div><span class="pill">${esc(t("hero_confirm_badge"))}</span></div><div class="inlineHeroConfirmRows">${rows}</div><div class="notice warn hidden" data-inline-hero-status></div><button class="primaryAction inlineHeroSaveBtn" type="button" data-inline-hero-save="${squadId}">${esc(t("hero_save"))}</button></div>`}
 async function saveInlineHeroNames(squadId,container,button=null){
   const id=Number(squadId);
   if(!Number.isInteger(id)||id<1||id>4||!container)return;
@@ -899,15 +900,45 @@ async function saveInlineHeroNames(squadId,container,button=null){
   const show=(key,warn=true)=>{if(status){status.className=`notice${warn?" warn":""}`;status.textContent=t(key)}};
   if(values.length!==5||values.some(v=>!v))return show("hero_all_required");
   if(new Set(values).size!==values.length)return show("hero_duplicate");
+  const sharedSquads=otherSquadsWithCompositionHeroes(state.squads,id,values);
+  const warningSignature=JSON.stringify({values:values.map(canonicalStoredHeroName),squads:sharedSquads});
+  if(sharedSquads.length&&container.dataset.confirmedCrossSquadWarning!==warningSignature){
+    container.dataset.confirmedCrossSquadWarning=warningSignature;
+    const warning=technologyAdvisorCopy(lang).crossSquadWarning.replace("{squads}",sharedSquads.join(", "));
+    if(status){status.className="notice warn";status.textContent=warning}
+    return;
+  }
   const now=new Date().toISOString();
   let next;try{next=reconcileConfirmedSquad(state,{squadId:id,names:values,incomingHeroes:[],updatedAt:now}).state}catch{return show("hero_save_failed")}
   next.updated_at=now;next.version=APP_VERSION;
+  const cloudOwner=String(cloudSession?.user?.id||"")===String(next.player_id||"")&&betaAccessAllowed()&&betaConsentAccepted();
+  next.sync={...(next.sync||{}),...(cloudOwner?{status:"waiting",pending_cloud_save:true}:{})};
   if(button){button.disabled=true;button.textContent=t("syncing")}
   show("hero_saving",false);
-  // V2.4.7: save immediately in the browser. Cloud persistence runs asynchronously.
+  // Keep the confirmation form open while its local-first cloud save is pending.
   state=next;
-  try{if(!saveState())throw new Error("local_squad_save_failed")}
+  try{if(!saveState({renderUi:false}))throw new Error("local_squad_save_failed")}
   catch{if(button){button.disabled=false;button.textContent=t("hero_save")}show("hero_save_failed");return}
+  technologyAdvisorUI?.render();
+  if(button){button.disabled=false;button.textContent=t("hero_save")}
+  if(status){status.className="notice";status.textContent=cloudOwner?`${t("hero_confirm_saved")} · ${t("sync_needed")}`:`${t("hero_confirm_saved")} · ${t("local")}`}
+}
+function openSavedHeroConfirmation(squadId){
+  const id=Number(squadId);
+  if(!Number.isInteger(id)||id<1||id>4||!betaPrivateDataVisible())return false;
+  const userId=String(cloudSession?.user?.id||"");
+  if(userId&&String(state?.player_id||"")!==userId)return false;
+  const squad=state?.squads?.[id-1],candidate=savedSquadCompositionCandidate(squad,id);
+  if(!candidate||confirmedCompositionForSquad(squad,id)&&squad?.needs_rescan!==true)return false;
+  const shell=$(`#squadList [data-squad-id="${id}"]`),details=shell?.querySelector("details.squad"),
+    editor=shell?.querySelector(`[data-inline-confirm="${id}"]`);
+  if(!shell||!editor)return false;
+  if(details)details.open=true;
+  editor.classList.remove("hidden");
+  shell.querySelector(`[data-inline-hero-open="${id}"]`)?.classList.add("hidden");
+  requestAnimationFrame(()=>{try{editor.scrollIntoView({behavior:"smooth",block:"center"})}catch{}});
+  editor.querySelector("select[data-inline-hero-slot]")?.focus();
+  return true;
 }
 
 if(!localStorage.getItem(LANG_KEY)){for(const key of LEGACY_LANGUAGE_KEYS){const v=localStorage.getItem(key);if(v){localStorage.setItem(LANG_KEY,v);break}}}
@@ -2500,11 +2531,18 @@ function renderSquads(){
   state.squads.forEach((sq,i)=>{
     const id=i+1,shell=document.createElement("div");shell.className="squadShell";shell.dataset.squadId=String(id);
      const row=review.rows[i],name=`${t("squad")} ${id}`,freshness=squadReviewHeader(row,t);
-     const heroes=fixedHeroSlots(sq.heroes),needsHeroConfirm=row.hasData&&heroes.some(h=>isGenericHeroName(h?.name))&&squadHasSavedData(sq);
+     const heroes=fixedHeroSlots(sq.heroes),needsHeroConfirm=row.hasData&&heroes.some(h=>isGenericHeroName(h?.name))&&squadHasSavedData(sq),
+       savedNames=savedSquadCompositionCandidate(sq,id),needsSavedHeroConfirmation=Boolean(savedNames&&
+         (!confirmedCompositionForSquad(sq,id)||sq.needs_rescan===true));
     const swapTargets=squadHasSavedData(sq)?state.squads.map((target,ti)=>({id:ti+1,target})).filter(x=>x.id!==id&&squadHasSavedData(x.target)):[];
     const swapButton=swapTargets.length?`<button class="squadSwapBtn" type="button" data-squad-swap-toggle="${id}" aria-label="${esc(t("squad_swap_aria",{squad:id}))}" title="${esc(t("squad_swap"))}">⇄</button>`:"";
     const swapMenu=swapTargets.length?`<div class="squadSwapMenu hidden" data-squad-swap-menu="${id}"><span>${esc(t("squad_swap_with"))}</span>${swapTargets.map(x=>`<button type="button" class="squadSwapTarget" data-squad-swap-target="${x.id}">${esc(t("squad"))} ${x.id}</button>`).join("")}</div>`:"";
       shell.innerHTML=`<details class="squad" data-squad-id="${id}"><summary class="squadHead"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true"></span></summary><div id="squadBody${id}" class="squadBody">${Array.from({length:5},(_,j)=>{const h=heroes[j]||emptyHero(j+1),hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtHeroPowerForDisplay(sq,h))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div></details>${swapButton}${swapMenu}`;
+     if(needsSavedHeroConfirmation&&!needsHeroConfirm){
+       shell.insertAdjacentHTML("beforeend",
+         `<button class="secondaryBtn wideBtn" type="button" data-inline-hero-open="${id}">${esc(t("hero_confirm_action"))}</button>`);
+       shell.querySelector(".squadBody")?.insertAdjacentHTML("beforeend",inlineHeroConfirmationHtml(sq,id,{hidden:true}));
+     }
       shell.querySelector(".squadName small")?.classList.add("squadReviewHint");
       shell.querySelector(".squadBody")?.insertAdjacentHTML("afterbegin",squadReviewRowHtml(row,t));
     box.appendChild(shell);
@@ -5289,6 +5327,7 @@ if(new URLSearchParams(location.search).has("account")||new URLSearchParams(loca
 }
 
 document.addEventListener("click",e=>{const btn=e.target.closest?.("[data-inline-hero-save]");if(!btn)return;e.preventDefault();e.stopPropagation();const container=btn.closest?.("[data-inline-confirm]");saveInlineHeroNames(btn.dataset.inlineHeroSave,container,btn)});
+document.addEventListener("click",e=>{const btn=e.target.closest?.("[data-inline-hero-open],[data-technology-confirm-squad]");if(!btn)return;e.preventDefault();e.stopPropagation();openSavedHeroConfirmation(btn.dataset.inlineHeroOpen||btn.dataset.technologyConfirmSquad)});
 document.addEventListener("click",e=>{const btn=e.target.closest?.(".heroConfirmAction[data-hero-confirm]");if(!btn)return;e.preventDefault();e.stopPropagation();startHeroConfirmation(btn.dataset.heroConfirm)});
 $("#saveHeroNamesBtn")?.addEventListener("click",saveHeroConfirmation);$("#skipHeroNamesBtn")?.addEventListener("click",skipHeroConfirmation);
 idleLifecycle=createIdleLifecycle({
