@@ -33,6 +33,7 @@ import {prepareLegacyV1State} from "./lib/legacy-squad-compat.js";
 import {reconcileCloudSquads} from "./lib/squad-freshness.js";
 import {recoverHeroData} from "./lib/hero-history.js";
 import {parseRosterImport,rosterNameKey} from "./lib/roster-import.js";
+import {EXCLUSIVE_WEAPON_HERO_NAMES,canonicalExclusiveHeroName,confirmedLateGameProgression,createEmptyLateGameProgression,confirmLateGameProgression,mergeLateGameProgression,normalizeLateGameProgression} from "./lib/late-game-progression.js";
 import {applyRosterImportLifecycle,confirmRosterDeparture,restoreRosterReviewMember,removeActiveRosterMember,rosterLifecycleKey,currentActiveRosterMembers as lifecycleActiveRosterMembers,normalizeRosterRemovalTombstones} from "./lib/alliance-roster-lifecycle.js";
 import {repairSeasonState,seasonLifecycle,seasonIsActive,activeSeasonProgress} from "./lib/season-lifecycle.js";
 import {createWarBoostSupabaseAuthClient} from "./lib/browser-auth.js";
@@ -296,6 +297,7 @@ function mergeState(base,incoming){
   out.technology=mergeFreshRecord(base.technology,incoming.technology,Object.keys({...base.technology,...incoming.technology}).filter(key=>!["field_updated_at","field_source","updated_at","source","branches"].includes(key)),{baseFallbackAt:base.technology?.updated_at,incomingFallbackAt:incoming.technology?.updated_at||incoming.updated_at,baseSource:"technology",incomingSource:"technology"});
   out.technology.branches=mergeTechnologyBranches(base.technology?.branches,incoming.technology?.branches);
   out.exclusive_weapons=mergeExclusiveWeapons(base.exclusive_weapons,incoming.exclusive_weapons);
+  out.late_game_progression=mergeLateGameProgression(base.late_game_progression,incoming.late_game_progression,{sameAccount:Boolean(base.player_id&&incoming.player_id&&String(base.player_id)===String(incoming.player_id))});
   out.hero_progression=mergeHeroProgression(base.hero_progression,incoming.hero_progression);
   out.hero_profiles=mergeHeroProfiles(base.hero_profiles,incoming.hero_profiles);
   out.progression_snapshots=mergeProgressionSnapshots(base.progression_snapshots,incoming.progression_snapshots);
@@ -321,6 +323,7 @@ function mergeStateProtected(base,incoming,{preferBase=false}={}){
   }
   out.player=mergeFreshRecord(base.player,incoming.player,Object.keys({...base.player,...incoming.player}).filter(key=>!["hq_level","hq_level_source","hq_level_confirmed_at","rank_confirmed_at","rank_confirmed_source","field_updated_at","field_source","updated_at","source"].includes(key)),{baseFallbackAt:base.player?.updated_at,incomingFallbackAt:incoming.player?.updated_at||incoming.updated_at,baseSource:"player",incomingSource:"player"});
   const baseOwner=String(base?.player_id||"").trim(),incomingOwner=String(incoming?.player_id||"").trim();
+  out.late_game_progression=mergeLateGameProgression(base.late_game_progression,incoming.late_game_progression,{sameAccount:Boolean(baseOwner&&incomingOwner&&baseOwner===incomingOwner)});
   out.player={...out.player,...mergePlayerHqFields(base?.player,incoming?.player,{sameAccount:!(baseOwner&&incomingOwner&&baseOwner!==incomingOwner)})};
   out.player_context=safeFields(base.player_context||{},incoming.player_context||{},preferBase);
   out.player_availability=mergeEventAvailabilities(base.player_availability,incoming.player_availability);
@@ -632,7 +635,8 @@ const ROSTER_SCAN_FILE_LIMIT=DEFAULT_ROSTER_SCAN_FILE_LIMIT;
 reconcileCurrentPlayerAllianceIdentity();
 let voiceGreetedSections=new Set(),availableVoices=[];
 const openRosterRoles=new Set();
-let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pendingHeroScannedAt=null,pendingHeroOwner="",pendingExclusiveScan=[],pendingExclusiveScannedAt=null,scanInputRevision=0,scanFileSelectionRevision=0,pendingExclusiveRequest=null;
+let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pendingHeroScannedAt=null,pendingHeroOwner="",pendingExclusiveScan=[],pendingExclusiveProgression=createEmptyLateGameProgression(),pendingExclusiveScannedAt=null,scanInputRevision=0,scanFileSelectionRevision=0,pendingExclusiveRequest=null;
+let lateGameManualSelection=EXCLUSIVE_WEAPON_HERO_NAMES[0],lateGameManualOwner="",lateGameManualOpen=false,lateGameManualDrafts=new Map();
 let pendingScanReview=null;
 let pendingScanRestoreInFlight=null,pendingScanRestoreOwner="";
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
@@ -693,18 +697,52 @@ function beginNewScanFileSelection(){
 function scanCaptureFingerprint(scanType=$("#scanType")?.value||"profile"){return scanImageDataList.length?scanImageDataList.join("\n"):scanImageData}
 function scanRequestIsCurrent(request){return (!scanSquadId(request?.scanType)||$("#scanSquadTargetConfirmed")?.checked===true)&&scanRequestMatches(request,{owner:pendingScanOwner(),scanType:$("#scanType")?.value||"profile",imageFingerprint:scanCaptureFingerprint(),revision:scanInputRevision})}
 function exclusiveNumber(value){const text=String(value??"").trim().replace(",",".");if(!text)return null;const n=Number(text);return Number.isFinite(n)?n:null}
-function renderExclusiveConfirmation(rows=[]){
+function lateGameFieldMarkup(label,field,value,{integer=false,max=null,scope="scan"}={}){
+  return `<label>${esc(label)}<input data-late-game-field="${esc(field)}" data-late-game-scope="${scope}" type="number" min="0"${integer?" step=\"1\"":" step=\"any\""}${max!==null?` max="${max}"`:""} value="${value??""}"/></label>`;
+}
+function lateGameWeaponReviewMarkup(hero,weapon,index){
+  const specs=weapon?.specializations||{},labels={attack:t("late_game_attack"),hp:t("late_game_hp"),defense:t("late_game_defense")};
+  const base=lateGameFieldMarkup(t("late_game_base_level"),"base_weapon_level",weapon?.base_weapon_level,{integer:true,max:30});
+  const groups=["attack","hp","defense"].map(key=>{
+    const spec=specs[key]||{},milestones=spec.milestone_bonuses_this_hero?.length?spec.milestone_bonuses_this_hero:[{}];
+    const state=spec.locked===true?"true":spec.locked===false?"false":"";
+    const evidence=spec.evidence?.text?`<small>${esc(spec.evidence.text)}</small>`:"";
+    const milestoneMarkup=milestones.map(milestone=>`<div class="lateGameMilestone" data-late-game-milestone>
+      ${lateGameFieldMarkup(t("late_game_milestone_level"),"milestone_level",milestone.level,{integer:true})}
+      ${lateGameFieldMarkup(t("late_game_milestone_bonus"),"milestone_bonus",milestone.bonus)}
+    </div>`).join("");
+    return `<fieldset class="lateGameSpec" data-late-game-spec="${key}"><legend>${esc(labels[key])}</legend>
+      <div class="exclusiveConfirmGrid">
+        ${lateGameFieldMarkup(t("late_game_level"),"level",spec.level,{integer:true})}
+        <label>${esc(t("late_game_state"))}<select data-late-game-field="locked" data-late-game-scope="scan"><option value="">${esc(t("scan_review_confidence_unknown"))}</option><option value="false"${state==="false"?" selected":""}>${esc(t("late_game_unlocked"))}</option><option value="true"${state==="true"?" selected":""}>${esc(t("late_game_locked"))}</option></select></label>
+        ${lateGameFieldMarkup(t("late_game_current_all"),"current_bonus_all_heroes",spec.current_bonus_all_heroes)}
+        ${lateGameFieldMarkup(t("late_game_current_self"),"current_bonus_this_hero",spec.current_bonus_this_hero)}
+        ${lateGameFieldMarkup(t("late_game_next_all"),"next_bonus_all_heroes",spec.next_bonus_all_heroes)}
+        ${lateGameFieldMarkup(t("late_game_next_self"),"next_bonus_this_hero",spec.next_bonus_this_hero)}
+        ${lateGameFieldMarkup(t("late_game_fragments_owned"),"fragments_owned",spec.fragments_owned,{integer:true})}
+        ${lateGameFieldMarkup(t("late_game_fragments_required"),"fragments_required",spec.fragments_required,{integer:true})}
+      </div><div class="lateGameMilestones">${milestoneMarkup}</div>${evidence}</fieldset>`;
+  }).join("");
+  return `<section class="exclusiveConfirmCard lateGameReviewCard" data-late-game-record data-late-game-hero="${esc(hero)}" data-late-game-index="${index}">
+    <label>${esc(t("late_game_hero"))}<select data-late-game-hero-select>${EXCLUSIVE_WEAPON_HERO_NAMES.map(name=>`<option value="${esc(name)}"${name===hero?" selected":""}>${esc(name)}</option>`).join("")}</select></label>
+    <h4>${esc(t("late_game_specializations"))}</h4>
+    <div class="exclusiveConfirmGrid">${base}</div>${groups}
+  </section>`;
+}
+function renderExclusiveConfirmation(rows=[],progression={}){
   const usableFields=["hero_name","weapon_name","level","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
   pendingExclusiveScan=(Array.isArray(rows)?rows:[]).filter(x=>x&&typeof x==="object").map(row=>
     Object.fromEntries(usableFields.filter(field=>row[field]!==undefined&&row[field]!==null&&String(row[field]).trim()!=="").map(field=>[field,row[field]])));
+  pendingExclusiveProgression=normalizeLateGameProgression(progression);
   const panel=$("#exclusiveConfirmPanel"),box=$("#exclusiveConfirmRows");if(!panel||!box)return false;
   pendingExclusiveScan=pendingExclusiveScan.filter(w=>usableFields.some(field=>w[field]!==undefined&&w[field]!==null&&String(w[field]).trim()!==""));
-  if(!pendingExclusiveScan.length){panel.classList.add("hidden");box.innerHTML="";return false}
-  box.innerHTML=pendingExclusiveScan.map((w,i)=>`<div class="exclusiveConfirmCard" data-exclusive-index="${i}">
+  const progressionRows=Object.entries(pendingExclusiveProgression.heroes);
+  if(!pendingExclusiveScan.length&&!progressionRows.length){panel.classList.add("hidden");box.innerHTML="";return false}
+  const weaponMarkup=pendingExclusiveScan.map((w,i)=>`<div class="exclusiveConfirmCard" data-exclusive-index="${i}">
     <div class="exclusiveConfirmGrid">
       <label>${esc(t("hero"))}<input data-exclusive-field="hero_name" value="${esc(w.hero_name||"")}" maxlength="80"/></label>
       <label>${esc(t("exclusive_weapon"))}<input data-exclusive-field="weapon_name" value="${esc(w.weapon_name||"")}" maxlength="120"/></label>
-      <label>${esc(t("level"))}<input data-exclusive-field="level" type="number" min="0" max="999" step="1" value="${w.level??""}"/></label>
+      <label>${esc(t("level"))}<input data-exclusive-field="level" type="number" min="0" max="30" step="1" value="${w.level??""}"/></label>
       <label>${esc(t("scan_exclusive_hp_bonus"))}<input data-exclusive-field="hero_hp_bonus" type="number" step="any" value="${w.hero_hp_bonus??""}"/></label>
       <label>${esc(t("scan_exclusive_atk_bonus"))}<input data-exclusive-field="hero_atk_bonus" type="number" step="any" value="${w.hero_atk_bonus??""}"/></label>
       <label>${esc(t("scan_exclusive_def_bonus"))}<input data-exclusive-field="hero_def_bonus" type="number" step="any" value="${w.hero_def_bonus??""}"/></label>
@@ -712,22 +750,61 @@ function renderExclusiveConfirmation(rows=[]){
       <label>${esc(t("scan_exclusive_skill_cap"))}<input data-exclusive-field="max_skill_level" type="number" min="0" max="999" step="1" value="${w.max_skill_level??""}"/></label>
     </div>
   </div>`).join("");
+  const progressionMarkup=progressionRows.map(([hero,weapon],index)=>lateGameWeaponReviewMarkup(hero,weapon,index)).join("");
+  box.innerHTML=`${weaponMarkup}${progressionMarkup}`;
   panel.classList.remove("hidden");
   requestAnimationFrame(()=>{try{panel.scrollIntoView({behavior:"smooth",block:"nearest"})}catch{}});
-  return pendingExclusiveScan.length>0;
+  return pendingExclusiveScan.length>0||progressionRows.length>0;
 }
-function exclusiveResultFieldCount(rows=[]){
+function exclusiveResultFieldCount(rows=[],progression={}){
   const fields=["hero_name","weapon_name","level","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"];
-  return new Set(fields.filter(field=>(Array.isArray(rows)?rows:[]).some(w=>w?.[field]!==undefined&&w?.[field]!==null&&String(w[field]).trim()!==""))).size;
+  const weaponFields=new Set(fields.filter(field=>(Array.isArray(rows)?rows:[]).some(w=>w?.[field]!==undefined&&w?.[field]!==null&&String(w[field]).trim()!=="")));
+  const progressionState=normalizeLateGameProgression(progression);
+  for(const weapon of Object.values(progressionState.heroes))for(const spec of Object.values(weapon.specializations)){
+    if(spec.level!==null||spec.locked!==null)weaponFields.add("specialization_node");
+    if(["current_bonus_all_heroes","current_bonus_this_hero","next_bonus_all_heroes","next_bonus_this_hero"].some(field=>spec[field]!==null))weaponFields.add("specialization_bonus");
+    if(spec.fragments_owned!==null||spec.fragments_required!==null)weaponFields.add("specialization_fragments");
+    if(spec.milestone_bonuses_this_hero?.length)weaponFields.add("specialization_milestone");
+  }
+  if(Object.values(progressionState.heroes).some(weapon=>weapon.base_weapon_level!==null))weaponFields.add("classic_level");
+  return weaponFields.size;
 }
 function collectExclusiveConfirmation(){
-  const rows=[];$("#exclusiveConfirmRows")?.querySelectorAll("[data-exclusive-index]").forEach(card=>{
+  const rows=[],errors=[];$("#exclusiveConfirmRows")?.querySelectorAll("[data-exclusive-index]").forEach(card=>{
     const row={},read=field=>String(card.querySelector(`[data-exclusive-field="${field}"]`)?.value||"").trim();
     const hero=canonicalHeroName(read("hero_name")),weapon=read("weapon_name");if(hero)row.hero_name=hero;if(weapon)row.weapon_name=weapon;
-    for(const field of ["level","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"]){const value=exclusiveNumber(read(field));if(value!==null)row[field]=value}
+    for(const field of ["level","hero_hp_bonus","hero_atk_bonus","hero_def_bonus","all_damage_resistance_pct","max_skill_level"]){const raw=read(field),value=exclusiveNumber(raw);if(raw&&!Number.isFinite(value)){errors.push(field);continue}if(value!==null){if(value<0||field==="level"&&(!Number.isInteger(value)||value>30)){errors.push(field);continue}row[field]=value}}
     if(Object.keys(row).length)rows.push(row);
   });
-  return rows;
+  const heroes={};
+  $("#exclusiveConfirmRows")?.querySelectorAll("[data-late-game-record]").forEach(card=>{
+    const hero=canonicalExclusiveHeroName(card.querySelector("[data-late-game-hero-select]")?.value||card.dataset.lateGameHero);if(!hero)return;
+    const weapon={specializations:{}},base=String(card.querySelector('[data-late-game-field="base_weapon_level"]')?.value||"").trim();
+    if(base){const value=exclusiveNumber(base);if(value===null||!Number.isInteger(value)||value<0||value>30)errors.push("base_weapon_level");else{weapon.base_weapon_level=value;weapon.base_weapon_evidence={source:"scan",text:"Human-reviewed capture",confidence:1}}}
+    card.querySelectorAll("[data-late-game-spec]").forEach(group=>{
+      const key=String(group.dataset.lateGameSpec||"");if(!["attack","hp","defense"].includes(key))return;
+      const spec={},read=field=>String(group.querySelector(`[data-late-game-field="${field}"]`)?.value||"").trim();
+      for(const field of ["level","current_bonus_all_heroes","current_bonus_this_hero","next_bonus_all_heroes","next_bonus_this_hero","fragments_owned","fragments_required"]){
+        const raw=read(field);if(!raw)continue;
+        const value=exclusiveNumber(raw),integer=["level","fragments_owned","fragments_required","milestone_level"].includes(field);
+        if(value===null||value<0||integer&&!Number.isSafeInteger(value)){errors.push(`${key}.${field}`);continue}
+        spec[field]=value;
+      }
+      const locked=read("locked");if(locked==="true")spec.locked=true;else if(locked==="false")spec.locked=false;
+      const milestones=[];
+      group.querySelectorAll("[data-late-game-milestone]").forEach(row=>{
+        const level=String(row.querySelector('[data-late-game-field="milestone_level"]')?.value||"").trim(),bonus=String(row.querySelector('[data-late-game-field="milestone_bonus"]')?.value||"").trim();
+        if(!level&&!bonus)return;
+        const levelValue=exclusiveNumber(level),bonusValue=exclusiveNumber(bonus);
+        if(levelValue===null||bonusValue===null||!Number.isSafeInteger(levelValue)||levelValue<0||bonusValue<0)errors.push(`${key}.milestone`);
+        else milestones.push({level:levelValue,bonus:bonusValue});
+      });
+      if(milestones.length)spec.milestone_bonuses_this_hero=milestones;
+      if(Object.keys(spec).length){spec.evidence=pendingExclusiveProgression.heroes[hero]?.specializations?.[key]?.evidence||{source:"manual",text:"Human-reviewed capture",confidence:1};weapon.specializations[key]=spec}
+    });
+    if(Object.keys(weapon.specializations).length||weapon.base_weapon_level!==undefined)heroes[hero]=weapon;
+  });
+  return {rows,lateGame:{version:1,heroes,context:{}},errors};
 }
 function saveConfirmedExclusiveScan(){
   const confirmed=collectExclusiveConfirmation(),status=$("#scanStatus"),previousState=state;
@@ -735,16 +812,20 @@ function saveConfirmedExclusiveScan(){
   if(JSON.stringify(pendingExclusiveRequest.baseReview)!==JSON.stringify(createScanReviewDraft("exclusive",state))){
     if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?"Les armes ont changé depuis le début du scan. Relance l’analyse.":"Weapons changed after scanning started. Analyze again."}return false;
   }
-  if(!confirmed.some(w=>w.hero_name||w.weapon_name||w.level!==undefined)){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_required")}return false}
-  const now=new Date().toISOString(),observed=confirmed.map(row=>stampConfirmedRecord(row,{at:now,source:"confirmed_scan"}));
-  const staged=mergeStateProtected(state,{exclusive_weapons:observed},{preferBase:false});
-  state=mergeConfirmedExclusiveWeaponPowers(staged,{weapons:observed,updatedAt:now}).state;
+  const hasWeaponRows=confirmed.rows.some(w=>w.hero_name||w.weapon_name||w.level!==undefined),
+    hasProgression=Object.keys(confirmed.lateGame.heroes).length>0;
+  if(confirmed.errors.length){if(status){status.className="notice warn";status.textContent=t("late_game_validation_error")}return false}
+  if(!hasWeaponRows&&!hasProgression){if(status){status.className="notice warn";status.textContent=t("scan_exclusive_required")}return false}
+  const now=new Date().toISOString(),observed=confirmed.rows.map(row=>stampConfirmedRecord(row,{at:now,source:"confirmed_scan"}));
+  const lateGame=confirmLateGameProgression(confirmed.lateGame,now,"scan");
+  const staged=mergeStateProtected(state,{player_id:state.player_id,exclusive_weapons:observed,late_game_progression:lateGame},{preferBase:false});
+  state=observed.length?mergeConfirmedExclusiveWeaponPowers(staged,{weapons:observed,updatedAt:now}).state:staged;
   state=repairLegacySquadIdentity(state,{now}).state;
   state.sync.last_scan=state.sync.last_scan||now;state.sync.sources={...state.sync.sources,scan:true};recordProgressionSnapshot("scan_exclusive",state.sync.last_scan);
   if(!saveState()){state=previousState;if(status){status.className="notice warn";status.textContent=t("scan_review_apply_failed")}return false}
   pendingExclusiveRequest=null;
-  pendingExclusiveScan=[];$("#exclusiveConfirmPanel")?.classList.add("hidden");invalidatePlayerAdvice({autoRefresh:true});
-  if(status){status.className="notice";status.textContent=t("scan_exclusive_confirmed")}
+  pendingExclusiveScan=[];pendingExclusiveProgression=createEmptyLateGameProgression();$("#exclusiveConfirmPanel")?.classList.add("hidden");invalidatePlayerAdvice({autoRefresh:true});
+  if(status){status.className="notice";status.textContent=t("late_game_scan_confirmed")}
   return true;
 }
 function heroConfirmOptions(selected){return [`<option value="">${esc(t("hero_choose"))}</option>`].concat(HERO_CATALOG.map(n=>`<option value="${esc(n)}"${n===selected?" selected":""}>${esc(heroDisplayName(n))}</option>`)).join("")}
@@ -2441,15 +2522,117 @@ function weaponForHero(name){
   const n=normalizedName(name);if(!n)return null;
   return (state.exclusive_weapons||[]).find(w=>normalizedName(w.hero_name)===n)||null;
 }
+function lateGameManualMarkup(){
+  const owner=pendingScanOwner();
+  if(owner!==lateGameManualOwner){lateGameManualOwner=owner;lateGameManualSelection=EXCLUSIVE_WEAPON_HERO_NAMES[0]}
+  const hero=canonicalExclusiveHeroName(lateGameManualSelection)||EXCLUSIVE_WEAPON_HERO_NAMES[0],
+    saved=normalizeLateGameProgression(state.late_game_progression).heroes[hero]||{},
+    draft=lateGameManualDrafts.get(`${owner}\u0000${hero}`)||{},
+    value=(path,fallback)=>Object.prototype.hasOwnProperty.call(draft,path)?draft[path]:fallback,
+    base=value("base_weapon_level",saved.base_weapon_level);
+  const specs=["attack","hp","defense"].map(key=>{
+    const spec=saved.specializations?.[key]||{},draftSpec=draft.specializations?.[key]||{},
+      field=(name,label,options={})=>lateGameFieldMarkup(label,name,Object.prototype.hasOwnProperty.call(draftSpec,name)?draftSpec[name]:spec[name],{...options,scope:"manual"}),
+      locked=Object.prototype.hasOwnProperty.call(draftSpec,"locked")?draftSpec.locked:spec.locked,lockValue=locked===true||locked==="true"?"true":locked===false||locked==="false"?"false":"",
+      milestones=Array.isArray(draftSpec.milestones)?draftSpec.milestones:(spec.milestone_bonuses_this_hero||[]).map(item=>({level:item.level,bonus:item.bonus})),
+      shownMilestones=milestones.length?milestones:[{}],
+      milestoneMarkup=shownMilestones.map(item=>`<div class="lateGameMilestone" data-late-game-milestone>
+        ${lateGameFieldMarkup(t("late_game_milestone_level"),"milestone_level",item.level,{integer:true,scope:"manual"})}
+        ${lateGameFieldMarkup(t("late_game_milestone_bonus"),"milestone_bonus",item.bonus,{scope:"manual"})}
+      </div>`).join("");
+    return `<fieldset class="lateGameSpec" data-late-game-spec="${key}"><legend>${esc(t(`late_game_${key}`))}</legend><div class="exclusiveConfirmGrid">
+      ${field("level",t("late_game_level"),{integer:true})}
+      <label>${esc(t("late_game_state"))}<select data-late-game-field="locked" data-late-game-scope="manual"><option value="">${esc(t("late_game_not_read"))}</option><option value="false"${lockValue==="false"?" selected":""}>${esc(t("late_game_unlocked"))}</option><option value="true"${lockValue==="true"?" selected":""}>${esc(t("late_game_locked"))}</option></select></label>
+      ${field("current_bonus_all_heroes",t("late_game_current_all"))}
+      ${field("current_bonus_this_hero",t("late_game_current_self"))}
+      ${field("next_bonus_all_heroes",t("late_game_next_all"))}
+      ${field("next_bonus_this_hero",t("late_game_next_self"))}
+      ${field("fragments_owned",t("late_game_fragments_owned"),{integer:true})}
+      ${field("fragments_required",t("late_game_fragments_required"),{integer:true})}
+    </div><div class="lateGameMilestones">${milestoneMarkup}</div></fieldset>`;
+  }).join("");
+  return `<details class="lateGameManual"${lateGameManualOpen?" open":""} data-late-game-manual><summary>${esc(t("late_game_manual_title"))}</summary>
+    <p>${esc(t("late_game_manual_help"))}</p><label>${esc(t("late_game_hero"))}<select data-late-game-manual-hero>${EXCLUSIVE_WEAPON_HERO_NAMES.map(name=>`<option value="${esc(name)}"${name===hero?" selected":""}>${esc(name)}</option>`).join("")}</select></label>
+    <div data-late-game-manual-record data-late-game-hero="${esc(hero)}" data-late-game-owner="${esc(owner)}">
+      <div class="exclusiveConfirmGrid">${lateGameFieldMarkup(t("late_game_base_level"),"base_weapon_level",base,{integer:true,max:30,scope:"manual"})}</div>${specs}
+    </div>
+    <div class="lateGameManualActions"><button type="button" class="primary" data-late-game-manual-save>${esc(t("late_game_save"))}</button><span class="lateGameManualStatus" data-late-game-manual-status role="status" aria-live="polite"></span></div>
+  </details>`;
+}
+function captureLateGameManualDraft(root){
+  const owner=pendingScanOwner(),hero=canonicalExclusiveHeroName(root?.dataset?.lateGameHero||root?.querySelector("[data-late-game-hero]")?.dataset.lateGameHero);
+  if(!hero||String(root?.dataset?.lateGameOwner||"")!==owner)return;
+  const draft={base_weapon_level:String(root.querySelector('[data-late-game-field="base_weapon_level"]')?.value||""),specializations:{}};
+  root.querySelectorAll("[data-late-game-spec]").forEach(group=>{
+    const spec={},key=String(group.dataset.lateGameSpec||"");
+    for(const input of group.querySelectorAll("[data-late-game-field]"))if(!["milestone_level","milestone_bonus"].includes(input.dataset.lateGameField))spec[input.dataset.lateGameField]=String(input.value??"");
+    spec.milestones=Array.from(group.querySelectorAll("[data-late-game-milestone]"),row=>({
+      level:String(row.querySelector('[data-late-game-field="milestone_level"]')?.value||""),
+      bonus:String(row.querySelector('[data-late-game-field="milestone_bonus"]')?.value||"")
+    }));
+    if(key)draft.specializations[key]=spec;
+  });
+  lateGameManualDrafts.set(`${owner}\u0000${hero}`,draft);
+}
+function collectLateGameManualRecord(root){
+  const errors=[],hero=canonicalExclusiveHeroName(root?.dataset?.lateGameHero||root?.querySelector("[data-late-game-hero]")?.dataset.lateGameHero);
+  if(String(root?.dataset?.lateGameOwner||"")!==pendingScanOwner())return {heroes:{},errors:["account_changed"]};
+  if(!hero)return {heroes:{},errors:["hero"]};
+  const weapon={},read=(box,field)=>String(box?.querySelector(`[data-late-game-field="${field}"]`)?.value||"").trim(),
+    base=read(root,"base_weapon_level");
+  if(base){const value=exclusiveNumber(base);if(value===null||!Number.isInteger(value)||value<0||value>30)errors.push("base_weapon_level");else{weapon.base_weapon_level=value;weapon.base_weapon_evidence={source:"manual",text:"Player-entered from visible game screen",confidence:1}}}
+  const specs={};
+  root.querySelectorAll("[data-late-game-spec]").forEach(group=>{
+    const key=String(group.dataset.lateGameSpec||"");if(!["attack","hp","defense"].includes(key))return;
+    const spec={};
+    for(const field of ["level","current_bonus_all_heroes","current_bonus_this_hero","next_bonus_all_heroes","next_bonus_this_hero","fragments_owned","fragments_required"]){
+      const raw=read(group,field);if(!raw)continue;
+      const value=exclusiveNumber(raw),integer=["level","fragments_owned","fragments_required","milestone_level"].includes(field);
+      if(value===null||value<0||integer&&!Number.isSafeInteger(value)){errors.push(`${key}.${field}`);continue}
+      spec[field]=value;
+    }
+    const locked=read(group,"locked");if(locked==="true")spec.locked=true;else if(locked==="false")spec.locked=false;
+    const milestones=[];
+    group.querySelectorAll("[data-late-game-milestone]").forEach(row=>{
+      const level=String(row.querySelector('[data-late-game-field="milestone_level"]')?.value||"").trim(),bonus=String(row.querySelector('[data-late-game-field="milestone_bonus"]')?.value||"").trim();
+      if(!level&&!bonus)return;
+      const levelValue=exclusiveNumber(level),bonusValue=exclusiveNumber(bonus);
+      if(levelValue===null||bonusValue===null||!Number.isSafeInteger(levelValue)||levelValue<0||bonusValue<0)errors.push(`${key}.milestone`);
+      else milestones.push({level:levelValue,bonus:bonusValue});
+    });
+    if(milestones.length)spec.milestone_bonuses_this_hero=milestones;
+    if(Object.keys(spec).length){spec.evidence={source:"manual",text:"Player-entered from visible game screen",confidence:1};specs[key]=spec}
+  });
+  if(Object.keys(specs).length)weapon.specializations=specs;
+  return {heroes:Object.keys(weapon).length?{[hero]:weapon}:{},errors};
+}
+function bindLateGameManual(box){
+  const details=box.querySelector("[data-late-game-manual]"),select=box.querySelector("[data-late-game-manual-hero]"),root=box.querySelector("[data-late-game-manual-record]");
+  if(details)details.addEventListener("toggle",()=>{lateGameManualOpen=details.open});
+  if(select)select.addEventListener("change",()=>{lateGameManualSelection=canonicalExclusiveHeroName(select.value)||EXCLUSIVE_WEAPON_HERO_NAMES[0];renderExclusiveWeapons()});
+  if(root)root.addEventListener("input",()=>captureLateGameManualDraft(root));
+  if(root)root.addEventListener("change",()=>captureLateGameManualDraft(root));
+  const save=box.querySelector("[data-late-game-manual-save]");
+  if(save)save.addEventListener("click",()=>{
+    const collected=collectLateGameManualRecord(root),status=box.querySelector("[data-late-game-manual-status]");
+    if(collected.errors.length||!Object.keys(collected.heroes).length){if(status)status.textContent=t(collected.errors.length?"late_game_validation_error":"late_game_no_values");return}
+    const owner=pendingScanOwner(),now=new Date().toISOString(),
+      proposed=confirmLateGameProgression({version:1,heroes:collected.heroes,context:state.late_game_progression?.context||{}},now,"manual"),
+      merged=mergeLateGameProgression(state.late_game_progression,proposed,{sameAccount:true});
+    state=mergeStateProtected(state,{player_id:state.player_id,late_game_progression:merged},{preferBase:false});
+    recordProgressionSnapshot("exclusive_manual",now);
+    if(!saveState()){if(status)status.textContent=t("scan_review_apply_failed");return}
+    lateGameManualDrafts.delete(`${owner}\u0000${lateGameManualSelection}`);
+    renderExclusiveWeapons();
+    const restored=$("#exclusiveWeaponList [data-late-game-manual-status]");
+    if(restored)restored.textContent=t("late_game_saved_local");
+  });
+}
 function renderExclusiveWeapons(){
   const box=$("#exclusiveWeaponList"),count=$("#exclusiveWeaponCount");if(!box)return;
   const list=(state.exclusive_weapons||[]).filter(w=>w&&(w.hero_name||w.weapon_name||w.level||w.power));
   if(count)count.textContent=String(list.length);
-  if(!list.length){
-    box.innerHTML=`<div class="exclusiveEmpty">${esc(t("exclusive_empty"))}</div>`;
-    return;
-  }
-  box.innerHTML=list.map(w=>{
+  const weaponMarkup=list.map(w=>{
     const title=w.weapon_name||t("exclusive_weapon");
     const hero=canonicalStoredHeroName(w.hero_name)||t("hero");
     const level=w.level?`${t("level")}${esc(w.level)}`:t("level")+"—";
@@ -2463,6 +2646,17 @@ function renderExclusiveWeapons(){
     ].filter(Boolean);
     return `<div class="exclusiveCard"><div class="exclusiveIcon">⚔️</div><div class="exclusiveMain"><b>${esc(hero)} · ${esc(title)}</b><small>${esc(level)} · ${esc(t("exclusive_power"))} ${esc(power)}</small>${stats.length?`<span>${esc(stats.join(" · "))}</span>`:""}</div></div>`;
   }).join("");
+  const confirmed=confirmedLateGameProgression(state.late_game_progression),
+    progressionCards=Object.entries(confirmed.heroes||{}).map(([hero,weapon])=>{
+      const specs=Object.entries(weapon.specializations||{}).map(([key,spec])=>{
+        const parts=[`${t("late_game_level")} ${spec.level===null?"—":spec.level}`,spec.locked===true?t("late_game_locked"):spec.locked===false?t("late_game_unlocked"):""];
+        for(const field of ["current_bonus_all_heroes","current_bonus_this_hero","next_bonus_all_heroes","next_bonus_this_hero","fragments_owned","fragments_required"])if(spec[field]!==null)parts.push(`${t(`late_game_${field}`)} ${spec[field]}`);
+        return `${t(`late_game_${key}`)}: ${parts.filter(Boolean).join(" · ")}`;
+      }).join("<br>");
+      return `<div class="exclusiveCard lateGameSavedCard"><div class="exclusiveIcon">↗</div><div class="exclusiveMain"><b>${esc(hero)} · ${esc(t("late_game_specializations"))}</b>${weapon.base_weapon_level!==null?`<small>${esc(t("late_game_base_level"))} ${weapon.base_weapon_level}/30</small>`:""}<span>${specs}</span></div></div>`;
+    }).join("");
+  box.innerHTML=`${weaponMarkup||(!progressionCards?`<div class="exclusiveEmpty">${esc(t("exclusive_empty"))}</div>`:"")}${progressionCards}${lateGameManualMarkup()}`;
+  bindLateGameManual(box);
 }
 
 function aiUiText(){const k=String(lang||"en").toLowerCase();if(k.startsWith("fr"))return {impact:"Impact",roi:"Efficacité ressources",sources:"Sources IA",meta:"Méta",why:"Pourquoi",details:"Voir les détails",evaluated:"options comparées",avoid:"À ne pas améliorer / acheter maintenant",heroes:"héros détectés",freshness:"Fraîcheur"};if(k.startsWith("es"))return {impact:"Impacto",roi:"Eficiencia de recursos",sources:"Fuentes IA",meta:"Meta",why:"Por qué",details:"Ver detalles",evaluated:"opciones comparadas",avoid:"No mejorar / comprar ahora",heroes:"héroes detectados"};if(k.startsWith("de"))return {impact:"Wirkung",roi:"Ressourceneffizienz",sources:"KI-Quellen",meta:"Meta",why:"Warum",details:"Details anzeigen",evaluated:"Optionen verglichen",avoid:"Jetzt nicht verbessern / kaufen",heroes:"erkannte Helden"};if(k.startsWith("ja"))return {impact:"効果",roi:"資源効率",sources:"AIソース",meta:"メタ",why:"理由",details:"詳細を見る",evaluated:"件を比較",avoid:"今は強化・購入しない",heroes:"検出英雄"};if(k.startsWith("zh"))return {impact:"影响",roi:"资源效率",sources:"AI来源",meta:"Meta",why:"原因",details:"查看详情",evaluated:"个方案已比较",avoid:"暂时不要升级/购买",heroes:"已识别英雄"};if(k.startsWith("ar"))return {impact:"الأثر",roi:"كفاءة الموارد",sources:"مصادر الذكاء",meta:"الميتا",why:"السبب",details:"عرض التفاصيل",evaluated:"خياراً تمت مقارنتها",avoid:"لا تطور / تشترِ الآن",heroes:"أبطال تم اكتشافهم"};return {impact:"Impact",roi:"Resource efficiency",sources:"AI sources",meta:"Meta",why:"Why",details:"View details",evaluated:"options compared",avoid:"Do not upgrade / buy now",heroes:"heroes detected",freshness:"Freshness"}}
@@ -3871,7 +4065,7 @@ function scanResultHasUsefulData(scanType,payload){
   if(type==="profile"){const p=x.player||{},a=x.alliance||{};return Boolean(p.name||p.server_id||p.coordinates||p.role||Number(p.hq_level)>0||Number(p.power_m)>0||a.tag||a.name||a.server_id)}
   if(type==="drone"){const d=x.drone||{};return Number(d.level)>0||Number(d.power_m)>0}
   const sm=type.match(/^squad([1-4])$/);if(sm){const sq=x.squads?.[Number(sm[1])-1];if(!sq)return false;if(Number(sq.power)>0)return true;return (sq.heroes||[]).some(h=>Boolean(h?.name||Number(h?.level)>=0&&h?.level!==null||Number(h?.stars)>0||Number(h?.power)>0||h?.exclusive||h?.gear))}
-  if(type==="exclusive")return Array.isArray(x.exclusive_weapons)&&x.exclusive_weapons.some(w=>w?.hero_name||w?.weapon_name||Number(w?.level)>=0&&w?.level!==null||Number(w?.power)>0);
+  if(type==="exclusive")return Array.isArray(x.exclusive_weapons)&&x.exclusive_weapons.some(w=>w?.hero_name||w?.weapon_name||Number(w?.level)>=0&&w?.level!==null||Number(w?.power)>0)||Object.keys(x?.late_game_progression?.heroes||{}).length>0;
   if(type==="awakening")return Array.isArray(x.hero_progression)&&x.hero_progression.some(h=>h?.hero_name||h?.awakening);
   if(type==="shop")return Boolean(x.shop&&(x.shop.store_type||x.shop.currency||Number(x.shop.currency_balance)>0||(x.shop.offers||[]).length));
   if(type==="vs")return Boolean(x.vs&&(x.vs.theme||x.vs.our_alliance||x.vs.opponent||Number(x.vs.our_score)>0||Number(x.vs.their_score)>0||x.vs.time_remaining_text));
@@ -4328,18 +4522,19 @@ async function analyzeExclusiveScan(){
       const message=analysisFailureMessage(j,t);
       status.className="notice warn";status.textContent=t("scan_exclusive_analysis_failed",{message});return;
     }
-    const rows=Array.isArray(j?.state?.exclusive_weapons)?j.state.exclusive_weapons:[];
-    if(!j?.state||!scanResultHasUsefulData(scanType,j.state)||!rows.length||exclusiveResultFieldCount(rows)<1){
+    const rows=Array.isArray(j?.state?.exclusive_weapons)?j.state.exclusive_weapons:[],
+      progression=normalizeLateGameProgression(j?.state?.late_game_progression);
+    if(!j?.state||!scanResultHasUsefulData(scanType,j.state)||(!rows.length&&!Object.keys(progression.heroes).length)||exclusiveResultFieldCount(rows,progression)<1){
       status.className="notice warn";status.textContent=t("scan_exclusive_no_data");return;
     }
     pendingExclusiveScannedAt=j.scanned_at||new Date().toISOString();
-    const rendered=renderExclusiveConfirmation(rows);
+    const rendered=renderExclusiveConfirmation(rows,progression);
      pendingExclusiveRequest=rendered?request:null;
     if(!rendered){
       status.className="notice warn";status.textContent=t("scan_exclusive_no_data");return;
     }
     const meta=$("#exclusiveReviewMeta");if(meta)meta.textContent=`${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(pendingExclusiveScannedAt).toLocaleString(locale||lang)}`;
-     const first=rows[0],hero=first?.hero_name||first?.weapon_name||t("exclusive_weapon"),fields=exclusiveResultFieldCount(rows);
+     const first=rows[0],hero=first?.hero_name||first?.weapon_name||Object.keys(progression.heroes)[0]||t("exclusive_weapon"),fields=exclusiveResultFieldCount(rows,progression);
      status.className="notice";
      status.textContent=t("scan_exclusive_result_ready",{hero,fields});
   }catch(error){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=analysisFailureMessage(error,t)}}

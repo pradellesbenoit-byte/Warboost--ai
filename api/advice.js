@@ -1,4 +1,5 @@
 import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
+import {confirmedLateGameProgression} from "../lib/late-game-progression.js";
 import {loadKnowledge} from "../server/_knowledge.js";
 import {scopedDiagnosticState,buildKnowledgeGuidance} from "../lib/knowledge-guidance.js";
 import {requireProductUser} from "../lib/pro-access.js";
@@ -1375,15 +1376,18 @@ export default async function handler(req,res){
     catch{return res.status(400).json({ok:false,error:"invalid_diagnostic_squad"})}
   }
   if(scope==="player"){
-    const analysis=buildPlayerAnalysis(s,loc);
-     analysis.shop=buildShopAdvice(s,loc,analysis);
+    const confirmedState={...s,late_game_progression:confirmedLateGameProgression(s.late_game_progression)};
+    const analysis=buildPlayerAnalysis(confirmedState,loc);
+     analysis.shop=buildShopAdvice(confirmedState,loc,analysis);
      analysis.last_war_rules=lastWarRuleContext();
-    analysis.seven_day_plan=buildSevenDayPlan(s,analysis);
-    analysis.cross_context=buildCrossDomain(s,loc,analysis);
-    analysis.technology_advice=buildTechnologyAdvice(s,{mainType:analysis.composition?.main_type||null});
-    analysis.global_diagnostic=buildGlobalDiagnostic(s,analysis,loc);
-    try{analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,await loadKnowledge(),req.body?.squad_id)}
-    catch{analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,{},req.body?.squad_id)}
+    analysis.seven_day_plan=buildSevenDayPlan(confirmedState,analysis);
+    analysis.cross_context=buildCrossDomain(confirmedState,loc,analysis);
+    analysis.technology_advice=buildTechnologyAdvice(confirmedState,{mainType:analysis.composition?.main_type||null});
+    analysis.late_game_progression=confirmedState.late_game_progression;
+    analysis.global_diagnostic=buildGlobalDiagnostic(confirmedState,analysis,loc);
+    const safeRawState={...rawState,late_game_progression:confirmedState.late_game_progression};
+    try{analysis.knowledge_guidance=buildKnowledgeGuidance(safeRawState,await loadKnowledge(),req.body?.squad_id)}
+    catch{analysis.knowledge_guidance=buildKnowledgeGuidance(safeRawState,{},req.body?.squad_id)}
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }

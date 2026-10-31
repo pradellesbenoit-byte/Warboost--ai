@@ -143,6 +143,19 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
 .exclusiveIcon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(145deg,#3a2e12,#172a3b);font-size:20px}
 .exclusiveMain{min-width:0}.exclusiveMain b{display:block;font-size:12px}.exclusiveMain small{display:block;margin-top:3px;font-size:10px;color:#b9c6da}.exclusiveMain span{display:block;margin-top:5px;font-size:9px;line-height:1.4;color:#8494ad}
 .exclusiveEmpty{padding:10px 11px;border-radius:12px;background:#0d1522;border:1px dashed #30405c;color:#8290a8;font-size:11px;line-height:1.4}
+.lateGameSpec,.lateGameManual{min-width:0;margin:10px 0;padding:12px;border:1px solid #33435d;border-radius:12px;background:#101a29}
+.lateGameSpec legend{padding:0 6px;color:#dce7f7;font-weight:700}
+.lateGameSpec small,.lateGameManual>p{display:block;margin:8px 0;color:#aab7cb;font-size:12px;line-height:1.5}
+.lateGameManual summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:700;color:#e5efff}
+.lateGameManual label{display:grid;gap:5px;min-width:0;color:#c4d0e2;font-size:12px}
+.lateGameManual input,.lateGameManual select,.lateGameSpec input,.lateGameSpec select{box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:9px 10px;border-radius:9px;border:1px solid #475975;background:#0a1220;color:#f2f6fc;font:inherit}
+.lateGameManualActions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px}
+.lateGameManualActions button{min-height:44px}
+.lateGameManualStatus{min-width:0;flex:1 1 180px;color:#c8d8eb;font-size:12px;line-height:1.45}
+.lateGameReviewCard h4{margin:0 0 10px;font-size:14px}
+.lateGameSavedCard .exclusiveMain{min-width:0;overflow-wrap:anywhere}
+.lateGameSavedCard .exclusiveMain span{display:block;line-height:1.6}
+@media(max-width:640px){.lateGameSpec,.lateGameManual{padding:10px}.lateGameManualActions{align-items:stretch}.lateGameManualActions button{width:100%}}
 
 /* V1.3.1 · Canonical squad labels + Skyler display name */
 .heroConfirmPanel{border:1px solid #5b4a22;background:linear-gradient(145deg,#181509,#0d1420);border-radius:16px;padding:12px;margin-top:10px}.heroConfirmRows{display:grid;gap:8px;margin:10px 0 12px}.heroConfirmRow{display:grid;grid-template-columns:34px 1fr;gap:9px;align-items:center}.heroConfirmRow>span{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#16243c;font-weight:900;color:var(--cyan)}.heroConfirmRow select{width:100%;border:1px solid #344765;background:#0c1421;color:#fff;border-radius:12px;padding:11px}.heroConfirmPanel .buttonRow{align-items:stretch}.heroConfirmPanel .primaryAction{padding:11px 12px}.exclusiveConfirmRows{display:grid;gap:10px;margin:10px 0 12px}.exclusiveConfirmCard{padding:10px;border:1px solid #2b405d;border-radius:13px;background:#0b1422}.exclusiveConfirmGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.exclusiveConfirmGrid label{display:grid;gap:4px;color:#a9bdd3;font-size:10px}.exclusiveConfirmGrid input{width:100%;border:1px solid #344765;background:#0c1421;color:#fff;border-radius:10px;padding:9px;font-size:12px}@media(max-width:420px){.exclusiveConfirmGrid{grid-template-columns:1fr}}
