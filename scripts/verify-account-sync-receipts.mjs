@@ -7,6 +7,7 @@ import {safeSaveDiagnostic} from "../lib/cloud-save-diagnostic.js";
 import {ACCOUNT_SYNC_COPY} from "../lib/account-sync-copy.js";
 import {translator} from "../i18n.js";
 import {normalizeState} from "../lib/normalize.js";
+import {syncProfileWriteConfirmed} from "../api/sync.js";
 
 let checks=0,translations=0;
 const test=(label,run)=>{run();checks++;console.log("PASS "+label)};
@@ -53,6 +54,18 @@ test("bare historical date, GET and HTTP 200 without write proof cannot create a
   for(const patch of [{code:"sync_unconfirmed"},{write_state:"unknown"},{http_status:409},{http_status:null}]){
     assert.equal(confirmedWriteReceipt({...proof,diagnostic:{...proof.diagnostic,...patch}}),null);
   }
+});
+test("sync API receipt requires the exact returned profile row, owner and valid revision",()=>{
+  const row={player_id:owner,state:{player_id:owner,squads:clone(squads)},updated_at:now};
+  assert.equal(syncProfileWriteConfirmed(row,owner),true);
+  assert.equal(syncProfileWriteConfirmed(null,owner),false);
+  assert.equal(syncProfileWriteConfirmed({...row,player_id:"other"},owner),false);
+  assert.equal(syncProfileWriteConfirmed({...row,state:{...row.state,player_id:"other"}},owner),false);
+  assert.equal(syncProfileWriteConfirmed({...row,updated_at:"invalid"},owner),false);
+  const syncSource=fs.readFileSync("api/sync.js","utf8");
+  assert.match(syncSource,/profileWrite=await saveProfileIfUnchanged/);
+  assert.match(syncSource,/profileWrite=await saveProfileForUserIfUnchanged/);
+  assert.match(syncSource,/write_confirmed:writeConfirmed/);
 });
 test("existing verified local acknowledgement upgrades without inventing a revision",()=>{
   const legacy=clone(saved);delete legacy.sync.last_confirmed_write_receipt;
@@ -196,7 +209,7 @@ test("both restoration transports guard session and use the latest own metadata"
     assert.match(source,/staleProfileRestore/);assert.match(source,/\.\.\.localSaveMetadata/);
   }
 });
-test("eight new labels resolve in all 22 languages / 23 locales",()=>{
+test("sync labels resolve in all 22 languages / 23 locales",()=>{
   for(const [code,copy] of Object.entries(ACCOUNT_SYNC_COPY)){
     for(const key of ["confirmed_label","confirmed_none","local_label","local_clear","squad_conflict","version_conflict","attempt_label","check_none"]){
       const name="account_sync_"+key;

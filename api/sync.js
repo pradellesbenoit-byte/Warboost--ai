@@ -31,6 +31,11 @@ import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/allian
 import {mergePlayerAvailabilityIntoRoster,mergeEventAvailabilities,mergeAvailabilityHistory} from "../lib/event-availability.js";
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
 void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remains exported and audited
+export function syncProfileWriteConfirmed(row,playerId){
+  return Boolean(playerId&&row&&String(row.player_id||"")===String(playerId)&&
+    row.state&&typeof row.state==="object"&&String(row.state.player_id||"")===String(playerId)&&
+    typeof row.updated_at==="string"&&Number.isFinite(Date.parse(row.updated_at)));
+}
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 async function syncHandler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   let rosterPersisted=false,rosterWriteAttempted=false;
@@ -50,7 +55,7 @@ async function syncHandler(req,res){res.setHeader("Cache-Control","no-store");if
         {configured,userConfigured,getProfile,getProfileForUser,getAllianceRoster,updateAllianceScopeRoster});
       return res.status(result.status).json(result.body);
     }
-    const userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,alliancePendingCanonical=false;
+    const userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,profileWrite=null,alliancePendingCanonical=false;
     // Personal synchronization has no legacy code requirement. Alliance paths retain their beta gate.
     if(requestedRosterSync&&!configured())throw Object.assign(new Error("Roster cloud service unavailable"),{status:503,code:"roster_cloud_service_unavailable"});
     if(configured()||userMode){
@@ -167,15 +172,16 @@ async function syncHandler(req,res){res.setHeader("Cache-Control","no-store");if
             const message=!currentAuthorization.allowed?authorizationMessage(currentAuthorization):"Le roster candidat ne correspond pas au serveur et à l’alliance canoniques, ou sa révision cloud a changé.";
             return res.status(409).json({error:"roster_canonical_persist_required",message,authorization:currentAuthorization,roster_confirmation:rosterConfirmation(),canonical_count:Array.isArray(ctx.alliance?.roster)?ctx.alliance.roster.length:0,candidate_count:Array.isArray(merged.alliance?.members)?merged.alliance.members.length:0});
           }
-        merged=applyCanonicalRenames(merged);
-        const written=await saveProfileIfUnchanged(playerId,merged,saved?.updated_at||null);saved=written||saved;await insertSnapshot(playerId,merged,provider);
+         merged=applyCanonicalRenames(merged);
+         profileWrite=await saveProfileIfUnchanged(playerId,merged,saved?.updated_at||null);saved=profileWrite||saved;await insertSnapshot(playerId,merged,provider);
       }else if(userMode){
-        const ownLink=linkCurrentPlayerIdentityIntoRoster(merged.alliance?.members,{playerId,name:merged.player?.name,serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag,activityEvents:merged.activity_events,updatedAt:now});
-        merged.alliance={...merged.alliance,members:ownLink.members,identity_link_status:ownLink.status};const written=await saveProfileForUserIfUnchanged(playerId,merged,access,saved?.updated_at||null);saved=written||saved;await insertSnapshotForUser(playerId,merged,access,provider)
+         const ownLink=linkCurrentPlayerIdentityIntoRoster(merged.alliance?.members,{playerId,name:merged.player?.name,serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag,activityEvents:merged.activity_events,updatedAt:now});
+         merged.alliance={...merged.alliance,members:ownLink.members,identity_link_status:ownLink.status};profileWrite=await saveProfileForUserIfUnchanged(playerId,merged,access,saved?.updated_at||null);saved=profileWrite||saved;await insertSnapshotForUser(playerId,merged,access,provider)
       }
     }
     const cfg={official:false,approved:false,legacy:false,authorization_status:"safe-launch-disabled",safe_launch_lock:true};
-    return res.status(200).json({ok:true,provider,provider_kind:providerKind,capabilities,sources:merged.sync.sources,roster_confirmation:rosterConfirmation(),alliance_pending_source:alliancePendingCanonical?"canonical":"unavailable",provider_config:cfg,public_config:cfg,safe_launch:true,synced_at:merged.sync.last_sync,state:merged,updated_at:saved?.updated_at||null,access_mode:userMode?"user-rls":"service"});
+     const writeConfirmed=syncProfileWriteConfirmed(profileWrite,playerId);
+     return res.status(200).json({ok:true,write_confirmed:writeConfirmed,provider,provider_kind:providerKind,capabilities,sources:merged.sync.sources,roster_confirmation:rosterConfirmation(),alliance_pending_source:alliancePendingCanonical?"canonical":"unavailable",provider_config:cfg,public_config:cfg,safe_launch:true,synced_at:merged.sync.last_sync,state:writeConfirmed?profileWrite.state:merged,updated_at:writeConfirmed?profileWrite.updated_at:saved?.updated_at||null,access_mode:userMode?"user-rls":"service"});
   }catch(e){
     const upstream=String(e.body?.code||"");
     return res.status(e.status||500).json({error:e.code||"sync_failed",

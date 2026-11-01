@@ -16,7 +16,7 @@
     "test:squad-scan-targets": "node scripts/verify-squad-scan-targets.mjs",
     "test:scan-handlers-mobile": "node --import ./scripts/fixtures/block-external-network.mjs --test scripts/verify-scan-handlers-mobile.mjs scripts/verify-portrait-review-regression.mjs",
     "test:analysis-indicator": "node scripts/verify-analysis-indicator.mjs",
-    "test:account-sync-feedback": "node scripts/verify-account-sync-feedback.mjs",
+    "test:account-sync-feedback": "node scripts/verify-account-sync-feedback.mjs && node scripts/verify-account-sync-button.mjs",
     "test:account-sync-receipts": "node scripts/verify-account-sync-receipts.mjs",
     "test:squad-review-status": "node scripts/verify-squad-review-status.mjs",
     "test:squad-comparison": "node scripts/verify-squad-comparison.mjs",

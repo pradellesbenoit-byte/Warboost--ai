@@ -966,6 +966,7 @@ function safeLaunchBetaProIncluded(){return Boolean(safeLaunchBetaMode()&&cloudS
 function proFeatureAllowed(){return betaAccessAllowed()&&betaConsentAccepted()&&proState?.active===true}
 function betaAccessMessage(){if(!cloudSession?.user)return t("beta_signin_required");if(!betaAccessAllowed())return freeAccessCopy(lang).confirmEmail;if(!betaConsentAccepted())return freeAccessCopy(lang).privacy;if(betaState.restore_error&&!cloudProfileVerified)return t("beta_restore_failed");return accountSyncMessage()}
 let accountSyncCheckBusy=false;
+let syncActionBusy=false,playerSyncActionFeedback=null;
 const accountSyncOperations=createCloudOperations();
 let accountSaveBusy=false,cloudRetryFailures=0;
 function recordAccountSyncResult(result,sessionKey,operation){
@@ -1014,6 +1015,21 @@ function accountSyncMessage(){
   const failedAttempt=view.saveKind&&view.saveKind!=="verified"?
     " · "+t("account_sync_attempt_label")+": "+t(keys[view.saveKind]||"account_sync_unconfirmed")+(attemptDate?" ("+attemptDate+")":""):"";
   return confirmedText+" · "+localText+failedAttempt+" · "+checkText+(date?" · "+t("account_sync_history",{date}):"");
+}
+function renderPlayerSyncFeedback(){
+  const note=$("#playerSyncInfo"),feedback=playerSyncActionFeedback;
+  if(!note||!feedback)return;
+  if(feedback.owner!==String(cloudSession?.user?.id||"")){playerSyncActionFeedback=null;return}
+  note.className=`notice${feedback.warn?" warn":""}`;
+  note.setAttribute?.("role","status");note.setAttribute?.("aria-live","polite");note.setAttribute?.("aria-atomic","true");
+  const parts=(Array.isArray(feedback.keys)?feedback.keys:[feedback.key]).filter(Boolean).map(key=>t(key));
+  if(feedback.rosterStatusKey)parts.push(rosterSyncCopy(lang)[feedback.rosterStatusKey]);
+  note.textContent=parts.filter(Boolean).join(" ");
+  note.classList.remove("hidden");
+}
+function showPlayerSyncFeedback(key,{warn=false,rosterStatusKey=null}={}){
+  playerSyncActionFeedback={keys:Array.isArray(key)?key:[key],warn:Boolean(warn),rosterStatusKey,owner:String(cloudSession?.user?.id||"")};
+  renderPlayerSyncFeedback();
 }
 function renderAccountSaveDiagnostic(){
   const anchor=$("#accountSyncCheckBtn")||$("#betaAccessStatus");
@@ -1383,7 +1399,7 @@ function openFreeManualScanDestination(destination,type){
   const focus=target==="account"?"#fName":target==="vs"?"#vsScoreUnknown":target==="season"?"#seasonAccessNotice":"#rosterScanDraft";
   $(focus)?.scrollIntoView({behavior:"smooth",block:"center"});
 }
-function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(lang);t=translator(lang);document.documentElement.lang=lang;document.documentElement.dir=dirFor(lang);$$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});$$('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));$$('[data-i18n-alt]').forEach(el=>el.setAttribute('alt',t(el.dataset.i18nAlt)));$$('[data-i18n-placeholder]').forEach(el=>{const text=t(el.dataset.i18nPlaceholder);el.setAttribute('placeholder',text);if(el.isContentEditable)el.setAttribute('data-placeholder',text)});const sel=$("#languageSelect");if(sel){sel.innerHTML=LANGUAGES.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=languageChoice}renderScanTypeOptions();renderClock();render();renderAuth();renderBeta();renderPro();renderVoiceSettings();renderSupportAccess();renderSupportTickets();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden")}
+function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(lang);t=translator(lang);document.documentElement.lang=lang;document.documentElement.dir=dirFor(lang);$$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});$$('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));$$('[data-i18n-alt]').forEach(el=>el.setAttribute('alt',t(el.dataset.i18nAlt)));$$('[data-i18n-placeholder]').forEach(el=>{const text=t(el.dataset.i18nPlaceholder);el.setAttribute('placeholder',text);if(el.isContentEditable)el.setAttribute('data-placeholder',text)});const sel=$("#languageSelect");if(sel){sel.innerHTML=LANGUAGES.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=languageChoice}renderScanTypeOptions();renderClock();render();renderAuth();renderBeta();renderPro();renderVoiceSettings();renderSupportAccess();renderSupportTickets();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden");renderPlayerSyncFeedback()}
 function saveState(options={}){const renderUi=options?.renderUi!==false,signedInUserId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");if(signedInUserId&&ownerId&&ownerId!==signedInUserId){if(hasMeaningfulCore(state))rememberAccountState(ownerId,state);const own=readAccountState(signedInUserId);state=hasMeaningfulCore(own)?hydrateCloudState(own,initialState(),signedInUserId):initialState();state.player_id=signedInUserId;state.sync={...state.sync,status:"waiting",last_error:"account_owner_mismatch",pending_cloud_save:false};if(renderUi)render();return false}if(signedInUserId&&!ownerId)state.player_id=signedInUserId;state=repairLegacySquadIdentity(state).state;state=backfillConfirmedHeroPowers(state).state;state.updated_at=new Date().toISOString();state.version=APP_VERSION;localStateRevision++;const localOk=safeLocalSet(STORE_KEY,JSON.stringify(state));if(!localOk)state.sync={...state.sync,status:"waiting",last_error:"local_storage_unavailable",pending_cloud_save:true};rememberLastGoodState(state,"save");if(signedInUserId&&String(state.player_id||"")===signedInUserId)rememberAccountState(signedInUserId,state);if(renderUi)render();if(options.cloudSave!==false&&!suppressPush&&hasMeaningfulCore(state))scheduleServerSave(localOk?350:0);return localOk}
 function scheduleServerSave(delay=350){cloudDirty=true;clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushServerState(),Math.max(0,Number(delay)||0))}
 function scheduleCloudRetry(delay=8000){
@@ -4092,73 +4108,128 @@ $("#saveProfileBtn").addEventListener("click",async()=>{
 });
 
 async function syncAll(){
-  if(!requireBetaAccess()||!requireBetaConsent())return;
-  if(rosterImportInFlight)return;
-  const rosterPending=state.alliance?.roster_sync_status==="pending";
-  const requestOwner=String(cloudSession?.user?.id||"");
   const btns=[$("#syncAllBtn"),$("#syncPlayerBtn")].filter(Boolean);
+  if(syncActionBusy||rosterImportInFlight){showPlayerSyncFeedback("account_sync_action_busy",{warn:true});return}
+  syncActionBusy=true;showPlayerSyncFeedback("account_sync_action_checking");
   btns.forEach(b=>{b.disabled=true;b.textContent=t("syncing")});
-  const finishLoading=analysisIndicator.begin("sync",{targets:btns});
+  let finishLoading=()=>{};
+  try{finishLoading=analysisIndicator.begin("sync",{targets:btns})}catch{}
+  let requestOwner="",requestSession="",operation=null,rosterPending=false,syncRevision=0;
+  let syncStarted=Date.now(),correlationId="";
   try{
-    if(!rosterPending&&!hasMeaningfulCore(state)&&cloudSession?.access_token){
+    if(navigator.onLine===false){showPlayerSyncFeedback("account_sync_network",{warn:true});return}
+    requestOwner=String(cloudSession?.user?.id||"");
+    if(!requestOwner||!cloudSession?.access_token){
+      showPlayerSyncFeedback("account_sync_auth",{warn:true});openDrawer("account");return;
+    }
+    if(String(state?.player_id||"")!==requestOwner){
+      showPlayerSyncFeedback("account_sync_owner_mismatch",{warn:true});return;
+    }
+    if(!requireBetaAccess()){
+      showPlayerSyncFeedback("account_sync_forbidden",{warn:true});return;
+    }
+    if(!requireBetaConsent()){
+      showPlayerSyncFeedback("account_sync_forbidden",{warn:true});return;
+    }
+    rosterPending=state.alliance?.roster_sync_status==="pending";
+    if(!rosterPending&&!hasMeaningfulCore(state)){
       const recovered=await reconcileAuthenticatedRuntime("manual-sync",{force:true});
+      if(String(cloudSession?.user?.id||"")!==requestOwner||String(state?.player_id||"")!==requestOwner){
+        showPlayerSyncFeedback("account_sync_owner_mismatch",{warn:true});return;
+      }
       if(!recovered?.ok||!hasMeaningfulCore(state)){
-        const note=$("#playerSyncInfo");
-        if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("offline_keep")}
-        scheduleCloudPullRetry();return;
+        showPlayerSyncFeedback("account_sync_unconfirmed",{warn:true});return;
       }
     }
-    const userId=requestOwner,syncRevision=localStateRevision;
-    if(!userId||String(state.player_id||"")!==userId)return;
+    syncRevision=localStateRevision;
     if(rosterPending){
-      const reply=await persistRosterCandidate(state);
-      state=adoptRosterOnlyReply(state,reply,{changedDuringSync:localStateRevision!==syncRevision});
-      saveState({cloudSave:false});render();
-      $("#playerSyncInfo").textContent=state.alliance.roster_sync_status==="pending"?
-        rosterSyncCopy(lang).pending:t("safe_sync_done");
-      return; // A roster retry never submits or marks the personal profile as saved.
-    }
-    const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({operation:"player_sync",state,locale:lang,base_updated_at:cloudRevision,base_roster_updated_at:state.alliance?.roster_updated_at||null})},20000);
-    if(String(cloudSession?.user?.id||"")!==userId)return;
-    if(j?.state?.player_id&&String(j.state.player_id)!==userId)throw new Error("profile_owner_mismatch");
-    if(rosterPending&&(!r.ok||!rosterReplyConfirmed(j)))throw Object.assign(new Error("roster_sync_failed"),
-      safeRosterDiagnostic({code:!r.ok?j?.error:"roster_sync_unconfirmed"},r,j));
-    if(r.ok&&j.state){
-      cloudRevision=j.updated_at||cloudRevision;
-      const remote=hydrateCloudState(j.state,initialState(),userId),changedDuringSync=localStateRevision!==syncRevision;
-      let merged=mergeStateProtected(state,remote,{preferBase:changedDuringSync});
-      const squadResult=reconcileCloudSquads(state,remote,merged);merged=squadResult.state;
-      try{state=repairLegacySquadIdentity(merged).state}catch{state=merged}
-      state=adoptCanonicalPendingAccounts(state,remote,{available:j.alliance_pending_source==="canonical"});
-      const pending=changedDuringSync||squadResult.localNewer.length>0||squadResult.conflicts.length>0;
-      state.sync={...state.sync,status:pending?"waiting":"ok",provider:j.provider||state.sync.provider||"warboost-local",provider_kind:j.provider_kind||state.sync.provider_kind||"local",capabilities:j.capabilities||state.sync.capabilities||[],last_sync:j.synced_at||new Date().toISOString(),last_error:squadResult.conflicts.length?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(pending),sources:{...state.sync.sources,...j.sources}};
-      saveState();$("#playerSyncInfo").textContent=t(pending?"offline_keep":"safe_sync_done");
-    }else if(r.status===409&&(j?.error==="profile_write_conflict"||j?.error==="squad_freshness_ambiguous")){
-      const remote=j?.state?hydrateCloudState(j.state,initialState(),userId):null;
-      if(remote){
-        const merged=mergeStateProtected(remote,state,{preferBase:false});
-        state=reconcileCloudSquads(state,remote,merged).state;
-        state=adoptCanonicalPendingAccounts(state,remote,{available:false});
+      try{
+        const reply=await persistRosterCandidate(state);
+        if(String(cloudSession?.user?.id||"")!==requestOwner||String(state?.player_id||"")!==requestOwner){
+          showPlayerSyncFeedback("account_sync_owner_mismatch",{warn:true});return;
+        }
+        state=adoptRosterOnlyReply(state,reply,{changedDuringSync:localStateRevision!==syncRevision});
+        const locallySaved=saveState({cloudSave:false});render();
+        showPlayerSyncFeedback(state.alliance.roster_sync_status==="synced"?
+          ["account_sync_action_roster_confirmed_profile_pending","account_sync_retry",...(locallySaved?[]:["scan_pending_local_failed"])]:
+          ["account_sync_action_roster_pending_profile_pending","account_sync_retry",...(locallySaved?[]:["scan_pending_local_failed"])],{warn:true});
+      }catch(error){
+        if(String(cloudSession?.user?.id||"")!==requestOwner||String(state?.player_id||"")!==requestOwner){
+          showPlayerSyncFeedback("account_sync_owner_mismatch",{warn:true});return;
+        }
+        const diagnostic=recordRosterDiagnostic(safeRosterDiagnostic(error)),copy=rosterSyncCopy(lang);
+        state.alliance.roster_sync_status="pending";state.alliance.roster_sync_error=copy[rosterFailureKind(diagnostic)];
+        state.sync={...state.sync,last_error:diagnostic.code,status:"waiting",pending_cloud_save:true};
+        const locallySaved=saveState({cloudSave:false}),failureKind=rosterFailureKind(diagnostic);
+        showPlayerSyncFeedback(["account_sync_action_profile_pending","account_sync_retry",...(locallySaved?[]:["scan_pending_local_failed"])],{warn:true,rosterStatusKey:failureKind});
+        renderRosterSyncDiagnostic($("#playerSyncInfo"));
       }
-      cloudRevision=j?.updated_at||null;state.sync.last_error=j.error;state.sync.status="waiting";state.sync.pending_cloud_save=true;saveState();scheduleCloudRetry(250);
-    }else{
-      state.sync.last_error=j.message||j.error||t("hybrid_no_public");state.sync.status="waiting";saveState();
+      return; // Alliance roster acknowledgement never confirms a personal-profile write.
     }
-   }catch(error){
-     if(requestOwner&&requestOwner===String(cloudSession?.user?.id||"")&&String(state?.player_id||"")===requestOwner){
-       if(rosterPending){
-         const diagnostic=recordRosterDiagnostic(safeRosterDiagnostic(error)),copy=rosterSyncCopy(lang);
-         state.alliance.roster_sync_status="pending";state.alliance.roster_sync_error=copy[rosterFailureKind(diagnostic)];
-         state.sync.last_error=diagnostic.code;state.sync.status="waiting";
-         const saved=saveState({cloudSave:false}),note=$("#playerSyncInfo");
-         if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=[saved?copy.pending:copy.storage,state.alliance.roster_sync_error,copy.partial,copy.refresh].join(" ");renderRosterSyncDiagnostic(note)}
-       }else{state.sync.last_error=t("offline_keep");state.sync.status="offline";saveState()}
-     }
+    syncStarted=Date.now();correlationId=newSaveCorrelation();
+    requestSession=sessionApplyKey(cloudSession);operation=accountSyncOperations.begin(requestSession,"save");
+    const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({operation:"player_sync",state,locale:lang,base_updated_at:cloudRevision,base_roster_updated_at:state.alliance?.roster_updated_at||null})},20000);
+    if(String(cloudSession?.user?.id||"")!==requestOwner||sessionApplyKey(cloudSession)!==requestSession||String(state?.player_id||"")!==requestOwner){
+      showPlayerSyncFeedback("account_sync_owner_mismatch",{warn:true});return;
+    }
+    if(j?.state?.player_id&&String(j.state.player_id)!==requestOwner){
+      showPlayerSyncFeedback("account_sync_owner_mismatch",{warn:true});return;
+    }
+    if(!r.ok){
+      const kind=accountSyncErrorKind({status:r.status,code:j?.error||j?.code,online:navigator.onLine});
+      const code=publicSaveError({code:j?.error||j?.code},r.status);
+      const diagnostic=createSaveDiagnostic({endpoint:"/api/sync",stage:"response",status:r.status,code,correlationId,started:syncStarted});
+      recordAccountSyncResult({kind,diagnostic},requestSession,operation);
+      state.sync={...state.sync,status:"waiting",last_error:kind==="conflict"?(j?.error==="squad_freshness_ambiguous"?"squad_freshness_ambiguous":"profile_write_conflict"):`sync_${kind}`,pending_cloud_save:true};
+      const locallySaved=saveState({cloudSave:false});renderProvider();
+      showPlayerSyncFeedback([kind==="auth"?"account_sync_auth":kind==="forbidden"?"account_sync_forbidden":`account_sync_${kind}`,
+        ...(["network","timeout","conflict","server","unconfirmed"].includes(kind)?["account_sync_retry"]:[]),...(locallySaved?[]:["scan_pending_local_failed"])],{warn:true});
+      if(kind==="auth")openDrawer("account");
+      return;
+    }
+    if(!verifiedAccountWriteReply(j,requestOwner)){
+      const diagnostic=createSaveDiagnostic({endpoint:"/api/sync",stage:"response",status:r.status,code:"sync_unconfirmed",correlationId,started:syncStarted});
+      recordAccountSyncResult({kind:"unconfirmed",diagnostic},requestSession,operation);
+      state.sync={...state.sync,status:"waiting",last_error:"sync_unconfirmed",pending_cloud_save:true};
+      const locallySaved=saveState({cloudSave:false});renderProvider();
+      showPlayerSyncFeedback(["account_sync_action_profile_pending","account_sync_retry",...(locallySaved?[]:["scan_pending_local_failed"])],{warn:true});return;
+    }
+    const remote=hydrateCloudState(j.state,initialState(),requestOwner),changedDuringSync=localStateRevision!==syncRevision;
+    let merged=mergeStateProtected(state,remote,{preferBase:changedDuringSync});
+    const squadResult=reconcileCloudSquads(state,remote,merged);merged=squadResult.state;
+    try{state=repairLegacySquadIdentity(merged).state}catch{state=merged}
+    state=adoptCanonicalPendingAccounts(state,remote,{available:j.alliance_pending_source==="canonical"});
+    state.player_id=requestOwner;cloudRevision=j.updated_at;cloudProfileVerified=true;
+    const pending=changedDuringSync||squadResult.localNewer.length>0||squadResult.conflicts.length>0;
+    state.sync={...state.sync,status:pending?"waiting":"ok",provider:j.provider||state.sync.provider||"warboost-local",provider_kind:j.provider_kind||state.sync.provider_kind||"local",capabilities:j.capabilities||state.sync.capabilities||[],last_sync:j.synced_at||j.updated_at,last_error:squadResult.conflicts.length?"squad_freshness_ambiguous":pending?"local_state_changed_during_sync":null,pending_cloud_save:Boolean(pending),sources:{...state.sync.sources,...j.sources}};
+    cloudDirty=Boolean(pending);
+    const diagnostic=createSaveDiagnostic({endpoint:"/api/sync",stage:"response",status:r.status,code:"save_confirmed",writeState:"confirmed",correlationId,started:syncStarted});
+    recordAccountSyncResult({kind:"verified",revision:j.updated_at,at:j.updated_at,diagnostic},requestSession,operation);
+    const locallySaved=saveState({cloudSave:false});renderProvider();
+    const feedbackKeys=pending?["account_sync_action_write_confirmed","account_sync_action_profile_pending","account_sync_retry"]:
+      locallySaved?["account_sync_action_write_confirmed"]:["account_sync_action_write_confirmed","scan_pending_local_failed"];
+    showPlayerSyncFeedback(feedbackKeys,{warn:pending||!locallySaved});
+  }catch(error){
+    if(requestOwner&&String(cloudSession?.user?.id||"")!==requestOwner){
+      showPlayerSyncFeedback("account_sync_owner_mismatch",{warn:true});
+    }else if(requestOwner&&String(state?.player_id||"")===requestOwner){
+      const status=error?.status||error?.http_status||null,kind=accountSyncErrorKind({status,code:error?.code||error?.name||error?.message,online:navigator.onLine});
+      if(operation&&requestSession)recordAccountSyncResult({kind,diagnostic:createSaveDiagnostic({endpoint:"/api/sync",stage:"client_transport",status,code:publicSaveError({code:error?.code||error?.name},status||500),correlationId,started:syncStarted})},requestSession,operation);
+      state.sync={...state.sync,status:"waiting",last_error:`sync_${kind}`,pending_cloud_save:true};
+      const locallySaved=saveState({cloudSave:false});renderProvider();
+      showPlayerSyncFeedback([kind==="auth"?"account_sync_auth":kind==="forbidden"?"account_sync_forbidden":`account_sync_${kind}`,
+        ...(["network","timeout","conflict","server","unconfirmed"].includes(kind)?["account_sync_retry"]:[]),...(locallySaved?[]:["scan_pending_local_failed"])],{warn:true});
+      if(kind==="auth")openDrawer("account");
+    }else{
+      showPlayerSyncFeedback("account_sync_unconfirmed",{warn:true});
+    }
   }finally{
-    finishLoading();btns.forEach((b,i)=>{b.disabled=false;b.textContent=i===0?t("public_refresh"):t("public_button")});
+    try{finishLoading()}catch{}
+    syncActionBusy=false;btns.forEach((b,i)=>{b.disabled=false;b.textContent=i===0?t("public_refresh"):t("public_button")});
   }
 }
-$("#syncAllBtn").addEventListener("click",syncAll);$("#syncPlayerBtn").addEventListener("click",syncAll);
+$("#syncAllBtn").addEventListener("click",syncAll);
+$("#syncPlayerBtn").addEventListener("click",syncAll);
 $("#openScanBtn").addEventListener("click",()=>openQuickScan("profile"));$("#scanPlayerBtn").addEventListener("click",()=>openQuickScan(playerOnboardingStatus().next_type||"profile"));$("#playerOnboardingScanBtn")?.addEventListener("click",e=>openQuickScan(e.currentTarget?.dataset?.nextScan||playerOnboardingStatus().next_type||"profile"));$("#quickProfileScanBtn")?.addEventListener("click",()=>openQuickScan("profile"));$("#quickSquadScanBtn")?.addEventListener("click",()=>{const strongest=strongestSquadFromState(state);openQuickScan(`squad${strongest.id||1}`)});$("#quickDroneScanBtn")?.addEventListener("click",()=>openQuickScan("drone"));$("#scanShopBtn")?.addEventListener("click",()=>openQuickScan("shop"));$("#scanVsBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#vsStartScanBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#scanSeasonBtn")?.addEventListener("click",()=>openQuickScan("season"));
 
 function beginActiveLoadingOperation(kind="scan"){

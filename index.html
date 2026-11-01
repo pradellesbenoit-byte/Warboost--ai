@@ -160,7 +160,8 @@
     <div id="squadList"></div>
     <section id="playerTechnologyManual" class="section technologyManual" aria-label="Technologie"></section>
     <section id="playerTechnologyAdvisor" class="section technologyAdvisor" aria-live="polite"></section>
-    <div class="buttonRow"><button id="scanPlayerBtn" class="secondaryBtn" data-i18n="scan_button">📷 WarBoost Scan</button><button id="syncPlayerBtn" class="secondaryBtn" data-i18n="public_button">🌐 Synchroniser WarBoost</button></div>
+    <div class="buttonRow"><button id="scanPlayerBtn" class="secondaryBtn" data-i18n="scan_button">📷 WarBoost Scan</button><button id="syncPlayerBtn" class="secondaryBtn" type="button" data-i18n="public_button">🌐 Synchroniser WarBoost</button></div>
+    <div id="playerSyncInfo" class="notice" role="status" aria-live="polite" aria-atomic="true" style="margin-top:10px" data-i18n="player_sync_note">Tes valeurs manuelles restent protégées. Un scan plus récent remplace uniquement les champs qu'il peut lire avec confiance.</div>
     <div id="playerProgressionSection" class="section progressionSection" style="margin-top:10px">
       <div class="sectionTitle"><h3>📈 <span data-i18n="progression_title">Progression</span></h3><span id="progressionFreshness" class="pill">—</span></div>
       <div id="progressionSummary" class="progressionSummary"></div>
@@ -181,8 +182,7 @@
        <button id="playerAvailabilitySaveBtn" class="primaryAction wideBtn" type="button" data-i18n="availability_save">Enregistrer ma disponibilité</button>
        <div id="playerAvailabilityStatusMessage" class="notice hidden" role="status" aria-live="polite" style="margin-top:8px"></div>
      </div>
-    <button id="playerAdviceBtn" class="secondaryBtn wideBtn" data-i18n="ai_priority">Priorité IA PRO</button>
-    <div id="playerSyncInfo" class="notice" style="margin-top:10px" data-i18n="player_sync_note">Tes valeurs manuelles restent protégées. Un scan plus récent remplace uniquement les champs qu'il peut lire avec confiance.</div>
+     <button id="playerAdviceBtn" class="secondaryBtn wideBtn" data-i18n="ai_priority">Priorité IA PRO</button>
     <section id="proPriorityPanel" class="section proPriorityPanel hidden" style="margin-top:10px">
       <details id="proDiagnosticDisclosure" class="proDisclosure" data-pro-disclosure="diagnostic" open>
       <summary class="sectionTitle proDisclosureHeader"><h3 data-i18n="pro_diagnostic">Diagnostic PRO</h3><span id="proConfidence" class="pill">—</span><span class="proDisclosureChevron" aria-hidden="true">›</span></summary>

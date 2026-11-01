@@ -12,16 +12,21 @@ const check=(name,fn)=>{fn();checks++;console.log("PASS "+name)};
 const stamp="2026-10-14T18:20:00.000Z",privateText="PRIVATE_SQL token=PRIVATE email@example.test signed=https://private.invalid";
 check("diagnostic whitelist removes raw SQL, identifiers, credentials, URL and payload",()=>{
   const result=safeSaveDiagnostic({...createSaveDiagnostic({code:"database_permissions_missing"}),
-    token:privateText,email:privateText,player_id:privateText,profile:{privateText},message:privateText,
-    endpoint:privateText,url:privateText,body:privateText});
+    token:privateText,email:privateText,player_id:privateText,profile:{privateText},message:privateText,url:privateText,body:privateText});
   assert.deepEqual(Object.keys(result).sort(),["endpoint","method","stage","http_status","code","at","correlation_id","write_state","duration_ms"].sort());
   assert.doesNotMatch(JSON.stringify(result),/PRIVATE|@|signed|token|player_id|https:/);
+  assert.equal(safeSaveDiagnostic({...result,endpoint:privateText}),null);
   assert.equal(safeSaveDiagnostic({...result,correlation_id:privateText}),null);
   assert.equal(safeSaveDiagnostic({...result,stage:privateText}),null);
   assert.equal(safeSaveDiagnostic({...result,code:privateText}),null);
 });
 check("correlation IDs are independently random, not derived from accounts",()=>{
   assert.notEqual(newSaveCorrelation(),newSaveCorrelation());
+});
+check("diagnostics accept only the known profile and sync write endpoints",()=>{
+  const sync=createSaveDiagnostic({endpoint:"/api/sync",stage:"response",status:200,code:"save_confirmed",writeState:"confirmed"});
+  assert.equal(sync.endpoint,"/api/sync");
+  assert.equal(safeSaveDiagnostic({...sync,endpoint:"/api/scan"}),null);
 });
 
 // No actual Supabase calls: every request must target this synthetic host.
