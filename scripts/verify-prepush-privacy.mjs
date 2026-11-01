@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {readFile} from "node:fs/promises";
+import {prepushPrivacyBaseRef} from "./prepush-privacy-branch-policy.mjs";
 
 // Read-only audit of objects reachable from this branch but not its remote base.
 // Never scans local backups, credentials, production data or other branches.
 const git=(...args)=>execFileSync("git",["--no-optional-locks",...args],{encoding:"utf8"});
-assert.equal(git("branch","--show-current").trim(),"public-beta-safe-launch");
-const base=git("rev-parse","origin/public-beta-safe-launch").trim();
+const branch=git("branch","--show-current").trim();
+const baseRef=prepushPrivacyBaseRef(branch);
+const base=git("rev-parse",baseRef).trim();
 git("merge-base","--is-ancestor",base,"HEAD");
 const commits=git("rev-list",`${base}..HEAD`).trim().split(/\s+/).filter(Boolean);
 const forbidden=/^(?:attached_assets\/|\.local\/private-(?:git-backups|scan-captures)\/|generated-artifacts\/)/;

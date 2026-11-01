@@ -38,6 +38,11 @@
 .technologyAdvisorMax ul,.technologyAdvisorLocked ul{margin-block:7px 0;padding-inline-start:1.25em}
 .technologyAdvisorDisclaimer{font-size:.82em;color:var(--muted,#b9cadc)}
 .technologyAdvisorDisclosure[dir="rtl"]{direction:rtl;text-align:start}
+.technologyAdvisorProLock{margin:8px 0;padding:12px;border:1px solid var(--line,#506078);border-radius:12px;background:rgba(12,19,33,.8);line-height:1.5}
+.technologyAdvisorProLock p{margin:8px 0 0}
+.scanManualFallback{margin-top:10px;padding:12px;border:1px solid var(--line,#506078);border-radius:12px;background:rgba(12,19,33,.72);line-height:1.5}
+.scanManualFallback p{margin:0 0 10px;overflow-wrap:anywhere}
+.scanManualFallback button{min-height:44px}
 @media(prefers-reduced-motion:reduce){.technologyAdvisorChevron{transition:none}}
 /* Autonomous workspace forms: labels must not inherit compact inline layouts. */
 #freeFounderPanel label{display:block;position:static;float:none;width:100%;height:auto;white-space:normal;margin-block:12px 8px;line-height:1.5}

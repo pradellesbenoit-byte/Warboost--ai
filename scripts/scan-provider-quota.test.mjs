@@ -4,6 +4,7 @@ import vm from "node:vm";
 import handler,{validateScanImageBatch} from "../api/scan.js";
 import {requirePersonalScanUser} from "../lib/personal-scan-access.js";
 import {controlledVisionRequested,authorizeControlledVision} from "../server/_controlled-vision.js";
+import {createScanAbuseGuard} from "../lib/scan-abuse-guard.js";
 
 // Execute the complete current handler, not a second implementation of its
 // sequence. Only dependencies are replaced; no environment credentials or HTTP.
@@ -71,21 +72,19 @@ function fixture({pro=false,provider=null,authError=null,reserved=true,throttled
 }
 
 for(const pro of [false,true]){
-  test(`actual handler: missing provider returns 503 after auth/consent, no ${pro?"PRO":"FREE"} quota`,async()=>{
+  test(`actual handler: ${pro?"PRO":"FREE"} scan stays manual-only with no provider`,async()=>{
     const f=fixture({pro}),result=await f.execute();
-    assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_NOT_CONFIGURED");
-    assert.equal(result.body.error,"scan_provider_unavailable");
-    assert.equal(result.body.quota_reserved,false);
+    assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_MANUAL_ONLY");
     assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
-    assert.ok(f.events.indexOf("auth")<f.events.indexOf("config:OPENAI_API_KEY"));
+    assert.ok(f.events.includes("auth"));
+    assert.equal(f.events.some(event=>event.startsWith("config:")),false);
   });
   for(const provider of ["openai","custom"]){
-    test(`actual handler: ${pro?"verified historical PRO":"FREE"} with ${provider} retains quota policy`,async()=>{
+    test(`actual handler: ${pro?"verified historical PRO":"FREE"} ignores configured ${provider} provider`,async()=>{
       const f=fixture({pro,provider}),result=await f.execute();
-      assert.equal(result.status,200);
-      assert.equal(f.reservations.length,pro?0:1);assert.equal(f.calls.length,1);
-      if(!pro)assert.ok(f.events.indexOf("config:OPENAI_API_KEY")<f.events.indexOf("quota"));
-      assert.ok(f.events.includes("release"));
+      assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_MANUAL_ONLY");
+      assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
+      assert.equal(f.events.includes("provider"),false);
     });
   }
 }
@@ -104,25 +103,34 @@ test("actual handler: invalid request and HTTP method do not authorize, reserve 
     assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
   }
 });
-test("actual handler: declared R5 is not PRO; restricted scan remains forbidden",async()=>{
+test("actual handler: declared R5 cannot enable automatic roster extraction",async()=>{
   const f=fixture();f.req.body.scan_type="alliance_roster";const result=await f.execute();
-  assert.equal(result.status,403);assert.equal(result.body.code,"PRO_REQUIRED");
+  assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_MANUAL_ONLY");
   assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
 });
-test("actual handler: denied account/IP/global reservation stops AI",async()=>{
+test("actual handler: manual-only capture never reserves an account/IP/global scan quota",async()=>{
   const f=fixture({provider:"custom",reserved:false}),result=await f.execute();
-  assert.equal(result.status,429);assert.equal(result.body.code,"FREE_SCAN_QUOTA_EXCEEDED");
-  assert.equal(f.reservations.length,1);assert.equal(f.calls.length,0);
+  assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_MANUAL_ONLY");
+  assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
 });
-test("actual handler: concurrency throttle still blocks AI and supplies Retry-After",async()=>{
+test("manual-only capture cannot call AI; the bounded abuse guard still limits bursts and concurrency",async()=>{
   const f=fixture({provider:"custom",throttled:true}),result=await f.execute();
-  assert.equal(result.status,429);assert.equal(result.body.code,"SCAN_RATE_LIMITED");
-  assert.equal(result.headers["Retry-After"],"2");assert.equal(f.calls.length,0);
+  assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_MANUAL_ONLY");
+  assert.equal(f.calls.length,0);assert.equal(f.events.includes("throttle"),false);
+  const guard=createScanAbuseGuard({windowMs:1_000,maxBurst:2,maxConcurrent:1,requestTimeoutMs:500});
+  const first=guard.acquire("synthetic-player",10_000);
+  assert.equal(first.allowed,true);
+  assert.equal(guard.acquire("synthetic-player",10_001).allowed,false);
+  first.release();
+  const second=guard.acquire("synthetic-player",10_001);
+  assert.equal(second.allowed,true);
+  assert.equal(guard.acquire("synthetic-player",10_002).allowed,false);
+  second.release();
 });
-test("actual handler: provider failure after reservation is not refunded or retried",async()=>{
+test("actual handler: configured provider failures are unreachable and never reserved or retried",async()=>{
   const f=fixture({provider:"openai",providerFails:true}),result=await f.execute();
-  assert.equal(result.status,503);assert.equal(result.body.code,"VISION_HTTP_ERROR");
-  assert.equal(f.reservations.length,1);assert.equal(f.calls.length,1);
+  assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_MANUAL_ONLY");
+  assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
 });
 test("actual quota helper: failed provider preflight cannot consume FREE quota",async()=>{
   let consumed=0,preflight=0;
@@ -131,14 +139,13 @@ test("actual quota helper: failed provider preflight cannot consume FREE quota",
     entitlement:async()=>({active:false}),
     consume:async()=>{consumed++;return {reserved:true}},
     beforeScan:()=>{preflight++;throw Object.assign(new Error("No provider"),{code:"SCAN_NOT_CONFIGURED",status:503})}
-  }),{code:"SCAN_NOT_CONFIGURED"});
-  assert.equal(preflight,1);assert.equal(consumed,0);
+  }),{code:"SCAN_MANUAL_ONLY",status:503,quota_reserved:false});
+  assert.equal(preflight,0);assert.equal(consumed,0);
 });
-test("late SCAN_NOT_CONFIGURED after a configured provider returns empty never claims no debit",async()=>{
+test("configured provider returning empty is unreachable and no scan quota is debited",async()=>{
   const f=fixture({provider:"openai",providerEmpty:true}),result=await f.execute();
-  assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_NOT_CONFIGURED");
-  assert.equal(Object.hasOwn(result.body,"quota_reserved"),false);
-  assert.equal(f.reservations.length,1);
+  assert.equal(result.status,503);assert.equal(result.body.code,"SCAN_MANUAL_ONLY");
+  assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
 });
 
 for(const controlledFlag of ["off","on",""]){
@@ -150,13 +157,11 @@ for(const controlledFlag of ["off","on",""]){
         const result=await f.execute();
         assert.equal(f.events.includes("controlled"),false);
         assert.equal(f.events.includes("auth"),true);
-        assert.equal(result.status,provider?200:503);
-        if(!provider){
-          assert.equal(result.body.code,"SCAN_NOT_CONFIGURED");
-          assert.equal(result.body.quota_reserved,false);
-        }
-        assert.equal(f.reservations.length,provider&&!pro?1:0);
-        assert.equal(f.calls.length,provider?1:0);
+        assert.equal(result.status,503);
+        assert.equal(result.body.code,"SCAN_MANUAL_ONLY");
+        assert.equal(f.reservations.length,0);
+        assert.equal(f.calls.length,0);
+        assert.equal(f.events.some(event=>event.startsWith("config:")),false);
       }
     });
   }
@@ -170,16 +175,20 @@ for(const controlledFlag of ["off","on",""]){
       assert.equal(f.reservations.length,0);assert.equal(f.calls.length,0);
     });
   }
-  test(`ordinary quota/rank/rate protections remain: flag=${JSON.stringify(controlledFlag)}`,async()=>{
+  test(`ordinary requests stay manual-only regardless of quota, declared rank, or provider flag=${JSON.stringify(controlledFlag)}`,async()=>{
     const quota=fixture({controlledFlag,provider:"openai",reserved:false});
-    assert.equal((await quota.execute()).body.code,"FREE_SCAN_QUOTA_EXCEEDED");
+    const quotaResult=await quota.execute();
+    assert.equal(quotaResult.status,503);assert.equal(quotaResult.body.code,"SCAN_MANUAL_ONLY");
+    assert.equal(quota.reservations.length,0);
     assert.equal(quota.calls.length,0);
     const rank=fixture({controlledFlag,provider:"openai"});
     rank.req.body.scan_type="alliance_roster";
-    assert.equal((await rank.execute()).body.code,"PRO_REQUIRED");
+    const rankResult=await rank.execute();
+    assert.equal(rankResult.status,503);assert.equal(rankResult.body.code,"SCAN_MANUAL_ONLY");
     assert.equal(rank.reservations.length,0);assert.equal(rank.calls.length,0);
     const rate=fixture({controlledFlag,provider:"openai",throttled:true});
-    assert.equal((await rate.execute()).body.code,"SCAN_RATE_LIMITED");
+    const rateResult=await rate.execute();
+    assert.equal(rateResult.status,503);assert.equal(rateResult.body.code,"SCAN_MANUAL_ONLY");
     assert.equal(rate.calls.length,0);
   });
 }

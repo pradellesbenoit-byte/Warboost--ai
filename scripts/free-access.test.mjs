@@ -107,25 +107,51 @@ test("no-alliance onboarding and two servers are accepted",()=>{
   for(const server_id of ["884","885"])assert.equal(validPlayerIdentity({name:"Player",server_id,alliance_tag:""}),true);
   assert.equal(validPlayerIdentity({name:"Player",server_id:"0",alliance_tag:""}),false);
 });
-for(const type of ["profile","squad1","squad2","squad3","squad4","technology","drone","exclusive"]){
-  test(`FREE personal ${type} reserves a persistent quota`,async()=>{
-    let count=0;
-    const result=await requirePersonalScanUser({body:{scan_type:type}},{...basic,consume:async(name,body)=>{
-      assert.equal(name,"wb1_reserve_free_scan_v2");assert.equal(body.p_user_id,verified.id);assert.equal(body.p_ip_digest,"a".repeat(64));count++;return {reserved:true};
-    }});
-    assert.equal(result.user.id,verified.id);assert.equal(count,1);
+for(const type of ["profile","squad1","squad2","squad3","squad4","technology","drone","exclusive","exclusive_weapon","awakening","shop","vs","season","alliance_roster"]){
+  test(`FREE ${type} capture authenticates then stays manual without quota/provider`,async()=>{
+    const events=[];
+    await assert.rejects(requirePersonalScanUser({body:{scan_type:type}},{
+      authorize:async(_req,options)=>{events.push("auth");assert.equal(options.consent,true);return {user:verified}},
+      consume:async()=>{events.push("quota");throw Error("quota must not be reserved")},
+      entitlement:async()=>{events.push("entitlement");return {active:true,source:"beta"}},
+      beforeScan:async()=>{events.push("provider")}
+    }),error=>{
+      assert.equal(error.code,"SCAN_MANUAL_ONLY");
+      assert.equal(error.status,503);
+      assert.equal(error.quota_reserved,false);
+      return true;
+    });
+    assert.deepEqual(events,["auth"]);
   });
 }
-test("quota failure/missing migration stops before any provider call",async()=>{
-  await assert.rejects(requirePersonalScanUser({body:{}},{...basic,consume:async()=>({reserved:false})}),{code:"FREE_SCAN_QUOTA_EXCEEDED"});
-  await assert.rejects(requirePersonalScanUser({body:{}},{...basic,consume:async()=>{throw new Error("schema unavailable")}}),/schema unavailable/);
+test("FREE and verified legacy PRO use the same no-provider scan path",async()=>{
+  for(const active of [false,true]){
+    let called=0;
+    await assert.rejects(requirePersonalScanUser({body:{scan_type:"squad1"}},{
+      authorize,entitlement:async()=>{called++;return {active,source:active?"beta":"free"}},
+      consume:async()=>{called++}
+    }),error=>{
+      assert.equal(error.code,"SCAN_MANUAL_ONLY");
+      assert.equal(error.status,503);
+      assert.equal(error.quota_reserved,false);
+      return true;
+    });
+    assert.equal(called,0);
+  }
 });
 test("legacy PRO bypasses FREE quota without granting a rank",async()=>{
-  const result=await requirePersonalScanUser({body:{scan_type:"squad1"}},{...basic,entitlement:async()=>({active:true,source:"beta"}),consume:async()=>{throw Error("not FREE")}});
-  assert.equal(result.user.id,verified.id);assert.equal(result.user.role,undefined);
+  await assert.rejects(requirePersonalScanUser({body:{scan_type:"squad1"}},{...basic,entitlement:async()=>({active:true,source:"beta"})}),error=>{
+    assert.equal(error.code,"SCAN_MANUAL_ONLY");
+    assert.equal(error.quota_reserved,false);
+    return true;
+  });
 });
-test("roster scans remain PRO despite forged body entitlement",async()=>{
-  await assert.rejects(requirePersonalScanUser({body:{scan_type:"alliance_roster",active:true,role:"R5"}},basic),{code:"PRO_REQUIRED"});
+test("roster scan path never turns a declared R4/R5 into an upload privilege",async()=>{
+  await assert.rejects(requirePersonalScanUser({body:{scan_type:"alliance_roster",active:true,role:"R5"}},basic),error=>{
+    assert.equal(error.code,"SCAN_MANUAL_ONLY");
+    assert.equal(error.quota_reserved,false);
+    return true;
+  });
 });
 function response(){return {setHeader(){},status(value){this.code=value;return this},json(value){this.body=value;return this}}}
 test("join handler ignores browser actor, role, scope and invite code",async()=>{

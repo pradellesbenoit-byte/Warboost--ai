@@ -8,6 +8,7 @@ import {createTechnologyManualUI,technologyDisplayDate} from "../lib/technology-
 import {normalizeTechnologyBranches,mergeTechnologyBranches} from "../lib/technology-scan.js";
 import {normalizeState,mergeNewest} from "../lib/normalize.js";
 import {hasMeaningfulCoreState,hydrateCloudState} from "../lib/cloud-state-recovery.js";
+import {deriveRuntimeAccessState} from "../lib/session-bootstrap.js";
 
 const at="2026-10-27T10:00:00.000Z",later="2026-10-27T11:00:00.000Z";
 const fixture=()=>({player_id:"synthetic-A",technology:{branches:{}},
@@ -240,11 +241,16 @@ test("technology alone including explicit clearing qualifies for account recover
 test("actual app integration saves only technology, fails owner mismatch and distinguishes cloud status",()=>{
  const app=fs.readFileSync("app.js","utf8");
  const code=app.slice(app.indexOf("let technologyManualUI=null;"),app.indexOf("function renderPlayerProgression("));
+  const runtimeAccess=app.match(/function runtimeAccessState\(\)\{[^\r\n]*\}/)?.[0];
+  const privateVisibility=app.match(/function betaPrivateDataVisible\(\)\{[^\r\n]*\}/)?.[0];
+  assert.ok(runtimeAccess,"use the production runtime access adapter");
+  assert.ok(privateVisibility,"use the production private-data visibility guard");
  let options,calls=0,ok=true;
- const context={state:fixture(),locale:"fr",cloudDirty:false,cloudProfileVerified:true,cloudSession:{user:{id:"synthetic-A"}},
-   $:()=>({}),createTechnologyManualUI:config=>{options=config;return {render(){}}},
+  const context={state:fixture(),locale:"fr",cloudDirty:false,cloudProfileVerified:true,cloudSession:{user:{id:"synthetic-A"}},
+    betaState:{access_status:"accepted"},betaAccessAllowed:()=>true,betaConsentAccepted:()=>true,deriveRuntimeAccessState,
+    $:selector=>selector==="#playerTechnologyAdvisor"?null:{},createTechnologyManualUI:config=>{options=config;return {render(){}}},
    saveState:args=>{assert.equal(args.renderUi,false);calls++;return ok}};
- vm.runInNewContext(code,context);context.renderTechnologyManual();
+  vm.runInNewContext(`${code}\n${runtimeAccess}\n${privateVisibility}`,context);context.renderTechnologyManual();
  assert.equal(options.getCloudStatus(),"pending");
  const original=structuredClone(context.state);
  const next=edit(context.state,"heroes","percent",{percent:0});

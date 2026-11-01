@@ -4,6 +4,7 @@ import {parseFounderDraft,formatFounderDraft,resetForeignFounderDraft} from "./l
 import {workspaceHelpCopy,renderWorkspaceHelp} from "./lib/workspace-help.js";
 import {workspaceRequestsHtml,draftFeedback,rosterFeedback} from "./lib/workspace-feedback.js";
 import {createAnalysisIndicator,analysisFailureMessage,scanResponseError,beginLoadingButton} from "./lib/analysis-indicator.js";
+import {freeScanCopy,manualScanDestination} from "./lib/free-scan-copy.js";
 import {loadingTargetIds,requestLoadingTargetIds} from "./lib/loading-targets.js";
 import {accountSyncErrorKind,accountSyncView,verifiedAccountStateReply,verifiedAccountWriteReply,createCloudOperations,transientCloudFailure,deviceCloudSaveMetadata,confirmedWriteReceipt,mergeDeviceCloudSaveMetadata,staleProfileRestore} from "./lib/account-sync-feedback.js";
 import {squadReviewStatus,squadReviewHeader,squadReviewRowHtml,accountSquadReviewHtml} from "./lib/squad-review-status.js";
@@ -576,7 +577,9 @@ function renderTechnologyManual(){
     }else{
       if(!technologyAdvisorUI)technologyAdvisorUI=createTechnologyAdvisorUI({
         root:adviceRoot,getState:()=>state,getLocale:()=>lang,
-        getPrivateVisible:betaPrivateDataVisible,getSelectedSquadId:()=>state.diagnostic_squad_id||1,
+        getPrivateVisible:betaPrivateDataVisible,getProAllowed:proFeatureAllowed,
+        getPriceLabel:()=>proState?.plan?.price_label||"4,99 € / mois",
+        getSelectedSquadId:()=>state.diagnostic_squad_id||1,
         getTranslate:(key,vars)=>t(key,vars),getObjectiveLabel:adaptiveObjectiveLabel
       });
       technologyAdvisorUI.render();
@@ -1334,9 +1337,51 @@ function updateScanCaptureMode(){
   if(selector)selector.dataset.previousType=scanType;
   if(input)input.multiple=true;
   if(label){delete label.dataset.i18n;label.textContent=t("scan_capture_choose",{limit})}
+  const copy=freeScanCopy(lang),intro=$("#scanIntro"),availability=$("#scanAutomaticAvailability"),analyze=$("#analyzeScanBtn");
+  if(intro)intro.textContent=copy.intro;
+  if(availability){availability.textContent=`${copy.unavailable} ${copy.manualAvailability}`;availability.dir=copy.dir}
+  if(analyze){delete analyze.dataset.i18n;analyze.textContent=copy.manualAction}
+  const rosterHelp=$("#rosterScanHelp"),rosterAnalyze=$("#rosterScanAnalyzeBtn");
+  if(rosterHelp){rosterHelp.textContent=`${copy.unavailable} ${copy.manualAvailability}`;rosterHelp.dir=copy.dir}
+  if(rosterAnalyze){delete rosterAnalyze.dataset.i18n;rosterAnalyze.textContent=copy.manualAction}
+  $("#scanManualFallback")?.classList.add("hidden");
   if(help){help.classList.remove("hidden");delete help.dataset.i18n;help.textContent=isSquad
     ?t("scan_formation_help"):t("scan_same_type_help")}
   updateScanSquadTarget();updateTechnologyScanPreview();
+}
+function showFreeManualScanFallback(){
+  const type=$("#scanType")?.value||"profile",status=$("#scanStatus"),images=scanImageDataList.length?scanImageDataList:[scanImageData].filter(Boolean);
+  if(!requireScanSquadTarget(type,status))return;
+  if(!images.length||images.length>playerScanBatchLimit(type)){
+    if(status){status.className="notice warn";status.textContent=t("scan_wait")}
+    return;
+  }
+  if(!requireBetaAccess()||!requireBetaConsent())return;
+  if(!cloudSession?.access_token){openDrawer("account");authMessage(t("connect_pro"));return}
+  const copy=freeScanCopy(lang),fallback=$("#scanManualFallback"),message=$("#scanManualFallbackMessage"),button=$("#scanManualFallbackBtn");
+  if(message){message.textContent=`${copy.unavailable} ${copy.manualAvailability}`;message.dir=copy.dir}
+  if(button){button.textContent=type==="technology"?copy.technologyAction:copy.manualAction;button.dataset.manualScanDestination=manualScanDestination(type);button.dataset.manualScanType=type}
+  fallback?.classList.remove("hidden");
+  if(status){status.className="notice warn";status.textContent=copy.unavailable;status.dir=copy.dir}
+  fallback?.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function openFreeManualScanDestination(destination,type){
+  const target=destination||manualScanDestination(type);
+  openDrawer(target==="technology"?"player":target);
+  if(target==="technology"){
+    renderTechnologyManual();
+    const editor=$("#playerTechnologyManual"),details=editor?.querySelector("details");
+    if(details)details.open=true;
+    editor?.scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+  if(target==="player"){
+    const section=$("#squadList")||$("#playerTechnologyManual");
+    section?.scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+  const focus=target==="account"?"#fName":target==="vs"?"#vsScoreUnknown":target==="season"?"#seasonAccessNotice":"#rosterScanDraft";
+  $(focus)?.scrollIntoView({behavior:"smooth",block:"center"});
 }
 function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(lang);t=translator(lang);document.documentElement.lang=lang;document.documentElement.dir=dirFor(lang);$$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});$$('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));$$('[data-i18n-alt]').forEach(el=>el.setAttribute('alt',t(el.dataset.i18nAlt)));$$('[data-i18n-placeholder]').forEach(el=>{const text=t(el.dataset.i18nPlaceholder);el.setAttribute('placeholder',text);if(el.isContentEditable)el.setAttribute('data-placeholder',text)});const sel=$("#languageSelect");if(sel){sel.innerHTML=LANGUAGES.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=languageChoice}renderScanTypeOptions();renderClock();render();renderAuth();renderBeta();renderPro();renderVoiceSettings();renderSupportAccess();renderSupportTickets();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden")}
 function saveState(options={}){const renderUi=options?.renderUi!==false,signedInUserId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");if(signedInUserId&&ownerId&&ownerId!==signedInUserId){if(hasMeaningfulCore(state))rememberAccountState(ownerId,state);const own=readAccountState(signedInUserId);state=hasMeaningfulCore(own)?hydrateCloudState(own,initialState(),signedInUserId):initialState();state.player_id=signedInUserId;state.sync={...state.sync,status:"waiting",last_error:"account_owner_mismatch",pending_cloud_save:false};if(renderUi)render();return false}if(signedInUserId&&!ownerId)state.player_id=signedInUserId;state=repairLegacySquadIdentity(state).state;state=backfillConfirmedHeroPowers(state).state;state.updated_at=new Date().toISOString();state.version=APP_VERSION;localStateRevision++;const localOk=safeLocalSet(STORE_KEY,JSON.stringify(state));if(!localOk)state.sync={...state.sync,status:"waiting",last_error:"local_storage_unavailable",pending_cloud_save:true};rememberLastGoodState(state,"save");if(signedInUserId&&String(state.player_id||"")===signedInUserId)rememberAccountState(signedInUserId,state);if(renderUi)render();if(options.cloudSave!==false&&!suppressPush&&hasMeaningfulCore(state))scheduleServerSave(localOk?350:0);return localOk}
@@ -2285,6 +2330,17 @@ function renderEndgameCoachHome(){
   const card=$("#qg35CoachCard"),unknown=$("#qg35UnknownPrompt"),meta=$("#qg35HomeMeta");
   if(!card||!unknown)return;
   if(!betaPrivateDataVisible()){hideEndgameCoach();return}
+  if(!qg35AdvancedAccess()){
+    card.classList.remove("hidden");card.disabled=false;card.setAttribute("aria-disabled","false");
+    card.dataset.qg35State="pro_locked";
+    const title=card.querySelector("h2"),description=$("#qg35HomeDesc");
+    if(title){delete title.dataset.i18n;title.textContent=`🔒 ${t("pro")} · 4,99 € / mois`}
+    if(description){delete description.dataset.i18n;description.textContent=t("commercial_preview_note")}
+    if(meta)meta.textContent="4,99 € / mois";
+    card.setAttribute("aria-label",`${t("pro")} · 4,99 € / mois`);
+    unknown.classList.add("hidden");
+    return;
+  }
   const report=createEndgameCoachReport(state);
   const homeState=deriveEndgameCoachHomeState(report,{privateVisible:true});
   card.classList.remove("hidden");
@@ -2315,6 +2371,7 @@ function qg35ScanType(actionKey){
 function renderEndgameCoachDrawer(){
   const content=$("#qg35CoachContent");if(!content)return;
   if(!betaPrivateDataVisible()){content.innerHTML=`<div class="notice">${esc(betaAccessMessage())}</div>`;return}
+  if(!qg35AdvancedAccess()){content.innerHTML=`<div class="notice technologyAdvisorProLock"><b>${esc(t("pro"))} · 4,99 € / mois</b><p>${esc(t("commercial_preview_note"))}</p></div>`;return}
   const report=createEndgameCoachReport(state);
   if(!report.eligibility.eligible){content.innerHTML=`<div class="notice">${qg35Text("qg35_not_eligible")}</div>`;return}
   const confidenceLabel=t(`qg35_confidence_${report.confidence.band}`);
@@ -2830,6 +2887,7 @@ function renderTechnologyAdvicePanel(advice){
 function renderProPriority(analysis){
   const native=aiUsesNativeCopy(),ui=aiUiText(),panel=$("#proPriorityPanel"),summary=$("#proPrioritySummary"),contextBox=$("#proAdaptiveContext"),list=$("#proPriorityList"),compare=$("#proSquadCompare"),exCompare=$("#proExclusiveCompare"),metaSources=$("#proMetaSources"),confidence=$("#proConfidence"),note=$("#playerSyncInfo"),shopConfidence=$("#shopConfidence"),shopCatalogPill=$("#shopCatalogPill"),avoid=$("#proAvoidList");
   if(!panel||!analysis)return;
+  if(!proFeatureAllowed()){panel.classList.add("hidden");return}
   if(currentPlayerAdviceAnalysis!==analysis)activeAcquisitionShopView=null;
   currentPlayerAdviceAnalysis=analysis;
   if(analysis.knowledge_guidance){
@@ -3918,6 +3976,16 @@ function vsRiskText(engine){
 function vsUseNowText(v){const d=Number(v.day)||Number(currentVsDay());const key=Number.isInteger(d)&&d>=1&&d<=6?`vs_focus_${d}`:null;return key?t(key):t("vs_use_only_scoring")}
 function renderVsDecision(v,engine){
   const action=$("#vsDecisionAction"),reason=$("#vsDecisionReason"),urgency=$("#vsUrgency"),urgencyPill=$("#vsUrgencyPill");
+  const advice=$("#vsDecisionPersonalAdvice"),locked=$("#vsDecisionProLock"),proAllowed=proFeatureAllowed();
+  advice?.classList.toggle("hidden",!proAllowed);locked?.classList.toggle("hidden",proAllowed);
+  if(!proAllowed){
+    if(action)action.textContent=`${t("pro")} · 4,99 € / mois`;
+    if(reason)reason.textContent=t("commercial_preview_note");
+    for(const id of ["vsUrgency","vsDecisionUse","vsDecisionKeep","vsDecisionRescan","vsDecisionRisk"]){const node=$("#"+id);if(node)node.textContent="—"}
+    if(urgencyPill)urgencyPill.textContent="—";
+    const plan=$("#vsPlanText");if(plan)plan.textContent=t("vs_empty");
+    return;
+  }
   if(action)action.textContent=vsDecisionLabel(engine.decision);if(reason)reason.textContent=vsDecisionReason(engine);if(urgency)urgency.textContent=vsUrgencyLabel(engine.urgency);
   if(urgencyPill){urgencyPill.textContent=vsUrgencyLabel(engine.urgency);urgencyPill.className=`pill vsUrgency ${engine.urgency}`}
   const use=$("#vsDecisionUse"),keep=$("#vsDecisionKeep"),rescan=$("#vsDecisionRescan"),risk=$("#vsDecisionRisk");
@@ -4574,7 +4642,7 @@ async function analyzeExclusiveScan(){
     const r={ok:true};
     if(!scanRequestIsCurrent(request))return;
     if(!r.ok){
-      const message=analysisFailureMessage(j,t);
+      const message=analysisFailureMessage(j,t,lang);
       status.className="notice warn";status.textContent=t("scan_exclusive_analysis_failed",{message});return;
     }
     const rows=Array.isArray(j?.state?.exclusive_weapons)?j.state.exclusive_weapons:[],
@@ -4592,7 +4660,7 @@ async function analyzeExclusiveScan(){
      const first=rows[0],hero=first?.hero_name||first?.weapon_name||Object.keys(progression.heroes)[0]||t("exclusive_weapon"),fields=exclusiveResultFieldCount(rows,progression);
      status.className="notice";
      status.textContent=t("scan_exclusive_result_ready",{hero,fields});
-  }catch(error){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=analysisFailureMessage(error,t)}}
+  }catch(error){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=analysisFailureMessage(error,t,lang)}}
   finally{finishAnalysis();btn.disabled=false;btn.textContent=t("analyze")}
 }
 async function analyzeReviewedScan(){
@@ -4620,14 +4688,15 @@ async function analyzeReviewedScan(){
       if(!renderScanReview(draft)){status.className="notice warn";status.textContent=t("scan_error");return}
        if(scanType==="technology"){void clearPendingTechnologyFiles(owner);void clearPendingSingleScan(owner)}
       status.className="notice";status.dataset.scanReviewStatusKey="scan_review_ready";status.textContent=t("scan_review_ready")+(j.captures?` ${squadCaptureSummary(j.captures,j.complementary_evidence,lang)}`:"")+(j.conflicts?.length?" "+t("scan_batch_disagreements"):"");
-    }else{status.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){status.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else if(scanType==="drone"&&j.error==="drone_no_supported_fields"){const key=j.drone_screen_type==="skill_chip"?"scan_drone_skill_chip_no_fields":"scan_drone_components_no_fields";status.dataset.scanReviewStatusKey=key;status.textContent=t(key)}else status.textContent=analysisFailureMessage(j,t)}
-  }catch(e){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=analysisFailureMessage(e,t)}}
+    }else{status.className="notice warn";if(j.code==="WRONG_SQUAD_CAPTURE"){status.textContent=t("scan_wrong_squad_capture");openSquadCaptureHelp(true)}else if(scanType==="drone"&&j.error==="drone_no_supported_fields"){const key=j.drone_screen_type==="skill_chip"?"scan_drone_skill_chip_no_fields":"scan_drone_components_no_fields";status.dataset.scanReviewStatusKey=key;status.textContent=t(key)}else status.textContent=analysisFailureMessage(j,t,lang)}
+  }catch(e){if(scanRequestIsCurrent(request)){status.className="notice warn";status.textContent=analysisFailureMessage(e,t,lang)}}
   finally{finishAnalysis();btn.disabled=false;btn.textContent=t("analyze")}
 }
-$("#analyzeScanBtn").addEventListener("click",async event=>{
+$("#analyzeScanBtn").addEventListener("click",event=>{
   event.stopImmediatePropagation();
-  if($("#scanType")?.value==="exclusive")await analyzeExclusiveScan();else await analyzeReviewedScan();
+  showFreeManualScanFallback();
 });
+$("#scanManualFallbackBtn")?.addEventListener("click",event=>openFreeManualScanDestination(event.currentTarget.dataset.manualScanDestination,event.currentTarget.dataset.manualScanType));
 $("#saveExclusiveConfirmBtn")?.addEventListener("click",()=>saveConfirmedExclusiveScan());
 $("#cancelExclusiveConfirmBtn")?.addEventListener("click",()=>{
   pendingExclusiveScan=[];pendingExclusiveScannedAt=null;$("#exclusiveConfirmPanel")?.classList.add("hidden");
@@ -4639,6 +4708,7 @@ $("#squadCaptureHelpBtn")?.addEventListener("click",()=>openSquadCaptureHelp(fal
 $("#squadCaptureAckBtn")?.addEventListener("click",closeSquadCaptureHelp);
 
 async function requestAdvice(scope,stateForRequest=state){
+  if(!proFeatureAllowed())return null;
   if(scope==="vs"){state.vs.week=currentVsWeek();state.vs.day=currentVsDay()}
   const finishAnalysis=beginActiveLoadingOperation(`advice:${scope}`);
   try{
@@ -5046,42 +5116,15 @@ $("#rosterScanFiles")?.addEventListener("change",async e=>{
 $("#rosterScanAddMemberBtn")?.addEventListener("click",()=>{
   addManualRosterScanMember();
 });
-$("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{
+$("#rosterScanAnalyzeBtn")?.addEventListener("click",()=>{
   const status=$("#rosterScanStatus"),btn=$("#rosterScanAnalyzeBtn");
   if(btn.disabled)return;
   if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}
-  if(!rosterScanFiles.length){if(status){status.className="notice warn";status.textContent=t("roster_scan_choose_first");status.classList.remove("hidden")}return}
   if(!requireBetaAccess()||!requireBetaConsent())return;
   if(!cloudSession?.access_token){openDrawer("account");return}
-  const revision=scanInputRevision,owner=pendingScanOwner(),files=[...rosterScanFiles];
-  const isCurrent=()=>revision===scanInputRevision&&owner===pendingScanOwner();
-  collectRosterScanDraftFromDom();
-  btn.disabled=true;const old=btn.textContent;btn.textContent=t("scan_processing");
-  const manualBtn=$("#rosterScanAddMemberBtn");if(manualBtn)manualBtn.disabled=true;
-  if(status){status.className="notice";status.textContent=t("roster_scan_processing",{count:files.length});status.classList.remove("hidden")}
-  const finishAnalysis=beginActiveLoadingOperation("scan:roster");
-  let unreadable=0;
-  try{
-    let rows=[...rosterScanDraft];
-    for(let i=0;i<files.length;i++){
-      const image=await imageToDataUrl(files[i]);if(!isCurrent())return;
-      const {response:r,json:j}=await fetchWarBoostScan({scan_type:"alliance_roster",locale:lang,image_data_url:image,current_state:state});
-      if(!isCurrent())return;
-      if(!r.ok){
-        if(r.status===422&&j?.error==="scan_no_useful_data"){unreadable++;continue}
-        throw scanResponseError(r,j,{completedRequests:i});
-      }
-      rows=mergeRosterScanRows(rows,j.roster_rows||[]);
-      // Keep every completed image even if a later image times out. Owner/revision
-      // was checked above; no import or cloud mutation takes place here.
-      rosterScanDraft=resolveCurrentRosterScanDraft(rows);renderRosterScanDraft();
-      if(status)status.textContent=t("roster_scan_progress",{done:i+1,total:files.length,rows:rows.length});
-    }
-    if(!isCurrent())return;
-    rosterScanDraft=resolveCurrentRosterScanDraft(mergeRosterScanRows([],rows));renderRosterScanDraft();
-    if(status){status.className=unreadable?"notice warn":"notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})+(unreadable?" "+t("roster_scan_unreadable",{count:unreadable}):"")}
-  }catch(e){if(isCurrent()&&status){status.className="notice warn";status.textContent=analysisFailureMessage(e,t)+(unreadable?" "+t("roster_scan_unreadable",{count:unreadable}):"")}}
-  finally{finishAnalysis();if(isCurrent()){btn.disabled=false;btn.textContent=old;if(manualBtn)manualBtn.disabled=false}}
+  const copy=freeScanCopy(lang);
+  if(status){status.className="notice warn";status.textContent=copy.unavailable+" "+t("roster_manual_add");status.dir=copy.dir;status.classList.remove("hidden")}
+  $("#rosterScanAddMemberBtn")?.focus();
 });
 $("#rosterScanImportBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}collectRosterScanDraftFromDom();if(rosterScanHasUnresolvedIdentity(rosterScanDraft)){if(status){status.className="notice warn";status.textContent=t("roster_identity_unresolved_block");status.classList.remove("hidden")}renderRosterScanDraft();return}if(rosterScanDraft.some(row=>!scanRole(row?.role))){if(status){status.className="notice warn";status.textContent="Chaque grade doit être confirmé avant l’import.";status.classList.remove("hidden")}return}const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=await applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result?.synced){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";void clearPendingRosterFiles(pendingScanOwner());renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
 

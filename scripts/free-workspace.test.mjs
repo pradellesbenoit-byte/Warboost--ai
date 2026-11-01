@@ -20,12 +20,12 @@ test("trusted hosting header is mandatory on Vercel; malformed or multiple IPs f
  assert.match(freeScanNetworkDigest({headers:{"x-vercel-forwarded-for":"2001:db8::1"}},{secret,now,vercel:true}),/^[a-f0-9]{64}$/);
  assert.throws(()=>freeScanNetworkDigest({socket:{remoteAddress:"192.0.2.1"}},{secret:"",vercel:false}),{code:"FREE_NETWORK_GUARD_REQUIRED"});
 });
-test("missing network guard blocks FREE before any reservation; historic PRO unchanged",async()=>{
+test("manual-only scan route authenticates without network hash, quota, or provider",async()=>{
  let calls=0;const deps={authorize:async()=>({user:{id:"synthetic"}}),consume:async()=>{calls++;return {reserved:true}},
  entitlement:async()=>({active:false}),networkDigest:()=>{throw Object.assign(Error("unavailable"),{code:"FREE_NETWORK_GUARD_REQUIRED"})}};
- await assert.rejects(requirePersonalScanUser({body:{}},deps),{code:"FREE_NETWORK_GUARD_REQUIRED"});
+ await assert.rejects(requirePersonalScanUser({body:{}},deps),{code:"SCAN_MANUAL_ONLY",status:503,quota_reserved:false});
  assert.equal(calls,0);
- await requirePersonalScanUser({body:{}},{...deps,entitlement:async()=>({active:true,source:"beta"})});
+ await assert.rejects(requirePersonalScanUser({body:{}},{...deps,entitlement:async()=>({active:true,source:"beta"})}),{code:"SCAN_MANUAL_ONLY"});
  assert.equal(calls,0);
 });
 for(const action of ["open_space","request_space","list_space","view_space","approve_space","reject_space"]){

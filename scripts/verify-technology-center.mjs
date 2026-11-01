@@ -246,7 +246,7 @@ test("saved five names remain candidates until explicit confirmation and then re
   assert.equal(model.formation.type,null);
   assert.equal(model.formation.canConfirmSavedHeroes,true);
   const translate=(key)=>({squad:"Escouade",hq:"QG",to_fill:"À renseigner"}[key]||key);
-  const markup=renderPersonalTechnologyAdvice(model,{locale:"fr",t:translate});
+  const markup=renderPersonalTechnologyAdvice(model,{locale:"fr",t:translate,proAllowed:true});
   assert.match(markup,/data-technology-confirm-squad="1"/);
   assert.match(markup,/QG · À renseigner/);
   assert.doesNotMatch(markup,/aircraft_specialization/,"unconfirmed names cannot activate troop specialization advice");
@@ -310,6 +310,35 @@ test("personal advice keeps real zero, excludes max, lists locked prerequisites,
   assert.equal(buildPersonalTechnologyAdvice(state).advice.path_key,"technology_advice_t11_route");
 });
 
+test("technology advice fails closed for FREE but leaves data confirmation available",()=>{
+  const candidate={id:1,needs_rescan:false,composition_source:"legacy_saved_v1",
+    heroes:["Carlie","DVA","Lucius","Skyler","Morrison"].map(name=>({name})),
+    confirmed_composition:[],composition_confirmed_at:null};
+  const state={player_id:"synthetic-free",player:{hq_level:31},squads:[candidate],
+    technology:{branches:{aircraft_specialization:techBranch("aircraft_specialization",0)}}};
+  const model=buildPersonalTechnologyAdvice(state);
+  const free=renderPersonalTechnologyAdvice(model,{locale:"fr",t:key=>key==="squad"?"Escouade":key});
+  assert.match(free,/technologyAdvisorProLock/);
+  assert.match(free,/data-technology-confirm-squad="1"/,"free users can still confirm their own saved data");
+  assert.doesNotMatch(free,/data-technology-branch=/,"FREE receives no personalized recommendation cards");
+  assert.doesNotMatch(free,/Spécialisation avion/,"FREE does not see the generated branch recommendation");
+  const proModel=buildPersonalTechnologyAdvice(playerAdviceState(
+    ["Carlie","DVA","Lucius","Skyler","Morrison"],
+    {branches:{aircraft_specialization:techBranch("aircraft_specialization",0)}}
+  ));
+  const pro=renderPersonalTechnologyAdvice(proModel,{locale:"fr",t:key=>key==="squad"?"Escouade":key,proAllowed:true});
+  assert.doesNotMatch(pro,/technologyAdvisorProLock/);
+  assert.match(pro,/data-technology-branch="aircraft_specialization"/);
+
+  let markup="";
+  const root={replaceChildren(){markup=""},querySelector(){return null},set innerHTML(value){markup=value},get innerHTML(){return markup}};
+  const ui=createTechnologyAdvisorUI({root,getState:()=>state,getLocale:()=>"fr",getPrivateVisible:()=>true,
+    getSelectedSquadId:()=>1,getTranslate:key=>key==="squad"?"Escouade":key});
+  ui.render();
+  assert.match(root.innerHTML,/technologyAdvisorProLock/,"missing PRO callback defaults to locked");
+  assert.doesNotMatch(root.innerHTML,/data-technology-branch=/);
+});
+
 test("personal technology adviser output is HTML-escaped, account-local, closed by default, and uses explicit RTL",()=>{
   const make=(player_id,branchName)=>({
     player_id,player:{hq_level:31},player_context:{objective:"power"},squads:[confirmedSquad(1,["Carlie","DVA","Lucius","Skyler","Morrison"])],
@@ -322,11 +351,11 @@ test("personal technology adviser output is HTML-escaped, account-local, closed 
   const b=buildPersonalTechnologyAdvice(make("account-b","Different"));
   assert.equal(a.owner,"account-a");assert.equal(b.owner,"account-b");
   const testTranslate=(key,vars={})=>key==="squad"?"Escouade":key==="technology_advice_locked_requirement"?`Prérequis visible : ${vars.requirement}`:key;
-  const markup=renderPersonalTechnologyAdvice(a,{locale:"fr",t:testTranslate,objectiveLabel:value=>value});
+  const markup=renderPersonalTechnologyAdvice(a,{locale:"fr",t:testTranslate,objectiveLabel:value=>value,proAllowed:true});
   assert.match(markup,/0 %/);assert.doesNotMatch(markup,/<details[^>]*\sopen(?:\s|=|>)/i);
   assert.doesNotMatch(markup,/<img\b/i);
   assert.match(markup,/&lt;img/);
-  assert.match(renderPersonalTechnologyAdvice(a,{locale:"ar",t:key=>key}),/dir="rtl"/);
+  assert.match(renderPersonalTechnologyAdvice(a,{locale:"ar",t:key=>key,proAllowed:true}),/dir="rtl"/);
   assert.doesNotMatch(markup,/<button|fetch\(|\/api\//i);
   assert.equal(JSON.stringify(hostile),before,"advice rendering must not write calculated priorities into player state");
   assert.deepEqual([...TECHNOLOGY_ADVISOR_LOCALES].sort(),["ar","cs","de","el","en","es","fr","id","it","ja","ko","nl","pl","pt","ro","ru","sv","th","tr","uk","vi","zh"].sort());
@@ -346,7 +375,7 @@ test("a 4/5 aircraft formation justifies aircraft research and names the exact i
   assert.equal(model.formation.type,"aircraft");
   assert.equal(model.advice.main.key,"aircraft_specialization");
   const testTranslate=key=>key==="squad"?"Escouade":key;
-  const html=renderPersonalTechnologyAdvice(model,{locale:"fr",t:testTranslate,objectiveLabel:value=>value});
+  const html=renderPersonalTechnologyAdvice(model,{locale:"fr",t:testTranslate,objectiveLabel:value=>value,proAllowed:true});
   assert.match(html,/4\/5 héros confirmés sont de type Avion/);
   assert.match(html,/Centre Technologie → Spécialisation avion/i);
   assert.match(html,/0 %/);
@@ -363,6 +392,7 @@ test("personal adviser clears when private access is absent and resets its open 
   };
   const ui=createTechnologyAdvisorUI({
     root,getState:()=>state,getLocale:()=>"fr",getPrivateVisible:()=>allowed,
+    getProAllowed:()=>true,
     getSelectedSquadId:()=>1,getTranslate:key=>key==="squad"?"Escouade":key,getObjectiveLabel:value=>value
   });
   ui.render();assert.equal(root.innerHTML,"");

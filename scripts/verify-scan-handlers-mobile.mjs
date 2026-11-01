@@ -7,6 +7,9 @@ import {scanRequestMatches} from "../lib/scan-review.js";
 import {playerScanBatchLimit,analyzePlayerCaptureBatch} from "../lib/player-scan-batch.js";
 import {analysisFailureMessage,scanResponseError} from "../lib/analysis-indicator.js";
 import {SCAN_FAILURE_LOCALES,SCAN_FAILURE_KEYS,scanFailureCopy} from "../lib/scan-failure-copy.js";
+import {freeScanCopy,manualScanDestination} from "../lib/free-scan-copy.js";
+import {normalizeAllianceRole} from "../lib/alliance-activity.js";
+import {confirmedCanonicalSelfRole} from "../lib/alliance-rank-management.js";
 import {translator,dirFor} from "../i18n.js";
 
 // Execute production functions and registered listeners, never a rewritten
@@ -30,7 +33,7 @@ function listener(id,event,optional=true){
 }
 const plain=value=>JSON.parse(JSON.stringify(value));
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve}};
-function setup(type="squad1"){
+function setup(type="squad1",{injectManualFallback=false}={}){
   const nodes=new Map(),writes=[],renders=[];
   function node(id){
     if(!nodes.has(id)){
@@ -39,11 +42,13 @@ function setup(type="squad1"){
         events:{},classList:{add:k=>classes.add(k),remove:k=>classes.delete(k),
           contains:k=>classes.has(k),toggle:(k,on)=>on?classes.add(k):classes.delete(k)},
         removeAttribute(k){delete this[k]},replaceChildren(){this.innerHTML=""},
+        scrollIntoView(){},
         addEventListener(event,handler){this.events[event]=handler}});
     }
     return nodes.get(id);
   }
   node("scanType").value=type;node("scanType").dataset.previousType=type;
+  node("scanManualFallback").classList.add("hidden");
   let owner="synthetic-owner";
   const ctx={
     $:id=>node(id.slice(1)),scanSquadId,scanRequestMatches,playerScanBatchLimit,
@@ -70,11 +75,19 @@ function setup(type="squad1"){
     renderScanReview:draft=>{renders.push(draft);ctx.pendingScanReview=draft;return true},
     squadCaptureSummary:()=>"",analysisFailureMessage:()=>"synthetic-error"
   };
+  ctx.manualDestinationOpened=[];
+  ctx.openDrawer=target=>ctx.manualDestinationOpened.push(target);
   vm.createContext(ctx);
   for(const name of ["discardScanReviewDraft","clearScanImage","beginNewScanFileSelection",
     "scanCaptureFingerprint","scanRequestIsCurrent","updateTechnologyScanPreview",
     "requireScanSquadTarget","restorePendingScans","analyzeReviewedScan","analyzeExclusiveScan"])
     vm.runInContext(fn(name),ctx);
+  if(injectManualFallback){
+    ctx.freeScanCopy=freeScanCopy;ctx.manualScanDestination=manualScanDestination;
+    vm.runInContext(fn("showFreeManualScanFallback"),ctx);
+    vm.runInContext(fn("openFreeManualScanDestination"),ctx);
+    vm.runInContext(listener("scanManualFallbackBtn","click",true),ctx);
+  }
   for(const [id,event,optional] of [["scanFile","change",false],["scanType","change",true],
     ["clearScanCaptureBtn","click",true],["discardScanReviewBtn","click",true],
     ["scanImageBatchList","click",true],
@@ -95,8 +108,9 @@ for(const locale of SCAN_FAILURE_LOCALES)test(`${locale}: safe scan errors resol
     assert.equal(t(key),copy[key]);assert.ok(t(key).trim());
     if(locale!=="en")assert.notEqual(t(key),scanFailureCopy("en")[key]);
   }
-  assert.equal(analysisFailureMessage(scanResponseError(...Object.values(missingProvider())),t),copy.scan_unavailable_no_charge);
-  assert.equal(analysisFailureMessage(scanResponseError(...Object.values(missingProvider(false))),t),copy.scan_unavailable);
+  assert.equal(analysisFailureMessage(scanResponseError(...Object.values(missingProvider())),t,locale),freeScanCopy(locale).apiUnavailable);
+  assert.equal(analysisFailureMessage({code:"SCAN_MANUAL_ONLY",status:503},t,locale),freeScanCopy(locale).apiUnavailable);
+  assert.equal(analysisFailureMessage(scanResponseError(...Object.values(missingProvider(false))),t),t("scan_error"));
   for(const [code,key] of [
     ["SCAN_REQUEST_TIMEOUT","scan_timeout"],["VISION_TIMEOUT","scan_timeout"],
     ["FREE_SCAN_QUOTA_EXCEEDED","scan_quota_refused"],["SCAN_RATE_LIMITED","scan_rate_limited"],
@@ -106,20 +120,50 @@ for(const locale of SCAN_FAILURE_LOCALES)test(`${locale}: safe scan errors resol
   ])assert.equal(analysisFailureMessage({code,message:"PRIVATE_PROVIDER_DIAGNOSTIC"},t),t(key));
   assert.equal(dirFor(locale),locale==="ar"?"rtl":"ltr");
 });
-for(const type of ["profile","squad1","exclusive","technology"])for(const locale of ["fr","en-GB","es","ar"])
-test(`real ${type} handler and batch to DOM: 503 refusal proof in ${locale}`,async()=>{
-  const h=setup(type);h.ctx.t=translator(locale);h.ctx.lang=locale;
-  h.ctx.analysisFailureMessage=analysisFailureMessage;h.ctx.analyzePlayerCaptureBatch=analyzePlayerCaptureBatch;
-  h.ctx.fetchWarBoostScan=async()=>missingProvider();
+for(const type of ["profile","squad1","technology"])for(const locale of ["fr","en-GB","es","ar"])
+test(`real ${type} scan button opens FREE manual path in ${locale}`,async()=>{
+  const h=setup(type,{injectManualFallback:true});h.ctx.t=translator(locale);h.ctx.lang=locale;
+  let visionCalls=0,requests=0;
+  h.ctx.analyzePlayerCaptureBatch=async()=>{visionCalls++;return null};
+  h.ctx.fetchWarBoostScan=async()=>{requests++;return missingProvider()};
   await h.select("synthetic-capture");
-  h.node("scanSquadTargetConfirmed").checked=true;
-  if(type==="exclusive")await h.ctx.analyzeExclusiveScan();else await h.analyze();
-  assert.equal(h.node("scanStatus").textContent,translator(locale)("scan_unavailable_no_charge"));
+  if(type==="squad1")h.node("scanSquadTargetConfirmed").checked=true;
+  await h.analyze();
+  assert.equal(h.node("scanStatus").textContent,freeScanCopy(locale).unavailable);
   assert.equal(h.node("analyzeScanBtn").disabled,false);
   assert.equal(h.renders.length,0);assert.equal(h.ctx.pendingScanReview,null);
   assert.deepEqual(plain(h.ctx.scanImageDataList),["synthetic-capture"]);
+  const copy=freeScanCopy(locale),fallback=h.node("scanManualFallback"),button=h.node("scanManualFallbackBtn");
+  assert.equal(fallback.classList.contains("hidden"),false);
+  assert.equal(h.node("scanManualFallbackMessage").textContent,`${copy.unavailable} ${copy.manualAvailability}`);
+  assert.equal(button.dataset.manualScanDestination,manualScanDestination(type));
+  assert.equal(button.dataset.manualScanType,type);
+  assert.equal(visionCalls,0);assert.equal(requests,0);
+  assert.deepEqual(h.writes,type==="profile"?["single"]:type==="technology"?["technology"]:[]);
 });
-test("no-debit claim requires HTTP 503 and explicit boolean proof; partial batches cannot claim zero debit",async()=>{
+for(const locale of ["fr","en-GB","es","ar"])
+test(`real exclusive scan button offers FREE manual entry in ${locale}`,async()=>{
+  const h=setup("exclusive",{injectManualFallback:true});h.ctx.t=translator(locale);h.ctx.lang=locale;
+  let visionCalls=0,requests=0;
+  h.ctx.analyzePlayerCaptureBatch=async()=>{visionCalls++;return null};
+  h.ctx.fetchWarBoostScan=async()=>{requests++;return missingProvider()};
+  await h.select("synthetic-capture");
+  await h.analyze();
+  const copy=freeScanCopy(locale),fallback=h.node("scanManualFallback"),button=h.node("scanManualFallbackBtn");
+  assert.equal(h.node("scanStatus").textContent,copy.unavailable);
+  assert.equal(fallback.classList.contains("hidden"),false);
+  assert.equal(h.node("scanManualFallbackMessage").textContent,`${copy.unavailable} ${copy.manualAvailability}`);
+  assert.equal(button.dataset.manualScanDestination,manualScanDestination("exclusive"));
+  assert.equal(button.dataset.manualScanType,"exclusive");
+  await button.events.click({currentTarget:button});
+  assert.deepEqual(plain(h.ctx.manualDestinationOpened),["player"]);
+  assert.equal(visionCalls,0);assert.equal(requests,0);
+  assert.equal(h.node("analyzeScanBtn").disabled,false);
+  assert.equal(h.renders.length,0);assert.equal(h.ctx.pendingScanReview,null);
+  assert.deepEqual(plain(h.ctx.scanImageDataList),["synthetic-capture"]);
+  assert.deepEqual(h.writes,["single"]);
+});
+test("partial-batch errors stay cautious; FREE technology batch never requests paid Vision",async()=>{
   const t=translator("fr");
   for(const result of [
     missingProvider(false),
@@ -133,31 +177,115 @@ test("no-debit claim requires HTTP 503 and explicit boolean proof; partial batch
     return missingProvider();
   }}),error=>{
     assert.equal(error.quotaReserved,undefined);
-    assert.equal(analysisFailureMessage(error,t),t("scan_unavailable"));return true;
+    assert.equal(analysisFailureMessage(error,t),t("scan_error"));
+    return true;
   });
+  const h=setup("technology",{injectManualFallback:true});
+  h.ctx.t=t;h.ctx.lang="fr";h.ctx.proFeatureAllowed=()=>false;
+  let visionCalls=0,serverRequests=0;
+  h.ctx.analyzePlayerCaptureBatch=async()=>{visionCalls++;return null};
+  h.ctx.fetchWarBoostScan=async()=>{serverRequests++;return missingProvider()};
+  await h.select("technology-capture-1","technology-capture-2");
+  assert.equal(h.ctx.playerScanBatchLimit("technology"),3);
+  assert.equal(h.ctx.scanImageDataList.length,2,"two images form a partial Technology batch");
+  await h.analyze();
+  const copy=freeScanCopy("fr");
+  assert.equal(h.node("scanStatus").textContent,copy.unavailable);
+  assert.equal(h.node("scanManualFallbackMessage").textContent,`${copy.unavailable} ${copy.manualAvailability}`);
+  assert.equal(h.node("scanManualFallback").classList.contains("hidden"),false);
+  assert.equal(h.node("scanManualFallbackBtn").dataset.manualScanDestination,"technology");
+  assert.equal(visionCalls,0,"FREE scan never starts the Vision batch analyzer");
+  assert.equal(serverRequests,0,"without a scan request, the server cannot reserve a scan quota or call a provider");
+  assert.equal(h.ctx.pendingScanReview,null);assert.equal(h.renders.length,0);
+  assert.deepEqual(h.writes,["technology"],"only the local pending capture draft is retained");
 });
-test("real profile DOM handler remains prudent without server no-debit proof and with unknown diagnostics",async()=>{
+test("FREE profile scan offers manual entry and preserves capture without Vision",async()=>{
   for(const response of [missingProvider(false),{response:{ok:false,status:503},json:{code:"VISION_HTTP_ERROR",message:"PRIVATE_PROVIDER_DIAGNOSTIC"}}]){
-    const h=setup("profile");h.ctx.t=translator("fr");
-    h.ctx.analysisFailureMessage=analysisFailureMessage;h.ctx.analyzePlayerCaptureBatch=analyzePlayerCaptureBatch;
-    h.ctx.fetchWarBoostScan=async()=>response;
+    const h=setup("profile",{injectManualFallback:true});h.ctx.t=translator("fr");h.ctx.lang="fr";
+    let accessChecks=0,consentChecks=0,providerCalls=0;
+    h.ctx.requireBetaAccess=()=>{accessChecks++;return true};
+    h.ctx.requireBetaConsent=()=>{consentChecks++;return true};
+    h.ctx.analyzePlayerCaptureBatch=analyzePlayerCaptureBatch;
+    h.ctx.fetchWarBoostScan=async()=>{providerCalls++;return response};
+    h.ctx.state={squads:[{heroes:[{name:"ConfirmedSyntheticHero"}]}]};
+    const savedBefore=plain(h.ctx.state);
     await h.select("synthetic-capture");await h.analyze();
-    assert.equal(h.node("scanStatus").textContent,translator("fr")(response.json.code==="SCAN_NOT_CONFIGURED"?"scan_unavailable":"scan_error"));
+    const copy=freeScanCopy("fr");
+    assert.equal(h.node("scanStatus").textContent,copy.unavailable);
+    assert.equal(h.node("scanManualFallback").classList.contains("hidden"),false);
+    assert.equal(h.node("scanManualFallbackMessage").textContent,`${copy.unavailable} ${copy.manualAvailability}`);
+    assert.equal(h.node("scanManualFallbackBtn").dataset.manualScanDestination,manualScanDestination("profile"));
+    assert.equal(providerCalls,0,"the FREE button must not reach the provider endpoint");
+    assert.equal(accessChecks,1);assert.equal(consentChecks,1);
+    assert.ok(h.ctx.cloudSession.access_token,"the fixture represents an authenticated user");
     assert.equal(h.node("scanStatus").textContent.includes("PRIVATE"),false);
+    assert.deepEqual(plain(h.ctx.scanImageDataList),["synthetic-capture"]);
+    assert.equal(h.node("scanPreview").src,"synthetic-capture");
+    assert.deepEqual(h.writes,["single"],"capture remains only as a local pending draft");
+    assert.deepEqual(plain(h.ctx.state),savedBefore,"existing confirmed data is unchanged");
+    assert.equal(h.ctx.pendingScanReview,null);assert.equal(h.renders.length,0);
   }
 });
-for(const proof of [true,false])test(`real roster click handler preserves refusal proof=${proof} without import`,async()=>{
-  const h=setup("profile");h.ctx.t=translator("es");
+function installRosterRoleContext(h,role){
+  const userId="synthetic-roster-manager";
   Object.assign(h.ctx,{
-    analysisFailureMessage,scanResponseError,hasDeclaredAllianceCommandRole:()=>true,
-    rosterScanFiles:[{name:"synthetic"}],rosterScanDraft:[],
-    collectRosterScanDraftFromDom(){},imageToDataUrl:async()=>"synthetic-capture",
-    fetchWarBoostScan:async()=>missingProvider(proof)
+    normalizeAllianceRole,confirmedCanonicalSelfRole,
+    state:{player_id:userId,player:{name:"Test",role,server_id:"884"},alliance:{
+      cloud_role_verified:true,role,server_id:"884",tag:"ALL4",
+      members:[{player_id:userId,warboost_linked:true,name:"Test",role,server_id:"884",alliance_tag:"ALL4"}]
+    }},
+    cloudSession:{access_token:"synthetic-not-a-real-token",user:{id:userId}}
   });
+  for(const name of ["normalizedRole","allianceRoleEvidence","allianceCommandAccess",
+    "hasDeclaredAllianceCommandRole","managerOnlyMessage","showAllianceRoleGuard"])
+    vm.runInContext(fn(name),h.ctx);
+}
+test("real roster click handler offers FREE manual entry to verified R4/R5 without Vision",async()=>{
+  for(const role of ["R4","R5"]){
+    const h=setup("profile"),t=translator("es");h.ctx.lang="es";h.ctx.t=t;
+    installRosterRoleContext(h,role);h.ctx.freeScanCopy=freeScanCopy;
+    let accessChecks=0,consentChecks=0,providerCalls=0,manualFocus=0;
+    h.ctx.requireBetaAccess=()=>{accessChecks++;return true};
+    h.ctx.requireBetaConsent=()=>{consentChecks++;return true};
+    h.ctx.rosterScanFiles=[{name:"synthetic.png",data:"synthetic-capture"}];
+    h.ctx.rosterScanDraft=[];
+    h.ctx.fetchWarBoostScan=async()=>{providerCalls++;return missingProvider()};
+    h.node("rosterScanAddMemberBtn").focus=()=>{manualFocus++};
+    assert.equal(h.ctx.allianceCommandAccess().verifiedAllowed,true);
+    vm.runInContext(listener("rosterScanAnalyzeBtn","click",true),h.ctx);
+    await h.node("rosterScanAnalyzeBtn").events.click();
+    const expected=`${freeScanCopy("es").unavailable} ${t("roster_manual_add")}`;
+    assert.equal(h.node("rosterScanStatus").textContent,expected);
+    assert.equal(h.node("rosterScanStatus").classList.contains("hidden"),false);
+    assert.equal(h.node("rosterScanAnalyzeBtn").disabled,false);
+    assert.equal(accessChecks,1);assert.equal(consentChecks,1);
+    assert.equal(manualFocus,1,"authorized manager is directed to the existing manual member editor");
+    assert.equal(providerCalls,0,"free roster capture must never call the Vision endpoint");
+    assert.deepEqual(plain(h.ctx.rosterScanFiles),[{name:"synthetic.png",data:"synthetic-capture"}]);
+    assert.deepEqual(plain(h.ctx.rosterScanDraft),[]);
+    assert.equal(h.writes.length,0,"opening free manual entry does not import or save roster changes");
+  }
+});
+test("real roster click handler keeps FREE manual roster entry behind verified R4/R5 authorization",async()=>{
+  const h=setup("profile"),t=translator("es");h.ctx.lang="es";h.ctx.t=t;
+  installRosterRoleContext(h,"R3");h.ctx.freeScanCopy=freeScanCopy;
+  let providerCalls=0,manualFocus=0;
+  h.ctx.rosterScanFiles=[{name:"synthetic.png",data:"synthetic-capture"}];
+  h.ctx.rosterScanDraft=[];
+  h.ctx.fetchWarBoostScan=async()=>{providerCalls++;return missingProvider()};
+  h.node("rosterScanAddMemberBtn").focus=()=>{manualFocus++};
+  h.node("rosterScanStatus").querySelector=()=>null;
+  assert.equal(h.ctx.allianceCommandAccess().verifiedAllowed,false);
+  assert.equal(h.ctx.allianceCommandAccess().allowed,false);
   vm.runInContext(listener("rosterScanAnalyzeBtn","click",true),h.ctx);
   await h.node("rosterScanAnalyzeBtn").events.click();
-  assert.equal(h.node("rosterScanStatus").textContent,translator("es")(proof?"scan_unavailable_no_charge":"scan_unavailable"));
-  assert.equal(h.node("rosterScanAnalyzeBtn").disabled,false);
+  const status=h.node("rosterScanStatus");
+  assert.ok(status.innerHTML.includes("R3"),"canonical R3 refusal remains visible");
+  assert.equal(status.classList.contains("hidden"),false);
+  assert.equal(status.innerHTML.includes(freeScanCopy("es").unavailable),false);
+  assert.equal(manualFocus,0,"R3 is not offered roster management");
+  assert.equal(providerCalls,0);
+  assert.deepEqual(plain(h.ctx.rosterScanFiles),[{name:"synthetic.png",data:"synthetic-capture"}]);
   assert.deepEqual(plain(h.ctx.rosterScanDraft),[]);
   assert.equal(h.writes.length,0);
 });
@@ -217,25 +345,58 @@ test("cancel review leaves captures but never saves a confirmation",async()=>{
   assert.equal(h.ctx.pendingScanReview,null);assert.deepEqual(h.writes,[]);
   assert.deepEqual(plain(h.ctx.scanImageDataList),["one"]);
 });
-test("analyze requires target acknowledgment and only stages a review",async()=>{
-  const h=setup();await h.select("one");let calls=0;
+test("FREE manual fallback requires target acknowledgment and never starts Vision",async()=>{
+  const h=setup("squad1",{injectManualFallback:true});h.ctx.t=translator("fr");h.ctx.lang="fr";
+  await h.select("one");let calls=0,requests=0;
   h.ctx.analyzePlayerCaptureBatch=async()=>{calls++;return {state:{squads:[{heroes:[]}]}}};
+  h.ctx.fetchWarBoostScan=async()=>{requests++;return missingProvider()};
   await h.analyze();assert.equal(calls,0);
+  assert.equal(h.node("scanStatus").textContent,translator("fr")("scan_target_required"));
+  assert.equal(h.node("scanManualFallback").classList.contains("hidden"),true);
   h.node("scanSquadTargetConfirmed").checked=true;
-  await h.analyze();assert.equal(calls,1);assert.equal(h.renders.length,1);
-  assert.deepEqual(h.writes,[]);
+  await h.analyze();assert.equal(calls,0);assert.equal(requests,0);
+  assert.equal(h.node("scanStatus").textContent,freeScanCopy("fr").unavailable);
+  assert.equal(h.node("scanManualFallback").classList.contains("hidden"),false);
+  assert.equal(h.renders.length,0);assert.deepEqual(h.writes,[]);
+  assert.deepEqual(plain(h.ctx.scanImageDataList),["one"]);
 });
-for(const action of ["target","clear","owner","new-file"])test(`late Vision response ignored after ${action}`,async()=>{
-  const h=setup(),gate=deferred();await h.select("one");
-  h.node("scanSquadTargetConfirmed").checked=true;
-  h.ctx.analyzePlayerCaptureBatch=()=>gate.promise;
-  const loading=h.analyze();
+for(const action of ["target","clear","owner","new-file"])test(`late simulated Vision response ignored after ${action}`,async()=>{
+  const h=setup("squad1",{injectManualFallback:true}),gate=deferred();
+  h.ctx.t=translator("fr");h.ctx.lang="fr";
+  h.ctx.state={player_id:"synthetic-owner",squads:[{power:45.6,heroes:[{name:"ConfirmedHero"}]}]};
+  const savedBefore=plain(h.ctx.state);
+  await h.select("one");h.node("scanSquadTargetConfirmed").checked=true;
+  let freeAnalyzerCalls=0,freeRequests=0,legacyRequests=0;
+  h.ctx.analyzePlayerCaptureBatch=async()=>{freeAnalyzerCalls++;return null};
+  h.ctx.fetchWarBoostScan=async()=>{freeRequests++;return missingProvider()};
+  await h.analyze();
+  assert.equal(freeAnalyzerCalls,0,"the FREE button does not start a new analysis");
+  assert.equal(freeRequests,0,"the FREE button does not send a scan request");
+  assert.equal(h.node("scanManualFallback").classList.contains("hidden"),false);
+  assert.equal(h.node("scanStatus").textContent,freeScanCopy("fr").unavailable);
+
+  // Model a response from a legacy request already in flight. This request is
+  // local and deferred; the external-network fixture blocks any real provider.
+  h.ctx.analyzePlayerCaptureBatch=analyzePlayerCaptureBatch;
+  h.ctx.fetchWarBoostScan=()=>{legacyRequests++;return gate.promise};
+  const loading=h.ctx.analyzeReviewedScan();
+  await Promise.resolve();await Promise.resolve();
+  assert.equal(legacyRequests,1,"exactly one already-started request is simulated");
   if(action==="target")await h.target("squad4");
   if(action==="clear")h.node("clearScanCaptureBtn").events.click();
   if(action==="owner")h.setOwner("other-synthetic-owner");
   if(action==="new-file")await h.select("new");
-  gate.resolve({state:{squads:[{heroes:[]}]}});await loading;
+  gate.resolve({response:{ok:true,status:200},json:{
+    batch_analysis:true,capture_count:1,state:{squads:[{heroes:[{name:"StaleHero"}]}]}
+  }});
+  await loading;
+  assert.equal(legacyRequests,1,"late response does not trigger a retry");
   assert.equal(h.renders.length,0);assert.equal(h.ctx.pendingScanReview,null);
+  assert.deepEqual(plain(h.ctx.state),savedBefore,"confirmed player data is unchanged");
+  if(action==="clear")assert.deepEqual(plain(h.ctx.scanImageDataList),[]);
+  if(action==="owner")assert.equal(h.ctx.pendingScanOwner(),"other-synthetic-owner");
+  if(action==="new-file")assert.deepEqual(plain(h.ctx.scanImageDataList),["new"]);
+  if(action==="target")assert.equal(h.node("scanType").value,"squad4");
 });
 test("technology batch selects two captures; clear also removes the local preview",async()=>{
   const h=setup("technology");await h.select("tech-zero","tech-max");
