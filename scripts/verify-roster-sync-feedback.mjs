@@ -71,6 +71,7 @@ const seed=()=>({player_id:owner,player:{name:"Synthetic Manager",server_id:"123
 function browserContext(){
   const state=seed();
   const context=vm.createContext({state,cloudSession:{access_token:"synthetic-session",user:{id:owner}},
+    syncActionBusy:false,playerSyncActionFeedback:null,navigator:{onLine:true},
     normalizeServerId,normalizeAllianceTag,
     betaAccessAllowed:()=>true,betaConsentAccepted:()=>true,authHeaders:h=>h,cloudRevision:revision,
     localStateRevision:0,lang:"fr",t:key=>key,parseRosterConfidence,safeRosterDiagnostic,
@@ -83,6 +84,7 @@ function browserContext(){
     adoptCanonicalPendingAccounts:v=>v,saveState:()=>true,render:()=>{},$:()=>null,
     renderRosterSyncDiagnostic:()=>{},beginLoadingButton,analysisIndicator:createAnalysisIndicator()});
   vm.runInContext(slice("function beginRosterUpdateFeedback(","let rosterImportInFlight=false;"),context);
+  vm.runInContext(slice("function renderPlayerSyncFeedback()","function renderAccountSaveDiagnostic()"),context);
   vm.runInContext(slice("async function persistRosterCandidate(","function renderRosterSyncDiagnostic("),context);
   vm.runInContext(slice("let rosterImportInFlight=false;","function renderRosterScanFiles("),context);
   return context;
@@ -214,7 +216,7 @@ async function serverCase({role="R4",stale=false,snapshotFailure=false,noContext
     roster:[canonical],roster_updated_at:revision,updated_at:revision},
     membership:{alliance_id:"synthetic-alliance",player_id:owner,role},roster:[canonical],cloud_roster:[canonical]};
   let writes=0,profiles=0;const writePayloads=[];
-  const context=vm.createContext({...imports,
+  const context=vm.createContext({...imports,URL,
     configured:()=>!unavailable,userConfigured:()=>false,
     requireProductUser:async()=>({user:{id:owner}}),betaAccessForUserAsync:async()=>({allowed:true}),
     getProfile:async()=>({state:structuredClone(state),updated_at:revision}),
@@ -224,7 +226,8 @@ async function serverCase({role="R4",stale=false,snapshotFailure=false,noContext
     insertSnapshot:async()=>{if(snapshotFailure)throw Object.assign(Error("private SQL"),{status:503,code:"database_permissions_missing",body:{code:"42501"}})},
     joinAlliance:async()=>{throw Error("unexpected membership mutation")},
     console});
-  vm.runInContext(api.replace(/^import .*$/gm,"").replace("export default async function handler","async function handler"),context);
+  vm.runInContext(api.replace(/^import .*$/gm,"").replace(/^export function /gm,"function ")
+    .replace("export default async function handler","async function handler"),context);
   const response={statusCode:200,setHeader(){},status(code){this.statusCode=code;return this},json(body){this.body=plain(body);return this}};
    await context.handler({method:"POST",headers:{},body:request||{state,base_updated_at:revision,base_roster_updated_at:stale?"old":revision}},response);
   return {...response,writes,profiles,writePayloads};
@@ -292,7 +295,7 @@ await test("actual saveState local-only option disables automatic profile schedu
   assert.equal(c.saveState(),true);assert.equal(stored,2);assert.equal(scheduled,1);
 });
 await test("actual manual retry uses roster-only path, without profile recovery or personal sync",async()=>{
-  const c=browserContext(),saveOptions=[],notice={textContent:"",setAttribute(){},removeAttribute(){}};
+  const c=browserContext(),saveOptions=[],notice=status();
   c.state.alliance.roster_sync_status="pending";c.state.alliance.members.push(row);
   c.requireBetaAccess=()=>true;c.requireBetaConsent=()=>true;c.hasMeaningfulCore=()=>false;
   c.reconcileAuthenticatedRuntime=()=>{throw Error("must not recover or write profile for roster retry")};

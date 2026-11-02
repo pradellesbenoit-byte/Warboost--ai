@@ -51,11 +51,22 @@ async function syncHandler(req,res){res.setHeader("Cache-Control","no-store");if
         if(Object.hasOwn(req.body,"base_roster_updated_at"))request.base_roster_updated_at=req.body.base_roster_updated_at;
         else delete request.base_roster_updated_at;
       }
-      const result=await syncAllianceRoster(request,{playerId,access,betaAllowed:true},
+      let rosterBeta={allowed:false};
+      try{rosterBeta=await betaAccessForUserAsync(user)}catch{rosterBeta={allowed:false}}
+      const result=await syncAllianceRoster(request,{playerId,access,betaAllowed:rosterBeta?.allowed===true},
         {configured,userConfigured,getProfile,getProfileForUser,getAllianceRoster,updateAllianceScopeRoster});
       return res.status(result.status).json(result.body);
     }
     const userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,profileWrite=null,alliancePendingCanonical=false;
+    const allianceScope=allianceScopeFromState(current);
+    let allianceBeta={allowed:false};
+    // Beta access gates canonical alliance enrichment only, never a player's own
+    // authenticated profile write. If invitation lookup is unavailable, fail
+    // closed for alliance access and continue through the user's RLS write path.
+    if(configured()&&(requestedRosterSync||Boolean(allianceScope.server_id&&allianceScope.alliance_tag))){
+      try{allianceBeta=await betaAccessForUserAsync(user)}
+      catch{allianceBeta={allowed:false}}
+    }
     // Personal synchronization has no legacy code requirement. Alliance paths retain their beta gate.
     if(requestedRosterSync&&!configured())throw Object.assign(new Error("Roster cloud service unavailable"),{status:503,code:"roster_cloud_service_unavailable"});
     if(configured()||userMode){

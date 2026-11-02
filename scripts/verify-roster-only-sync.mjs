@@ -25,7 +25,7 @@ function harness(options={}){
   if(options.role)canonical[0].role=options.role;
   if(options.unlinked){canonical[0].warboost_linked=false;delete canonical[0].player_id}
   const before=copy(cloud);
-  const context=vm.createContext({...imports,console,
+  const context=vm.createContext({...imports,console,URL,
     configured:()=>!options.unavailable,userConfigured:()=>Boolean(options.userMode),
     requireProductUser:async(_req,config)=>{
       assert.equal(config.consent,true);
@@ -60,7 +60,8 @@ function harness(options={}){
     insertSnapshot:async()=>{otherWrites++;throw Error("unexpected history write")},
     insertSnapshotForUser:async()=>{otherWrites++;throw Error("unexpected history write")},
     joinAlliance:async()=>{otherWrites++;throw Error("unexpected membership write")}});
-  vm.runInContext(api.replace(/^import .*$/gm,"").replace("export default async function handler","async function handler"),context);
+  vm.runInContext(api.replace(/^import .*$/gm,"").replace(/^export function /gm,"function ")
+    .replace("export default async function handler","async function handler"),context);
   const local=copy(cloud);local.squads[0].power=99;local.player.hq_level=1;
   local.drone.level=1;local.technology.hero_tech_pct=0;local.extra_history={retained:false};
   local.alliance.members=[newMember];local.alliance.roster_sync_status="pending";
