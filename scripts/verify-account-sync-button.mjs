@@ -10,7 +10,8 @@ import {translator} from "../i18n.js";
 const app=fs.readFileSync("app.js","utf8");
 let checks=0,requests=0;
 const stamp="2026-10-30T12:30:00.000Z";
-const test=(name,run)=>{run();checks++;console.log("PASS "+name)};
+const tests=[];
+const test=(name,run)=>tests.push([name,run]);
 function fn(name){
   const start=app.search(new RegExp(`(?:async )?function ${name}\\(`));
   assert.ok(start>=0,`missing function ${name}`);
@@ -32,11 +33,11 @@ function makeNote(){
     setAttribute(name,value){this.attributes[name]=value}};
 }
 function harness({user="owner",stateOwner=user,token="fixture-token",consent=true,online=true,roster="clean",fetchReply=null,fetchImpl=null,
-  requireAccess=true,changeAccountDuringFetch=false}={}){
+  requireAccess=true,changeAccountDuringFetch=false,reconcileResult=null}={}){
   const note=makeNote(),playerButton=makeButton(),allButton=makeButton(),drawers=[];
   const nodes={"#playerSyncInfo":note,"#syncPlayerBtn":playerButton,"#syncAllBtn":allButton};
   const original={player_id:stateOwner,player:{name:"Private player"},squads:[{id:1,power:45.6,heroes:[{name:"Carlie",confirmed:true}]}],
-    alliance:{roster_sync_status:roster,members:[]},sync:{pending_cloud_save:true,sources:{}}};
+    technology:{branches:{heroes:0}},alliance:{roster_sync_status:roster,members:[]},sync:{pending_cloud_save:true,sources:{}}};
   let currentState=JSON.parse(JSON.stringify(original)),saveCalls=0,rosterCalls=0,finishCalls=0,networkCalls=0,revision=1;
   const session=user?{user:{id:user},access_token:token}:null;
   const ctx=vm.createContext({
@@ -65,7 +66,7 @@ function harness({user="owner",stateOwner=user,token="fixture-token",consent=tru
     initialState:()=>({}),
     hydrateCloudState:value=>JSON.parse(JSON.stringify(value)),
     mergeStateProtected:(base,remote,{preferBase}={})=>JSON.parse(JSON.stringify(preferBase?base:remote)),
-    reconcileCloudSquads:(_base,_remote,merged)=>({state:merged,localNewer:[],conflicts:[]}),
+    reconcileCloudSquads:(_base,_remote,merged)=>reconcileResult?{state:merged,...reconcileResult}:{state:merged,localNewer:[],conflicts:[]},
     repairLegacySquadIdentity:value=>({state:value}),
     adoptCanonicalPendingAccounts:value=>value,
     reconcileAuthenticatedRuntime:async()=>({ok:true}),
@@ -179,6 +180,34 @@ test("only matching server write receipt confirms the same account; session swit
   assert.equal(switched.saveCalls,0);assert.match(switched.note.textContent,/Le compte a changé/);
 });
 
+test("verified write with a newer local edit reports partial sync without contradictory copy",async()=>{
+  const h=harness({fetchImpl:async(_url,_options,_timeout,ctx)=>{
+    ctx.state={...ctx.state,technology:{branches:{heroes:42}}};
+    ctx.localStateRevision++;
+    return successfulReply();
+  }});
+  await h.playerButton.click();
+  assert.equal(h.ctx.accountSyncOperations.snapshot("owner:fixture-token").save.kind,"verified");
+  assert.equal(h.ctx.state.sync.pending_cloud_save,true);
+  assert.equal(h.state.technology.branches.heroes,42,"newer local technology value is preserved");
+  assert.match(h.note.textContent,/Écriture cloud confirmée pour ce compte/);
+  assert.match(h.note.textContent,/modifications sont en attente de synchronisation/);
+  assert.doesNotMatch(h.note.textContent,/écriture cloud du profil n’est pas confirmée/i);
+  assert.doesNotMatch(h.note.textContent,/Vérifier le cloud, sans enregistrer/);
+  assert.doesNotMatch(h.note.textContent,/Synchronisation vérifiée pour cette session/);
+});
+
+test("verified write with a squad reconciliation conflict names the conflict and preserves the receipt",async()=>{
+  const h=harness({fetchReply:successfulReply(),reconcileResult:{localNewer:[],conflicts:[1]}});
+  await h.playerButton.click();
+  assert.equal(h.ctx.accountSyncOperations.snapshot("owner:fixture-token").save.kind,"verified");
+  assert.equal(h.ctx.state.sync.pending_cloud_save,true);
+  assert.match(h.note.textContent,/Écriture cloud confirmée pour ce compte/);
+  assert.match(h.note.textContent,/modifications sont en attente de synchronisation/);
+  assert.match(h.note.textContent,/Conflit local\/cloud enregistré — non revalidé/);
+  assert.doesNotMatch(h.note.textContent,/écriture cloud du profil n’est pas confirmée/i);
+});
+
 test("roster acknowledgement is never presented as a personal profile save",async()=>{
   const h=harness({roster:"pending"});
   const before=JSON.stringify(h.state.squads);
@@ -218,4 +247,9 @@ test("sync write diagnostic uses an explicit endpoint allowlist",()=>{
   assert.equal(safeSaveDiagnostic({...diagnostic,endpoint:"/api/scan"}),null);
 });
 
+for(const [name,run] of tests){
+  await run();
+  checks++;
+  console.log("PASS "+name);
+}
 console.log(`PASS account sync button: ${checks} scenarios, ${requests} synthetic requests; no remote service or account data`);

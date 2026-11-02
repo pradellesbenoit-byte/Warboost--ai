@@ -4206,7 +4206,8 @@ async function syncAll(){
     const diagnostic=createSaveDiagnostic({endpoint:"/api/sync",stage:"response",status:r.status,code:"save_confirmed",writeState:"confirmed",correlationId,started:syncStarted});
     recordAccountSyncResult({kind:"verified",revision:j.updated_at,at:j.updated_at,diagnostic},requestSession,operation);
     const locallySaved=saveState({cloudSave:false});renderProvider();
-    const feedbackKeys=pending?["account_sync_action_write_confirmed","account_sync_action_profile_pending","account_sync_retry"]:
+    const feedbackKeys=pending?["account_sync_action_write_confirmed","account_sync_pending",
+      ...(squadResult.conflicts.length?["account_sync_squad_conflict"]:[])]:
       locallySaved?["account_sync_action_write_confirmed"]:["account_sync_action_write_confirmed","scan_pending_local_failed"];
     showPlayerSyncFeedback(feedbackKeys,{warn:pending||!locallySaved});
   }catch(error){
