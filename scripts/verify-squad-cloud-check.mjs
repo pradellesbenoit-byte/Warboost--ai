@@ -81,6 +81,61 @@ test("hero order, power and weapon divergence are field-by-field differences",()
   assert.equal(compareSquadCloudCheck(local,differentWeapon).fields.find(row=>row.key==="weapon"&&row.slot===4).state,"different");
 });
 
+test("weapons missing on both readable lists are optional gaps, not differences or full equality",()=>{
+  const localRecord=profile(),cloudRecord=profile();
+  localRecord.exclusive_weapons=localRecord.exclusive_weapons.filter(weapon=>weapon.hero_name==="DVA");
+  cloudRecord.exclusive_weapons=cloudRecord.exclusive_weapons.filter(weapon=>weapon.hero_name==="DVA");
+  const local=projectSquadCloudCheckRecord(localRecord,{revision:confirmedAt});
+  const cloud=projectSquadCloudCheckRecord(cloudRecord,{revision:confirmedAt});
+  const comparison=compareSquadCloudCheck(local,cloud);
+  assert.equal(comparison.summary,"optional_missing");
+  assert.equal(comparison.optionalMissingWeaponCount,4);
+  assert.deepEqual(comparison.optionalMissingWeaponSlots,[1,2,3,5]);
+  for(const slot of comparison.optionalMissingWeaponSlots){
+    const field=comparison.fields.find(row=>row.key==="weapon"&&row.slot===slot);
+    assert.equal(field.state,"missing");
+    assert.equal(field.local,null);
+    assert.equal(field.cloud,null);
+  }
+  assert.equal(comparison.fields.find(row=>row.key==="weapon"&&row.slot===4).state,"identical");
+  const html=squadCloudCheckHtml({kind:"result",checkedAt:confirmedAt,comparison},
+    key=>ACCOUNT_SYNC_COPY.fr[key]||key);
+  assert.match(html,/Aucun écart détecté sur les champs vérifiables/);
+  assert.match(html,/4 données d’armes facultatives sont manquantes des deux côtés/);
+  assert.match(html,/\(slots 1, 2, 3, 5\)/);
+  assert.match(html,/la comparaison reste partielle/);
+  assert.doesNotMatch(html,/Cloud conforme|comparaison complète/i);
+});
+
+test("one-sided weapon absence remains an alert and a missing required field blocks partial-neutral summary",()=>{
+  const localRecord=profile(),cloudRecord=profile();
+  cloudRecord.exclusive_weapons=cloudRecord.exclusive_weapons.filter(weapon=>weapon.hero_name==="DVA");
+  const local=projectSquadCloudCheckRecord(localRecord,{revision:confirmedAt});
+  const cloud=projectSquadCloudCheckRecord(cloudRecord,{revision:confirmedAt});
+  const asymmetric=compareSquadCloudCheck(local,cloud);
+  assert.equal(asymmetric.summary,"review");
+  assert.deepEqual(asymmetric.optionalMissingWeaponSlots,[]);
+  assert.equal(asymmetric.fields.find(row=>row.key==="weapon"&&row.slot===1).state,"missing");
+
+  const missingPower=projectSquadCloudCheckRecord(profile({power:null}),{revision:confirmedAt});
+  const requiredMissing=compareSquadCloudCheck(missingPower,missingPower);
+  assert.equal(requiredMissing.fields.find(row=>row.key==="power").state,"missing");
+  assert.equal(requiredMissing.summary,"review");
+});
+
+test("unreadable weapon lists remain incomplete even when both sides lack entries",()=>{
+  const localRecord=profile(),cloudRecord=profile();
+  delete localRecord.exclusive_weapons;
+  delete cloudRecord.exclusive_weapons;
+  const comparison=compareSquadCloudCheck(
+    projectSquadCloudCheckRecord(localRecord,{revision:confirmedAt}),
+    projectSquadCloudCheckRecord(cloudRecord,{revision:confirmedAt})
+  );
+  assert.equal(comparison.summary,"review");
+  assert.equal(comparison.fields.find(row=>row.key==="weapon"&&row.slot===1).state,"not_verifiable");
+  assert.deepEqual(comparison.optionalMissingWeaponSlots,[]);
+});
+
 test("missing profile and unsupported marker schemas never report a match",()=>{
   const local=projectSquadCloudCheckRecord(profile(),{revision:confirmedAt});
   const noProfile=projectSquadCloudCheckRecord({}, {profilePresent:false});
