@@ -1,7 +1,8 @@
 import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
 import {createSaveDiagnostic,newSaveCorrelation,publicSaveError} from "../lib/cloud-save-diagnostic.js";
-import {getSquadsForUser} from "../lib/supabase.js";
+import {getSquadsForUser,getSquadCloudCheckForUser} from "../lib/supabase.js";
 import {createSquadCompareHandler} from "../lib/squad-compare-handler.js";
+import {createSquadCloudCheckHandler} from "../lib/squad-cloud-check-handler.js";
 import {normalizeState} from "../lib/normalize.js";
 import {recoverHeroData,heroDataSignature} from "../lib/hero-history.js";
 import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../lib/beta-access.js";
@@ -200,12 +201,14 @@ async function canonicalizeAllianceState(input,playerId,{allowWrites=true}={}){
 }
 
 const squadCompareHandler=createSquadCompareHandler({requireUser,readForUser:getSquadsForUser,consentVersion:BETA_CONSENT_VERSION});
+const squadCloudCheckHandler=createSquadCloudCheckHandler({requireUser,readForUser:getSquadCloudCheckForUser,consentVersion:BETA_CONSENT_VERSION});
 const gearRepairHandler=createGearRepairHandler({requireUser,readForUser:getSquadsForUser,
   rpc:gearRepairRpcForUser,consentVersion:BETA_CONSENT_VERSION,enabled:GEAR_REPAIR_RELEASE_APPROVED,
   signingKey:()=>process.env.SESSION_SECRET||""});
 export default async function handler(req,res){
   if(String(req.query?.action||"").startsWith("gear_repair_"))return gearRepairHandler(req,res);
   if(req.query?.action==="squad_compare")return squadCompareHandler(req,res);
+  if(req.query?.action==="squad_cloud_check")return squadCloudCheckHandler(req,res);
   if(String(req.query?.identity||"")==="1")return identityOnboardingHandler(req,res);
   res.setHeader("Cache-Control","no-store");
   const diagnosticPost=req.method==="POST",started=Date.now();

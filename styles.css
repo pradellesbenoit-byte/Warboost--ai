@@ -682,3 +682,23 @@ html[dir="rtl"] .acqOptionHead{direction:rtl}
   #appContent .topbar .languageSelect{grid-column:2;grid-row:2;width:96px;min-width:0;max-width:96px}
   #appContent .topbar .avatarBtn{grid-column:3;grid-row:2}
 }
+
+.squadCloudCheck{display:grid;gap:8px;margin-top:12px;min-width:0}
+.squadCloudCheckResult{border:1px solid var(--line);border-radius:12px;background:rgba(7,12,22,.72);padding:10px;overflow-wrap:anywhere}
+.squadCloudCheckResult p{margin:0 0 5px}
+.squadCloudCheckMeta{display:grid;gap:2px;color:var(--muted);font-size:11px;line-height:1.45}
+.squadCloudCheckMeta p{margin:0}
+.squadCloudCheckResult small{display:block;color:var(--muted);font-size:11px;line-height:1.45}
+.squadCloudCheckResult ul{display:grid;gap:6px;list-style:none;margin:9px 0 0;padding:0}
+.squadCloudCheckField{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start;border-top:1px solid rgba(120,145,180,.18);padding:7px 0}
+.squadCloudCheckField strong,.squadCloudCheckField small{display:block;overflow-wrap:anywhere}
+.squadCloudCheckField strong{font-size:12px}
+.squadCloudCheckField small{margin-top:3px}
+.squadCloudCheckState{font-size:10px;color:var(--muted);text-align:right}
+.squadCloudCheckField[data-state="different"] .squadCloudCheckState,
+.squadCloudCheckField[data-state="not_verifiable"] .squadCloudCheckState{color:#ffd28a}
+.squadCloudCheckField[data-state="identical"] .squadCloudCheckState{color:#9ce9c7}
+@media(max-width:380px){
+  .squadCloudCheckField{grid-template-columns:minmax(0,1fr)}
+  .squadCloudCheckState{text-align:left}
+}

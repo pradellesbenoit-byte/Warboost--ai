@@ -10,6 +10,8 @@ import {accountSyncErrorKind,accountSyncView,verifiedAccountStateReply,verifiedA
 import {squadReviewStatus,squadReviewHeader,squadReviewRowHtml,accountSquadReviewHtml} from "./lib/squad-review-status.js";
 import {createSquadComparison} from "./lib/squad-comparison.js";
 import {squadComparisonHtml} from "./lib/squad-comparison-view.js";
+import {createSquadCloudCheck} from "./lib/squad-cloud-check.js";
+import {squadCloudCheckHtml} from "./lib/squad-cloud-check-view.js";
 import {createGearRepairPreview} from "./lib/gear-repair-preview.js";
 import {gearRepairPreviewHtml} from "./lib/gear-repair-preview-view.js";
 import {gearRepairPreviewCopy} from "./lib/gear-repair-preview-copy.js";
@@ -1080,6 +1082,30 @@ const squadComparison=createSquadComparison({
   context:squadReadContext,request:readOwnSquadsForPreview,
   onChange:()=>renderSquadComparisonControls()
 });
+const squadCloudCheckContext=()=>{
+  const base=squadReadContext(),sameOwner=Boolean(base.owner&&String(state?.player_id||"")===base.owner);
+  const blockedReason=!cloudSession?.access_token||!sameOwner?"auth":
+    !betaConsentAccepted()?"consent":
+      runtimeAccessState().phase!=="ready"||!betaAccessAllowed()?"forbidden":null;
+  return {...base,allowed:!blockedReason,blockedReason};
+};
+async function readOwnSquad1CloudForCheck(){
+  const response=await fetchSessionCritical("/api/state?action=squad_cloud_check",
+    {method:"GET",cache:"no-store",redirect:"error",headers:authHeaders()},12000);
+  return {response,json:await response.json().catch(()=>({}))};
+}
+const squadCloudCheck=createSquadCloudCheck({
+  context:squadCloudCheckContext,request:readOwnSquad1CloudForCheck,
+  onChange:()=>renderSquadCloudCheckControls()
+});
+function renderSquadCloudCheckControls(){
+  const button=$("#squad1CloudCheckBtn"),result=$("#squad1CloudCheckResult");
+  if(!button||!result)return;
+  const view=squadCloudCheck.view();
+  button.disabled=view.kind==="busy";
+  button.textContent=t(view.kind==="busy"?"squad_cloud_busy":"squad_cloud_button");
+  result.innerHTML=squadCloudCheckHtml(view,t);
+}
 function renderGearRepairControls(){
   const container=$("#squadCompareControls"),view=gearRepairPreview.view();
   if(gearRepairLoading&&(!container||gearRepairLoading.button!==$("#squadGearRepairBtn")||view.kind!=="busy")){
@@ -2612,7 +2638,7 @@ function renderSquads(){
     const swapTargets=squadHasSavedData(sq)?state.squads.map((target,ti)=>({id:ti+1,target})).filter(x=>x.id!==id&&squadHasSavedData(x.target)):[];
     const swapButton=swapTargets.length?`<button class="squadSwapBtn" type="button" data-squad-swap-toggle="${id}" aria-label="${esc(t("squad_swap_aria",{squad:id}))}" title="${esc(t("squad_swap"))}">⇄</button>`:"";
     const swapMenu=swapTargets.length?`<div class="squadSwapMenu hidden" data-squad-swap-menu="${id}"><span>${esc(t("squad_swap_with"))}</span>${swapTargets.map(x=>`<button type="button" class="squadSwapTarget" data-squad-swap-target="${x.id}">${esc(t("squad"))} ${x.id}</button>`).join("")}</div>`:"";
-      shell.innerHTML=`<details class="squad" data-squad-id="${id}"><summary class="squadHead"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true"></span></summary><div id="squadBody${id}" class="squadBody">${Array.from({length:5},(_,j)=>{const h=heroes[j]||emptyHero(j+1),hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtHeroPowerForDisplay(sq,h))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div></details>${swapButton}${swapMenu}`;
+       shell.innerHTML=`<details class="squad" data-squad-id="${id}"><summary class="squadHead"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true"></span></summary><div id="squadBody${id}" class="squadBody">${Array.from({length:5},(_,j)=>{const h=heroes[j]||emptyHero(j+1),hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtHeroPowerForDisplay(sq,h))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}${id===1?`<div class="squadCloudCheck"><button id="squad1CloudCheckBtn" data-squad-cloud-check="1" class="secondaryBtn wideBtn" type="button">${esc(t("squad_cloud_button"))}</button><div id="squad1CloudCheckResult" aria-live="polite"></div></div>`:""}</div></details>${swapButton}${swapMenu}`;
      if(needsSavedHeroConfirmation&&!needsHeroConfirm){
        shell.insertAdjacentHTML("beforeend",
          `<button class="secondaryBtn wideBtn" type="button" data-inline-hero-open="${id}">${esc(t("hero_confirm_action"))}</button>`);
@@ -2639,6 +2665,12 @@ function renderSquads(){
       btn.addEventListener("pointerdown",e=>e.stopPropagation());
       btn.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();shell.querySelector(".squadSwapMenu")?.classList.add("hidden");performSquadSwap(id,Number(btn.dataset.squadSwapTarget))});
     });
+     const cloudCheckButton=shell.querySelector("[data-squad-cloud-check='1']");
+     cloudCheckButton?.addEventListener("click",event=>{
+       event.preventDefault();event.stopPropagation();
+       void squadCloudCheck.run();
+     });
+     if(id===1)renderSquadCloudCheckControls();
   });
 }
 
