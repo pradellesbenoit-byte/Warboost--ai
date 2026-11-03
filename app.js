@@ -924,6 +924,8 @@ async function saveInlineHeroNames(squadId,container,button=null){
   catch{if(button){button.disabled=false;button.textContent=t("hero_save")}show("hero_save_failed");return}
   technologyAdvisorUI?.render();
   if(button){button.disabled=false;button.textContent=t("hero_save")}
+  showPlayerSyncFeedback(cloudOwner?["hero_confirm_saved","account_sync_pending"]:["hero_confirm_saved","local"],
+    {warn:cloudOwner});
   if(status){status.className="notice";status.textContent=cloudOwner?`${t("hero_confirm_saved")} · ${t("sync_needed")}`:`${t("hero_confirm_saved")} · ${t("local")}`}
 }
 function openSavedHeroConfirmation(squadId){
