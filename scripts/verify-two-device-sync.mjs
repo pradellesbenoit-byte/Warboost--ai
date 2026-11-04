@@ -189,11 +189,14 @@ test("authenticated reads are isolated by account and cause no writes",async()=>
   assert.ok(backend.writes.every(write=>write.method==="PATCH"));
 });
 
-test("general GET /api/state is write-capable while sync_status is explicitly read-only",async()=>{
+test("GET /api/state restore routes are read-only and disclose pending repairs",async()=>{
   const source=await readFile(new URL("../api/state.js",import.meta.url),"utf8");
   const statusStart=source.indexOf('if(req.method==="GET"&&req.query?.action==="sync_status")');
   const statusEnd=source.indexOf("// HF8.6.20 login-critical path",statusStart);
   const syncStatusBranch=source.slice(statusStart,statusEnd);
+  const fastStart=source.indexOf("if(fastRestore){",statusEnd);
+  const fastEnd=source.indexOf("const {user}=await requireProductUser",fastStart);
+  const fastRestoreBranch=source.slice(fastStart,fastEnd);
   const generalStart=source.indexOf('if(req.method==="GET"){',statusEnd);
   const generalEnd=source.indexOf('if(req.method==="POST"){',generalStart);
   const generalGetBranch=source.slice(generalStart,generalEnd);
@@ -201,9 +204,16 @@ test("general GET /api/state is write-capable while sync_status is explicitly re
   assert.ok(statusStart>=0&&statusEnd>statusStart,"sync_status branch is present");
   assert.doesNotMatch(syncStatusBranch,/saveOwn\s*\(|saveProfile(?:ForUser)?IfUnchanged\s*\(/,
     "sync_status branch must not invoke profile writes");
+  assert.ok(fastStart>=0&&fastEnd>fastStart,"fast restore branch is present");
+  assert.match(source,/async function canonicalizeAllianceState\(input,playerId,\{allowWrites=false\}=\{\}\)/,
+    "canonicalization is read-only by default");
+  assert.match(fastRestoreBranch,/canonicalizeAllianceState\(current,playerId\)/,
+    "fast restore uses the non-mutating default");
+  assert.doesNotMatch(fastRestoreBranch,/saveOwn\s*\(|updateAllianceScopeRoster\s*\(|joinAlliance\s*\(/,
+    "fast restore branch has no direct write call");
   assert.ok(generalStart>=0&&generalEnd>generalStart,"general GET branch is present");
-  assert.match(generalGetBranch,/if\(recovered\.changed\|\|rosterRepair\.changed\|\|normalizedHeroPowerDataChanged\)\s*\{/,
-    "restore GET may enter the repair write branch");
-  assert.match(generalGetBranch,/await saveOwn\(finalState,row\.updated_at\|\|null\)/,
-    "restore GET persists repaired state using the authenticated owner's CAS helper");
+  assert.match(generalGetBranch,/restore_repair_pending:restoreRepairPending/,
+    "general GET explicitly marks in-memory repairs as pending");
+  assert.doesNotMatch(generalGetBranch,/saveOwn\s*\(|saveProfile(?:ForUser)?IfUnchanged\s*\(|updateAllianceScopeRoster\s*\(|joinAlliance\s*\(/,
+    "general GET cannot persist profile or alliance repairs");
 });

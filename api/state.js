@@ -40,7 +40,7 @@ function confirmedRankAt(row){const n=Date.parse(row?.rank_confirmed_at||"");ret
 
 // HF8.6.10: a generic player-state save must never overwrite the authoritative
 // Last War roster identity/rank/known metrics with stale browser data.
-async function canonicalizeAllianceState(input,playerId,{allowWrites=true}={}){
+async function canonicalizeAllianceState(input,playerId,{allowWrites=false}={}){
   let state=normalizeState({...input,player_id:playerId});
   if(!configured())return {state,changed:false,status:"service_unavailable"};
   const ctx=await getAllianceRoster(playerId,{serverId:state.player?.server_id,allianceTag:state.alliance?.tag}).catch(()=>null);
@@ -285,11 +285,8 @@ export default async function handler(req,res){
       const rosterRepair=await canonicalizeAllianceState(finalState,playerId);
       finalState=rosterRepair.state;
       const normalizedHeroPowerDataChanged=heroPowerRepairProjection(row.state)!==heroPowerRepairProjection(finalState);
-      if(recovered.changed||rosterRepair.changed||normalizedHeroPowerDataChanged){
-        try{const saved=await saveOwn(finalState,row.updated_at||null);finalState=normalizeState(saved?.state||finalState);updatedAt=saved?.updated_at||updatedAt}
-        catch(error){if(error?.code!=="profile_write_conflict")throw error;const latest=await getOwn();finalState=normalizeState({...latest?.state,player_id:playerId});updatedAt=latest?.updated_at||updatedAt}
-      }
-      return res.status(200).json({ok:true,state:finalState,updated_at:updatedAt,hero_history_recovery:recoverySummary(recovered),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:userMode?"user-rls":"service",restore_trace:restoreTrace});
+      const restoreRepairPending=Boolean(recovered.changed||rosterRepair.changed||normalizedHeroPowerDataChanged);
+      return res.status(200).json({ok:true,state:finalState,updated_at:updatedAt,restore_repair_pending:restoreRepairPending,hero_history_recovery:recoverySummary(recovered),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:userMode?"user-rls":"service",restore_trace:restoreTrace});
     }
 
     if(req.method==="POST"){
