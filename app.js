@@ -492,6 +492,7 @@ function loadState(){
 }
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,cloudRetryTimer=null,cloudPullRetryTimer=null,cloudDirty=false,localStateRevision=0,cloudRevision=null,suppressPush=false,cloudHydrationPending=false,cloudProfileVerified=false,canonicalRosterReady=false,cloud=null,cloudSession=null,cloudRecoveryRedirect="",cloudDataConfig={url:"",key:""},sessionApplyInFlight=null,lastAppliedSessionKey="",runtimeReconcileInFlight=null,lastRuntimeReconcileAt=0,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false,payments_enabled:false,commercial_preview:false,subscription:null},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null,scanImageName="capture.jpg",supportTicketsState=[],supportBusy=false;
+let manualSquadEntryDraft=null;
 let currentPlayerAdviceAnalysis=null,currentAcquisitionViews=[],activeAcquisitionShopView=null;
 let playerAdviceGeneration=0,playerAdvicePendingSignature="",playerAdviceRenderedSignature="",playerAdviceHasRun=false;
 let foregroundClockInterval=null,foregroundServerTimeInterval=null,foregroundPausedAt=null,idleResumeInFlight=null,idleLifecycle=null;
@@ -895,7 +896,7 @@ async function skipHeroConfirmation(){
   closeHeroConfirmation(false);
 }
 
-function inlineHeroConfirmationHtml(sq,squadId,{hidden=false}={}){const rows=Array.from({length:5},(_,i)=>{const h=sq.heroes?.[i]||emptyHero(i+1),saved=isGenericHeroName(h?.name)?"":canonicalStoredHeroName(h.name);return `<div class="inlineHeroConfirmRow"><span class="inlineHeroSlot">${i+1}</span><select class="fieldSelect inlineHeroSelect" data-inline-hero-slot="${i}">${heroConfirmOptions(saved)}</select></div>`}).join("");return `<div class="inlineHeroConfirm${hidden?" hidden":""}" data-inline-confirm="${squadId}"><div class="inlineHeroConfirmHead"><div><b>${esc(t("hero_confirm_title",{squad:squadId}))}</b><small>${esc(t("hero_confirm_help"))}</small></div><span class="pill">${esc(t("hero_confirm_badge"))}</span></div><div class="inlineHeroConfirmRows">${rows}</div><div class="notice warn hidden" data-inline-hero-status></div><button class="primaryAction inlineHeroSaveBtn" type="button" data-inline-hero-save="${squadId}">${esc(t("hero_save"))}</button></div>`}
+function inlineHeroConfirmationHtml(sq,squadId,{hidden=false,manualEntry=false}={}){const rows=Array.from({length:5},(_,i)=>{const h=sq.heroes?.[i]||emptyHero(i+1),saved=isGenericHeroName(h?.name)?"":canonicalStoredHeroName(h.name);return `<div class="inlineHeroConfirmRow"><span class="inlineHeroSlot">${i+1}</span><select class="fieldSelect inlineHeroSelect" data-inline-hero-slot="${i}">${heroConfirmOptions(saved)}</select></div>`}).join("");return `<div class="inlineHeroConfirm${hidden?" hidden":""}" data-inline-confirm="${squadId}" data-manual-entry="${manualEntry?"true":"false"}"><div class="inlineHeroConfirmHead"><div><b>${esc(t("hero_confirm_title",{squad:squadId}))}</b><small>${esc(t(manualEntry?"hero_all_required":"hero_confirm_help"))}</small></div><span class="pill">${esc(t("hero_confirm_badge"))}</span></div><div class="inlineHeroConfirmRows">${rows}</div><div class="notice warn hidden" data-inline-hero-status></div><button class="primaryAction inlineHeroSaveBtn" type="button" data-inline-hero-save="${squadId}">${esc(t("hero_save"))}</button></div>`}
 async function saveInlineHeroNames(squadId,container,button=null){
   const id=Number(squadId);
   if(!Number.isInteger(id)||id<1||id>4||!container)return;
@@ -903,8 +904,21 @@ async function saveInlineHeroNames(squadId,container,button=null){
   const values=selects.map(x=>String(x.value||"").trim());
   const status=container.querySelector("[data-inline-hero-status]");
   const show=(key,warn=true)=>{if(status){status.className=`notice${warn?" warn":""}`;status.textContent=t(key)}};
+  const manualEntry=container.dataset?.manualEntry==="true";
+  if(manualEntry){
+    const userId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");
+    if(!requireBetaAccess()||!requireBetaConsent())return show("hero_save_failed");
+    if(!cloudSession?.access_token||!userId){openDrawer("account");authMessage(t("connect_pro"));return show("account_sync_auth")}
+    if(!betaPrivateDataVisible()||ownerId!==userId||manualSquadEntryDraft?.squadId!==id||manualSquadEntryDraft?.ownerId!==userId)
+      return show("account_sync_owner_mismatch");
+    if(!manualSquadCreationEligible(state?.squads?.[id-1],id)){
+      manualSquadEntryDraft=null;
+      return show("account_sync_conflict");
+    }
+  }
   if(values.length!==5||values.some(v=>!v))return show("hero_all_required");
   if(new Set(values).size!==values.length)return show("hero_duplicate");
+  if(manualEntry&&values.some(value=>!HERO_CATALOG.includes(canonicalHeroName(value))))return show("hero_choose");
   const sharedSquads=otherSquadsWithCompositionHeroes(state.squads,id,values);
   const warningSignature=JSON.stringify({values:values.map(canonicalStoredHeroName),squads:sharedSquads});
   if(sharedSquads.length&&container.dataset.confirmedCrossSquadWarning!==warningSignature){
@@ -924,6 +938,7 @@ async function saveInlineHeroNames(squadId,container,button=null){
   state=next;
   try{if(!saveState({renderUi:false}))throw new Error("local_squad_save_failed")}
   catch{if(button){button.disabled=false;button.textContent=t("hero_save")}show("hero_save_failed");return}
+  if(manualEntry)manualSquadEntryDraft=null;
   technologyAdvisorUI?.render();
   if(button){button.disabled=false;button.textContent=t("hero_save")}
   showPlayerSyncFeedback(cloudOwner?["hero_confirm_saved","account_sync_pending"]:["hero_confirm_saved","local"],
@@ -946,6 +961,54 @@ function openSavedHeroConfirmation(squadId){
   requestAnimationFrame(()=>{try{editor.scrollIntoView({behavior:"smooth",block:"center"})}catch{}});
   editor.querySelector("select[data-inline-hero-slot]")?.focus();
   return true;
+}
+function manualSquadCreationEligible(squad,squadId){
+  if(!squad)return false;
+  const hasValue=value=>value!==null&&value!==undefined&&value!=="";
+  const conflict=squad.composition_conflict||{};
+  const activeConflict=Boolean(conflict.reason||conflict.status||
+    Array.isArray(conflict.scan_pending)&&conflict.scan_pending.length||
+    Array.isArray(conflict.heroes)&&conflict.heroes.length);
+  const hasSquadValues=hasValue(squad.updated_at)||hasValue(squad.power)||
+    (Array.isArray(squad.heroes)&&squad.heroes.some(hero=>
+      ["name","level","stars","power","exclusive","gear","awakening"].some(field=>hasValue(hero?.[field]))));
+  const hasCompositionEvidence=Boolean(
+    squad.composition_confirmed_at||
+    (squad.composition_source&&squad.composition_source!=="explicit_swap_empty")||
+    (Array.isArray(squad.confirmed_composition)&&squad.confirmed_composition.some(name=>hasValue(name)))
+  );
+  return !hasSquadValues&&!hasCompositionEvidence&&!squad.needs_rescan&&!activeConflict&&
+    !savedSquadCompositionCandidate(squad,squadId)&&!confirmedCompositionForSquad(squad,squadId);
+}
+function openManualSquadEntry(squadId,{openPlayer=false}={}){
+  const id=Number(squadId);
+  if(!Number.isInteger(id)||id<1||id>4)return false;
+  if(!requireBetaAccess()||!requireBetaConsent())return false;
+  const userId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");
+  if(!cloudSession?.access_token||!userId){openDrawer("account");authMessage(t("connect_pro"));return false}
+  if(!betaPrivateDataVisible()||ownerId!==userId){
+    showPlayerSyncFeedback("account_sync_owner_mismatch",{warn:true});
+    return false;
+  }
+  const squad=state?.squads?.[id-1];
+  if(manualSquadCreationEligible(squad,id))manualSquadEntryDraft={squadId:id,ownerId:userId};
+  else manualSquadEntryDraft=null;
+  if(openPlayer)openDrawer("player");
+  else renderSquads();
+  const shell=$(`#squadList [data-squad-id="${id}"]`),details=shell?.querySelector("details.squad");
+  if(details)details.open=true;
+  let editor=shell?.querySelector(`[data-inline-confirm="${id}"]`);
+  if(editor?.classList.contains("hidden")){
+    openSavedHeroConfirmation(id);
+    editor=shell?.querySelector(`[data-inline-confirm="${id}"]`);
+  }
+  if(editor){
+    editor.scrollIntoView?.({behavior:"smooth",block:"center"});
+    editor.querySelector("select[data-inline-hero-slot]")?.focus();
+    return true;
+  }
+  details?.scrollIntoView?.({behavior:"smooth",block:"center"});
+  return false;
 }
 
 if(!localStorage.getItem(LANG_KEY)){for(const key of LEGACY_LANGUAGE_KEYS){const v=localStorage.getItem(key);if(v){localStorage.setItem(LANG_KEY,v);break}}}
@@ -1411,6 +1474,8 @@ function showFreeManualScanFallback(){
 }
 function openFreeManualScanDestination(destination,type){
   const target=destination||manualScanDestination(type);
+  const squadId=target==="player"?scanSquadId(type):null;
+  if(squadId){openManualSquadEntry(squadId,{openPlayer:true});return}
   openDrawer(target==="technology"?"player":target);
   if(target==="technology"){
     renderTechnologyManual();
@@ -2631,14 +2696,21 @@ function renderSquads(){
   const review=squadReviewStatus(state);
   state.squads.forEach((sq,i)=>{
     const id=i+1,shell=document.createElement("div");shell.className="squadShell";shell.dataset.squadId=String(id);
-     const row=review.rows[i],name=`${t("squad")} ${id}`,freshness=squadReviewHeader(row,t);
-     const heroes=fixedHeroSlots(sq.heroes),needsHeroConfirm=row.hasData&&heroes.some(h=>isGenericHeroName(h?.name))&&squadHasSavedData(sq),
+    const row=review.rows[i],name=`${t("squad")} ${id}`,freshness=squadReviewHeader(row,t);
+    const heroes=fixedHeroSlots(sq.heroes),manualCreateEligible=manualSquadCreationEligible(sq,id),
+      manualEntry=Boolean(manualCreateEligible&&manualSquadEntryDraft?.squadId===id&&
+        manualSquadEntryDraft?.ownerId===String(state?.player_id||"")),
+      needsHeroConfirm=row.hasData&&heroes.some(h=>isGenericHeroName(h?.name))&&squadHasSavedData(sq),
        savedNames=savedSquadCompositionCandidate(sq,id),needsSavedHeroConfirmation=Boolean(savedNames&&
          (!confirmedCompositionForSquad(sq,id)||sq.needs_rescan===true));
     const swapTargets=squadHasSavedData(sq)?state.squads.map((target,ti)=>({id:ti+1,target})).filter(x=>x.id!==id&&squadHasSavedData(x.target)):[];
     const swapButton=swapTargets.length?`<button class="squadSwapBtn" type="button" data-squad-swap-toggle="${id}" aria-label="${esc(t("squad_swap_aria",{squad:id}))}" title="${esc(t("squad_swap"))}">⇄</button>`:"";
     const swapMenu=swapTargets.length?`<div class="squadSwapMenu hidden" data-squad-swap-menu="${id}"><span>${esc(t("squad_swap_with"))}</span>${swapTargets.map(x=>`<button type="button" class="squadSwapTarget" data-squad-swap-target="${x.id}">${esc(t("squad"))} ${x.id}</button>`).join("")}</div>`:"";
-       shell.innerHTML=`<details class="squad" data-squad-id="${id}"><summary class="squadHead"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true"></span></summary><div id="squadBody${id}" class="squadBody">${Array.from({length:5},(_,j)=>{const h=heroes[j]||emptyHero(j+1),hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtHeroPowerForDisplay(sq,h))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}${id===1?`<div class="squadCloudCheck"><button id="squad1CloudCheckBtn" data-squad-cloud-check="1" class="secondaryBtn wideBtn" type="button">${esc(t("squad_cloud_button"))}</button><div id="squad1CloudCheckResult" aria-live="polite"></div></div>`:""}</div></details>${swapButton}${swapMenu}`;
+       shell.innerHTML=`<details class="squad" data-squad-id="${id}"><summary class="squadHead"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true"></span></summary><div id="squadBody${id}" class="squadBody">${Array.from({length:5},(_,j)=>{const h=heroes[j]||emptyHero(j+1),hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtHeroPowerForDisplay(sq,h))}</div></div>`}).join("")}${manualEntry?inlineHeroConfirmationHtml(sq,id,{manualEntry:true}):needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}${id===1?`<div class="squadCloudCheck"><button id="squad1CloudCheckBtn" data-squad-cloud-check="1" class="secondaryBtn wideBtn" type="button">${esc(t("squad_cloud_button"))}</button><div id="squad1CloudCheckResult" aria-live="polite"></div></div>`:""}</div></details>${swapButton}${swapMenu}`;
+    if(manualCreateEligible&&!manualEntry){
+      shell.insertAdjacentHTML("beforeend",
+        `<button class="secondaryBtn wideBtn" type="button" data-squad-manual-create="${id}">${esc(t("squad_manual_create",{squad:id}))}</button>`);
+    }
      if(needsSavedHeroConfirmation&&!needsHeroConfirm){
        shell.insertAdjacentHTML("beforeend",
          `<button class="secondaryBtn wideBtn" type="button" data-inline-hero-open="${id}">${esc(t("hero_confirm_action"))}</button>`);
@@ -2670,6 +2742,9 @@ function renderSquads(){
        event.preventDefault();event.stopPropagation();
        void squadCloudCheck.run();
      });
+    shell.querySelector(`[data-squad-manual-create="${id}"]`)?.addEventListener("click",event=>{
+      event.preventDefault();event.stopPropagation();openManualSquadEntry(id);
+    });
      if(id===1)renderSquadCloudCheckControls();
   });
 }

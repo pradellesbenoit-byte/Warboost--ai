@@ -356,6 +356,28 @@ Object.assign(RO,{sync_needed:"Necesită sincronizare",hero_all_required:"Confir
 Object.assign(EL,{sync_needed:"Χρειάζεται συγχρονισμός",hero_all_required:"Επιβεβαίωσε και τα 5 ονόματα ηρώων πριν από την αποθήκευση.",hero_choose:"Επιλογή ήρωα…",hero_confirm_title:"Ομάδα {squad} · Ταυτότητα ηρώων",hero_confirm_badge:"Επιβεβαίωση",hero_confirm_help:"Τα πορτρέτα από μόνα τους μπορεί να είναι ασαφή. Έλεγξε τα 5 ονόματα πριν τα αποθηκεύσει το WarBoost.",hero_confirm_needed:"Τα δεδομένα της ομάδας διαβάστηκαν. Επιβεβαίωσε τα 5 ονόματα παρακάτω πριν αποθηκευτούν οι ταυτότητες.",hero_save:"Αποθήκευση ονομάτων",hero_skip:"Διατήρηση χωρίς ονόματα",hero_confirm_saved:"Τα ονόματα των ηρώων επιβεβαιώθηκαν και αποθηκεύτηκαν.",hero_confirm_skipped:"Η ομάδα αποθηκεύτηκε χωρίς εικασίες για ονόματα ηρώων.",hero_duplicate:"Ο ίδιος ήρωας δεν μπορεί να επιλεγεί δύο φορές στην ίδια ομάδα.",hero_unconfirmed:"όνομα προς επιβεβαίωση",hero_auto_recognized:"Προαναγνωρίστηκαν {count}/5 ονόματα ηρώων με υψηλή βεβαιότητα. Έλεγξε και τα πέντε πριν από την αποθήκευση.",hero_confirm_action:"Επιβεβαίωση ονομάτων ηρώων",hero_saving:"Αποθήκευση ονομάτων ηρώων…",hero_save_failed:"Δεν ήταν δυνατή η αποθήκευση των ονομάτων. Οι επιλογές παραμένουν ορατές· δοκίμασε ξανά χωρίς νέα εισαγωγή."});
 Object.assign(CS,{sync_needed:"Je nutná synchronizace",hero_all_required:"Před uložením potvrď všech 5 jmen hrdinů.",hero_choose:"Vybrat hrdinu…",hero_confirm_title:"Jednotka {squad} · Identita hrdinů",hero_confirm_badge:"Potvrdit",hero_confirm_help:"Samotné portréty mohou být nejednoznačné. Před uložením ve WarBoost zkontroluj všech 5 jmen.",hero_confirm_needed:"Data jednotky byla načtena. Před uložením identit potvrď 5 jmen níže.",hero_save:"Uložit jména",hero_skip:"Ponechat bez jmen",hero_confirm_saved:"Jména hrdinů byla potvrzena a uložena.",hero_confirm_skipped:"Jednotka byla uložena bez odhadovaných jmen hrdinů.",hero_duplicate:"Stejného hrdinu nelze vybrat dvakrát v jedné jednotce.",hero_unconfirmed:"jméno k potvrzení",hero_auto_recognized:"Předběžně rozpoznáno {count}/5 jmen hrdinů s vysokou jistotou. Před uložením zkontroluj všech pět.",hero_confirm_action:"Potvrdit jména hrdinů",hero_saving:"Ukládání jmen hrdinů…",hero_save_failed:"Jména se nepodařilo uložit. Výběr zůstává zobrazený; zkus to znovu bez opětovného zadávání."});
 Object.assign(SV,{sync_needed:"Behöver synkroniseras",hero_all_required:"Bekräfta alla 5 hjältenamn innan du sparar.",hero_choose:"Välj hjälte…",hero_confirm_title:"Trupp {squad} · Hjälteidentitet",hero_confirm_badge:"Bekräfta",hero_confirm_help:"Porträtt kan vara tvetydiga. Kontrollera de 5 namnen innan WarBoost sparar dem.",hero_confirm_needed:"Truppdata har lästs. Bekräfta de 5 namnen nedan innan identiteterna sparas.",hero_save:"Spara namn",hero_skip:"Behåll utan namn",hero_confirm_saved:"Hjältenamnen har bekräftats och sparats.",hero_confirm_skipped:"Truppen sparades utan gissade hjältenamn.",hero_duplicate:"Samma hjälte kan inte väljas två gånger i samma trupp.",hero_unconfirmed:"namn att bekräfta",hero_auto_recognized:"{count}/5 hjältenamn föridentifierades med hög säkerhet. Kontrollera alla fem innan du sparar.",hero_confirm_action:"Bekräfta hjältenamn",hero_saving:"Sparar hjältenamn…",hero_save_failed:"Namnen kunde inte sparas. Dina val visas fortfarande; försök igen utan att ange dem på nytt."});
+Object.assign(EN,{squad_manual_create:"Enter five heroes for Squad {squad}"});
+Object.assign(FR,{squad_manual_create:"Saisir les 5 héros de l’escouade {squad}"});
+Object.assign(ES,{squad_manual_create:"Introducir los 5 héroes de la escuadra {squad}"});
+Object.assign(DE,{squad_manual_create:"Die 5 Helden für Trupp {squad} eingeben"});
+Object.assign(JA,{squad_manual_create:"部隊{squad}の英雄5人を入力"});
+Object.assign(ZH,{squad_manual_create:"输入队伍 {squad} 的5名英雄"});
+Object.assign(AR,{squad_manual_create:"أدخل أسماء الأبطال الخمسة للفريق {squad}"});
+Object.assign(IT,{squad_manual_create:"Inserisci i 5 eroi della squadra {squad}"});
+Object.assign(PT,{squad_manual_create:"Introduzir os 5 heróis da equipe {squad}"});
+Object.assign(NL,{squad_manual_create:"Voer 5 helden in voor team {squad}"});
+Object.assign(RU,{squad_manual_create:"Введите 5 героев для отряда {squad}"});
+Object.assign(PL,{squad_manual_create:"Wprowadź 5 bohaterów drużyny {squad}"});
+Object.assign(TR,{squad_manual_create:"Takım {squad} için 5 kahraman gir"});
+Object.assign(KO,{squad_manual_create:"분대 {squad}의 영웅 5명 입력"});
+Object.assign(VI,{squad_manual_create:"Nhập 5 anh hùng cho đội {squad}"});
+Object.assign(TH,{squad_manual_create:"กรอกชื่อฮีโร่ทั้ง 5 ของทีม {squad}"});
+Object.assign(ID,{squad_manual_create:"Masukkan 5 hero untuk skuad {squad}"});
+Object.assign(UK,{squad_manual_create:"Ввести 5 героїв загону {squad}"});
+Object.assign(RO,{squad_manual_create:"Introdu cei 5 eroi pentru echipa {squad}"});
+Object.assign(EL,{squad_manual_create:"Εισαγωγή 5 ηρώων για την ομάδα {squad}"});
+Object.assign(CS,{squad_manual_create:"Zadat 5 hrdinů pro jednotku {squad}"});
+Object.assign(SV,{squad_manual_create:"Ange fem hjältar för trupp {squad}"});
 
 // V2.4.7 — grammatical “updated just now” labels for all supported languages.
 Object.assign(ES,{updated_now:"Actualizado ahora mismo"});
