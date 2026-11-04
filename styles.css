@@ -702,3 +702,12 @@ html[dir="rtl"] .acqOptionHead{direction:rtl}
   .squadCloudCheckField{grid-template-columns:minmax(0,1fr)}
   .squadCloudCheckState{text-align:left}
 }
+
+#localScanOcrProgress{display:block;width:100%;height:12px;margin:8px 0}
+.localScanOcrResults{display:grid;gap:7px;margin-top:12px}
+.localScanOcrResults h4{margin:4px 0}
+.localScanOcrLines,.localScanOcrCandidates{display:grid;gap:6px;margin:0;padding-left:22px}
+.localScanOcrLines li{overflow-wrap:anywhere}
+.localScanOcrLines li span{display:block}
+.localScanOcrLines li small{display:block;color:var(--muted);font-size:10px}
+.localScanOcrCandidates li{overflow-wrap:anywhere}

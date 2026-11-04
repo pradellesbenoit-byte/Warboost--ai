@@ -5,6 +5,7 @@ import {workspaceHelpCopy,renderWorkspaceHelp} from "./lib/workspace-help.js";
 import {workspaceRequestsHtml,draftFeedback,rosterFeedback} from "./lib/workspace-feedback.js";
 import {createAnalysisIndicator,analysisFailureMessage,scanResponseError,beginLoadingButton} from "./lib/analysis-indicator.js";
 import {freeScanCopy,manualScanDestination} from "./lib/free-scan-copy.js";
+import {localScanOcrCopy} from "./lib/local-scan-ocr-copy.js";
 import {loadingTargetIds,requestLoadingTargetIds} from "./lib/loading-targets.js";
 import {accountSyncErrorKind,accountSyncView,verifiedAccountStateReply,verifiedAccountWriteReply,createCloudOperations,transientCloudFailure,deviceCloudSaveMetadata,confirmedWriteReceipt,mergeDeviceCloudSaveMetadata,staleProfileRestore} from "./lib/account-sync-feedback.js";
 import {squadReviewStatus,squadReviewHeader,squadReviewRowHtml,accountSquadReviewHtml} from "./lib/squad-review-status.js";
@@ -622,7 +623,7 @@ function bindAllianceAccordions(){
   });
 }
 let alliancePlayerModalScrollTop=0,alliancePlayerModalHistory=false,alliancePlayerModalLastFocus=null,alliancePlayerModalBodyStyles=null;
-let scanImageDataList=[],scanImageNames=[];
+let scanImageDataList=[],scanImageNames=[],localScanOcrController=null,localScanOcrGeneration=0,localScanOcrOwner="",localScanOcrLastReports=[];
 let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
 let recentlyGeneratedDesertStormPlan=null;
 let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0,sharedRosterLinkPromise=null;
@@ -663,8 +664,60 @@ let lateGameManualSelection=EXCLUSIVE_WEAPON_HERO_NAMES[0],lateGameManualOwner="
 let pendingScanReview=null;
 let pendingScanRestoreInFlight=null,pendingScanRestoreOwner="";
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
+function renderLocalScanOcrReport(reports){
+  localScanOcrLastReports=Array.isArray(reports)?reports:[];
+  const copy=localScanOcrCopy(lang),root=$("#localScanOcrResults"),linesRoot=$("#localScanOcrLines"),candidatesRoot=$("#localScanOcrCandidates"),status=$("#localScanOcrStatus");
+  if(!root||!linesRoot||!candidatesRoot||!status)return;
+  linesRoot.replaceChildren();candidatesRoot.replaceChildren();
+  const lines=localScanOcrLastReports.flatMap(report=>report?.lines||[]);
+  if(!lines.length){root.classList.remove("hidden");status.className="notice warn";status.textContent=copy.noText;const item=document.createElement("li");item.textContent=copy.noProposals;candidatesRoot.append(item)}
+  else{
+    root.classList.remove("hidden");status.className="notice";status.textContent=copy.readOnly;
+    for(const line of lines){
+      const item=document.createElement("li"),text=document.createElement("span"),score=document.createElement("small");
+      text.textContent=String(line.text||"");score.textContent=Number.isFinite(line.confidence)?`${Math.round(line.confidence)}% ${copy.confidence}`:"—";
+      item.append(text,score);linesRoot.append(item);
+    }
+    const candidates=localScanOcrLastReports.flatMap(report=>report?.candidates||[]);
+    if(!candidates.length){const item=document.createElement("li");item.textContent=copy.noProposals;candidatesRoot.append(item)}
+    for(const candidate of candidates){
+      const item=document.createElement("li"),label=document.createElement("strong"),value=document.createElement("span");
+      label.textContent=candidate.field==="squad_power_m"?copy.candidatePower:candidate.state==="percent"?copy.candidateTechnology:copy.candidateState;
+      value.textContent=candidate.field==="squad_power_m"?`${candidate.value} M`:candidate.state==="percent"?`${candidate.name}: ${candidate.value}%`:`${candidate.name}: ${candidate.state}`;
+      item.append(label,document.createTextNode(` · ${value.textContent}`));candidatesRoot.append(item);
+    }
+  }
+}
+function cancelLocalScanOcr({announce=false,clearResults=true}={}){
+  localScanOcrGeneration++;
+  const controller=localScanOcrController;localScanOcrController=null;localScanOcrOwner="";
+  try{controller?.abort()}catch{}
+  const copy=localScanOcrCopy(lang),start=$("#localScanOcrStartBtn"),cancel=$("#localScanOcrCancelBtn"),progress=$("#localScanOcrProgress"),input=$("#localScanOcrFile"),status=$("#localScanOcrStatus");
+  if(start)start.disabled=false;if(cancel)cancel.classList.add("hidden");
+  if(progress){progress.classList.add("hidden");progress.value=0}
+  if(input)input.value="";
+  if(clearResults){localScanOcrLastReports=[];$("#localScanOcrResults")?.classList.add("hidden");$("#localScanOcrLines")?.replaceChildren();$("#localScanOcrCandidates")?.replaceChildren()}
+  if(status){status.className=announce?"notice warn":"notice";status.textContent=announce?copy.cancelled:""}
+}
+function setLocalScanOcrCopy(){
+  const copy=localScanOcrCopy(lang);
+  for(const [id,key] of [["scanIntro","intro"],["localScanOcrTitle","title"],["localScanOcrHelp","help"],["localScanOcrLanguageLabel","language"],["localScanOcrStartBtn","start"],["localScanOcrCancelBtn","cancel"],["localScanOcrTextTitle","text"],["localScanOcrCandidateTitle","proposals"],["localScanOcrReadOnly","readOnly"]]){
+    const element=$(`#${id}`);if(element)element.textContent=copy[key];
+  }
+  const english=$("#localScanOcrLanguage")?.querySelector('option[value="eng"]'),french=$("#localScanOcrLanguage")?.querySelector('option[value="fra"]');
+  if(english)english.textContent=copy.english;if(french)french.textContent=copy.french;
+  const availability=$("#scanAutomaticAvailability");if(availability)availability.textContent=copy.serverUnavailable;
+  if(localScanOcrLastReports.length)renderLocalScanOcrReport(localScanOcrLastReports);
+}
+function localScanOcrErrorCopy(error){
+  const copy=localScanOcrCopy(lang);
+  if(error?.code==="cancelled")return copy.cancelled;
+  if(error?.code==="timeout")return copy.timeout;
+  if(["worker_unavailable","wasm_unavailable"].includes(error?.code))return copy.unavailable;
+  return copy.error;
+}
 function discardScanReviewDraft(){if(typeof analysisIndicator!=="undefined")analysisIndicator.cancel("scan");pendingScanReview=null;$("#scanReviewPanel")?.classList.add("hidden");$("#scanUnlinkedWeapons")?.classList.add("hidden");const rows=$("#scanReviewRows");if(rows)rows.replaceChildren();const ack=$("#scanSquadTargetConfirmed");if(ack)ack.checked=false}
-function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageNames=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveRequest=null;pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");updateTechnologyScanPreview([]);const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft();
+function resetPendingScanUi(){cancelLocalScanOcr();scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageNames=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveRequest=null;pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");updateTechnologyScanPreview([]);const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft();
   pendingScanRestoreInFlight=null;pendingScanRestoreOwner="";
   const rosterStatus=$("#rosterScanStatus"),rosterButton=$("#rosterScanAnalyzeBtn"),fullSnapshot=$("#rosterScanFullSnapshot");
   if(rosterStatus){rosterStatus.textContent="";rosterStatus.classList.add("hidden")}
@@ -1437,6 +1490,11 @@ function requireScanSquadTarget(type,status=$("#scanStatus")){
 function updateScanCaptureMode(){
   const scanType=$("#scanType")?.value||"profile",isSquad=isSquadScanType(scanType),input=$("#scanFile"),label=$("#scanCaptureLabel"),help=$("#technologyScanHelp"),limit=playerScanBatchLimit(scanType);
   const selector=$("#scanType"),ack=$("#scanSquadTargetConfirmed"),visionTestRow=$("#controlledVisionTestRow"),visionTest=$("#controlledVisionTest");
+  const localOcrPanel=$("#localScanOcrPanel"),localOcrSupported=scanType==="technology"||/^squad[1-4]$/.test(scanType);
+  if(localOcrPanel)localOcrPanel.classList.toggle("hidden",!localOcrSupported);
+  if(!localOcrSupported&&localScanOcrController)cancelLocalScanOcr();
+  const ocrLanguage=$("#localScanOcrLanguage");
+  if(ocrLanguage&&ocrLanguage.dataset.initialized!=="1"){ocrLanguage.value=String(lang||"").toLowerCase().startsWith("fr")?"fra":"eng";ocrLanguage.dataset.initialized="1"}
   const visionTestAvailable=scanType==="squad1";
   if(visionTestRow)visionTestRow.hidden=!visionTestAvailable;
   if(visionTest){visionTest.disabled=!visionTestAvailable;if(!visionTestAvailable)visionTest.checked=false}
@@ -1454,7 +1512,7 @@ function updateScanCaptureMode(){
   $("#scanManualFallback")?.classList.add("hidden");
   if(help){help.classList.remove("hidden");delete help.dataset.i18n;help.textContent=isSquad
     ?t("scan_formation_help"):t("scan_same_type_help")}
-  updateScanSquadTarget();updateTechnologyScanPreview();
+  updateScanSquadTarget();updateTechnologyScanPreview();setLocalScanOcrCopy();
 }
 function showFreeManualScanFallback(){
   const type=$("#scanType")?.value||"profile",status=$("#scanStatus"),images=scanImageDataList.length?scanImageDataList:[scanImageData].filter(Boolean);
@@ -4719,7 +4777,7 @@ document.addEventListener("change",event=>{
   let pending=[];try{pending=JSON.parse(status?.dataset.squadPending||"[]")}catch{}
   scanReviewStatusBeforeLanguage={key:currentKey,confirmed,className:status?.className,pending};
 },true);
-document.addEventListener("change",event=>{if(event.target?.id==="languageSelect")queueMicrotask(()=>translateOpenScanReview(scanReviewStatusBeforeLanguage))});
+ document.addEventListener("change",event=>{if(event.target?.id==="languageSelect")queueMicrotask(()=>{translateOpenScanReview(scanReviewStatusBeforeLanguage);updateScanCaptureMode()})});
 async function imageToDataUrl(file){return new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const max=2048,scale=Math.min(1,max/Math.max(img.width,img.height)),w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);let data=c.toDataURL("image/jpeg",.9);if(data.length>3900000)data=c.toDataURL("image/jpeg",.78);URL.revokeObjectURL(url);resolve(data)}catch(e){reject(e)}};img.onerror=e=>{URL.revokeObjectURL(url);reject(e)};img.src=url})}
 async function imageToDataUrlLimited(file,maxDataUrlLength){
   const original=await imageToDataUrl(file);
@@ -4762,6 +4820,72 @@ $("#scanFile").addEventListener("change",async e=>{
   }catch{if(selectionIsCurrent()){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_error")}}
   finally{finishLoading()}
 });
+function localScanOcrGate(){
+  const type=$("#scanType")?.value||"profile",copy=localScanOcrCopy(lang),status=$("#localScanOcrStatus");
+  if(!(type==="technology"||/^squad[1-4]$/.test(type))){if(status)status.textContent=copy.error;return null}
+  if(!requireBetaAccess()||!requireBetaConsent())return null;
+  const session=cloudSession,userId=String(session?.user?.id||"").trim();
+  const expiresAt=Number(session?.expires_at||0);
+  if(!userId||!session?.access_token||(expiresAt>0&&expiresAt<=Date.now()/1000)){if(status)status.textContent=copy.login;openDrawer("account");return null}
+  const profileOwner=String(state?.player_id||"");
+  if(profileOwner&&profileOwner!==userId){if(status)status.textContent=copy.login;return null}
+  return {owner:pendingScanOwner(session),userId,type};
+}
+$("#localScanOcrStartBtn")?.addEventListener("click",()=>{
+  const gate=localScanOcrGate();if(!gate)return;
+  localScanOcrOwner=gate.owner;
+  const input=$("#localScanOcrFile");
+  if(!input){const status=$("#localScanOcrStatus");if(status)status.textContent=localScanOcrCopy(lang).error;return}
+  const status=$("#localScanOcrStatus");if(status){status.className="notice";status.textContent=localScanOcrCopy(lang).choose}
+  input.click();
+});
+$("#localScanOcrFile")?.addEventListener("change",async event=>{
+  const input=event.target,file=Array.from(input?.files||[])[0];
+  if(!file){localScanOcrOwner="";return}
+  const gate=localScanOcrGate(),selectedOwner=localScanOcrOwner;
+  if(!gate||!selectedOwner||gate.owner!==selectedOwner){input.value="";localScanOcrOwner="";return}
+  if(file.type&&!/^image\/(?:png|jpeg|webp)$/i.test(file.type)){const status=$("#localScanOcrStatus");if(status){status.className="notice warn";status.textContent=localScanOcrCopy(lang).error}input.value="";localScanOcrOwner="";return}
+  if(file.size>18*1024*1024){const status=$("#localScanOcrStatus");if(status){status.className="notice warn";status.textContent=localScanOcrCopy(lang).error}input.value="";localScanOcrOwner="";return}
+  cancelLocalScanOcr({clearResults:true});
+  const generation=++localScanOcrGeneration,controller=new AbortController(),owner=gate.owner,userId=gate.userId,type=gate.type;
+  localScanOcrController=controller;localScanOcrOwner=owner;
+  const start=$("#localScanOcrStartBtn"),cancel=$("#localScanOcrCancelBtn"),progress=$("#localScanOcrProgress"),status=$("#localScanOcrStatus");
+  if(start)start.disabled=true;if(cancel)cancel.classList.remove("hidden");
+  if(progress){progress.classList.remove("hidden");progress.value=0}
+  if(status){status.className="notice";status.textContent=localScanOcrCopy(lang).processing}
+  const isCurrent=()=>generation===localScanOcrGeneration&&localScanOcrController===controller&&
+    localScanOcrOwner===owner&&pendingScanOwner()===owner&&String(cloudSession?.user?.id||"")===userId&&
+    Boolean(cloudSession?.access_token)&&betaAccessAllowed()&&betaConsentAccepted()&&
+    (!Number(cloudSession?.expires_at||0)||Number(cloudSession.expires_at)>Date.now()/1000);
+  try{
+    const image=await imageToDataUrl(file);
+    input.value="";
+    if(!isCurrent())return;
+    const {runLocalScanOcrBatch}=await import("/assets/local-ocr/ocr-engine.js");
+    if(!isCurrent())return;
+    const reports=await runLocalScanOcrBatch([image],{
+      language:$("#localScanOcrLanguage")?.value||"eng",scanType:type,signal:controller.signal,
+      onProgress:message=>{
+        if(!isCurrent())return;
+        const percent=Number.isFinite(message?.progress)?Math.round(message.progress*100):null;
+        if(progress&&percent!==null)progress.value=percent;
+        if(status){status.className="notice";status.textContent=percent===null?localScanOcrCopy(lang).processing:`${localScanOcrCopy(lang).processing} ${percent}%`}
+      }
+    });
+    if(!isCurrent())return;
+    renderLocalScanOcrReport(reports);
+  }catch(error){
+    if(isCurrent()){const status=$("#localScanOcrStatus");if(status){status.className="notice warn";status.textContent=localScanOcrErrorCopy(error)}}
+  }finally{
+    input.value="";
+    if(generation===localScanOcrGeneration){
+      localScanOcrController=null;localScanOcrOwner="";
+      if(start)start.disabled=false;if(cancel)cancel.classList.add("hidden");
+      if(progress)progress.classList.add("hidden");
+    }
+  }
+});
+$("#localScanOcrCancelBtn")?.addEventListener("click",()=>cancelLocalScanOcr({announce:true}));
 $("#scanType")?.addEventListener("change",()=>{
   const next=$("#scanType")?.value,previous=$("#scanType")?.dataset.previousType;
   if(scanSquadId(next)&&scanSquadId(previous)){

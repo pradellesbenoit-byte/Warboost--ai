@@ -72,7 +72,11 @@ const shopHtml=renderScanReviewMarkup(buildScanReviewGroups('shop',shopDraft.pat
 assert.match(shopHtml,/value="count=4 tickets"/,'non-gear OCR content is not silently blanked');
 assert.equal(applyOwnedScanReview(shopDraft,'user:a',[{path:['shop','offers',0,'contents'],value:'count=4 tickets'}]).patch.shop.offers[0].contents,'count=4 tickets');
 assert.match(source,/replacement\.replaceWith\(original\)/,'locale refresh retains the live form controls and their edits');
-assert.match(source,/queueMicrotask\(\(\)=>translateOpenScanReview\(scanReviewStatusBeforeLanguage\)\)/,'language switching refreshes the open review after static translation');
+const languageRefresh=source.match(/document\.addEventListener\("change",\s*event\s*=>\s*\{\s*if\s*\(event\.target\?\.\s*id\s*===\s*"languageSelect"\)\s*queueMicrotask\(\(\)\s*=>\s*\{([\s\S]*?)\}\)\s*\}\);/);
+assert.ok(languageRefresh,'language switching schedules the review and scan-mode refresh');
+const reviewRefreshAt=languageRefresh[1].indexOf("translateOpenScanReview(scanReviewStatusBeforeLanguage)");
+const scanModeRefreshAt=languageRefresh[1].indexOf("updateScanCaptureMode()");
+assert.ok(reviewRefreshAt>=0&&scanModeRefreshAt>reviewRefreshAt,'language microtask refreshes the open review before the scan mode and OCR panel');
 const translateCode=source.slice(source.indexOf('function translateOpenScanReview('),source.indexOf('function showConfirmedScanStatus('));
 const status={className:'notice',textContent:'scan_wait'};
 const statusContext={

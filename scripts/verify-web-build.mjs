@@ -44,4 +44,15 @@ for(const match of (await read("sw.js")).matchAll(/["'](\/[^"']+)["']/g)){
   if(path==="/"||path.startsWith("/api/"))continue;
   await access(`web-dist${path}`);
 }
-console.log("PASS web output: Vercel configuration, unchanged web/PWA pages, complete local JS imports/cache assets, no native or private/server sources.");
+for(const file of [
+  "assets/local-ocr/ocr-engine.js","assets/local-ocr/worker.min.js","assets/local-ocr/worker.min.js.LICENSE.txt",
+  "assets/local-ocr/NOTICE.txt","assets/local-ocr/TESSERACT-CORE-LICENSE.txt",
+  "assets/local-ocr/core/tesseract-core-lstm.wasm.js",
+  "assets/local-ocr/core/tesseract-core-simd-lstm.wasm.js",
+  "assets/local-ocr/core/tesseract-core-relaxedsimd-lstm.wasm.js",
+  "assets/local-ocr/lang/eng.traineddata.gz","assets/local-ocr/lang/fra.traineddata.gz"
+])await access(`web-dist/${file}`);
+const ocrApp=await read("web-dist/app.js");
+assert.match(ocrApp,/import\("\/assets\/local-ocr\/ocr-engine\.js"\)/,"OCR engine must load lazily from the same origin");
+assert.doesNotMatch(ocrApp,/cdn\.jsdelivr\.net|unpkg\.com\/tesseract/,"app must not load OCR from a CDN");
+console.log("PASS web output: Vercel configuration, unchanged web/PWA pages, local JS imports, self-hosted OCR worker/WASM/language assets, no native or private/server sources.");

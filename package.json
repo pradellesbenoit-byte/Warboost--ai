@@ -12,6 +12,7 @@
     "build:web": "node scripts/build-web.mjs",
     "build:mobile": "node scripts/build-mobile-web.mjs",
     "test:web-build": "node scripts/verify-web-build.mjs",
+    "test:local-scan-ocr": "node --check lib/local-scan-ocr-engine.js && node --check lib/local-scan-ocr-copy.js && node --check scripts/verify-local-scan-ocr.mjs && node --import ./scripts/fixtures/block-external-network.mjs --test scripts/verify-local-scan-ocr.mjs",
     "test:squad-scan-review": "node --check lib/squad-scan-review.js && node scripts/verify-squad-scan-review.mjs",
     "test:squad-scan-targets": "node scripts/verify-squad-scan-targets.mjs",
     "test:scan-handlers-mobile": "node --import ./scripts/fixtures/block-external-network.mjs --test scripts/verify-scan-handlers-mobile.mjs scripts/verify-portrait-review-regression.mjs",

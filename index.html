@@ -326,7 +326,7 @@
   <section id="scanDrawer" class="drawer" aria-hidden="true">
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>📷 <span data-i18n="scan_title">WarBoost Scan</span></h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>
     <div class="section"><p id="scanIntro" class="heroText">Choisis une capture pour la garder sur cet appareil. La reconnaissance automatique gratuite n’est pas disponible dans cette version.</p>
-       <div id="scanAutomaticAvailability" class="notice warn" role="note">Reconnaissance automatique gratuite indisponible sur cette version.</div>
+       <div id="scanAutomaticAvailability" class="notice warn" role="note">Le scan automatique côté serveur n’est pas activé. Le prototype OCR local est limité aux captures de formation et du Centre Technologie.</div>
        <div class="settingsForm">
              <div class="field"><label data-i18n="scan_type">Type de capture</label><select id="scanType" class="fieldSelect"><option value="profile">Profil / QG</option><option value="squad1">Escouade 1</option><option value="squad2">Escouade 2</option><option value="squad3">Escouade 3</option><option value="squad4">Escouade 4</option><option value="drone">Drone</option><option value="exclusive">Arme exclusive</option><option value="awakening">Éveil / Reshape</option><option value="shop">Boutique Last War</option><option value="vs">VS</option><option value="season">Saison</option><option value="technology">Centre Technologie</option></select></div>
           <p id="secretMobileSquadScanHelp" class="privacyText hidden" data-i18n="scan_secret_mobile_squad_help">WarBoost keeps the exact visible task text. It does not guess unknown task meanings, and nothing is saved until you confirm the scan.</p>
@@ -354,6 +354,31 @@
         <button id="analyzeScanBtn" class="primaryAction" data-i18n="analyze">Analyser la capture</button>
         <label id="controlledVisionTestRow" hidden><input id="controlledVisionTest" type="checkbox" disabled> <span data-i18n="vision_test_label">Test Vision contrôlé (désactivé par défaut)</span></label>
         <div id="scanStatus" class="notice" role="status" aria-live="polite" aria-atomic="true" data-i18n="scan_wait">Choisis d'abord une capture.</div>
+         <section id="localScanOcrPanel" class="scanReviewPanel hidden" aria-labelledby="localScanOcrTitle">
+           <div class="sectionTitle"><h3 id="localScanOcrTitle">Lecture locale gratuite · prototype</h3></div>
+           <p id="localScanOcrHelp" class="privacyText">Choisis une capture séparément pour la lire sur cet appareil. Rien n’est enregistré, appliqué ou envoyé; la saisie manuelle reste disponible.</p>
+           <div class="field">
+             <label id="localScanOcrLanguageLabel" for="localScanOcrLanguage">Langue visible dans le jeu</label>
+             <select id="localScanOcrLanguage" class="fieldSelect">
+               <option value="eng">English</option>
+               <option value="fra">Français</option>
+             </select>
+           </div>
+           <input id="localScanOcrFile" class="hidden" type="file" accept="image/png,image/jpeg,image/webp" />
+           <div class="buttonRow">
+             <button id="localScanOcrStartBtn" class="secondaryBtn" type="button">Tester la lecture locale (gratuit)</button>
+             <button id="localScanOcrCancelBtn" class="secondaryBtn hidden" type="button">Annuler la lecture</button>
+           </div>
+           <progress id="localScanOcrProgress" class="hidden" max="100" value="0" aria-label="Progression de la lecture locale"></progress>
+           <div id="localScanOcrStatus" class="notice" role="status" aria-live="polite" aria-atomic="true"></div>
+           <div id="localScanOcrResults" class="localScanOcrResults hidden" aria-live="polite">
+             <h4 id="localScanOcrTextTitle">Texte reconnu</h4>
+             <ol id="localScanOcrLines" class="localScanOcrLines"></ol>
+             <h4 id="localScanOcrCandidateTitle">Candidats à vérifier</h4>
+             <ul id="localScanOcrCandidates" class="localScanOcrCandidates"></ul>
+             <p id="localScanOcrReadOnly" class="privacyText">Résultat de brouillon seulement : rien n’est confirmé, enregistré ou synchronisé.</p>
+           </div>
+         </section>
         <section id="scanManualFallback" class="scanManualFallback hidden" aria-live="polite" aria-atomic="true">
           <p id="scanManualFallbackMessage"></p>
           <button id="scanManualFallbackBtn" class="secondaryBtn wideBtn" type="button"></button>

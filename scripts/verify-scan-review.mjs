@@ -85,10 +85,13 @@ log('squad scan review covers non-name hero attributes while retaining five-name
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const i18n=fs.readFileSync(new URL('../i18n.js',import.meta.url),'utf8');
 const markup=fs.readFileSync(new URL('../lib/scan-review-markup.js',import.meta.url),'utf8');
-const analyze=app.slice(app.indexOf('async function analyzeReviewedScan()'),app.indexOf('$("#analyzeScanBtn").addEventListener("click",async event=>'));
+const analyzeStart=app.indexOf('async function analyzeReviewedScan()');
+const analyzeEnd=app.indexOf('\n$("#analyzeScanBtn").addEventListener("click",event=>{',analyzeStart);
+assert.ok(analyzeStart>=0&&analyzeEnd>analyzeStart,'analysis function ends before the current synchronous fallback handler');
+const analyze=app.slice(analyzeStart,analyzeEnd);
 assert.doesNotMatch(analyze,/saveState\s*\(|mergeStateProtected\s*\(|state\s*=/,'analysis must only stage data before the review action');
 assert.match(app,/draft\.owner!==pendingScanOwner\(\)/,'review confirmation is scoped to current account');
-assert.match(app,/function resetPendingScanUi\(\)\{scanInputRevision\+\+;scanFileSelectionRevision\+\+;discardScanReviewDraft\(\)/,'account changes clear in-memory scan review and invalidate pending requests');
+assert.match(app,/function resetPendingScanUi\(\)\{cancelLocalScanOcr\(\);scanInputRevision\+\+;scanFileSelectionRevision\+\+;discardScanReviewDraft\(\)/,'account changes cancel local OCR and clear in-memory scan review and invalidate pending requests');
 // The targeted controller test exercises absent/unreadable squad totals against
 // an already-confirmed value; do not couple this assertion to the old loop syntax.
 assert.match(app,/reviewedSquadPower\(reviewed\.squads\?\.\[squadIndex\]\?\.power\)/,'squad totals pass through the shared positive-millions validator');
