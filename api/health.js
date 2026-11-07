@@ -117,7 +117,9 @@ export default async function handler(req,res){
     previous_ui_revision:"hf8.5-final-alliance-desert-storm",
     superseded_draft_ui_revision:"hf8.5-vs-freshness-guard",
     mode:"public-beta-invite-safe-launch",
-    commercial:{mode:commerce.mode,ready:commerce.configured,payments_enabled:false,test_payments_enabled:commerce.test_payments_enabled,live_blocked:true,plan:commerce.plan,activation_requirements:commerce.activation_requirements},
+    commercial:{mode:commerce.mode,ready:commerce.configured,payments_enabled:commerce.payments_enabled,
+      test_payments_enabled:commerce.test_payments_enabled,live_payments_enabled:commerce.payments_enabled,
+      live_blocked:commerce.live_blocked,plan:commerce.plan,activation_requirements:commerce.activation_requirements},
 
     // Heure serveur + VS : fusion de l'ancien /api/time
     now:now.toISOString(),
@@ -147,7 +149,7 @@ export default async function handler(req,res){
       safe_launch_external_game_access_hard_disabled:true,
       safe_launch_no_scraping:true,
       safe_launch_no_gameplay_automation:true,
-      safe_launch_payments_code_disabled:true,
+      safe_launch_payments_code_disabled:!commerce.payments_enabled,
       safe_launch_payments_runtime_disabled:!commerce.payments_enabled,
       commercial_code_server_side_only:true,
       commercial_price_server_locked_499_eur_month:true,

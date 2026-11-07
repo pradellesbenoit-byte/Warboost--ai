@@ -6,6 +6,8 @@ export const userA="10000000-0000-4000-8000-000000000001";
 export const userB="10000000-0000-4000-8000-000000000002";
 export const userBeta="10000000-0000-4000-8000-000000000003";
 export const userFree="10000000-0000-4000-8000-000000000004";
+export const userLegacy="10000000-0000-4000-8000-000000000005";
+export const userLive="10000000-0000-4000-8000-000000000006";
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json"}});
 export async function billingFixture(){
   const pg=new PGlite();
@@ -14,7 +16,7 @@ export async function billingFixture(){
     create function auth.uid() returns uuid language sql as $$select null::uuid$$;
     create table public.wb1_beta_invites(id uuid primary key default gen_random_uuid(),email text unique,status text,
       invited_at timestamptz default now(),accepted_user_id text,expires_at timestamptz,accepted_at timestamptz,updated_at timestamptz);`);
-  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"]])
+  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLegacy,"legacy@example.test"],[userLive,"live@example.test"]])
     await pg.query("insert into auth.users(id,email,created_at) values($1,$2,now()-interval '1 day')",[id,email]);
   await pg.query("insert into wb1_beta_invites(email,status,invited_at,accepted_user_id) values('beta@example.test','accepted',now()-interval '1 day',$1)",[userBeta]);
   // Immutable test copies of published SQL, not deployment migrations.
@@ -23,17 +25,42 @@ export async function billingFixture(){
     "migration_v2_5_32_stripe_test_01.sql","migration_v2_5_32_stripe_test_02_beta_cohort.sql"]
     .map(name=>new URL(`./fixtures/billing/${name}`,import.meta.url));
   for(const path of migrations)await pg.exec(fs.readFileSync(path,"utf8"));
+  await pg.query(`insert into warboost_subscriptions(user_id,stripe_customer_id,stripe_subscription_id,stripe_price_id,plan,status,current_period_end)
+    values($1,'cus_legacy_fixture','sub_legacy_fixture','price_legacy_fixture','pro','active',now()+interval '30 days')`,[userLegacy]);
+  const liveMigration=new URL("../supabase/migration_v2_5_33_pro_live_billing.sql",import.meta.url);
+  migrations.push(liveMigration);await pg.exec(fs.readFileSync(liveMigration,"utf8"));
   const oldEnv={...process.env},oldFetch=globalThis.fetch;
-  Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"test",WARBOOST_APP_URL:"https://beta.warboost.fr",STRIPE_SECRET_KEY:"sk_test_fixture_only",
-    STRIPE_WEBHOOK_SECRET:"whsec_fixture_only",STRIPE_PRICE_PRO_MONTHLY:"price_pro_test",STRIPE_PRODUCT_PRO:"prod_pro_test",
+  Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"test",WARBOOST_APP_URL:"https://beta.warboost.fr",STRIPE_SECRET_KEY:"sk_test_fixtureonly",
+    STRIPE_WEBHOOK_SECRET:"whsec_fixtureonly",STRIPE_PRICE_PRO_MONTHLY:"price_pro_test",STRIPE_PRODUCT_PRO:"prod_pro_test",
+    STRIPE_LIVE_SECRET_KEY:"",STRIPE_LIVE_WEBHOOK_SECRET:"",STRIPE_LIVE_PRICE_PRO_MONTHLY:"",STRIPE_LIVE_PRODUCT_PRO:"",
+    WARBOOST_LIVE_APP_URL:"",WARBOOST_LIVE_PAYMENTS_ENABLED:"false",WARBOOST_LIVE_ACTIVATION_APPROVED:"false",
+    WARBOOST_LIVE_CATALOG_VERIFIED:"false",WARBOOST_LIVE_LEGAL_CONFIRMED:"false",WARBOOST_LIVE_TAX_VERIFIED:"false",
+    WARBOOST_LIVE_LEGACY_RECONCILED:"false",WARBOOST_LEGAL_BUSINESS_NAME:"",WARBOOST_SUPPORT_EMAIL:"",
+    WARBOOST_LIVE_TERMS_URL:"",WARBOOST_LIVE_PRIVACY_URL:"",
     SUPABASE_URL:"https://fixture.invalid",SUPABASE_ANON_KEY:"anon-fixture",SUPABASE_SERVICE_ROLE_KEY:"service-fixture",WARBOOST_BETA_EMAILS:"",WARBOOST_SUPPORT_ADMINS:""});
   const fixture={pg,migrations,calls:[],customers:new Map(),subscriptions:new Map(),sessions:new Map(),idempotency:new Map(),
-    failDb:false,failApplyOnce:false,failCheckoutOnce:false,priceOverride:{},productOverride:{},providerLive:false,card:"accepted"};
+    liveCustomers:new Map(),liveSubscriptions:new Map(),liveSessions:new Map(),liveIdempotency:new Map(),
+    failDb:false,failApplyOnce:false,failCheckoutOnce:false,priceOverride:{},livePriceOverride:{},productOverride:{},providerLive:false,card:"accepted"};
   fixture.price=()=>({id:"price_pro_test",object:"price",active:true,livemode:false,product:"prod_pro_test",unit_amount:499,currency:"eur",type:"recurring",
     billing_scheme:"per_unit",recurring:{interval:"month",interval_count:1,usage_type:"licensed"},...fixture.priceOverride});
+  fixture.livePrice=()=>({id:"price_prolivefixture",object:"price",active:true,livemode:true,product:"prod_prolivefixture",unit_amount:499,currency:"eur",type:"recurring",
+    billing_scheme:"per_unit",tax_behavior:"inclusive",recurring:{interval:"month",interval_count:1,usage_type:"licensed"},...fixture.livePriceOverride});
   fixture.sub=(customer,id="sub_test_one",status="active")=>({id,object:"subscription",livemode:false,customer,status,
     metadata:{},current_period_end:Math.floor(Date.now()/1000)+86400,cancel_at_period_end:false,
     items:{data:[{quantity:1,price:fixture.price()}]}});
+  fixture.liveSub=(customer,id="sub_live_one",status="active")=>({id,object:"subscription",livemode:true,customer,status,
+    metadata:{},current_period_end:Math.floor(Date.now()/1000)+86400,cancel_at_period_end:false,
+    items:{data:[{quantity:1,price:fixture.livePrice()}]}});
+  fixture.enableLive=()=>{
+    Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"live",STRIPE_LIVE_SECRET_KEY:"sk_live_fixtureonly",
+      STRIPE_LIVE_WEBHOOK_SECRET:"whsec_live_fixtureonly",STRIPE_LIVE_PRICE_PRO_MONTHLY:"price_prolivefixture",
+      STRIPE_LIVE_PRODUCT_PRO:"prod_prolivefixture",WARBOOST_LIVE_APP_URL:"https://warboost.fr",
+      WARBOOST_LIVE_PAYMENTS_ENABLED:"true",WARBOOST_LIVE_ACTIVATION_APPROVED:"true",WARBOOST_LIVE_CATALOG_VERIFIED:"true",
+      WARBOOST_LIVE_LEGAL_CONFIRMED:"true",WARBOOST_LIVE_TAX_VERIFIED:"true",WARBOOST_LIVE_LEGACY_RECONCILED:"true",
+      WARBOOST_LEGAL_BUSINESS_NAME:"Fixture Merchant",WARBOOST_SUPPORT_EMAIL:"billing@example.test",
+      WARBOOST_LIVE_TERMS_URL:"https://warboost.fr/legal.html",WARBOOST_LIVE_PRIVACY_URL:"https://warboost.fr/privacy.html"});
+  };
+  fixture.enableTest=()=>{process.env.WARBOOST_COMMERCIAL_MODE="test";process.env.STRIPE_SECRET_KEY="sk_test_fixtureonly"};
   fixture.rpc=async(name,args)=>{
     const names=Object.keys(args),params=Object.values(args);
     const result=await pg.query(`select public.${name}(${names.map((n,i)=>`${n} => $${i+1}`).join(",")}) as result`,params);
@@ -73,34 +100,45 @@ export async function billingFixture(){
       }catch(e){return json({code:e.code||"FIXTURE_DATABASE_ERROR"},503)}
     }
     if(u.hostname!=="api.stripe.com")throw Error("OUTBOUND_NETWORK_FORBIDDEN");
-    const path=u.pathname.replace("/v1/",""),params=new URLSearchParams(opts.body||"");
-    const key=opts.headers?.["Idempotency-Key"];
-    if(key&&fixture.idempotency.has(key))return json(fixture.idempotency.get(key));
+    const path=u.pathname.replace("/v1/",""),params=new URLSearchParams(opts.body||""),live=opts.headers?.authorization==="Bearer sk_live_fixtureonly",
+      expectedKey=live?"Bearer sk_live_fixtureonly":"Bearer sk_test_fixtureonly";
+    if(opts.headers?.authorization!==expectedKey)throw Error("FIXTURE_STRIPE_KEY_MODE_MISMATCH");
+    const key=opts.headers?.["Idempotency-Key"],objects=live?fixture.liveIdempotency:fixture.idempotency,
+      customers=live?fixture.liveCustomers:fixture.customers,subscriptions=live?fixture.liveSubscriptions:fixture.subscriptions,
+      sessions=live?fixture.liveSessions:fixture.sessions;
+    if(key&&objects.has(key))return json(objects.get(key));
     let out;
-    if(path==="prices/price_pro_test")out=fixture.price();
-    else if(path==="products/prod_pro_test")out={id:"prod_pro_test",object:"product",livemode:false,active:true,...fixture.productOverride};
+    if(path==="prices/price_pro_test"&&!live)out=fixture.price();
+    else if(path==="products/prod_pro_test"&&!live)out={id:"prod_pro_test",object:"product",livemode:false,active:true,...fixture.productOverride};
+    else if(path==="prices/price_prolivefixture"&&live)out=fixture.livePrice();
+    else if(path==="products/prod_prolivefixture"&&live)out={id:"prod_prolivefixture",object:"product",livemode:true,active:true};
     else if(path==="customers"){
-      const id=`cus_test_${fixture.customers.size+1}`;out={id,object:"customer",livemode:false};fixture.customers.set(id,out);
+      const id=`cus_${live?"live":"test"}_${customers.size+1}`;out={id,object:"customer",livemode:live};customers.set(id,out);
     }else if(path==="subscriptions"){
-      out={object:"list",has_more:false,data:[...fixture.subscriptions.values()].filter(s=>s.customer===u.searchParams.get("customer"))};
-    }else if(path.startsWith("subscriptions/"))out=fixture.subscriptions.get(path.split("/")[1]);
+      out={object:"list",livemode:live,has_more:false,data:[...subscriptions.values()].filter(s=>s.customer===u.searchParams.get("customer"))};
+    }else if(path.startsWith("subscriptions/"))out=subscriptions.get(path.split("/")[1]);
     else if(path==="checkout/sessions"){
-      const id=`cs_test_${fixture.sessions.size+1}`;out={id,object:"checkout.session",livemode:false,url:`https://checkout.stripe.com/c/pay/${id}`,
+      const id=`cs_${live?"live":"test"}_${sessions.size+1}`;out={id,object:"checkout.session",livemode:live,url:`https://checkout.stripe.com/c/pay/${id}`,
         customer:params.get("customer"),client_reference_id:params.get("client_reference_id"),status:"open",expires_at:Number(params.get("expires_at"))};
-      fixture.sessions.set(id,out);
-      if(key)fixture.idempotency.set(key,out);
+      sessions.set(id,out);
+      if(key)objects.set(key,out);
       if(fixture.failCheckoutOnce){fixture.failCheckoutOnce=false;throw Error("SIMULATED_CONNECTION_LOSS_AFTER_STRIPE_CREATION")}
-    }else if(path==="billing_portal/sessions")out={id:"bps_test",object:"billing_portal.session",livemode:false,url:"https://billing.stripe.com/p/session/test"};
+    }else if(path==="billing_portal/sessions")out={id:`bps_${live?"live":"test"}`,object:"billing_portal.session",livemode:live,url:`https://billing.stripe.com/p/session/${live?"live":"test"}`};
     else throw Error(`Unexpected provider fixture endpoint ${path}`);
     if(!out)return json({error:{message:"Fixture object missing"}},404);
-    if(fixture.providerLive)out={...out,livemode:true};
-    if(key)fixture.idempotency.set(key,out);
+    if(fixture.providerLive&&!live)out={...out,livemode:true};
+    if(key)objects.set(key,out);
     return json(out);
   };
   fixture.event=(type,obj,created=Math.floor(Date.now()/1000),id=`evt_test_${crypto.randomUUID().replaceAll("-","")}`)=>({id,type,created,livemode:false,data:{object:obj}});
+  fixture.liveEvent=(type,obj,created=Math.floor(Date.now()/1000),id=`evt_live_${crypto.randomUUID().replaceAll("-","")}`)=>({id,type,created,livemode:true,data:{object:obj}});
   fixture.sign=event=>{
     const raw=JSON.stringify(event),t=Math.floor(Date.now()/1000);
-    return [raw,`t=${t},v1=${crypto.createHmac("sha256","whsec_fixture_only").update(`${t}.${raw}`).digest("hex")}`];
+    return [raw,`t=${t},v1=${crypto.createHmac("sha256","whsec_fixtureonly").update(`${t}.${raw}`).digest("hex")}`];
+  };
+  fixture.signLive=event=>{
+    const raw=JSON.stringify(event),t=Math.floor(Date.now()/1000);
+    return [raw,`t=${t},v1=${crypto.createHmac("sha256","whsec_live_fixtureonly").update(`${t}.${raw}`).digest("hex")}`];
   };
   fixture.close=async()=>{globalThis.fetch=oldFetch;process.env=oldEnv;await pg.close()};
   return fixture;
