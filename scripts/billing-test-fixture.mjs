@@ -53,7 +53,7 @@ export async function billingFixture(){
     items:{data:[{quantity:1,price:fixture.livePrice()}]}});
   fixture.enableLive=()=>{
     Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"live",STRIPE_LIVE_SECRET_KEY:"sk_live_fixtureonly",
-      STRIPE_LIVE_WEBHOOK_SECRET:"whsec_live_fixtureonly",STRIPE_LIVE_PRICE_PRO_MONTHLY:"price_prolivefixture",
+      STRIPE_LIVE_WEBHOOK_SECRET:"whsec_livefixtureonly",STRIPE_LIVE_PRICE_PRO_MONTHLY:"price_prolivefixture",
       STRIPE_LIVE_PRODUCT_PRO:"prod_prolivefixture",WARBOOST_LIVE_APP_URL:"https://warboost.fr",
       WARBOOST_LIVE_PAYMENTS_ENABLED:"true",WARBOOST_LIVE_ACTIVATION_APPROVED:"true",WARBOOST_LIVE_CATALOG_VERIFIED:"true",
       WARBOOST_LIVE_LEGAL_CONFIRMED:"true",WARBOOST_LIVE_TAX_VERIFIED:"true",WARBOOST_LIVE_LEGACY_RECONCILED:"true",
@@ -138,7 +138,7 @@ export async function billingFixture(){
   };
   fixture.signLive=event=>{
     const raw=JSON.stringify(event),t=Math.floor(Date.now()/1000);
-    return [raw,`t=${t},v1=${crypto.createHmac("sha256","whsec_live_fixtureonly").update(`${t}.${raw}`).digest("hex")}`];
+    return [raw,`t=${t},v1=${crypto.createHmac("sha256","whsec_livefixtureonly").update(`${t}.${raw}`).digest("hex")}`];
   };
   fixture.close=async()=>{globalThis.fetch=oldFetch;process.env=oldEnv;await pg.close()};
   return fixture;
