@@ -25,8 +25,8 @@ globalThis.fetch=async(url,opts={})=>{
   const u=String(url),method=String(opts.method||'GET').toUpperCase(),headers=opts.headers||{};
   if(u.endsWith('/auth/v1/user')){
     const auth=String(headers.authorization||headers.Authorization||'');
-    if(auth.includes('admin-token'))return json(200,{id:'admin-u',email:'support@warboost.fr'});
-    if(auth.includes('player-token'))return json(200,{id:'player-u',email:'player@example.fr'});
+    if(auth.includes('admin-token'))return json(200,{id:'admin-u',email:'support@warboost.fr',email_confirmed_at:'2026-09-06T08:00:00.000Z'});
+    if(auth.includes('player-token'))return json(200,{id:'player-u',email:'player@example.fr',email_confirmed_at:'2026-09-06T08:00:00.000Z'});
     return json(401,{message:'bad token'});
   }
   if(u.includes('/rest/v1/warboost_'))return json(404,{code:'PGRST205'});
@@ -69,6 +69,10 @@ globalThis.fetch=async(url,opts={})=>{
 };
 
 try{
+  const retired=await call(supportHandler,{method:'POST',body:{action:'beta_code_activate',code:'SYNTHETIC-RETIRED'}});
+  assert.equal(retired.statusCode,410);assert.equal(retired.body.error,'BETA_CODE_RETIRED');
+  console.log('PASS legacy beta-code activation is explicitly retired; FREE account remains no-code');
+
   let r=await call(supportHandler,{method:'POST',body:{action:'invite_add',emails:['PLAYER@EXAMPLE.FR','not-an-email'],note:'Test bêta'}});
   assert.equal(r.statusCode,200);assert.equal(r.body.results.length,2);assert.equal(r.body.results.filter(x=>x.ok).length,1);
   assert.equal(invites.length,1);assert.equal(invites[0].email,'player@example.fr');assert.equal(invites[0].status,'pending');

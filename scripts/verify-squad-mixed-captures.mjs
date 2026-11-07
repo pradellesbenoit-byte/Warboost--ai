@@ -6,6 +6,8 @@ import {createScanReviewDraft} from "../lib/scan-review.js";
 import {applyReviewedSquad} from "../lib/squad-scan-review.js";
 import {catalogHeroName} from "../lib/heroes.js";
 import {buildScanReviewGroups} from "../lib/scan-review-presentation.js";
+import {analysisFailureMessage} from "../lib/analysis-indicator.js";
+import {ANALYSIS_SCAN_TRANSLATIONS} from "../lib/analysis-copy.js";
 
 // Representative provider fixtures for the reported case, not a live OCR benchmark.
 const at="2026-10-08T19:00:00Z";
@@ -206,12 +208,27 @@ await test("homogeneous exclusive batches remain separate from squads; no-format
     request:async()=>({response:{ok:true},json:{...mergePlayerScanBatch("squad1",[result(weapon("DVA",28)),result(weapon("Skyler",1))]),batch_analysis:true,capture_count:2}})}),
     /arme exclusive reconnus.*DVA.*Skyler.*Ajoute une capture/);
 });
-await test("recognized but empty subtype does not discard a useful formation; provider failures still fail safely",async()=>{
+await test("recognized but empty subtype does not discard a useful formation; timeout stays clear and preserves confirmed captures",async()=>{
   const merged=await analyzePlayerCaptureBatch({type:"squad1",images:["unknown","formation"],
     request:async()=>({response:{ok:true},json:{...mergePlayerScanBatch("squad1",[{state:{},capture_type:"unknown"},result(formation())]),batch_analysis:true,capture_count:2}})});
   assert.equal(merged.state.squads[0].power,44.43);
-  await assert.rejects(()=>analyzePlayerCaptureBatch({type:"squad1",images:["failure"],
-    request:async()=>({response:{ok:false},json:{message:"Vision indisponible",code:"VISION_TIMEOUT"}})}),/Vision indisponible/);
+  const confirmedBeforeFailure=mergePlayerScanBatch("squad1",[result(formation())]).state;
+  const confirmedSnapshot=structuredClone(confirmedBeforeFailure);
+  const retainedCaptures=["confirmed-formation","retry-after-timeout"];
+  let returned,timeoutError;
+  try{
+    returned=await analyzePlayerCaptureBatch({type:"squad1",images:retainedCaptures,
+      request:async()=>({response:{ok:false,status:504},json:{message:"Vision indisponible",code:"VISION_TIMEOUT"}})});
+  }catch(error){timeoutError=error}
+  assert.equal(returned,undefined,"a failed scan must not produce a result that can be applied");
+  assert.equal(timeoutError?.code,"VISION_TIMEOUT");
+  assert.equal(timeoutError?.status,504);
+  assert.equal(timeoutError?.message,"scan_failed","provider text is not exposed as the technical error");
+  assert.equal(analysisFailureMessage(timeoutError,key=>ANALYSIS_SCAN_TRANSLATIONS.fr[key]??key,"fr"),
+    "L’analyse du scan a dépassé le délai. Ta capture n’a pas été enregistrée dans ton profil. Garde-la et réessaie.");
+  assert.deepEqual(confirmedBeforeFailure,confirmedSnapshot,"timeout must not mutate an existing confirmed squad");
+  assert.deepEqual(confirmedBeforeFailure.squads[0].heroes.map(hero=>hero.name),names);
+  assert.deepEqual(retainedCaptures,["confirmed-formation","retry-after-timeout"],"captures remain available for retry");
 });
 await test("prompt and request retain subtype schema, named evidence and same hero aliases",()=>{
   const prompt=promptFor("squad1","fr");

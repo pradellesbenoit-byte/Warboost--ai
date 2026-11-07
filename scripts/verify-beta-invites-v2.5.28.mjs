@@ -113,9 +113,14 @@ const log=msg=>console.log(`✓ ${msg}`);
 // Version and Safe Launch invariants.
 {
   const pkg=JSON.parse(read('package.json')),health=read('api/health.js'),manifest=read('manifest.webmanifest'),sw=read('sw.js');
+  const freeAccess=read('lib/free-access.js'),pro=read('api/pro.js'),support=read('api/support.js');
   const escapedVersion=pkg.version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
   assert.equal(pkg.name,'warboost-v2-safe-launch-activity-events');
+  assert.match(freeAccess,/Sans code ni invitation/);
+  assert.match(pro,/beta_code_eligible:false,open_registration:true/);
+  assert.match(support,/BETA_CODE_RETIRED/);
+  log('FREE registration is code-free; legacy beta-code activation is explicitly retired');
   assert.match(health,new RegExp(`version:"${escapedVersion}"`));
   assert.match(health,/beta_database_invitation_registry:true/);
   assert.match(health,/beta_admin_invite_manager:true/);

@@ -62,7 +62,7 @@ console.log("PASS: valid DVA/Lucius/Skyler/Morrison and other hero powers remain
 
 const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
 assert.match(app,/const identityPower=profilePower\?\?weaponPower/);
-assert.match(app,/state=mergeConfirmedExclusiveWeaponPowers\(staged,\{weapons:observed,updatedAt:now\}\)\.state/);
+assert.match(app,/state\s*=\s*observed\.length\?mergeConfirmedExclusiveWeaponPowers\(staged,\{weapons:observed,updatedAt:now\}\)\.state:staged/);
 console.log("PASS: Player display prioritizes confirmed identity power and confirmed exclusive scans use the persistence path");
 
 console.log("WarBoost V2.5.28 exclusive power persistence verification complete.");
