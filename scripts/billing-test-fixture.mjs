@@ -30,8 +30,9 @@ export async function billingFixture(){
   const liveMigration=new URL("../supabase/migration_v2_5_33_pro_live_billing.sql",import.meta.url);
   migrations.push(liveMigration);await pg.exec(fs.readFileSync(liveMigration,"utf8"));
   const oldEnv={...process.env},oldFetch=globalThis.fetch;
-  Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"test",WARBOOST_APP_URL:"https://beta.warboost.fr",STRIPE_SECRET_KEY:"sk_test_fixtureonly",
-    STRIPE_WEBHOOK_SECRET:"whsec_fixtureonly",STRIPE_PRICE_PRO_MONTHLY:"price_pro_test",STRIPE_PRODUCT_PRO:"prod_pro_test",
+  Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"test",WARBOOST_APP_URL:"https://beta.warboost.fr",WARBOOST_TERMS_URL:"https://beta.warboost.fr/legal.html",
+    WARBOOST_PRIVACY_URL:"https://beta.warboost.fr/privacy.html",WARBOOST_LEGAL_BUSINESS_NAME:"Fixture Merchant",WARBOOST_SUPPORT_EMAIL:"billing@example.test",
+    STRIPE_SECRET_KEY:"sk_test_fixtureonly",STRIPE_WEBHOOK_SECRET:"whsec_fixtureonly",STRIPE_PRICE_PRO_MONTHLY:"price_protest",STRIPE_PRODUCT_PRO:"prod_protest",
     STRIPE_LIVE_SECRET_KEY:"",STRIPE_LIVE_WEBHOOK_SECRET:"",STRIPE_LIVE_PRICE_PRO_MONTHLY:"",STRIPE_LIVE_PRODUCT_PRO:"",
     WARBOOST_LIVE_APP_URL:"",WARBOOST_LIVE_PAYMENTS_ENABLED:"false",WARBOOST_LIVE_ACTIVATION_APPROVED:"false",
     WARBOOST_LIVE_CATALOG_VERIFIED:"false",WARBOOST_LIVE_LEGAL_CONFIRMED:"false",WARBOOST_LIVE_TAX_VERIFIED:"false",
@@ -41,7 +42,7 @@ export async function billingFixture(){
   const fixture={pg,migrations,calls:[],customers:new Map(),subscriptions:new Map(),sessions:new Map(),idempotency:new Map(),
     liveCustomers:new Map(),liveSubscriptions:new Map(),liveSessions:new Map(),liveIdempotency:new Map(),
     failDb:false,failApplyOnce:false,failCheckoutOnce:false,priceOverride:{},livePriceOverride:{},productOverride:{},providerLive:false,card:"accepted"};
-  fixture.price=()=>({id:"price_pro_test",object:"price",active:true,livemode:false,product:"prod_pro_test",unit_amount:499,currency:"eur",type:"recurring",
+  fixture.price=()=>({id:"price_protest",object:"price",active:true,livemode:false,product:"prod_protest",unit_amount:499,currency:"eur",type:"recurring",
     billing_scheme:"per_unit",recurring:{interval:"month",interval_count:1,usage_type:"licensed"},...fixture.priceOverride});
   fixture.livePrice=()=>({id:"price_prolivefixture",object:"price",active:true,livemode:true,product:"prod_prolivefixture",unit_amount:499,currency:"eur",type:"recurring",
     billing_scheme:"per_unit",tax_behavior:"inclusive",recurring:{interval:"month",interval_count:1,usage_type:"licensed"},...fixture.livePriceOverride});
@@ -108,8 +109,8 @@ export async function billingFixture(){
       sessions=live?fixture.liveSessions:fixture.sessions;
     if(key&&objects.has(key))return json(objects.get(key));
     let out;
-    if(path==="prices/price_pro_test"&&!live)out=fixture.price();
-    else if(path==="products/prod_pro_test"&&!live)out={id:"prod_pro_test",object:"product",livemode:false,active:true,...fixture.productOverride};
+    if(path==="prices/price_protest"&&!live)out=fixture.price();
+    else if(path==="products/prod_protest"&&!live)out={id:"prod_protest",object:"product",livemode:false,active:true,...fixture.productOverride};
     else if(path==="prices/price_prolivefixture"&&live)out=fixture.livePrice();
     else if(path==="products/prod_prolivefixture"&&live)out={id:"prod_prolivefixture",object:"product",livemode:true,active:true};
     else if(path==="customers"){

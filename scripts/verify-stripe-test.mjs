@@ -99,7 +99,7 @@ try{
     const [raw,sig]=fixture.signLive(event);
     assert.equal(verifyWebhookSignature(raw,sig,Date.now(),"live"),true);
     await assert.rejects(processWebhook(raw,sig.replace(/v1=.*/,"v1="+"0".repeat(64)),"live"),{code:"INVALID_WEBHOOK_SIGNATURE"});
-    const [testRaw,testSig]=fixture.sign({...event,livemode:false});
+    const [testRaw,testSig]=fixture.signLive({...event,livemode:false});
     await assert.rejects(processWebhook(testRaw,testSig,"live"),{code:"STRIPE_TEST_EVENT_REJECTED"});
     assert.equal((await deliverLive(event)).processed,true);assert.equal((await deliverLive(event)).duplicate,true);
     fixture.enableTest();
@@ -132,8 +132,8 @@ try{
     assert.equal(results.find(x=>x.status==="rejected").reason.code,"CHECKOUT_IN_PROGRESS");
     assert.equal(fixture.sessions.size,1);assert.equal(fixture.customers.size,1);
     const retry=await createCheckoutForUser(user(userA));assert.equal(retry.url,results.find(x=>x.status==="fulfilled").value.url);
-    const params=new URLSearchParams(fixture.calls.find(x=>x.path==="/v1/checkout/sessions").opts.body);
-    assert.equal(params.get("line_items[0][price]"),"price_pro_test");assert.equal(params.get("line_items[0][quantity]"),"1");
+    const params=new URLSearchParams(fixture.calls.find(x=>x.host==="api.stripe.com"&&x.path==="/v1/checkout/sessions"&&x.opts.headers.authorization==="Bearer sk_test_fixtureonly").opts.body);
+    assert.equal(params.get("line_items[0][price]"),"price_protest");assert.equal(params.get("line_items[0][quantity]"),"1");
     assert.equal(params.get("success_url"),"https://beta.warboost.fr/?billing=test-success");
     assert.equal(params.get("cancel_url"),"https://beta.warboost.fr/?billing=test-cancel");
   });
