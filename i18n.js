@@ -906,8 +906,52 @@ Object.assign(RO,{clear_capture:"Șterge captura de pe acest dispozitiv",privacy
 Object.assign(EL,{clear_capture:"Διαγραφή στιγμιότυπου από αυτή τη συσκευή",privacy_scan:"Το στιγμιότυπο διατηρείται προσωρινά σε αυτή τη συσκευή ώστε να μην χρειάζεται να το επιλέξεις ξανά. Η αρχική εικόνα δεν αποθηκεύεται ποτέ στο προφίλ WarBoost Cloud και λήγει αυτόματα."});
 Object.assign(CS,{clear_capture:"Odstranit snímek z tohoto zařízení",privacy_scan:"Snímek je dočasně uložen v tomto zařízení, abys ho nemusel znovu vybírat. Původní obrázek se nikdy neukládá do profilu WarBoost Cloud a automaticky vyprší."});
 Object.assign(SV,{clear_capture:"Ta bort skärmbilden från den här enheten",privacy_scan:"Skärmbilden sparas tillfälligt på den här enheten så att du slipper välja den igen. Råbilden sparas aldrig i din WarBoost Cloud-profil och upphör automatiskt."});
-Object.assign(EN,{commercial_live_consent:"I agree to a recurring charge of €4.99 including VAT each month until I cancel. I can cancel through the customer portal.",commercial_live_not_ready:"LIVE payments remain disabled until the merchant, price, tax, legal pages and billing database are verified.",commercial_live_success:"Checkout return received. PRO access is granted only after the signed payment notification is verified.",commercial_live_cancel:"Checkout was canceled; no subscription was created.",commercial_terms_link:"Terms of sale",commercial_privacy_link:"Privacy"});
-Object.assign(FR,{commercial_live_consent:"J’accepte un prélèvement récurrent de 4,99 € TTC par mois jusqu’à résiliation. Je peux résilier depuis le portail client.",commercial_live_not_ready:"Les paiements LIVE restent désactivés jusqu’à la vérification du marchand, du prix, des taxes, des pages légales et de la base de facturation.",commercial_live_success:"Retour du paiement reçu. L’accès PRO n’est accordé qu’après vérification de la notification signée.",commercial_live_cancel:"Le paiement a été annulé ; aucun abonnement n’a été créé.",commercial_terms_link:"Conditions de vente",commercial_privacy_link:"Confidentialité"});
+Object.assign(EN,{
+   commercial_live_consent:"I agree to WarBoost PRO at €4.99 per month, including applicable VAT, with automatic monthly renewal until I cancel. I can cancel at any time through the customer portal; cancellation takes effect at the end of the paid period. The selected country is only a pre-check; Stripe verifies the billing address during Checkout.",
+   commercial_live_not_ready:"LIVE payments are disabled because Stripe Checkout collects the billing country during payment and this integration cannot guarantee a country refusal before a charge. The signed webhook checks Stripe’s confirmed address before granting PRO, but that may be after payment. A verified pre-charge restriction, merchant, approved countries, price, Stripe Tax, legal pages and billing database are required first.",
+  commercial_live_success:"Checkout return received. PRO access is granted only after the signed Stripe notification and current subscription are verified.",
+  commercial_live_cancel:"Checkout was canceled; no subscription was created.",
+  commercial_terms_link:"Terms of sale",commercial_privacy_link:"Privacy",
+  commercial_live_country_label:"Billing country",commercial_live_country_select:"Choose your billing country",
+  commercial_live_country_unavailable:"No billing country is currently approved for paid subscriptions.",
+   commercial_live_country_helper:"This selection is only a non-authoritative pre-check, not proof of tax residence. Stripe confirms the billing address during Checkout; a country mismatch may be charged before the signed webhook denies PRO. LIVE Checkout remains disabled until a pre-charge country restriction is verified.",
+  commercial_live_price_note:"Reference price: €4.99 per month. Stripe may show a local-currency amount only when Adaptive Pricing is enabled and returns it. Exchange rates and applicable Stripe or payment-provider fees may change the amount. WarBoost does not estimate a conversion.",
+  commercial_test_note:"Stripe TEST only — no real payment. Monthly renewal and cancellation are simulated.",
+  commercial_live_country_required:"Choose an approved billing country to continue.",
+  commercial_live_country_not_approved:"Paid WarBoost PRO is not available in that country.",
+  commercial_live_country_mismatch:"Stripe could not verify the selected billing country. PRO was not activated.",
+   commercial_live_country_unverified:"Stripe has not confirmed an approved billing country. PRO is not granted until the signed subscription check verifies it.",
+  commercial_live_renewal:"€4.99 per month, automatically renewed. Cancel through the customer portal; cancellation takes effect at the end of the paid period.",
+  commercial_subscription_cancels_at:"Subscription scheduled to end on {date}.",
+  commercial_live_active:"WarBoost PRO is active. Billing status is confirmed by Stripe.",
+  commercial_test_active:"Stripe TEST subscription active — no real charge.",
+  commercial_test_checkout_info:"Monthly subscription flow is in TEST mode. No real payment is available.",
+  commercial_portal_label:"Customer portal · {mode}",commercial_test_checkout:"Try Checkout · TEST",
+  commercial_live_subscribe:"Subscribe · €4.99 / month"
+});
+Object.assign(FR,{
+  commercial_live_consent:"J’accepte WarBoost PRO à 4,99 € par mois, TVA applicable incluse, avec renouvellement automatique mensuel jusqu’à résiliation. Je peux résilier à tout moment depuis le portail client ; la résiliation prend effet à la fin de la période payée. Le pays choisi est un simple précontrôle ; Stripe vérifie l’adresse pendant Checkout.",
+  commercial_live_not_ready:"Les paiements LIVE sont désactivés : Stripe Checkout collecte le pays pendant le paiement et cette intégration ne peut pas garantir un refus avant débit. Le webhook signé vérifie l’adresse Stripe avant d’accorder PRO, mais cette vérification peut intervenir après le paiement. Une restriction préalable vérifiable, le marchand, les pays approuvés, le prix, Stripe Tax, les pages légales et la base de facturation sont requis.",
+  commercial_live_success:"Retour de Checkout reçu. L’accès PRO n’est accordé qu’après vérification de la notification Stripe signée et de l’abonnement actuel.",
+  commercial_live_cancel:"Le paiement a été annulé ; aucun abonnement n’a été créé.",
+  commercial_terms_link:"Conditions de vente",commercial_privacy_link:"Confidentialité",
+  commercial_live_country_label:"Pays de facturation",commercial_live_country_select:"Choisis ton pays de facturation",
+  commercial_live_country_unavailable:"Aucun pays de facturation n’est actuellement approuvé pour les abonnements payants.",
+  commercial_live_country_helper:"Ce choix est un précontrôle non autoritatif, pas une preuve de résidence fiscale. Stripe confirme l’adresse pendant Checkout ; un débit peut précéder le refus de PRO par le webhook signé si le pays diffère. Checkout LIVE reste désactivé tant qu’une restriction avant débit n’est pas vérifiée.",
+  commercial_live_price_note:"Prix de référence : 4,99 € par mois. Stripe peut afficher un montant en devise locale uniquement si Adaptive Pricing est activé et le renvoie. Les taux de change et les éventuels frais Stripe ou du prestataire de paiement peuvent modifier le montant. WarBoost n’estime aucune conversion.",
+  commercial_test_note:"Stripe TEST uniquement — aucun paiement réel. Le renouvellement mensuel et la résiliation sont simulés.",
+  commercial_live_country_required:"Choisis un pays de facturation approuvé pour continuer.",
+  commercial_live_country_not_approved:"WarBoost PRO payant n’est pas disponible dans ce pays.",
+  commercial_live_country_mismatch:"Stripe n’a pas pu vérifier le pays de facturation choisi. PRO n’a pas été activé.",
+  commercial_live_country_unverified:"Stripe n’a pas confirmé un pays de facturation approuvé. PRO ne sera accordé qu’après vérification de l’abonnement signé.",
+  commercial_live_renewal:"4,99 € par mois, avec renouvellement automatique. Résiliation depuis le portail client ; elle prend effet à la fin de la période payée.",
+  commercial_subscription_cancels_at:"Résiliation prévue le {date}.",
+  commercial_live_active:"WarBoost PRO est actif. Le statut de facturation est confirmé par Stripe.",
+  commercial_test_active:"Abonnement Stripe TEST actif — aucun débit réel.",
+  commercial_test_checkout_info:"Parcours d’abonnement mensuel en mode TEST. Aucun paiement réel n’est disponible.",
+  commercial_portal_label:"Portail client · {mode}",commercial_test_checkout:"Essayer Checkout · TEST",
+  commercial_live_subscribe:"S’abonner · 4,99 € / mois"
+});
 export function translator(lang){
   const pack=packs[lang]||EN,free=freeAccessCopy(lang),help=workspaceHelpCopy(lang),scanFailures=scanFailureCopy(lang),visionTest=controlledVisionCopy(lang);
   const openAccountLabels=["beta_release_label","beta_badge","beta_signin_required","beta_invite_required"];

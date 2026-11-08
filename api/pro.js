@@ -38,6 +38,8 @@ export default async function handler(req,res){
         plan:commerce.plan,payments_enabled:commercial.payments_enabled,
         test_payments_enabled:commerce.test_payments_enabled&&entitlement.schema_ready,
         live_payments_enabled:commercial.payments_enabled,live_schema_ready:commercial.live_schema_ready,
+        live_approved_billing_countries:commercial.live_approved_billing_countries||[],
+        adaptive_pricing_enabled:Boolean(commercial.adaptive_pricing_enabled),
         portal_enabled:commercial.portal_enabled,consent_version:commercial.consent_version,
         pro_included:entitlement.source==="beta",entitlement,subscription:entitlement.subscription,can_manage_billing:Boolean(account?.stripe_customer_id),
         commercial_preview:commercial.mode!=="test",mode:commercial.mode,activation_requirements:commercial.activation_requirements
@@ -53,7 +55,9 @@ export default async function handler(req,res){
       if(action==="checkout"){
         const entitlement=await entitlementForUser(user,{beta});
         if(entitlement.source==="beta")return res.status(409).json({ok:false,error:"BETA_PRO_INCLUDED",message:"Votre accès PRO bêta reste gratuit. Aucun abonnement nécessaire."});
-        return res.status(200).json({ok:true,...await createCheckoutForUser(user,{consentVersion:body?.consent_version})});
+        return res.status(200).json({ok:true,...await createCheckoutForUser(user,{
+          consentVersion:body?.consent_version,billingCountry:body?.billing_country,locale:body?.locale
+        })});
       }
       if(action==="portal")return res.status(200).json({ok:true,...await createPortalForUser(user)});
       return res.status(400).json({ok:false,error:"unknown_pro_action"});
