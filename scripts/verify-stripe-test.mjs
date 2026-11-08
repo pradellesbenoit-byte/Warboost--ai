@@ -305,6 +305,48 @@ try{
     for(const path of fixture.migrations)await fixture.pg.exec(fs.readFileSync(path,"utf8"));
     assert.equal((await entitlementForUser(user(userBeta))).active,false);
   });
+  await test("LIVE Stripe Tax readiness blocks before billing writes; TEST checkout remains available",async()=>{
+    fixture.enableLive();
+    const consentBefore=(await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userLive])).rows[0].n;
+    const attemptBefore=(await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts where user_id=$1",[userLive])).rows[0].n;
+    const liveCustomersBefore=fixture.liveCustomers.size,liveSessionsBefore=fixture.liveSessions.size;
+    const stripeCallsBefore=fixture.calls.filter(x=>x.host==="api.stripe.com").length;
+    process.env.WARBOOST_LIVE_TAX_COUNTRY="";
+    process.env.WARBOOST_LIVE_LEGAL_CONFIRMED="false";
+    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
+    assert.equal(fixture.calls.filter(x=>x.host==="api.stripe.com").length,stripeCallsBefore);
+    process.env.WARBOOST_LIVE_TAX_COUNTRY="FR";
+    process.env.WARBOOST_LIVE_LEGAL_CONFIRMED="true";
+    fixture.taxSettingsOverride={status:"pending"};
+    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"LIVE_TAX_NOT_READY"});
+    const stripeAfter=fixture.calls.filter(x=>x.host==="api.stripe.com").slice(stripeCallsBefore);
+    assert.ok(stripeAfter.some(x=>x.path==="/v1/tax/settings"&&x.opts.method==="GET"));
+    assert.ok(stripeAfter.some(x=>x.path==="/v1/products/prod_prolivefixture"&&x.opts.method==="GET"));
+    assert.ok(stripeAfter.length>=2);
+    assert.ok(stripeAfter.every(x=>x.opts.method==="GET"));
+    assert.equal(fixture.liveCustomers.size,liveCustomersBefore);
+    assert.equal(fixture.liveSessions.size,liveSessionsBefore);
+    assert.equal((await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userLive])).rows[0].n,consentBefore);
+    assert.equal((await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts where user_id=$1",[userLive])).rows[0].n,attemptBefore);
+    fixture.taxSettingsOverride={};
+    fixture.liveProductOverride={tax_code:null};
+    const productCheckStart=fixture.calls.filter(x=>x.host==="api.stripe.com").length;
+    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"LIVE_TAX_NOT_READY"});
+    const productCheckCalls=fixture.calls.filter(x=>x.host==="api.stripe.com").slice(productCheckStart);
+    assert.ok(productCheckCalls.some(x=>x.path==="/v1/products/prod_prolivefixture"&&x.opts.method==="GET"));
+    assert.ok(productCheckCalls.every(x=>x.opts.method==="GET"));
+    assert.equal(fixture.liveCustomers.size,liveCustomersBefore);
+    assert.equal(fixture.liveSessions.size,liveSessionsBefore);
+    assert.equal((await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userLive])).rows[0].n,consentBefore);
+    assert.equal((await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts where user_id=$1",[userLive])).rows[0].n,attemptBefore);
+    fixture.liveProductOverride={};
+    fixture.taxSettingsOverride={};
+    fixture.enableTest();
+    const taxCallsBefore=fixture.calls.filter(x=>x.host==="api.stripe.com"&&x.path==="/v1/tax/settings").length;
+    const testCheckout=await createCheckoutForUser(user(userFree));
+    assert.equal(testCheckout.test,true);
+    assert.equal(fixture.calls.filter(x=>x.host==="api.stripe.com"&&x.path==="/v1/tax/settings").length,taxCallsBefore);
+  });
   console.log(`\nStripe TEST verification PASS: ${passed} scenarios. Provider transitions simulated; real cards/3DS remain manual.`);
 }finally{await fixture.close()}
 async function callPortal(id){return call(proHandler,id,{method:"POST",body:{action:"portal"}})}

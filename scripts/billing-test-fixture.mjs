@@ -38,10 +38,12 @@ export async function billingFixture(){
     WARBOOST_LIVE_CATALOG_VERIFIED:"false",WARBOOST_LIVE_LEGAL_CONFIRMED:"false",WARBOOST_LIVE_TAX_VERIFIED:"false",
     WARBOOST_LIVE_LEGACY_RECONCILED:"false",WARBOOST_LEGAL_BUSINESS_NAME:"",WARBOOST_SUPPORT_EMAIL:"",
     WARBOOST_LIVE_TERMS_URL:"",WARBOOST_LIVE_PRIVACY_URL:"",
+    WARBOOST_LIVE_TAX_COUNTRY:"",
     SUPABASE_URL:"https://fixture.invalid",SUPABASE_ANON_KEY:"anon-fixture",SUPABASE_SERVICE_ROLE_KEY:"service-fixture",WARBOOST_BETA_EMAILS:"",WARBOOST_SUPPORT_ADMINS:""});
   const fixture={pg,migrations,calls:[],customers:new Map(),subscriptions:new Map(),sessions:new Map(),idempotency:new Map(),
     liveCustomers:new Map(),liveSubscriptions:new Map(),liveSessions:new Map(),liveIdempotency:new Map(),
-    failDb:false,failApplyOnce:false,failCheckoutOnce:false,priceOverride:{},livePriceOverride:{},productOverride:{},providerLive:false,card:"accepted"};
+    failDb:false,failApplyOnce:false,failCheckoutOnce:false,priceOverride:{},livePriceOverride:{},productOverride:{},liveProductOverride:{},
+    taxSettingsOverride:{},providerLive:false,card:"accepted"};
   fixture.price=()=>({id:"price_protest",object:"price",active:true,livemode:false,product:"prod_protest",unit_amount:499,currency:"eur",type:"recurring",
     billing_scheme:"per_unit",recurring:{interval:"month",interval_count:1,usage_type:"licensed"},...fixture.priceOverride});
   fixture.livePrice=()=>({id:"price_prolivefixture",object:"price",active:true,livemode:true,product:"prod_prolivefixture",unit_amount:499,currency:"eur",type:"recurring",
@@ -58,6 +60,7 @@ export async function billingFixture(){
       STRIPE_LIVE_PRODUCT_PRO:"prod_prolivefixture",WARBOOST_LIVE_APP_URL:"https://warboost.fr",
       WARBOOST_LIVE_PAYMENTS_ENABLED:"true",WARBOOST_LIVE_ACTIVATION_APPROVED:"true",WARBOOST_LIVE_CATALOG_VERIFIED:"true",
       WARBOOST_LIVE_LEGAL_CONFIRMED:"true",WARBOOST_LIVE_TAX_VERIFIED:"true",WARBOOST_LIVE_LEGACY_RECONCILED:"true",
+      WARBOOST_LIVE_TAX_COUNTRY:"FR",
       WARBOOST_LEGAL_BUSINESS_NAME:"Fixture Merchant",WARBOOST_SUPPORT_EMAIL:"billing@example.test",
       WARBOOST_LIVE_TERMS_URL:"https://warboost.fr/legal.html",WARBOOST_LIVE_PRIVACY_URL:"https://warboost.fr/privacy.html"});
   };
@@ -112,7 +115,9 @@ export async function billingFixture(){
     if(path==="prices/price_protest"&&!live)out=fixture.price();
     else if(path==="products/prod_protest"&&!live)out={id:"prod_protest",object:"product",livemode:false,active:true,...fixture.productOverride};
     else if(path==="prices/price_prolivefixture"&&live)out=fixture.livePrice();
-    else if(path==="products/prod_prolivefixture"&&live)out={id:"prod_prolivefixture",object:"product",livemode:true,active:true};
+    else if(path==="products/prod_prolivefixture"&&live)out={id:"prod_prolivefixture",object:"product",livemode:true,active:true,tax_code:"txcd_10103000",...fixture.liveProductOverride};
+    else if(path==="tax/settings"&&live)out={object:"tax.settings",livemode:true,status:"active",
+      head_office:{address:{country:"FR"}},...fixture.taxSettingsOverride};
     else if(path==="customers"){
       const id=`cus_${live?"live":"test"}_${customers.size+1}`;out={id,object:"customer",livemode:live};customers.set(id,out);
     }else if(path==="subscriptions"){
