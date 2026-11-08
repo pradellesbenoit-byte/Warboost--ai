@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import {billingFixture,userA,userB,userBeta,userFree,userLegacy,userLive} from "./billing-test-fixture.mjs";
 import {commercialConfig,COMMERCIAL_CONSENT_VERSION,createCheckoutForUser,createPortalForUser,processWebhook,verifyWebhookSignature,subscriptionActive,readRawBody} from "../lib/commercial-pro.js";
+import {providerRequest} from "../lib/stripe-test.js";
 import {entitlementForUser,requireProductUser} from "../lib/pro-access.js";
 import proHandler from "../api/pro.js";
 import stateHandler from "../api/state.js";
@@ -47,6 +48,23 @@ try{
     fixture.enableLive();process.env.STRIPE_LIVE_SECRET_KEY="sk_test_fixtureonly";
     await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"STRIPE_LIVE_KEY_REQUIRED"});
     assert.equal(fixture.calls.filter(x=>x.host==="api.stripe.com").length,n);fixture.enableTest();
+  });
+  await test("Stripe subscription lists allow omitted root livemode but enforce child and present root modes",async()=>{
+    const customer="cus_test_list_mode",id="sub_test_list_mode";
+    fixture.providerLive=false;
+    fixture.subscriptions.set(id,{id,object:"subscription",livemode:false,customer});
+    try{
+      const list=await providerRequest(`subscriptions?customer=${customer}`,{mode:"test"});
+      assert.equal(list.object,"list");assert.equal(Object.hasOwn(list,"livemode"),false);
+      assert.equal(list.data.length,1);assert.equal(list.data[0].livemode,false);
+      fixture.subscriptions.set(id,{...fixture.subscriptions.get(id),livemode:true});
+      await assert.rejects(providerRequest(`subscriptions?customer=${customer}`,{mode:"test"}),{code:"STRIPE_TEST_OBJECT_REQUIRED"});
+      fixture.subscriptions.set(id,{...fixture.subscriptions.get(id),livemode:false});
+      fixture.providerLive=true;
+      await assert.rejects(providerRequest(`subscriptions?customer=${customer}`,{mode:"test"}),{code:"STRIPE_TEST_OBJECT_REQUIRED"});
+    }finally{
+      fixture.providerLive=false;fixture.subscriptions.delete(id);
+    }
   });
   await test("LIVE checkout requires consent and verifies the exact 499 EUR inclusive monthly price",async()=>{
     fixture.enableLive();const before=fixture.calls.filter(x=>x.host==="api.stripe.com").length;

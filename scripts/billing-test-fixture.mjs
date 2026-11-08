@@ -116,7 +116,7 @@ export async function billingFixture(){
     else if(path==="customers"){
       const id=`cus_${live?"live":"test"}_${customers.size+1}`;out={id,object:"customer",livemode:live};customers.set(id,out);
     }else if(path==="subscriptions"){
-      out={object:"list",livemode:live,has_more:false,data:[...subscriptions.values()].filter(s=>s.customer===u.searchParams.get("customer"))};
+      out={object:"list",has_more:false,data:[...subscriptions.values()].filter(s=>s.customer===u.searchParams.get("customer"))};
     }else if(path.startsWith("subscriptions/"))out=subscriptions.get(path.split("/")[1]);
     else if(path==="checkout/sessions"){
       const id=`cs_${live?"live":"test"}_${sessions.size+1}`;out={id,object:"checkout.session",livemode:live,url:`https://checkout.stripe.com/c/pay/${id}`,
