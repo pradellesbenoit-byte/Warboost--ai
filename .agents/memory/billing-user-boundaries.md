@@ -14,3 +14,9 @@ La phase de préparation Stripe demandée est TEST uniquement : aucun paiement r
 **Why:** L’utilisateur a explicitement limité cette phase à TEST et interdit le push et le déploiement automatiques.
 
 **How to apply:** Une réussite avec fournisseurs simulés ne prouve ni un paiement Stripe test réel ni une autorisation LIVE. Signaler séparément les résultats simulés, les essais Stripe encore nécessaires et la préparation LIVE.
+
+Ne jamais déduire le régime fiscal ni l’autorisation de vendre de la seule forme juridique du marchand (y compris micro-entreprise). Garder LIVE désactivé tant que le pays fiscal explicite, les paramètres Stripe Tax et le code fiscal produit ne sont pas vérifiés, en plus des validations légales.
+
+**Why:** L’utilisateur a explicitement interdit toute déduction fiscale à partir du statut de micro-entreprise et exige une fermeture par défaut.
+
+**How to apply:** Exiger des paramètres fiscaux explicites et une vérification serveur en lecture seule avant toute écriture de consentement ou réservation d’abonnement LIVE.
