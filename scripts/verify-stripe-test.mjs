@@ -13,9 +13,10 @@ const test=async(name,fn)=>{await fn();passed++;console.log(`BILLING ✓ ${name}
 const user=id=>({id,email:id===userBeta?"beta@example.test":id===userA?"a@example.test":id===userB?"b@example.test":id===userLegacy?"legacy@example.test":id===userLive?"live@example.test":"free@example.test"});
 const deliver=e=>processWebhook(...fixture.sign(e));
 const deliverLive=e=>processWebhook(...fixture.signLive(e),"live");
-async function call(handler,id,{method="GET",query={},body=null}={}){
+async function call(handler,id,{method="GET",query={},body=null,parsedBody=false}={}){
   let result;
-  const req={method,query,headers:{authorization:`Bearer ${id}`,"x-warboost-beta-consent":"2026-09-05-safe-launch-v2"},body:body||{},rawBody:Buffer.from(body?JSON.stringify(body):"")};
+  const req={method,query,headers:{authorization:`Bearer ${id}`,"x-warboost-beta-consent":"2026-09-05-safe-launch-v2"},body:body||{}};
+  if(!parsedBody)req.rawBody=Buffer.from(body?JSON.stringify(body):"");
   const res={setHeader(){},status(n){this.code=n;return this},json(data){result={code:this.code||200,data};return this}};
   await handler(req,res);return result;
 }
@@ -250,6 +251,14 @@ try{
       assert.doesNotMatch(fs.readFileSync(file,"utf8"),/\b(?:sk|rk)_(?:test|live)_[A-Za-z0-9]+|\bwhsec_[A-Za-z0-9]+/);
     const columns=(await fixture.pg.query("select column_name from information_schema.columns where table_name='warboost_billing_events'")).rows.map(x=>x.column_name);
     assert.ok(!columns.some(c=>/payload|email|card|address|secret/.test(c)));
+    const parsedCheckout=await call(proHandler,userBeta,{method:"POST",body:{action:"checkout"},parsedBody:true});
+    assert.equal(parsedCheckout.code,409);assert.equal(parsedCheckout.data.error,"BETA_PRO_INCLUDED");
+    const original=Buffer.from('{"id":"evt_original_bytes","type":"checkout.session.completed"}');
+    let bodyGetterRead=false;
+    const rawRequest={async *[Symbol.asyncIterator](){yield original.subarray(0,11);yield original.subarray(11)},
+      get body(){bodyGetterRead=true;throw new Error("req.body getter accessed before raw stream")}};
+    assert.equal(await readRawBody(rawRequest),original.toString("utf8"));
+    assert.equal(bodyGetterRead,false);
     await assert.rejects(readRawBody({body:{hello:"parsed"}}),{code:"RAW_BODY_REQUIRED"});
   });
   await test("Incomplete/3DS-pending or declined-payment fixture cannot activate PRO",async()=>{

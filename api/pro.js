@@ -9,6 +9,9 @@ import {commercialConfig,commercialStatusForUser,billingAccountForUser,createChe
 export const config={api:{bodyParser:false}};
 
 function jsonBody(raw){try{return raw?JSON.parse(raw):{}}catch{return {}}}
+function parsedJsonObject(body){
+  return body!==null&&typeof body==="object"&&!Array.isArray(body)&&!Buffer.isBuffer(body)?body:null;
+}
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store, max-age=0");
@@ -42,7 +45,7 @@ export default async function handler(req,res){
     }
 
     if(req.method==="POST"){
-      const raw=await readRawBody(req),body=jsonBody(raw),action=String(body?.action||"").toLowerCase();
+      const body=parsedJsonObject(req.body)||jsonBody(await readRawBody(req)),action=String(body?.action||"").toLowerCase();
       if(!["test","live"].includes(commerce.mode))return res.status(403).json({
         ok:false,error:"SAFE_LAUNCH_PAYMENT_DISABLED",
         message:"WarBoost PRO billing is disabled until its server configuration is verified."
