@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {billingFixture,userA,userB,userBeta,userFree,userLegacy,userLive} from "./billing-test-fixture.mjs";
+import {billingFixture,userA,userB,userBeta,userFree,userLegacy,userLive,userManagedNew,userManagedExisting} from "./billing-test-fixture.mjs";
 import {commercialConfig,COMMERCIAL_CONSENT_VERSION,createCheckoutForUser,createPortalForUser,processWebhook,verifyWebhookSignature,subscriptionActive,readRawBody} from "../lib/commercial-pro.js";
 import {priceMatches,providerRequest} from "../lib/stripe-test.js";
 import {entitlementForUser,requireProductUser} from "../lib/pro-access.js";
@@ -42,7 +42,6 @@ try{
     assert.equal(commercialConfig().payments_enabled,false);
     await assert.rejects(createCheckoutForUser(user(userA)),{code:"SAFE_LAUNCH_PAYMENT_DISABLED"});
     process.env.WARBOOST_COMMERCIAL_MODE="live";
-    process.env.WARBOOST_LIVE_APPROVED_BILLING_COUNTRIES="FR";
     await assert.rejects(createCheckoutForUser(user(userA),{consentVersion:COMMERCIAL_CONSENT_VERSION,billingCountry:"FR"}),{code:"STRIPE_LIVE_KEY_REQUIRED"});
     process.env.WARBOOST_COMMERCIAL_MODE="test";process.env.STRIPE_SECRET_KEY="sk_live_fixturenotreal";
     await assert.rejects(createCheckoutForUser(user(userA)),{code:"STRIPE_TEST_KEY_REQUIRED"});
@@ -67,77 +66,109 @@ try{
       fixture.providerLive=false;fixture.subscriptions.delete(id);
     }
   });
-  await test("LIVE first subscription has no customer prerequisite; unapproved countries and pre-charge risk fail closed",async()=>{
+  await test("Managed Payments creates first and linked-customer Checkout Sessions with compatible parameters",async()=>{
     fixture.enableLive();
-    const stripeCount=()=>fixture.calls.filter(x=>x.host==="api.stripe.com").length;
-    const beforeStripe=stripeCount(),beforeCalls=fixture.calls.length;
-    const counts=async()=>({
-      accounts:(await fixture.pg.query("select count(*)::int n from warboost_live_billing_accounts where user_id=$1",[userLive])).rows[0].n,
-      attempts:(await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts")).rows[0].n,
-      consents:(await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userLive])).rows[0].n
-    });
-    const before=await counts();
-    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"BILLING_COUNTRY_REQUIRED"});
-    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION,billingCountry:"DE"}),{code:"BILLING_COUNTRY_NOT_APPROVED"});
-    assert.equal((await counts()).accounts,0,"first-time player has no linked Stripe customer");
-    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION,billingCountry:"FR"}),{code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
-    assert.equal(commercialConfig().payments_enabled,false);
-    assert.equal(commercialConfig().activation_requirements.checkout_country_precharge_enforced,false);
-    const api=await call(proHandler,userLive,{method:"POST",body:{action:"checkout",consent_version:COMMERCIAL_CONSENT_VERSION,billing_country:"DE"}});
-    assert.equal(api.code,403);assert.equal(api.data.error,"BILLING_COUNTRY_NOT_APPROVED");
-    assert.equal(stripeCount(),beforeStripe);
-    assert.deepEqual(await counts(),before);
-    assert.ok(fixture.calls.slice(beforeCalls).filter(x=>x.host==="fixture.invalid")
-      .every(x=>!x.opts.method||x.opts.method==="GET"),"country rejection may perform auth/entitlement reads but no billing writes");
-    process.env.WARBOOST_LIVE_APPROVED_BILLING_COUNTRIES="";
-    assert.equal(commercialConfig().payments_enabled,false);
-    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION,billingCountry:"FR"}),{code:"BILLING_COUNTRY_NOT_APPROVED"});
-    assert.equal(stripeCount(),beforeStripe);assert.deepEqual(await counts(),before);
-    fixture.enableTest();
-  });
-  await test("LIVE consent and 499 EUR reference price are checked while checkout stays off for missing pre-charge country enforcement",async()=>{
-    fixture.enableLive();const before=fixture.calls.filter(x=>x.host==="api.stripe.com").length;
-    await assert.rejects(createCheckoutForUser(user(userLive)),{code:"COMMERCIAL_CONSENT_REQUIRED"});
-    assert.equal(fixture.calls.filter(x=>x.host==="api.stripe.com").length,before);
     assert.deepEqual(commercialConfig().plan,{id:"warboost-pro-monthly",amount:499,currency:"eur",interval:"month",price_label:"4,99 € / mois"});
     assert.equal(priceMatches(fixture.livePrice(),"live"),true);
-    fixture.livePriceOverride={unit_amount:599};assert.equal(priceMatches(fixture.livePrice(),"live"),false);fixture.livePriceOverride={};
-    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION,billingCountry:"FR",locale:"fr"}),
-      {code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
-    assert.equal(commercialConfig().activation_requirements.checkout_country_precharge_enforced,false);
-    assert.equal(fixture.calls.filter(x=>x.host==="api.stripe.com").length,before);
-    assert.equal(fixture.liveCustomers.size,0);assert.equal(fixture.liveSessions.size,0);
-    assert.equal((await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userLive])).rows[0].n,0);
-    assert.equal((await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts where user_id=$1",[userLive])).rows[0].n,0);
+    const first=await createCheckoutForUser(user(userManagedNew),{consentVersion:COMMERCIAL_CONSENT_VERSION,locale:"fr",billingCountry:"ZZ"});
+    assert.equal(first.live,true);assert.equal(first.payments_enabled,true);
+    const firstCall=fixture.calls.findLast(x=>x.host==="api.stripe.com"&&x.path==="/v1/checkout/sessions"&&x.opts.headers.authorization==="Bearer sk_live_fixtureonly");
+    assert.equal(firstCall.opts.headers["Stripe-Version"],"2025-03-31.basil");
+    const params=new URLSearchParams(firstCall.opts.body);
+    assert.equal(params.get("mode"),"subscription");assert.equal(params.get("managed_payments[enabled]"),"true");
+    assert.equal(params.get("line_items[0][price]"),"price_prolivefixture");assert.equal(params.get("line_items[0][quantity]"),"1");
+    assert.equal(params.get("metadata[warboost_checkout_model]"),"managed_payments");
+    assert.equal(params.get("subscription_data[metadata][warboost_checkout_model]"),"managed_payments");
+    assert.equal(params.has("metadata[billing_country_hint]"),false,"browser country must not be used as tax evidence");
+    for(const forbidden of ["adaptive_pricing[enabled]","automatic_tax[enabled]","tax_id_collection[enabled]",
+      "subscription_data[default_tax_rates][0]","payment_method_configuration","payment_method_types[0]",
+      "customer_update[name]","customer_update[address]","shipping_address_collection[allowed_countries][0]",
+      "shipping_options[0][shipping_rate]","subscription_data[application_fee_percent]",
+      "subscription_data[on_behalf_of]","subscription_data[transfer_data][destination]",
+      "subscription_data[invoice_settings][issuer][type]","invoice_creation[enabled]"])
+      assert.equal(params.has(forbidden),false,`Managed Payments forbids ${forbidden}`);
+    const liveSessionsBeforeRetry=fixture.liveSessions.size;
+    const retry=await createCheckoutForUser(user(userManagedNew),{consentVersion:COMMERCIAL_CONSENT_VERSION,locale:"fr"});
+    assert.equal(retry.url,first.url,"an open session is reused rather than creating a second subscription");
+    assert.equal(fixture.liveSessions.size,liveSessionsBeforeRetry);
+    const linkedCustomer=await fixture.seedVerifiedStripeCustomer(userManagedExisting,"FR");
+    const linked=await createCheckoutForUser(user(userManagedExisting),{consentVersion:COMMERCIAL_CONSENT_VERSION,locale:"en-GB"});
+    assert.equal(linked.live,true);
+    const linkedCall=fixture.calls.findLast(x=>x.host==="api.stripe.com"&&x.path==="/v1/checkout/sessions"&&x.opts.headers.authorization==="Bearer sk_live_fixtureonly");
+    assert.equal(new URLSearchParams(linkedCall.opts.body).get("customer"),linkedCustomer);
+    assert.equal(new URLSearchParams(linkedCall.opts.body).get("managed_payments[enabled]"),"true");
     fixture.enableTest();
   });
-  await test("LIVE pre-charge gate preserves active legacy subscription data",async()=>{
+  await test("LIVE remains closed by default and product-price validation precedes writes",async()=>{
+    fixture.enableLive();
+    const stripeCount=()=>fixture.calls.filter(x=>x.host==="api.stripe.com").length;
+    const counts=async userId=>({
+      attempts:(await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts where user_id=$1",[userId])).rows[0].n,
+      consents:(await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userId])).rows[0].n
+    });
+    const before=await counts(userLive),beforeStripe=stripeCount();
+    process.env.WARBOOST_LIVE_MANAGED_PAYMENTS_VERIFIED="false";
+    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
+    assert.equal(stripeCount(),beforeStripe);assert.deepEqual(await counts(userLive),before);
+    process.env.WARBOOST_LIVE_MANAGED_PAYMENTS_VERIFIED="true";
+    fixture.liveProductOverride={tax_code:"txcd_10103000"};
+    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"MANAGED_PAYMENTS_PRODUCT_INELIGIBLE"});
+    assert.deepEqual(await counts(userLive),before);
+    assert.equal(fixture.liveCustomers.size,2,"no customer is created before the product eligibility check");
+    assert.equal(fixture.liveSessions.size,2,"no session is created for an ineligible product");
+    fixture.liveProductOverride={};
+    for(const override of [{unit_amount:599},{currency:"usd"},{product:"prod_other"},
+      {recurring:{interval:"year",interval_count:1,usage_type:"licensed"}},{livemode:false},{active:false}]){
+      fixture.livePriceOverride=override;
+      await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}));
+      assert.deepEqual(await counts(userLive),before,"invalid LIVE price must not create consent or checkout rows");
+      assert.equal(fixture.liveCustomers.size,2);assert.equal(fixture.liveSessions.size,2);
+    }
+    fixture.livePriceOverride={};
+    fixture.livePriceOverride={unit_amount:599};
+    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"PRO_PRICE_MISMATCH"});
+    assert.deepEqual(await counts(userLive),before);
+    fixture.livePriceOverride={tax_behavior:"exclusive"};
+    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"PRO_PRICE_MISMATCH"});
+    assert.deepEqual(await counts(userLive),before,"tax-exclusive prices must fail before consent or Checkout writes");
+    fixture.livePriceOverride={};
+    assert.equal(commercialConfig().payments_enabled,true,"fixture flags model an explicitly approved account; they do not change deployment settings");
+    fixture.enableTest();
+  });
+  await test("Managed Payments preparation preserves an active legacy subscription",async()=>{
     fixture.enableLive();const before=(await fixture.pg.query("select * from warboost_subscriptions where user_id=$1",[userLegacy])).rows[0];
-    await assert.rejects(createCheckoutForUser(user(userLegacy),{consentVersion:COMMERCIAL_CONSENT_VERSION,billingCountry:"FR"}),{code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
+    const attemptsBefore=(await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts where user_id=$1",[userLegacy])).rows[0].n;
+    const consentBefore=(await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userLegacy])).rows[0].n;
+    await assert.rejects(createCheckoutForUser(user(userLegacy),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"LEGACY_SUBSCRIPTION_REVIEW_REQUIRED"});
     const after=(await fixture.pg.query("select * from warboost_subscriptions where user_id=$1",[userLegacy])).rows[0];
-    assert.deepEqual(after,before);assert.equal(fixture.liveSessions.size,0);fixture.enableTest();
+    assert.deepEqual(after,before);
+    assert.equal((await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts where user_id=$1",[userLegacy])).rows[0].n,attemptsBefore);
+    assert.equal((await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userLegacy])).rows[0].n,consentBefore);
+    assert.equal(fixture.liveSessions.size,2);fixture.enableTest();
   });
   await test("LIVE PRO is granted only by a valid webhook, not the browser success return",async()=>{
     fixture.enableLive();assert.equal((await entitlementForUser(user(userLive))).active,false);
     await fixture.seedVerifiedStripeCustomer(userLive,"FR");
     const returned=await call(proHandler,userLive,{query:{billing:"live-success"}});assert.equal(returned.data.active,false);
     const account=(await fixture.pg.query("select stripe_customer_id from warboost_live_billing_accounts where user_id=$1",[userLive])).rows[0];
-    const sub=fixture.liveSub(account.stripe_customer_id,"sub_live_fixture","active");sub.metadata={user_id:userLive,billing_country_hint:"FR"};fixture.liveSubscriptions.set(sub.id,sub);
-    const stripeCustomer=fixture.liveCustomers.get(account.stripe_customer_id);
-    process.env.WARBOOST_LIVE_APPROVED_BILLING_COUNTRIES="FR,DE";
-    fixture.liveCustomers.set(account.stripe_customer_id,{...stripeCustomer,address:{country:"DE"}});
+    const sub=fixture.liveSub(account.stripe_customer_id,"sub_live_fixture","active");
+    sub.metadata={user_id:userLive};fixture.liveSubscriptions.set(sub.id,sub);
     const blocked=fixture.liveEvent("checkout.session.completed",{object:"checkout.session",customer:account.stripe_customer_id,
       subscription:sub.id,client_reference_id:userLive});
     assert.equal((await deliverLive(blocked)).processed,true);
-    assert.equal((await entitlementForUser(user(userLive))).active,false,"signed event must not grant PRO in a prohibited Stripe billing country");
+    assert.equal((await entitlementForUser(user(userLive))).active,false,"a non-Managed-Payments subscription must not grant new PRO access");
     assert.equal((await fixture.pg.query("select plan from warboost_live_subscriptions where user_id=$1",[userLive])).rows[0].plan,"free");
-    process.env.WARBOOST_LIVE_APPROVED_BILLING_COUNTRIES="FR";
-    fixture.liveCustomers.set(account.stripe_customer_id,stripeCustomer);
+    sub.metadata.warboost_checkout_model="managed_payments";
     const event=fixture.liveEvent("checkout.session.completed",{object:"checkout.session",customer:account.stripe_customer_id,
       subscription:sub.id,client_reference_id:userLive});
     assert.equal((await deliverLive(event)).processed,true);
     const ent=await entitlementForUser(user(userLive));assert.equal(ent.active,true);assert.equal(ent.billing_live,true);assert.equal(ent.billing_test,false);
     assert.equal((await call(proHandler,userLive)).data.active,true);
+    delete sub.metadata.warboost_checkout_model;fixture.liveSubscriptions.set(sub.id,sub);
+    const legacyUpdate=fixture.liveEvent("customer.subscription.updated",{...sub},event.created+1);
+    assert.equal((await deliverLive(legacyUpdate)).processed,true);
+    assert.equal((await entitlementForUser(user(userLive))).active,true,"a previously linked paid subscription remains valid without new-session metadata");
+    sub.metadata.warboost_checkout_model="managed_payments";fixture.liveSubscriptions.set(sub.id,sub);
     fixture.enableTest();
   });
   await test("LIVE portal is account-bound; bad signatures and duplicate webhooks are rejected safely",async()=>{
@@ -147,7 +178,7 @@ try{
     const customer=(await fixture.pg.query("select stripe_customer_id from warboost_live_billing_accounts where user_id=$1",[userLive])).rows[0].stripe_customer_id;
     assert.equal(new URLSearchParams(portalCall.opts.body).get("customer"),customer);
     await assert.rejects(createPortalForUser(user(userB)),{code:"BILLING_CUSTOMER_MISSING"});
-    const sub=fixture.liveSubscriptions.get("sub_live_fixture"),event=fixture.liveEvent("customer.subscription.updated",sub);
+    const sub=fixture.liveSubscriptions.get("sub_live_fixture"),event=fixture.liveEvent("customer.subscription.updated",sub,Math.floor(Date.now()/1000)+10);
     const [raw,sig]=fixture.signLive(event);
     assert.equal(verifyWebhookSignature(raw,sig,Date.now(),"live"),true);
     await assert.rejects(processWebhook(raw,sig.replace(/v1=.*/,"v1="+"0".repeat(64)),"live"),{code:"INVALID_WEBHOOK_SIGNATURE"});
@@ -159,7 +190,8 @@ try{
   await test("LIVE failed payment and cancellation revoke access; stale events cannot restore it",async()=>{
     fixture.enableLive();const sub=fixture.liveSubscriptions.get("sub_live_fixture"),customer=sub.customer;
     sub.status="past_due";fixture.liveSubscriptions.set(sub.id,sub);
-    assert.equal((await deliverLive(fixture.liveEvent("invoice.payment_failed",{object:"invoice",customer,subscription:sub.id}))).processed,true);
+    assert.equal((await deliverLive(fixture.liveEvent("invoice.payment_failed",{object:"invoice",customer,subscription:sub.id},
+      Math.floor(Date.now()/1000)+15))).processed,true);
     assert.equal((await entitlementForUser(user(userLive))).active,false);
     sub.status="canceled";fixture.liveSubscriptions.set(sub.id,sub);
     const canceled=fixture.liveEvent("customer.subscription.deleted",{...sub},Math.floor(Date.now()/1000)+20);
@@ -186,6 +218,9 @@ try{
     const retry=await createCheckoutForUser(user(userA));assert.equal(retry.url,results.find(x=>x.status==="fulfilled").value.url);
     const params=new URLSearchParams(fixture.calls.find(x=>x.host==="api.stripe.com"&&x.path==="/v1/checkout/sessions"&&x.opts.headers.authorization==="Bearer sk_test_fixtureonly").opts.body);
     assert.equal(params.get("line_items[0][price]"),"price_protest");assert.equal(params.get("line_items[0][quantity]"),"1");
+    const testCheckoutCall=fixture.calls.find(x=>x.host==="api.stripe.com"&&x.path==="/v1/checkout/sessions"&&x.opts.headers.authorization==="Bearer sk_test_fixtureonly");
+    assert.equal(testCheckoutCall.opts.headers["Stripe-Version"],"2025-02-24.acacia");
+    assert.equal(params.has("managed_payments[enabled]"),false,"Managed Payments must not alter Stripe TEST checkout");
     assert.equal(params.get("success_url"),"https://beta.warboost.fr/?billing=test-success");
     assert.equal(params.get("cancel_url"),"https://beta.warboost.fr/?billing=test-cancel");
   });
@@ -338,41 +373,26 @@ try{
     for(const path of fixture.migrations)await fixture.pg.exec(fs.readFileSync(path,"utf8"));
     assert.equal((await entitlementForUser(user(userBeta))).active,false);
   });
-  await test("LIVE checkout stays disabled when Stripe cannot enforce country before charge; TEST remains available",async()=>{
+  await test("Managed Payments requires explicit account readiness; TEST Checkout stays unchanged",async()=>{
     fixture.enableLive();
     const consentBefore=(await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userLive])).rows[0].n;
     const attemptBefore=(await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts where user_id=$1",[userLive])).rows[0].n;
     const liveCustomersBefore=fixture.liveCustomers.size,liveSessionsBefore=fixture.liveSessions.size;
     const stripeCallsBefore=fixture.calls.filter(x=>x.host==="api.stripe.com").length;
-    process.env.WARBOOST_LIVE_TAX_COUNTRY="";
-    process.env.WARBOOST_LIVE_LEGAL_CONFIRMED="false";
-    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION,billingCountry:"FR"}),{code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
-    assert.equal(fixture.calls.filter(x=>x.host==="api.stripe.com").length,stripeCallsBefore);
-    process.env.WARBOOST_LIVE_TAX_COUNTRY="FR";
-    process.env.WARBOOST_LIVE_LEGAL_CONFIRMED="true";
-    fixture.taxSettingsOverride={status:"pending"};
-    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION,billingCountry:"FR"}),{code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
-    const stripeAfter=fixture.calls.filter(x=>x.host==="api.stripe.com").slice(stripeCallsBefore);
-    assert.equal(stripeAfter.length,0,"LIVE must stop before any provider request while country is not enforced pre-charge");
-    assert.equal(commercialConfig().activation_requirements.checkout_country_precharge_enforced,false);
+    process.env.WARBOOST_LIVE_MANAGED_PAYMENTS_ENABLED="false";
+    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION}),{code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
+    assert.equal(fixture.calls.filter(x=>x.host==="api.stripe.com").length,stripeCallsBefore,"no provider request before Managed Payments readiness");
+    assert.equal(commercialConfig().payments_enabled,false);
     assert.equal(fixture.liveCustomers.size,liveCustomersBefore);
     assert.equal(fixture.liveSessions.size,liveSessionsBefore);
     assert.equal((await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userLive])).rows[0].n,consentBefore);
     assert.equal((await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts where user_id=$1",[userLive])).rows[0].n,attemptBefore);
-    fixture.taxSettingsOverride={};
-    fixture.liveProductOverride={tax_code:null};
-    await assert.rejects(createCheckoutForUser(user(userLive),{consentVersion:COMMERCIAL_CONSENT_VERSION,billingCountry:"FR"}),{code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
-    assert.equal(fixture.liveCustomers.size,liveCustomersBefore);
-    assert.equal(fixture.liveSessions.size,liveSessionsBefore);
-    assert.equal((await fixture.pg.query("select count(*)::int n from warboost_billing_consents where user_id=$1",[userLive])).rows[0].n,consentBefore);
-    assert.equal((await fixture.pg.query("select count(*)::int n from warboost_live_checkout_attempts where user_id=$1",[userLive])).rows[0].n,attemptBefore);
-    fixture.liveProductOverride={};
-    fixture.taxSettingsOverride={};
     fixture.enableTest();
-    const taxCallsBefore=fixture.calls.filter(x=>x.host==="api.stripe.com"&&x.path==="/v1/tax/settings").length;
     const testCheckout=await createCheckoutForUser(user(userFree));
     assert.equal(testCheckout.test,true);
-    assert.equal(fixture.calls.filter(x=>x.host==="api.stripe.com"&&x.path==="/v1/tax/settings").length,taxCallsBefore);
+    const testCall=fixture.calls.findLast(x=>x.host==="api.stripe.com"&&x.path==="/v1/checkout/sessions"&&x.opts.headers.authorization==="Bearer sk_test_fixtureonly");
+    assert.equal(testCall.opts.headers["Stripe-Version"],"2025-02-24.acacia");
+    assert.equal(new URLSearchParams(testCall.opts.body).has("managed_payments[enabled]"),false);
   });
   console.log(`\nStripe TEST verification PASS: ${passed} scenarios. Provider transitions simulated; real cards/3DS remain manual.`);
 }finally{await fixture.close()}

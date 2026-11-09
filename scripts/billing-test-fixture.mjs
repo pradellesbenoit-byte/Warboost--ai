@@ -8,6 +8,8 @@ export const userBeta="10000000-0000-4000-8000-000000000003";
 export const userFree="10000000-0000-4000-8000-000000000004";
 export const userLegacy="10000000-0000-4000-8000-000000000005";
 export const userLive="10000000-0000-4000-8000-000000000006";
+export const userManagedNew="10000000-0000-4000-8000-000000000007";
+export const userManagedExisting="10000000-0000-4000-8000-000000000008";
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json"}});
 export async function billingFixture(){
   const pg=new PGlite();
@@ -16,7 +18,8 @@ export async function billingFixture(){
     create function auth.uid() returns uuid language sql as $$select null::uuid$$;
     create table public.wb1_beta_invites(id uuid primary key default gen_random_uuid(),email text unique,status text,
       invited_at timestamptz default now(),accepted_user_id text,expires_at timestamptz,accepted_at timestamptz,updated_at timestamptz);`);
-  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLegacy,"legacy@example.test"],[userLive,"live@example.test"]])
+  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],
+    [userLegacy,"legacy@example.test"],[userLive,"live@example.test"],[userManagedNew,"managed-new@example.test"],[userManagedExisting,"managed-existing@example.test"]])
     await pg.query("insert into auth.users(id,email,created_at) values($1,$2,now()-interval '1 day')",[id,email]);
   await pg.query("insert into wb1_beta_invites(email,status,invited_at,accepted_user_id) values('beta@example.test','accepted',now()-interval '1 day',$1)",[userBeta]);
   // Immutable test copies of published SQL, not deployment migrations.
@@ -35,17 +38,15 @@ export async function billingFixture(){
     STRIPE_SECRET_KEY:"sk_test_fixtureonly",STRIPE_WEBHOOK_SECRET:"whsec_fixtureonly",STRIPE_PRICE_PRO_MONTHLY:"price_protest",STRIPE_PRODUCT_PRO:"prod_protest",
     STRIPE_LIVE_SECRET_KEY:"",STRIPE_LIVE_WEBHOOK_SECRET:"",STRIPE_LIVE_PRICE_PRO_MONTHLY:"",STRIPE_LIVE_PRODUCT_PRO:"",
     WARBOOST_LIVE_APP_URL:"",WARBOOST_LIVE_PAYMENTS_ENABLED:"false",WARBOOST_LIVE_ACTIVATION_APPROVED:"false",
-    WARBOOST_LIVE_CATALOG_VERIFIED:"false",WARBOOST_LIVE_LEGAL_CONFIRMED:"false",WARBOOST_LIVE_TAX_VERIFIED:"false",
+    WARBOOST_LIVE_CATALOG_VERIFIED:"false",WARBOOST_LIVE_LEGAL_CONFIRMED:"false",
+    WARBOOST_LIVE_MANAGED_PAYMENTS_ENABLED:"false",WARBOOST_LIVE_MANAGED_PAYMENTS_VERIFIED:"false",WARBOOST_LIVE_INTERNATIONAL_SALES_ENABLED:"false",
     WARBOOST_LIVE_LEGACY_RECONCILED:"false",WARBOOST_LEGAL_BUSINESS_NAME:"",WARBOOST_SUPPORT_EMAIL:"",
     WARBOOST_LIVE_TERMS_URL:"",WARBOOST_LIVE_PRIVACY_URL:"",
-     WARBOOST_LIVE_TAX_COUNTRY:"",WARBOOST_LIVE_INTERNATIONAL_SALES_ENABLED:"false",
-     WARBOOST_LIVE_COUNTRY_MISMATCH_RISK_REVIEWED:"false",
-     WARBOOST_LIVE_APPROVED_BILLING_COUNTRIES:"",WARBOOST_LIVE_ADAPTIVE_PRICING_ENABLED:"false",
     SUPABASE_URL:"https://fixture.invalid",SUPABASE_ANON_KEY:"anon-fixture",SUPABASE_SERVICE_ROLE_KEY:"service-fixture",WARBOOST_BETA_EMAILS:"",WARBOOST_SUPPORT_ADMINS:""});
   const fixture={pg,migrations,calls:[],customers:new Map(),subscriptions:new Map(),sessions:new Map(),idempotency:new Map(),
     liveCustomers:new Map(),liveSubscriptions:new Map(),liveSessions:new Map(),liveIdempotency:new Map(),
     failDb:false,failApplyOnce:false,failCheckoutOnce:false,priceOverride:{},livePriceOverride:{},productOverride:{},liveProductOverride:{},
-    taxSettingsOverride:{},providerLive:false,card:"accepted"};
+    providerLive:false,card:"accepted"};
   fixture.price=()=>({id:"price_protest",object:"price",active:true,livemode:false,product:"prod_protest",unit_amount:499,currency:"eur",type:"recurring",
     billing_scheme:"per_unit",recurring:{interval:"month",interval_count:1,usage_type:"licensed"},...fixture.priceOverride});
   fixture.livePrice=()=>({id:"price_prolivefixture",object:"price",active:true,livemode:true,product:"prod_prolivefixture",unit_amount:499,currency:"eur",type:"recurring",
@@ -57,7 +58,7 @@ export async function billingFixture(){
     metadata:{},current_period_end:Math.floor(Date.now()/1000)+86400,cancel_at_period_end:false,
     items:{data:[{quantity:1,price:fixture.livePrice()}]}});
   fixture.seedVerifiedStripeCustomer=async(userId,country)=>{
-    const id=`cus_live_verified_${String(userId).replace(/-/g,"").slice(0,12)}`;
+    const id=`cus_live_verified_${String(userId).replace(/-/g,"")}`;
     fixture.liveCustomers.set(id,{id,object:"customer",livemode:true,address:{country}});
     await pg.query("insert into public.warboost_live_billing_accounts(user_id,stripe_customer_id) values($1,$2)",[userId,id]);
     return id;
@@ -67,11 +68,9 @@ export async function billingFixture(){
       STRIPE_LIVE_WEBHOOK_SECRET:"whsec_livefixtureonly",STRIPE_LIVE_PRICE_PRO_MONTHLY:"price_prolivefixture",
       STRIPE_LIVE_PRODUCT_PRO:"prod_prolivefixture",WARBOOST_LIVE_APP_URL:"https://warboost.fr",
       WARBOOST_LIVE_PAYMENTS_ENABLED:"true",WARBOOST_LIVE_ACTIVATION_APPROVED:"true",WARBOOST_LIVE_CATALOG_VERIFIED:"true",
-      WARBOOST_LIVE_LEGAL_CONFIRMED:"true",WARBOOST_LIVE_TAX_VERIFIED:"true",WARBOOST_LIVE_LEGACY_RECONCILED:"true",
-       WARBOOST_LIVE_COUNTRY_MISMATCH_RISK_REVIEWED:"true",
-       WARBOOST_LIVE_INTERNATIONAL_SALES_ENABLED:"true",WARBOOST_LIVE_APPROVED_BILLING_COUNTRIES:"FR",
-       WARBOOST_LIVE_ADAPTIVE_PRICING_ENABLED:"false",
-      WARBOOST_LIVE_TAX_COUNTRY:"FR",
+      WARBOOST_LIVE_LEGAL_CONFIRMED:"true",WARBOOST_LIVE_MANAGED_PAYMENTS_ENABLED:"true",
+      WARBOOST_LIVE_MANAGED_PAYMENTS_VERIFIED:"true",WARBOOST_LIVE_LEGACY_RECONCILED:"true",
+      WARBOOST_LIVE_INTERNATIONAL_SALES_ENABLED:"true",
       WARBOOST_LEGAL_BUSINESS_NAME:"Fixture Merchant",WARBOOST_SUPPORT_EMAIL:"billing@example.test",
       WARBOOST_LIVE_TERMS_URL:"https://warboost.fr/legal.html",WARBOOST_LIVE_PRIVACY_URL:"https://warboost.fr/privacy.html"});
   };
@@ -126,9 +125,7 @@ export async function billingFixture(){
     if(path==="prices/price_protest"&&!live)out=fixture.price();
     else if(path==="products/prod_protest"&&!live)out={id:"prod_protest",object:"product",livemode:false,active:true,...fixture.productOverride};
     else if(path==="prices/price_prolivefixture"&&live)out=fixture.livePrice();
-    else if(path==="products/prod_prolivefixture"&&live)out={id:"prod_prolivefixture",object:"product",livemode:true,active:true,tax_code:"txcd_10103000",...fixture.liveProductOverride};
-    else if(path==="tax/settings"&&live)out={object:"tax.settings",livemode:true,status:"active",
-      head_office:{address:{country:"FR"}},...fixture.taxSettingsOverride};
+    else if(path==="products/prod_prolivefixture"&&live)out={id:"prod_prolivefixture",object:"product",livemode:true,active:true,tax_code:"txcd_10105001",...fixture.liveProductOverride};
     else if(path==="customers"){
       const id=`cus_${live?"live":"test"}_${customers.size+1}`;out={id,object:"customer",livemode:live};customers.set(id,out);
     }else if(path==="subscriptions"){
@@ -139,10 +136,6 @@ export async function billingFixture(){
       const id=`cs_${live?"live":"test"}_${sessions.size+1}`;out={id,object:"checkout.session",livemode:live,url:`https://checkout.stripe.com/c/pay/${id}`,
         customer:params.get("customer"),client_reference_id:params.get("client_reference_id"),status:"open",expires_at:Number(params.get("expires_at"))};
       sessions.set(id,out);
-      if(params.get("customer_update[address]")==="auto"&&customers.has(params.get("customer"))){
-        const customer=customers.get(params.get("customer"));
-        customers.set(customer.id,{...customer,address:{...(customer.address||{}),country:params.get("metadata[billing_country_hint]")}});
-      }
       if(key)objects.set(key,out);
       if(fixture.failCheckoutOnce){fixture.failCheckoutOnce=false;throw Error("SIMULATED_CONNECTION_LOSS_AFTER_STRIPE_CREATION")}
     }else if(path==="billing_portal/sessions")out={id:`bps_${live?"live":"test"}`,object:"billing_portal.session",livemode:live,url:`https://billing.stripe.com/p/session/${live?"live":"test"}`};

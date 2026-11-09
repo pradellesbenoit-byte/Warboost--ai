@@ -93,7 +93,7 @@ create or replace function public.warboost_live_record_consent(
   p_user_id uuid,p_version text,p_price text,p_terms text,p_privacy text)
 returns boolean language plpgsql security definer set search_path=public,pg_temp as $$
 begin
-  if p_version !~ '^2026-11-pro-live-v1$' or p_price !~ '^price_[A-Za-z0-9]+$'
+  if p_version !~ '^2026-11-pro-managed-payments-v1$' or p_price !~ '^price_[A-Za-z0-9]+$'
      or p_terms <> 'https://warboost.fr/legal.html' or p_privacy <> 'https://warboost.fr/privacy.html' then
     raise exception 'INVALID_BILLING_CONSENT';
   end if;

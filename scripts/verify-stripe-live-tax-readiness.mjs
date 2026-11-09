@@ -1,67 +1,50 @@
-
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectLiveStripeTaxSettings} from '../lib/stripe-live-tax-readiness.js';
-import {evaluateLiveBillingCountry,parseLiveApprovedBillingCountries,validateLiveDeclaredBillingCountry} from '../lib/stripe-live-tax-readiness.js';
-import {stripeCheckoutLocale} from '../lib/stripe-test.js';
+import {commercialConfig,managedPaymentsProductEligible,MANAGED_PAYMENTS_PRODUCT_TAX_CODE,
+  STRIPE_API_VERSION,STRIPE_MANAGED_PAYMENTS_API_VERSION,stripeCheckoutLocale} from '../lib/stripe-test.js';
 import {translator} from '../i18n.js';
 
-const active = {object:'tax.settings', livemode:true, status:'active', head_office:{address:{country:'FR'}}};
-const product = {tax_code:'txcd_10103000'};
-function reason(settings, item=product){return inspectLiveStripeTaxSettings(settings,item).reason;}
-
-test('refuse un compte Stripe TEST', () => {
-  assert.equal(reason({...active,livemode:false}), 'TAX_SETTINGS_WRONG_MODE');
-});
-test('refuse des paramètres Stripe Tax absents', () => {
-  assert.equal(reason(undefined), 'TAX_SETTINGS_WRONG_MODE');
-});
-test('refuse Stripe Tax non activé', () => {
-  assert.equal(reason({...active,status:'pending'}), 'TAX_SETTINGS_NOT_ACTIVE');
-});
-test('refuse un siège fiscal différent ou absent', () => {
-  assert.equal(reason({...active,head_office:null}), 'TAX_HEAD_OFFICE_UNVERIFIED');
-});
-test('refuse un produit sans catégorie fiscale', () => {
-  assert.equal(reason(active,{}), 'PRODUCT_TAX_CODE_MISSING');
-});
-test('ne reconnaît que les paramètres techniques complets', () => {
-  assert.deepEqual(inspectLiveStripeTaxSettings(active,product), {ready:true,reason:'READY_FOR_SEPARATE_LEGAL_REVIEW'});
+test('Managed Payments accepts the existing eligible AIaaS personal-use tax code only',()=>{
+  assert.equal(MANAGED_PAYMENTS_PRODUCT_TAX_CODE,'txcd_10105001');
+  assert.equal(managedPaymentsProductEligible({object:'product',active:true,tax_code:'txcd_10105001'}),true);
+  assert.equal(managedPaymentsProductEligible({object:'product',active:true,tax_code:'txcd_10103000'}),false);
+  assert.equal(managedPaymentsProductEligible({object:'product',active:false,tax_code:'txcd_10105001'}),false);
+  assert.equal(managedPaymentsProductEligible({object:'product',tax_code:'txcd_10105001'}),false);
 });
 
-test('aucun pays de vente n’est approuvé par défaut et une liste mal formée ferme tout',()=>{
-  assert.deepEqual(parseLiveApprovedBillingCountries(''),[]);
-  assert.deepEqual(parseLiveApprovedBillingCountries('FR,DE fr'),['DE','FR']);
-  assert.deepEqual(parseLiveApprovedBillingCountries('FR,not-a-country'),[]);
+test('TEST keeps its existing API version; LIVE Checkout uses the Managed Payments minimum',()=>{
+  assert.equal(STRIPE_API_VERSION,'2025-02-24.acacia');
+  assert.equal(STRIPE_MANAGED_PAYMENTS_API_VERSION,'2025-03-31.basil');
 });
-test('le précontrôle exige un pays explicitement approuvé',()=>{
-  const approvedCountries=parseLiveApprovedBillingCountries('FR,DE');
-  assert.equal(validateLiveDeclaredBillingCountry('',approvedCountries).reason,'BILLING_COUNTRY_REQUIRED');
-  assert.equal(validateLiveDeclaredBillingCountry('ES',approvedCountries).reason,'BILLING_COUNTRY_NOT_APPROVED');
-  assert.equal(validateLiveDeclaredBillingCountry('fr',approvedCountries).allowed,true);
+
+test('LIVE stays off without explicit Managed Payments account approval',()=>{
+  const names=['WARBOOST_COMMERCIAL_MODE','WARBOOST_LIVE_PAYMENTS_ENABLED','WARBOOST_LIVE_MANAGED_PAYMENTS_ENABLED',
+    'WARBOOST_LIVE_MANAGED_PAYMENTS_VERIFIED','WARBOOST_LIVE_ACTIVATION_APPROVED','WARBOOST_LIVE_CATALOG_VERIFIED',
+    'WARBOOST_LIVE_LEGAL_CONFIRMED','WARBOOST_LIVE_LEGACY_RECONCILED','WARBOOST_LIVE_INTERNATIONAL_SALES_ENABLED',
+    'STRIPE_LIVE_SECRET_KEY','STRIPE_LIVE_WEBHOOK_SECRET','STRIPE_LIVE_PRICE_PRO_MONTHLY','STRIPE_LIVE_PRODUCT_PRO',
+    'WARBOOST_LIVE_APP_URL','WARBOOST_LEGAL_BUSINESS_NAME','WARBOOST_SUPPORT_EMAIL','WARBOOST_LIVE_TERMS_URL',
+    'WARBOOST_LIVE_PRIVACY_URL','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY'];
+  const previous=Object.fromEntries(names.map(name=>[name,process.env[name]]));
+  try{
+    for(const name of names)process.env[name]='';
+    process.env.WARBOOST_COMMERCIAL_MODE='live';
+    assert.equal(commercialConfig().payments_enabled,false);
+    assert.equal(commercialConfig().activation_requirements.managed_payments_enabled,false);
+    assert.equal(commercialConfig().activation_requirements.managed_payments_verified,false);
+  }finally{
+    for(const name of names){if(previous[name]===undefined)delete process.env[name];else process.env[name]=previous[name]}
+  }
 });
-test('le pays Stripe autoritatif doit être approuvé et égal au pays déclaré',()=>{
-  const approvedCountries=['FR','DE'];
-  assert.equal(evaluateLiveBillingCountry({declaredCountry:'FR',authoritativeCountry:'',approvedCountries}).reason,'STRIPE_BILLING_COUNTRY_UNKNOWN');
-  assert.equal(evaluateLiveBillingCountry({declaredCountry:'FR',authoritativeCountry:'ES',approvedCountries}).reason,'STRIPE_BILLING_COUNTRY_NOT_APPROVED');
-  assert.equal(evaluateLiveBillingCountry({declaredCountry:'FR',authoritativeCountry:'DE',approvedCountries}).reason,'BILLING_COUNTRY_MISMATCH');
-});
-test('le webhook exige le pays déclaré signé dans les métadonnées de l’abonnement',()=>{
-  const approvedCountries=['FR'];
-  assert.equal(evaluateLiveBillingCountry({declaredCountry:'FR',authoritativeCountry:'FR',approvedCountries,requireSubscriptionHint:true}).reason,'BILLING_COUNTRY_HINT_MISSING');
-  assert.equal(evaluateLiveBillingCountry({declaredCountry:'FR',authoritativeCountry:'FR',subscriptionCountryHint:'DE',approvedCountries,requireSubscriptionHint:true}).reason,'BILLING_COUNTRY_HINT_MISMATCH');
-  assert.equal(evaluateLiveBillingCountry({declaredCountry:'FR',authoritativeCountry:'FR',subscriptionCountryHint:'FR',approvedCountries,requireSubscriptionHint:true}).allowed,true);
-});
-test('la langue Stripe Checkout est limitée à des valeurs prises en charge, sinon auto',()=>{
+
+test('Stripe checkout locale is constrained and otherwise uses automatic locale',()=>{
   assert.equal(stripeCheckoutLocale('fr'),'fr');
   assert.equal(stripeCheckoutLocale('en-GB'),'en-GB');
   assert.equal(stripeCheckoutLocale('not-a-locale'),'auto');
 });
-test('les textes critiques de facturation sont complets en FR/EN et ont un repli anglais',()=>{
-  const keys=['commercial_live_consent','commercial_live_not_ready','commercial_live_country_label',
-    'commercial_live_country_helper','commercial_live_price_note','commercial_live_country_required',
-    'commercial_live_country_not_approved','commercial_live_country_mismatch','commercial_live_country_unverified','commercial_live_renewal',
-    'commercial_subscription_cancels_at','commercial_live_success','commercial_live_cancel'];
+
+test('Managed Payments checkout disclosures exist in French, English and safe fallback',()=>{
+  const keys=['commercial_live_managed_payments_note','commercial_live_consent','commercial_live_not_ready','commercial_live_price_note',
+    'commercial_live_renewal','commercial_live_success','commercial_live_cancel'];
   const en=translator('en-GB'),fr=translator('fr'),other=translator('es');
   for(const key of keys){
     assert.notEqual(en(key),key,`English key missing: ${key}`);
@@ -70,4 +53,13 @@ test('les textes critiques de facturation sont complets en FR/EN et ont un repli
     assert.notEqual(fr(key),en(key),`French copy fell through to English: ${key}`);
     assert.equal(other(key),en(key),`non-French fallback should use English: ${key}`);
   }
+  assert.match(en('commercial_live_managed_payments_note'),/merchant of record/i);
+  assert.match(fr('commercial_live_managed_payments_note'),/marchand de référence/i);
+});
+
+test('price copy states reference EUR pricing and defers local currency amount to Stripe',()=>{
+  assert.match(translator('en')('commercial_live_price_note'),/€4\.99/);
+  assert.match(translator('fr')('commercial_live_price_note'),/4,99 €/);
+  assert.match(translator('en')('commercial_live_price_note'),/final amount is shown there/i);
+  assert.doesNotMatch(translator('en')('commercial_live_price_note'),/\b(?:USD|GBP|CAD)\s?\d/);
 });

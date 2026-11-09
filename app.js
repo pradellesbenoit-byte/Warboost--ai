@@ -5517,22 +5517,6 @@ $("#supportSubmitBtn")?.addEventListener("click",submitSupportTicket);
 $("#supportRefreshBtn")?.addEventListener("click",refreshSupportTickets);
 
 function proMessage(text,ok=false){const el=$("#proMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
-function renderLiveBillingCountry(){
-  const row=$("#proLiveCountryRow"),select=$("#proBillingCountry");if(!row||!select)return;
-  const live=proState.mode==="live",countries=Array.isArray(proState.live_approved_billing_countries)?
-    [...new Set(proState.live_approved_billing_countries.filter(x=>/^[A-Z]{2}$/.test(String(x))))].sort():[];
-  row.classList.toggle("hidden",!live);
-  const signature=countries.join(",");
-  if(select.dataset.approvedCountries!==signature){
-    const selected=select.value;
-    let names;try{names=new Intl.DisplayNames([locale],{type:"region"})}catch{names=null}
-    select.innerHTML=`<option value="">${esc(t(countries.length?"commercial_live_country_select":"commercial_live_country_unavailable"))}</option>`+
-      countries.map(code=>{let name=code;try{name=names?.of(code)||code}catch{}return `<option value="${esc(code)}">${esc(name)} (${esc(code)})</option>`}).join("");
-    select.dataset.approvedCountries=signature;
-    select.value=countries.includes(selected)?selected:"";
-  }
-  select.disabled=!live||!countries.length;
-}
 function renderCommercialPreview(){
   const box=$("#proCommercialPreview"),price=$("#commercialPreviewPrice"),note=$("#commercialPreviewNote"),live=proState.mode==="live";
   if(!box)return;if(isNativeWarBoost){box.classList.add("hidden");return}
@@ -5540,9 +5524,9 @@ function renderCommercialPreview(){
   if(price)price.textContent=formatProPrice(proState.plan||{amount:499,currency:"eur"});
   if(note)note.textContent=live&&!proState.payments_enabled?t("commercial_live_not_ready"):
     live?t("commercial_live_price_note"):proState.mode==="test"?t("commercial_test_note"):t("commercial_preview_note");
+  $("#proLiveManagedPaymentsNote")?.classList.toggle("hidden",!live);
   $("#proLiveConsentRow")?.classList.toggle("hidden",!live);
   $("#proLiveLegalLinks")?.classList.toggle("hidden",!live);
-  renderLiveBillingCountry();
   if(!live&&$("#proLiveConsent"))$("#proLiveConsent").checked=false;
 }
 function renderPro(){
@@ -5570,7 +5554,7 @@ function renderPro(){
   const manage=Boolean(proState.subscription);
     btn.textContent=manage?t("commercial_portal_label",{mode:modeLabel}):live?t("commercial_live_subscribe"):t("commercial_test_checkout");
     btn.disabled=manage?!proState.portal_enabled:!(live?proState.live_payments_enabled:proState.test_payments_enabled)||!proState.configured||
-      (live&&(!$("#proLiveConsent")?.checked||!$("#proBillingCountry")?.value));
+      (live&&!$("#proLiveConsent")?.checked);
 }
  async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,portal_enabled:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok)proState={...j,active:Boolean(j.active),beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),test_payments_enabled:Boolean(j.test_payments_enabled),live_payments_enabled:Boolean(j.live_payments_enabled),portal_enabled:Boolean(j.portal_enabled),entitlement:j.entitlement||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,portal_enabled:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,portal_enabled:false,commercial_preview:true,subscription:null}}renderPro();const result=new URLSearchParams(location.search).get("billing");if(result==="test-success")proMessage(proState.active?"Droit PRO confirmé par le serveur. Aucun paiement réel.":"Retour Checkout TEST reçu. Activation en attente du webhook Stripe ; ce retour seul ne donne aucun droit.");if(result==="live-success")proMessage(proState.active?t("commercial_live_success"):t("commercial_live_success"));if(result==="live-cancel")proMessage(t("commercial_live_cancel"))}
 function requirePro(){if(safeLaunchBetaMode()){if(!requireBetaAccess()||!requireBetaConsent())return false;return true}if(proState.active)return true;openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"center"}),160);proMessage(cloudSession?.user?t("pro_required"):t("connect_pro"));return false}
@@ -5582,28 +5566,19 @@ let proActionBusy=false;
     const live=proState.mode==="live",action=portalOnly===true||proState.subscription||(safeLaunchBetaMode()&&proState.can_manage_billing)?"portal":"checkout",
       enabled=action==="portal"?proState.portal_enabled:(live?proState.live_payments_enabled:proState.test_payments_enabled);
     if(!enabled){proMessage(live?t("commercial_live_not_ready"):t("commercial_payment_not_ready"));return}
-    if(action==="checkout"&&live){
-      if(!$("#proBillingCountry")?.value){proMessage(t("commercial_live_country_required"));return}
-      if(!$("#proLiveConsent")?.checked){proMessage(t("commercial_live_consent"));return}
-    }
+    if(action==="checkout"&&live&&!$("#proLiveConsent")?.checked){proMessage(t("commercial_live_consent"));return}
     const btn=$("#proActionBtn");proActionBusy=true;if(btn){btn.disabled=true;btn.textContent="…"}
     try{
-      const payload={action,locale:lang,...(live?{consent_version:proState.consent_version}:{}),
-        ...(live&&action==="checkout"?{billing_country:$("#proBillingCountry")?.value||""}:{})};
+      const payload={action,locale:lang,...(live?{consent_version:proState.consent_version}:{})};
       const {response:r,json:j}=await fetchJsonBounded("/api/pro",{method:"POST",headers:authHeaders({"content-type":"application/json"}),
         body:JSON.stringify(payload)},15000);
       const url=new URL(String(j.url||""),"https://invalid.test"),modeValid=live?j.live===true:j.test===true;
       if(!r.ok||!modeValid||url.protocol!=="https:"||!["checkout.stripe.com","billing.stripe.com"].includes(url.hostname)){
         const errorCopy={
-          BILLING_COUNTRY_REQUIRED:"commercial_live_country_required",
-          BILLING_COUNTRY_NOT_APPROVED:"commercial_live_country_not_approved",
-          STRIPE_BILLING_COUNTRY_NOT_APPROVED:"commercial_live_country_not_approved",
-          BILLING_COUNTRY_MISMATCH:"commercial_live_country_mismatch",
-          STRIPE_BILLING_COUNTRY_UNKNOWN:"commercial_live_country_unverified",
-          BILLING_COUNTRY_HINT_MISSING:"commercial_live_country_mismatch",
-          BILLING_COUNTRY_HINT_MISMATCH:"commercial_live_country_mismatch",
           LIVE_ACTIVATION_REQUIREMENTS_MISSING:"commercial_live_not_ready",
-          LIVE_TAX_NOT_READY:"commercial_live_not_ready",
+          MANAGED_PAYMENTS_PRODUCT_INELIGIBLE:"commercial_live_not_ready",
+          PRO_PRICE_MISMATCH:"commercial_live_not_ready",
+          COMMERCIAL_CONSENT_REQUIRED:"commercial_live_consent",
           COMMERCIAL_SCHEMA_MISSING:"commercial_live_not_ready"
         };
         throw new Error(errorCopy[j.error]?t(errorCopy[j.error]):j.message||j.error||t("commercial_payment_not_ready"));
@@ -5612,7 +5587,6 @@ let proActionBusy=false;
     }catch(e){proMessage(e.message||t("commercial_payment_not_ready"))}
     finally{proActionBusy=false;renderPro()}
   }
-  $("#proBillingCountry")?.addEventListener("change",renderPro);
  $("#proLiveConsent")?.addEventListener("change",renderPro);
 $("#betaConsent")?.addEventListener("change",async e=>{const key=betaConsentStorageKey();if(!key){e.target.checked=false;return}if(e.target.checked){localStorage.setItem(key,"1");if(cloudSession?.access_token){resetBootstrapDiagnostics("consent");const pulled=await restoreAuthenticatedProfile(safeClone(state),{reason:"consent"});if(pulled?.cloud_empty&&cloudSession?.user?.id&&String(state?.player_id||"")===String(cloudSession.user.id)&&betaAccessAllowed()&&betaConsentAccepted()&&hasMeaningfulCore(state))void pushServerState();void refreshPro()}}else{localStorage.removeItem(key);betaState={...betaState,restore_error:null};render();renderBeta();renderPro()}});
 $("#betaRestoreRetryBtn")?.addEventListener("click",retryCloudProfileRestore);
