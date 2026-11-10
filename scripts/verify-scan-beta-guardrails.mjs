@@ -162,16 +162,27 @@ async function call(req=request()){
 // Hints come from the authenticated owner's cloud row, never browser claims.
 {
   const token="squad-context-owner",names=["Kimberly","Murphy","Marshall","DVA","Stetmann"];
-  profileFixtures.set(token,{player_id:token,squads:[{confirmed_composition:names,composition_confirmed_at:"2026-10-01T00:00:00Z"}]});
-  providerOutput={squads:[{power:"44,43M",heroes:[{name_text:"Kimber",name_evidence:"visible_fragment",name_confidence:.96,power_text:"5,65M",power_confidence:.97}]}]};
+  profileFixtures.set(token,{player_id:token,squads:[{id:1,confirmed_composition:names,composition_source:"explicit_confirmation",composition_confirmed_at:"2026-10-01T00:00:00Z"}]});
+  const heroes=Array.from({length:5},(_,slot_index)=>({
+    slot_index,name_text:slot_index===0?"Kimber":null,
+    name_evidence:slot_index===0?"visible_fragment":"unreadable",
+    name_confidence:slot_index===0?.96:null,name_image_index:0,portrait:null,
+    class_text:null,class_evidence:"unreadable",class_confidence:null,
+    level:null,level_confidence:null,stars:null,stars_confidence:null,gear:null,equipment:null
+  }));
+  providerOutput={captures:[{
+    details_layout:null,image_index:0,screen_type:"formation_details",
+    squads:[{power:"44,43M",power_confidence:.97,heroes}],
+    exclusive_weapons:[],equipment_details:[]
+  }]};
   const out=await call(request({token,body:{scan_type:"squad1",current_state:{player_id:token,squads:[{confirmed_composition:["Tesla"],composition_confirmed_at:"2026-10-07T00:00:00Z"}]}}}));
   assert.equal(out.status,200);
   assert.equal(out.body.state.squads[0].heroes[0].name,"Kimberly");
-  assert.equal(out.body.state.squads[0].heroes[0].power,5650000);
+  assert.equal(out.body.state.squads[0].power,44.43);
   assert.deepEqual(customProviderPayloads.at(-1).current_state,{confirmed_squad_names:names});
   assert.match(customProviderPayloads.at(-1).extraction_instructions,/disambiguation hints ONLY/);
   profileFixtures.delete(token);
-  console.log("PASS: squad hints use authenticated cloud profile, browser claims ignored, visible fragments and individual powers retained");
+  console.log("PASS: indexed formation capture uses authenticated profile hints, ignores browser claims, and retains supported squad power");
 }
 
 // Provider failures log only sanitized diagnostics, never request or credential data.

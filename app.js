@@ -1,5 +1,14 @@
 import {LANGUAGES,resolveLanguage,localeFor,dirFor,translator} from "./i18n.js";
-import {createAnalysisIndicator,analysisFailureMessage} from "./lib/analysis-indicator.js";
+import {createAnalysisIndicator,analysisFailureMessage,beginLoadingButton} from "./lib/analysis-indicator.js";
+import {loadingTargetIds,requestLoadingTargetIds} from "./lib/loading-targets.js";
+import {accountSyncErrorKind,accountSyncView,verifiedAccountStateReply,verifiedAccountWriteReply,createCloudOperations,transientCloudFailure,deviceCloudSaveMetadata,confirmedWriteReceipt,mergeDeviceCloudSaveMetadata,staleProfileRestore} from "./lib/account-sync-feedback.js";
+import {squadReviewStatus,squadReviewHeader,squadReviewRowHtml,accountSquadReviewHtml} from "./lib/squad-review-status.js";
+import {createSquadComparison} from "./lib/squad-comparison.js";
+import {squadComparisonHtml} from "./lib/squad-comparison-view.js";
+import {createGearRepairPreview} from "./lib/gear-repair-preview.js";
+import {gearRepairPreviewHtml} from "./lib/gear-repair-preview-view.js";
+import {gearRepairPreviewCopy} from "./lib/gear-repair-preview-copy.js";
+import {createSaveDiagnostic,safeSaveDiagnostic,newSaveCorrelation,publicSaveError} from "./lib/cloud-save-diagnostic.js";
 import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
 import {buildPlayerScanOptions,normalizePlayerScanType,scanSquadId} from "./lib/player-scan-types.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation,heroDisplayName} from "./lib/heroes.js";
@@ -67,7 +76,7 @@ import {confirmPlayerHq,mergePlayerHqFields,playerHqNeedsCloudSync,normalizePlay
 import {parseHeroPower,confirmedHeroPower,heroPowerIsConfirmed} from "./lib/hero-power.js";
 import {PENDING_AUTH_EMAIL_KEY,clearSignedOutAuthUi} from "./lib/auth-ui.js";
 import {createScanReviewDraft,scanReviewEntries,applyOwnedScanReview,scanRequestMatches} from "./lib/scan-review.js";
-import {applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription} from "./lib/squad-scan-review.js";
+import {applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription,uniqueSquadPending} from "./lib/squad-scan-review.js";
 import {buildScanReviewGroups,serializeScanReviewGear} from "./lib/scan-review-presentation.js";
 import {renderScanReviewMarkup} from "./lib/scan-review-markup.js";
 import {mergeTechnologyBranches,finalizeTechnologyReview} from "./lib/technology-scan.js";
@@ -356,7 +365,17 @@ function safeClone(value){try{return typeof structuredClone==="function"?structu
 function rememberLastGoodState(value,reason="local"){if(!hasMeaningfulCore(value))return;try{localStorage.setItem(BACKUP_KEY,JSON.stringify({saved_at:new Date().toISOString(),reason,state:safeClone(value)}))}catch{}}
 function readLastGoodState(){try{return JSON.parse(localStorage.getItem(BACKUP_KEY)||"null")?.state||null}catch{return null}}
 function accountStateKey(userId){const id=String(userId||"").trim();return id?`${ACCOUNT_STATE_PREFIX}${id}`:null}
-function rememberAccountState(userId,value){const key=accountStateKey(userId);if(!key||!hasMeaningfulCore(value))return;try{localStorage.setItem(key,JSON.stringify({...safeClone(value),player_id:String(userId)}))}catch{}}
+function rememberAccountState(userId,value){
+  const key=accountStateKey(userId);if(!key||!hasMeaningfulCore(value))return;
+  try{
+    const previous=readAccountState(userId),copy=safeClone(value);
+    const pending=typeof copy.sync?.pending_cloud_save==="boolean"?copy.sync.pending_cloud_save:
+      typeof cloudDirty==="boolean"&&cloudDirty?true:previous?.sync?.pending_cloud_save;
+    copy.sync={...copy.sync,...mergeDeviceCloudSaveMetadata([previous,value],String(userId)),
+      ...(typeof pending==="boolean"?{pending_cloud_save:pending}:{})};
+    localStorage.setItem(key,JSON.stringify({...copy,player_id:String(userId)}));
+  }catch{}
+}
 function readAccountState(userId){const key=accountStateKey(userId);if(!key)return null;try{const parsed=JSON.parse(localStorage.getItem(key)||"null");return parsed&&String(parsed.player_id||"")===String(userId)?parsed:null}catch{return null}}
 function stateTimestamp(value){const n=Date.parse(value?.updated_at||"");return Number.isFinite(n)?n:0}
 function safestLoginSeed(userId,currentState){
@@ -430,7 +449,31 @@ function invalidateStoredPendingAccountCaches(){
   }
 }
 invalidateStoredPendingAccountCaches();
-function loadState(){try{const raw=localStorage.getItem(STORE_KEY);const parsed=raw?JSON.parse(raw):null;if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.28-load");const base=parsed?mergeState(initialState(),parsed):initialState();const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state),restored=backfillConfirmedHeroPowers(finalRepair.state),pendingRepair=normalizeAlliancePendingState(restored.state);let next=pendingRepair.state;const backup=readLastGoodState();if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});next.version=APP_VERSION;if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||restored.changed||pendingRepair.changed||!raw)localStorage.setItem(STORE_KEY,JSON.stringify(next));rememberLastGoodState(next,"post-v2.5.28-load");return next}catch{const backup=readLastGoodState();return hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState()}}
+function loadState(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY),parsed=raw?JSON.parse(raw):null;
+    if(parsed&&hasMeaningfulCore(parsed))rememberLastGoodState(parsed,"pre-v2.5.28-load");
+    const base=parsed?mergeState(initialState(),parsed):initialState();
+    const migrated=migrateLegacyLocalState(base),repaired=repairLegacySquadIdentity(migrated.state),
+      recovered=recoverLocalHeroHistory(repaired.state),finalRepair=repairLegacySquadIdentity(recovered.state),
+      restored=backfillConfirmedHeroPowers(finalRepair.state),pendingRepair=normalizeAlliancePendingState(restored.state);
+    let next=pendingRepair.state;
+    const backup=readLastGoodState();
+    if(!hasMeaningfulCore(next)&&hasMeaningfulCore(backup))next=mergeStateProtected(next,backup,{preferBase:false});
+    const ownSource=[parsed,backup].find(source=>source?.player_id&&String(source.player_id)===String(next.player_id));
+    next.sync={...next.sync,...mergeDeviceCloudSaveMetadata([backup,parsed],String(next.player_id||"")),
+      ...(typeof ownSource?.sync?.pending_cloud_save==="boolean"?{pending_cloud_save:ownSource.sync.pending_cloud_save}:{})};
+    next.version=APP_VERSION;
+    if(migrated.changed||repaired.changed||recovered.changed||finalRepair.changed||restored.changed||pendingRepair.changed||!raw)
+      localStorage.setItem(STORE_KEY,JSON.stringify(next));
+    rememberLastGoodState(next,"post-v2.5.28-load");return next;
+  }catch{
+    const backup=readLastGoodState(),next=hasMeaningfulCore(backup)?mergeState(initialState(),backup):initialState();
+    next.sync={...next.sync,...mergeDeviceCloudSaveMetadata([backup],String(next.player_id||"")),
+      ...(backup?.player_id===next.player_id&&typeof backup?.sync?.pending_cloud_save==="boolean"?{pending_cloud_save:backup.sync.pending_cloud_save}:{})};
+    return next;
+  }
+}
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,cloudRetryTimer=null,cloudPullRetryTimer=null,cloudDirty=false,localStateRevision=0,cloudRevision=null,suppressPush=false,cloudHydrationPending=false,cloudProfileVerified=false,canonicalRosterReady=false,cloud=null,cloudSession=null,cloudRecoveryRedirect="",cloudDataConfig={url:"",key:""},sessionApplyInFlight=null,lastAppliedSessionKey="",runtimeReconcileInFlight=null,lastRuntimeReconcileAt=0,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false,payments_enabled:false,commercial_preview:false,subscription:null},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null,scanImageName="capture.jpg",supportTicketsState=[],supportBusy=false;
 let currentPlayerAdviceAnalysis=null,currentAcquisitionViews=[],activeAcquisitionShopView=null;
@@ -572,6 +615,7 @@ function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;di
   const rosterStatus=$("#rosterScanStatus"),rosterButton=$("#rosterScanAnalyzeBtn"),fullSnapshot=$("#rosterScanFullSnapshot");
   if(rosterStatus){rosterStatus.textContent="";rosterStatus.classList.add("hidden")}
   if(rosterButton){rosterButton.disabled=false;rosterButton.textContent=t("analyze")}
+  if($("#rosterScanAddMemberBtn"))$("#rosterScanAddMemberBtn").disabled=false;
   if(fullSnapshot)fullSnapshot.checked=false;
   pendingExclusiveRequest=null;updateTechnologyScanPreview([]);
   const status=$("#scanStatus"),button=$("#analyzeScanBtn");
@@ -744,7 +788,12 @@ async function saveInlineHeroNames(squadId,container,button=null){
 
 if(!localStorage.getItem(LANG_KEY)){for(const key of LEGACY_LANGUAGE_KEYS){const v=localStorage.getItem(key);if(v){localStorage.setItem(LANG_KEY,v);break}}}
 let languageChoice=localStorage.getItem(LANG_KEY)||"auto",lang=resolveLanguage(languageChoice),locale=localeFor(lang),t=translator(lang);
-const analysisIndicator=createAnalysisIndicator({message:()=>t("analysis_busy"),inlineTarget:()=>$("#scanDrawer")?.classList.contains("open")?$("#scanStatus"):null});
+function firstLoadingTarget(ids){return ids.map(id=>$("#"+id)).find(node=>node&&!node.hidden&&!node.classList?.contains("hidden")&&!node.closest?.(".drawer:not(.open), .hidden, [hidden]"))||null}
+function analysisInlineTarget(kind){
+  if(kind==="scan:roster"&&$("#allianceDrawer")?.classList.contains("open"))return firstLoadingTarget(["rosterScanStatus"]);
+  return firstLoadingTarget(loadingTargetIds(kind));
+}
+const analysisIndicator=createAnalysisIndicator({inlineTarget:analysisInlineTarget});
 $("#languageSelect")?.addEventListener("change",()=>queueMicrotask(()=>analysisIndicator.refresh()));
 loadingScreen=createLoadingScreenController({documentRef:document,windowRef:window,translate:key=>t(key)});
 returnViewController=createReturnViewController({documentRef:document,windowRef:window,openDrawer,canRestorePrivateData:()=>betaPrivateDataVisible(),persistAcrossReload:false});
@@ -757,7 +806,200 @@ function betaPrivateDataVisible(){return runtimeAccessState().privateVisible}
 function safeLaunchBetaMode(){return proState?.entitlement?.source==="beta"||proState?.beta!==false}
 function safeLaunchBetaProIncluded(){return Boolean(safeLaunchBetaMode()&&cloudSession?.user&&betaAccessAllowed()&&betaConsentAccepted())}
 function proFeatureAllowed(){return safeLaunchBetaProIncluded()||Boolean(!safeLaunchBetaMode()&&proState?.active)}
-function betaAccessMessage(){const access=runtimeAccessState();if(!access.logged)return t("beta_signin_required");if(!betaState.enforced)return t("beta_allowlist_setup");if(access.phase==="syncing")return t("syncing");if(betaState.restore_error&&access.consented&&!cloudProfileVerified&&!access.privateVisible)return `${t("beta_restore_failed")}${lastBootstrapFailure()?.stage?` · ${lastBootstrapFailure().stage}`:""}`;if(betaState.beta_access_status==="revoked")return t("beta_access_revoked");if(betaState.beta_access_status==="expired")return t("beta_access_expired");if(betaState.beta_access_status==="owner-mismatch")return t("beta_invitation_other_account");if(betaCodeVisible(betaState,{logged:true,betaGranted:proState?.beta===true}))return t("beta_code_required");if(access.phase==="access-denied"){if(betaState.access_status==="revoked")return t("beta_access_revoked");if(betaState.access_status==="expired")return t("beta_access_expired");return t("beta_code_required")}if(access.phase==="consent-required")return t("beta_consent_required");if(access.phase==="ready")return state?.sync?.pending_cloud_save?t("offline_keep"):t("safe_sync_done");return t("syncing")}
+function betaAccessMessage(){const access=runtimeAccessState();if(!access.logged)return t("beta_signin_required");if(!betaState.enforced)return t("beta_allowlist_setup");if(access.phase==="syncing")return t("syncing");if(betaState.restore_error&&access.consented&&!cloudProfileVerified&&!access.privateVisible)return `${t("beta_restore_failed")}${lastBootstrapFailure()?.stage?` · ${lastBootstrapFailure().stage}`:""}`;if(betaState.beta_access_status==="revoked")return t("beta_access_revoked");if(betaState.beta_access_status==="expired")return t("beta_access_expired");if(betaState.beta_access_status==="owner-mismatch")return t("beta_invitation_other_account");if(betaCodeVisible(betaState,{logged:true,betaGranted:proState?.beta===true}))return t("beta_code_required");if(access.phase==="access-denied"){if(betaState.access_status==="revoked")return t("beta_access_revoked");if(betaState.access_status==="expired")return t("beta_access_expired");return t("beta_code_required")}if(access.phase==="consent-required")return t("beta_consent_required");if(access.phase==="ready")return accountSyncMessage();return t("syncing")}
+let accountSyncCheckBusy=false;
+const accountSyncOperations=createCloudOperations();
+let accountSaveBusy=false,cloudRetryFailures=0;
+function recordAccountSyncResult(result,sessionKey,operation){
+  result={...result,diagnostic:safeSaveDiagnostic(result.diagnostic),attemptAt:new Date().toISOString()};
+  if(operation?.lane==="save"&&String(state.player_id||"")!==String(cloudSession?.user?.id||""))return false;
+  if(sessionKey!==sessionApplyKey(cloudSession)||!accountSyncOperations.complete(operation,result,sessionKey))return false;
+  if(operation.lane==="save"){
+    // Persist only safe status metadata, never raw errors or session identifiers.
+    state.sync={...state.sync,last_save_attempt:{kind:result.kind,at:new Date().toISOString(),
+      ...(result.diagnostic?{diagnostic:result.diagnostic}:{})}};
+    const proof=result.kind==="verified"?confirmedWriteReceipt(result):null;
+    if(proof){state.sync.last_confirmed_write_at=proof.at;state.sync.last_confirmed_write_receipt=proof;}
+    if(result.kind!=="verified"&&!transientCloudFailure(result.kind)){
+      clearTimeout(cloudRetryTimer);cloudRetryTimer=null;
+      clearTimeout(pushTimer);pushTimer=null;
+    }
+  }
+  return true;
+}
+function currentAccountSyncView(){
+  const sessionKey=cloudSession?.user?sessionApplyKey(cloudSession):"";
+  const sameOwner=Boolean(cloudSession?.user?.id)&&String(state.player_id||"")===String(cloudSession.user.id);
+  const operations=sameOwner?accountSyncOperations.snapshot(sessionKey):{};
+  const cached=sameOwner?readAccountState(cloudSession.user.id):null;
+  const sync=sameOwner?{...state.sync,...mergeDeviceCloudSaveMetadata([cached,state],String(cloudSession.user.id)),
+    pending_cloud_save:state.sync?.pending_cloud_save??cached?.sync?.pending_cloud_save}:{};
+  return accountSyncView({sync,check:operations.check,save:operations.save,confirmed:operations.save?.kind==="verified"?operations.save:null,sessionKey,
+    dirty:sameOwner&&cloudDirty,online:navigator.onLine,revision:sameOwner?cloudRevision:null,
+    hasSquadConflict:sameOwner&&state.squads?.some(squad=>squad?.composition_conflict?.reason==="squad_freshness_ambiguous")});
+}
+function accountSyncMessage(){
+  const view=currentAccountSyncView();
+  const date=view.lastKnown?new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"short"}).format(new Date(view.lastKnown)):null;
+  const keys={pending:"account_sync_pending",unknown:"account_sync_unknown",verified:"account_sync_verified",
+    auth:"account_sync_auth",forbidden:"account_sync_forbidden",network:"account_sync_network",
+    timeout:"account_sync_timeout",conflict:"account_sync_conflict",server:"account_sync_server",unconfirmed:"account_sync_unconfirmed",
+    database_permissions:"account_sync_database_permissions",database_schema:"account_sync_database_schema",database_sql:"account_sync_database_sql"};
+  const checkKeys={verified:"account_sync_check_ok",auth:"account_sync_auth",forbidden:"account_sync_forbidden",
+    conflict:"account_sync_conflict",network:"account_sync_network",timeout:"account_sync_timeout",server:"account_sync_server",unknown:"account_sync_unknown",unconfirmed:"account_sync_unconfirmed"};
+  const format=value=>new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"medium"}).format(new Date(value));
+  const confirmedText=t("account_sync_confirmed_label")+": "+(view.lastConfirmedAt?format(view.lastConfirmedAt):t("account_sync_confirmed_none"));
+  const localKey={clear:"account_sync_local_clear",squad_conflict:"account_sync_squad_conflict",version_conflict:"account_sync_version_conflict"}[view.localKind]||keys[view.localKind]||"account_sync_unconfirmed";
+  const localText=t("account_sync_local_label")+": "+t(localKey);
+  const checkText=t("account_sync_check_label")+": "+(view.checkKind?t(checkKeys[view.checkKind]||"account_sync_unconfirmed"):t("account_sync_check_none"));
+  const attemptDate=view.attemptAt?new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"short"}).format(new Date(view.attemptAt)):"";
+  const failedAttempt=view.saveKind&&view.saveKind!=="verified"?
+    " · "+t("account_sync_attempt_label")+": "+t(keys[view.saveKind]||"account_sync_unconfirmed")+(attemptDate?" ("+attemptDate+")":""):"";
+  return confirmedText+" · "+localText+failedAttempt+" · "+checkText+(date?" · "+t("account_sync_history",{date}):"");
+}
+function renderAccountSaveDiagnostic(){
+  const anchor=$("#accountSyncCheckBtn")||$("#betaAccessStatus");
+  if(!anchor)return;
+  let panel=$("#accountSaveDiagnostic");
+  const diagnostic=currentAccountSyncView().saveDiagnostic;
+  if(!panel&&diagnostic){
+    panel=document.createElement("details");panel.id="accountSaveDiagnostic";panel.className="notice";
+    const summary=document.createElement("summary");summary.setAttribute("data-i18n","account_sync_diagnostic");
+    const content=document.createElement("pre");content.style.whiteSpace="pre-wrap";content.style.overflowWrap="anywhere";
+    panel.append(summary,content);anchor.insertAdjacentElement("afterend",panel);
+  }
+  if(!panel)return;
+  const visible=Boolean(diagnostic&&cloudSession?.user&&runtimeAccessState().phase==="ready");
+  panel.classList.toggle("hidden",!visible);
+  panel.querySelector("summary").textContent=t("account_sync_diagnostic");
+  // Only fields from the whitelist, never the profile or raw backend response.
+  panel.querySelector("pre").textContent=visible?JSON.stringify(diagnostic,null,2):"";
+}
+let squadCompareLoading=null;
+let gearRepairLoading=null;
+const squadReadContext=()=>({session:cloudSession?.user?sessionApplyKey(cloudSession):"",
+  owner:String(cloudSession?.user?.id||""),revision:cloudRevision,local:state,
+  allowed:Boolean(cloudSession?.access_token&&String(state.player_id||"")===String(cloudSession?.user?.id||"")&&
+    runtimeAccessState().phase==="ready"&&betaConsentAccepted()&&betaAccessAllowed())});
+async function readOwnSquadsForPreview(){
+  const response=await fetchSessionCritical("/api/state?action=squad_compare",
+    {method:"GET",cache:"no-store",redirect:"error",headers:authHeaders()},12000);
+  return {response,json:await response.json().catch(()=>({}))};
+}
+function gearRepairText(key,vars={}){
+  let text=gearRepairPreviewCopy(String(lang).split("-")[0])[key]||key;
+  for(const [name,value] of Object.entries(vars))text=text.replaceAll(`{${name}}`,String(value));
+  return text;
+}
+const gearRepairPreview=createGearRepairPreview({
+  context:squadReadContext,request:readOwnSquadsForPreview,
+  requestReadiness:async()=>{
+    const response=await fetchSessionCritical("/api/state?action=gear_repair_status",
+      {method:"GET",cache:"no-store",redirect:"error",headers:authHeaders()},12000);
+    return {response,json:await response.json().catch(()=>({}))};
+  },
+  onChange:()=>renderGearRepairControls()
+});
+const squadComparison=createSquadComparison({
+  context:squadReadContext,request:readOwnSquadsForPreview,
+  onChange:()=>renderSquadComparisonControls()
+});
+function renderGearRepairControls(){
+  const container=$("#squadCompareControls"),view=gearRepairPreview.view();
+  if(gearRepairLoading&&(!container||gearRepairLoading.button!==$("#squadGearRepairBtn")||view.kind!=="busy")){
+    gearRepairLoading.finish();gearRepairLoading=null;
+  }
+  if(!container)return;
+  let area=$("#squadGearRepairControls");
+  if(!area){
+    area=document.createElement("div");area.id="squadGearRepairControls";
+    const button=document.createElement("button");button.type="button";button.className="btn";button.id="squadGearRepairBtn";
+    button.addEventListener("click",()=>gearRepairPreview.prepare());
+    const result=document.createElement("div");result.id="squadGearRepairResult";
+    // This is an interactive form, not an aria-live region that re-announces every checkbox.
+    result.addEventListener("change",event=>{
+      const element=event.target;
+      if(element.matches("[data-gear-repair-select]"))gearRepairPreview.select(element.dataset.gearRepairSelect,element.checked);
+      if(element.matches("[data-gear-repair-verify]"))gearRepairPreview.verify(element.dataset.gearRepairVerify,element.checked);
+    });
+    result.addEventListener("click",event=>{
+      if(event.target.closest("[data-gear-repair-review]"))gearRepairPreview.review();
+      else if(event.target.closest("[data-gear-repair-back]"))gearRepairPreview.back();
+      else if(event.target.closest("[data-gear-repair-close]"))gearRepairPreview.close();
+    });
+    area.append(button,result);container.append(area);
+  }
+  const button=$("#squadGearRepairBtn");
+  area.hidden=squadComparison.view().kind!=="result"&&view.kind==="idle";
+  button.disabled=view.kind==="busy";
+  if(view.kind==="busy"&&!gearRepairLoading){
+    gearRepairLoading={button,finish:beginLoadingButton(analysisIndicator,button,{
+      kind:"sync:gear-preview",label:()=>gearRepairText("gear_repair_busy"),idleLabel:()=>gearRepairText("gear_repair_open")})};
+  }else if(view.kind!=="busy")button.textContent=gearRepairText("gear_repair_open");
+  const result=$("#squadGearRepairResult"),focused=result.contains(document.activeElement)?document.activeElement:null;
+  const focusKey=focused?.dataset?.gearRepairSelect?"select":focused?.dataset?.gearRepairVerify?"verify":null;
+  const focusId=focusKey?focused.getAttribute(`data-gear-repair-${focusKey}`):null;
+  const displayed=view.at?{...view,at:new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"medium"}).format(new Date(view.at))}:view;
+  result.innerHTML=gearRepairPreviewHtml(displayed,gearRepairText);
+  // Keep keyboard focus after checkbox repaint; only safe numeric IDs are generated.
+  if(focusKey&&/^[1-4]:[1-5]$/.test(focusId))result.querySelector(`[data-gear-repair-${focusKey}="${focusId}"]`)?.focus();
+}
+function renderSquadComparisonControls(){
+  const container=$("#squadCompareControls"),view=squadComparison.view();
+  if(squadCompareLoading&&(!container||squadCompareLoading.button!==$("#squadCompareBtn")||view.kind!=="busy")){
+    squadCompareLoading.finish();squadCompareLoading=null;
+  }
+  if(!container)return;
+  let button=$("#squadCompareBtn");
+  if(!button){
+    button=document.createElement("button");button.id="squadCompareBtn";button.type="button";button.className="btn";
+    button.addEventListener("click",()=>{gearRepairPreview.close();return squadComparison.run();});
+    const result=document.createElement("div");result.id="squadCompareResult";
+    result.setAttribute("role","status");result.setAttribute("aria-live","polite");
+    container.append(button,result);
+  }
+  button.disabled=view.kind==="busy";
+  if(view.kind==="busy"&&!squadCompareLoading){
+    squadCompareLoading={button,finish:beginLoadingButton(analysisIndicator,button,{
+      kind:"sync:compare",label:()=>t("squad_compare_busy"),idleLabel:()=>t("squad_compare_button")})};
+  }else if(view.kind!=="busy")button.textContent=t("squad_compare_button");
+  $("#squadCompareResult").innerHTML=squadComparisonHtml(view,t,value=>
+    new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"medium"}).format(new Date(value)));
+  renderGearRepairControls();
+}
+function renderAccountSquadReviewDiagnostic(){
+  const anchor=$("#betaAccessStatus"),existing=$("#accountSquadReviewDiagnostic");
+  const owner=String(cloudSession?.user?.id||"");
+  const visible=Boolean(anchor&&owner&&String(state.player_id||"")===owner&&runtimeAccessState().phase==="ready");
+  if(!visible){existing?.remove();renderSquadComparisonControls();return;}
+  const panel=existing||document.createElement("details");
+  panel.id="accountSquadReviewDiagnostic";panel.className="notice squadReviewDiagnostic";
+  panel.innerHTML=accountSquadReviewHtml(squadReviewStatus(state),t)+'<div id="squadCompareControls"></div>';
+  if(!existing)anchor.insertAdjacentElement("afterend",panel);
+  renderSquadComparisonControls();
+}
+async function checkAccountCloudStatus(){
+  if(accountSyncCheckBusy||!cloudSession?.access_token||!betaConsentAccepted()||!betaAccessAllowed())return;
+  const requestKey=sessionApplyKey(cloudSession);
+  const operation=accountSyncOperations.begin(requestKey,"check");
+  accountSyncCheckBusy=true;
+  const finish=beginLoadingButton(analysisIndicator,$("#accountSyncCheckBtn"),
+    {kind:"sync:check",label:()=>t("syncing"),idleLabel:()=>t("account_sync_retry")});
+  try{
+    const {response,json}=await fetchJsonBounded("/api/state?action=sync_status",{cache:"no-store",headers:authHeaders()},12000);
+    if(requestKey!==sessionApplyKey(cloudSession))return;
+    let kind;
+    if(!response.ok)kind=accountSyncErrorKind({status:response.status,code:json?.error});
+    else if(json?.ok!==true||json?.owner_verified!==true||json?.profile_present!==true||
+      !Number.isFinite(Date.parse(json?.updated_at)))kind="unconfirmed";
+    else if(cloudRevision&&json.updated_at!==cloudRevision)kind="conflict";
+    else if(cloudProfileVerified&&cloudRevision===json.updated_at)kind="verified";
+    else kind="unknown";
+    recordAccountSyncResult({kind,revision:kind==="verified"?json.updated_at:null,at:new Date().toISOString()},requestKey,operation);
+  }catch(error){
+    recordAccountSyncResult({kind:accountSyncErrorKind({code:error?.code||error?.name,online:navigator.onLine})},requestKey,operation);
+  }finally{accountSyncCheckBusy=false;finish();renderBeta();}
+}
 function requireBetaAccess(){if(identityOnboardingController?.isRequired()){identityOnboardingController.sync();return false}if(betaAccessAllowed())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);return false}
 function requireBetaConsent(){if(betaConsentAccepted())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);const el=$("#betaAccessStatus");if(el){el.className="notice warn";el.textContent=t("beta_consent_required")}return false}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
@@ -941,15 +1183,23 @@ function updateScanCaptureMode(){
 function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(lang);t=translator(lang);document.documentElement.lang=lang;document.documentElement.dir=dirFor(lang);$$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});$$('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));$$('[data-i18n-alt]').forEach(el=>el.setAttribute('alt',t(el.dataset.i18nAlt)));$$('[data-i18n-placeholder]').forEach(el=>{const text=t(el.dataset.i18nPlaceholder);el.setAttribute('placeholder',text);if(el.isContentEditable)el.setAttribute('data-placeholder',text)});const sel=$("#languageSelect");if(sel){sel.innerHTML=LANGUAGES.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=languageChoice}renderScanTypeOptions();renderClock();render();renderAuth();renderBeta();renderPro();renderVoiceSettings();renderSupportAccess();renderSupportTickets();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden")}
 function saveState(options={}){const renderUi=options?.renderUi!==false,signedInUserId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");if(signedInUserId&&ownerId&&ownerId!==signedInUserId){if(hasMeaningfulCore(state))rememberAccountState(ownerId,state);const own=readAccountState(signedInUserId);state=hasMeaningfulCore(own)?hydrateCloudState(own,initialState(),signedInUserId):initialState();state.player_id=signedInUserId;state.sync={...state.sync,status:"waiting",last_error:"account_owner_mismatch",pending_cloud_save:false};if(renderUi)render();return false}if(signedInUserId&&!ownerId)state.player_id=signedInUserId;state=repairLegacySquadIdentity(state).state;state=backfillConfirmedHeroPowers(state).state;state.updated_at=new Date().toISOString();state.version=APP_VERSION;localStateRevision++;const localOk=safeLocalSet(STORE_KEY,JSON.stringify(state));if(!localOk)state.sync={...state.sync,status:"waiting",last_error:"local_storage_unavailable",pending_cloud_save:true};rememberLastGoodState(state,"save");if(signedInUserId&&String(state.player_id||"")===signedInUserId)rememberAccountState(signedInUserId,state);if(renderUi)render();if(options.cloudSave!==false&&!suppressPush&&hasMeaningfulCore(state))scheduleServerSave(localOk?350:0);return localOk}
 function scheduleServerSave(delay=350){cloudDirty=true;clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushServerState(),Math.max(0,Number(delay)||0))}
-function scheduleCloudRetry(delay=8000){if(cloudRetryTimer||!cloudDirty||!navigator.onLine)return;cloudRetryTimer=setTimeout(()=>{cloudRetryTimer=null;if(cloudDirty)pushServerState()},Math.max(1500,Number(delay)||8000))}
+function scheduleCloudRetry(delay=8000){
+  const view=currentAccountSyncView();
+  if(cloudRetryTimer||!cloudDirty||!navigator.onLine||cloudRetryFailures>=5||
+    (view.saveKind&&view.saveKind!=="verified"&&!transientCloudFailure(view.saveKind)))return;
+  const wait=Math.min(120000,Math.max(1500,Number(delay)||8000)*2**Math.min(cloudRetryFailures,4));
+  cloudRetryTimer=setTimeout(()=>{cloudRetryTimer=null;if(cloudDirty)pushServerState()},wait);
+}
 function markCloudPending(error="cloud_save_failed"){cloudDirty=true;state.sync={...state.sync,status:navigator.onLine?"waiting":"offline",last_error:error,pending_cloud_save:true};safeLocalSet(STORE_KEY,JSON.stringify(state));if(String(state.player_id||"")===String(cloudSession?.user?.id||""))rememberAccountState(state.player_id,state);renderProvider();scheduleCloudRetry()}
 function scheduleCloudPullRetry(delay=2500){const needsRecovery=Boolean(!cloudProfileVerified||!canonicalRosterReady||betaState?.restore_error||betaState?.access_status==="checking");if(cloudPullRetryTimer||!navigator.onLine||!cloudSession?.access_token||!betaConsentAccepted()||!needsRecovery)return;const wait=Math.max(1500,Math.min(15000,Number(delay)||2500));cloudPullRetryTimer=setTimeout(async()=>{cloudPullRetryTimer=null;try{await restoreAuthenticatedProfile(readAccountState(cloudSession?.user?.id),{reason:"retry"})}catch{if(Boolean(!cloudProfileVerified||!canonicalRosterReady||betaState?.restore_error||betaState?.access_status==="checking"))scheduleCloudPullRetry(Math.min(15000,wait*2))}},wait)}
 function markLargeKeepaliveDeferred(){cloudDirty=true;state.sync={...state.sync,status:"waiting",pending_cloud_save:true};safeLocalSet(STORE_KEY,JSON.stringify(state));renderProvider()}
 async function fetchSessionCritical(input,init={},timeoutMs=10000){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),Math.max(1500,Number(timeoutMs)||10000));
+  const finish=analysisIndicator.begin("network",{targets:analysisIndicator.has("sync:check")||analysisIndicator.has("sync:gear-preview")||analysisIndicator.has("sync:compare")?[]:firstLoadingTarget(requestLoadingTargetIds(input,init,
+    analysisIndicator.has("roster:update")||analysisIndicator.has("sync")))});
   try{return await fetch(input,{...init,signal:controller.signal})}
   catch(error){if(error?.name==="AbortError")throw Object.assign(new Error("WarBoost request timed out"),{name:"TimeoutError",code:"request_timeout",timeout_ms:Math.max(1500,Number(timeoutMs)||10000)});throw error}
-  finally{clearTimeout(timer)}
+  finally{clearTimeout(timer);finish()}
 }
 async function fetchJsonBounded(input,init={},timeoutMs=12000){
   let request=init,supportTicketCreate=false;
@@ -973,9 +1223,13 @@ async function fetchJsonBounded(input,init={},timeoutMs=12000){
       }
     }catch{}
   }
+  const finish=analysisIndicator.begin("network-json",{targets:firstLoadingTarget(requestLoadingTargetIds(input,request,
+    analysisIndicator.has("roster:update")||analysisIndicator.has("sync")))});
+  try{
   const response=await fetchSessionCritical(input,request,timeoutMs),json=await response.json().catch(()=>({}));
   if(supportTicketCreate&&response.ok){for(const id of ["supportCategory","supportSubject","supportDescription","supportScreen","supportAttachment"])if($("#"+id))$("#"+id).value="";for(const id of ["supportDiagnostics","supportConsent"])if($("#"+id))$("#"+id).checked=false}
   return {response,json}
+  }finally{finish()}
 }
 
 async function initCloudAuth(){
@@ -1215,7 +1469,22 @@ function renderBeta(){
   const invited=Boolean(cloudSession?.user&&betaState.alliance_beta_allowed===true);
   if(pill){pill.textContent=!cloudSession?.user?t("beta_signin_short"):checking?t("syncing"):restoreFailed?t("update"):invited?t("beta_invited_short"):canUseCode?t("beta_code_short"):proState?.beta===true?"PRO β":"FREE";pill.className=`pill ${invited&&!restoreFailed?"active":"warn"}`}
   if(status){status.className=`notice${invited&&!restoreFailed?"":" warn"}`;status.textContent=betaAccessMessage()}
+  if(status&&runtimeAccessState().phase==="ready"&&currentAccountSyncView().kind!=="verified")status.classList.add("warn");
   if(retry){retry.classList.toggle("hidden",!restoreFailed);retry.disabled=cloudHydrationPending}
+  let check=$("#accountSyncCheckBtn");
+  if(!check&&status?.insertAdjacentElement){
+    check=document.createElement("button");check.id="accountSyncCheckBtn";check.type="button";
+    check.className="smallBtn hidden";check.setAttribute("data-i18n","account_sync_retry");
+    check.addEventListener("click",checkAccountCloudStatus);status.insertAdjacentElement("afterend",check);
+  }
+  if(check){
+    const view=currentAccountSyncView();
+    check.classList.toggle("hidden",!cloudSession?.user||!betaConsentAccepted()||!betaAccessAllowed()||!view.canCheck||(view.kind==="verified"&&view.checkKind==="verified"));
+    check.disabled=accountSyncCheckBusy;
+    if(!accountSyncCheckBusy)check.textContent=t("account_sync_retry");
+  }
+  renderAccountSaveDiagnostic();
+  renderAccountSquadReviewDiagnostic();
   if(codeBox)codeBox.classList.toggle("hidden",!canUseCode);
   if(row)row.classList.toggle("hidden",!cloudSession?.user||!betaAccessAllowed());
   if(checkbox)checkbox.checked=betaConsentAccepted();
@@ -1239,6 +1508,7 @@ function authNeedsEmailConfirmation(error){
 }
 function authFriendlyError(error){
   const code=String(error?.code||"").toLowerCase(),message=String(error?.message||"");
+  if(code==="auth_session_changed")return t("auth_request_superseded");
   if(authNeedsEmailConfirmation(error))return t("auth_email_not_confirmed");
   if(code==="invalid_credentials"||/invalid login credentials/i.test(message))return t("auth_invalid_credentials");
   if(code==="user_already_exists"||code==="email_exists"||/already registered|already exists/i.test(message))return t("auth_account_exists");
@@ -1276,22 +1546,38 @@ async function ensureAuthenticatedSessionApplied(data){
   return session;
 }
 
+let finishAuthLoading=null;
 function setAuthBusy(busy){
+  if(busy&&!finishAuthLoading){authMessage(t("syncing"),true);finishAuthLoading=analysisIndicator.begin("auth",{targets:$("#authMessage")})}
+  if(!busy&&finishAuthLoading){finishAuthLoading();finishAuthLoading=null}
   for(const id of ["loginBtn","signupBtn","verifyOtpBtn","resendOtpBtn","forgotPasswordBtn"]){const el=$("#"+id);if(el)el.disabled=Boolean(busy)}
 }
 function inviteMessage(text,ok=false){const el=$("#inviteStatus");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text;el.classList.remove("hidden")}
-async function pushServerState({keepalive=false}={}){
+async function pushServerState({keepalive=false,userRequested=false}={}){
+  if(accountSaveBusy)return {skipped:true,reason:"save_in_progress"};
+  const previousSave=currentAccountSyncView().saveKind;
+  if(!userRequested&&previousSave&&previousSave!=="verified"&&!transientCloudFailure(previousSave))return {skipped:true,reason:"cloud_action_required"};
   if(!cloudSession?.access_token||!betaAccessAllowed()||!betaConsentAccepted())return {skipped:true,reason:"cloud_access_unavailable"};
   const userId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");
+  const requestSessionKey=sessionApplyKey(cloudSession);
   if(!userId||ownerId!==userId)return {skipped:true,reason:"account_owner_mismatch"};
   if(state.squads?.some(squad=>squad?.composition_conflict?.reason==="squad_freshness_ambiguous"))return {skipped:true,reason:"squad_confirmation_required"};
   // Never let an empty browser placeholder overwrite a real cloud profile.
   if(!hasMeaningfulCore(state))return {skipped:true,reason:"empty_state_guard"};
+  if(userRequested)cloudRetryFailures=0;
+  accountSaveBusy=true;
+  const operation=accountSyncOperations.begin(requestSessionKey,"save");
+  const saveStarted=Date.now(),correlationId=newSaveCorrelation();
+  const finishLoading=keepalive?()=>{}:analysisIndicator.begin("save",{targets:$("#syncPill")});
   try{
     const outbound=safeClone(state),pushRevision=localStateRevision;
     cloudDirty=false;
+    state.sync={...state.sync,pending_cloud_save:true};
     // Transient browser/network errors belong to this device, not to the durable player profile.
     outbound.sync={...(outbound.sync||{}),last_error:null,pending_cloud_save:false};
+    delete outbound.sync.last_save_attempt;
+    delete outbound.sync.last_confirmed_write_receipt;
+    delete outbound.sync.last_confirmed_write_at;
     const body=JSON.stringify({state:outbound,base_updated_at:cloudRevision});
     if(keepalive&&!canUseKeepaliveBody(body)){
       // Mobile fetch keepalive has a small request-body quota. The state remains safely in
@@ -1300,16 +1586,29 @@ async function pushServerState({keepalive=false}={}){
       return {skipped:true,reason:"keepalive_payload_too_large"};
     }
     const requestInit={method:"POST",headers:authHeaders({"content-type":"application/json"}),body,keepalive:Boolean(keepalive)};
-    const r=keepalive?await fetch("/api/state",requestInit):await fetchSessionCritical("/api/state",requestInit,25000),j=await r.json().catch(()=>({}));
+    // Bound headers AND body, including mobile keepalive, so the write lock cannot hang.
+    const {response:r,json:j}=await fetchJsonBounded("/api/state",requestInit,25000);
     if(String(cloudSession?.user?.id||"")!==userId)return {skipped:true,reason:"account_changed"};
+    if(requestSessionKey!==sessionApplyKey(cloudSession))return {skipped:true,reason:"session_changed"};
     if(j?.state?.player_id&&String(j.state.player_id)!==userId)throw new Error("profile_owner_mismatch");
     if(!r.ok){
+      const diagnostic=safeSaveDiagnostic(j?.diagnostic)||createSaveDiagnostic({stage:"client_transport",status:r.status,
+        code:publicSaveError({code:j?.error},r.status),correlationId,started:saveStarted});
+      recordAccountSyncResult({kind:accountSyncErrorKind({status:r.status,code:diagnostic.code}),diagnostic},requestSessionKey,operation);
+      cloudRetryFailures++;
       if(r.status===409&&j?.error==="profile_write_conflict"){
-        const remote=j?.state?hydrateCloudState(j.state,initialState(),cloudSession.user.id):null;
-        if(remote){const merged=mergeStateProtected(remote,state,{preferBase:false});state=reconcileCloudSquads(state,remote,merged).state;state=adoptCanonicalPendingAccounts(state,remote,{available:false});state.player_id=userId}
-        cloudRevision=j?.updated_at||null;markCloudPending("profile_write_conflict");safeLocalSet(STORE_KEY,JSON.stringify(state));rememberAccountState(cloudSession.user.id,state);scheduleCloudRetry(250);render();return {ok:false,conflict:true,error:j.error}
+        // A conflict requires review; never adopt the new version and resend automatically.
+        markCloudPending("profile_write_conflict");renderBeta();return {ok:false,conflict:true,error:j.error}
       }
-      markCloudPending(j?.error||`state_http_${r.status}`);return {ok:false,error:j?.error||r.status}
+      markCloudPending(j?.error||`state_http_${r.status}`);renderBeta();return {ok:false,error:j?.error||r.status}
+    }
+    if(!verifiedAccountWriteReply(j,userId)){
+      const diagnostic=safeSaveDiagnostic(j?.diagnostic)||createSaveDiagnostic({stage:"response",status:r.status,
+        code:"sync_unconfirmed",correlationId,started:saveStarted});
+      recordAccountSyncResult({kind:"unconfirmed",diagnostic},requestSessionKey,operation);
+      markCloudPending("sync_unconfirmed");
+      renderBeta();
+      return {ok:false,error:"sync_unconfirmed"};
     }
     suppressPush=true;
     if(j?.state){
@@ -1330,21 +1629,39 @@ async function pushServerState({keepalive=false}={}){
     }
     const pending=cloudDirty||state.squads?.some(squad=>squad?.composition_conflict?.reason==="squad_freshness_ambiguous");
     cloudRevision=j?.updated_at||cloudRevision;cloudDirty=Boolean(pending);clearTimeout(cloudRetryTimer);cloudRetryTimer=null;
+    const diagnostic=safeSaveDiagnostic(j?.diagnostic)||createSaveDiagnostic({stage:"response",status:r.status,
+      code:"save_confirmed",writeState:"confirmed",correlationId,started:saveStarted});
+    recordAccountSyncResult({kind:"verified",revision:j.updated_at,at:j.updated_at,diagnostic},requestSessionKey,operation);
+    cloudRetryFailures=0;
     state.sync={...state.sync,status:pending?"waiting":"ok",last_sync:j?.updated_at||new Date().toISOString(),last_error:pending?state.sync?.last_error:null,pending_cloud_save:Boolean(pending)};
     safeLocalSet(STORE_KEY,JSON.stringify(state));rememberAccountState(cloudSession.user.id,state);render();renderProvider();suppressPush=false;
     if(pending&&!state.squads?.some(squad=>squad?.composition_conflict?.reason==="squad_freshness_ambiguous"))scheduleCloudRetry(750);
     return {ok:true,state_applied:Boolean(j?.state)}
-  }catch(e){suppressPush=false;if(String(cloudSession?.user?.id||"")===userId)markCloudPending(e?.message||e?.name||"offline");return {ok:false,error:e?.name||"offline"}}
+  }catch(e){
+    suppressPush=false;
+    if(requestSessionKey===sessionApplyKey(cloudSession)){
+      const kind=accountSyncErrorKind({code:e?.code||e?.name,online:navigator.onLine});
+      const diagnostic=createSaveDiagnostic({stage:"client_transport",code:kind==="timeout"?"request_timeout":
+        kind==="network"?"network_error":"sync_unconfirmed",correlationId,started:saveStarted});
+      recordAccountSyncResult({kind,diagnostic},requestSessionKey,operation);
+      cloudRetryFailures++;markCloudPending(diagnostic.code);renderBeta();
+    }
+    return {ok:false,error:e?.name||"offline"};
+  }
+  finally{accountSaveBusy=false;finishLoading()}
 }
 async function pullDirectOwnProfile(loginSeed=null){
   if(!cloudSession?.access_token||!cloudSession?.user?.id||betaState.allowed!==true||!betaConsentAccepted())return {ok:false,error:"direct_profile_not_authorized"};
+  const restoreSession=sessionApplyKey(cloudSession);
   const userId=String(cloudSession.user.id),localFallback=hasMeaningfulCore(loginSeed)?safeClone(loginSeed):(hasMeaningfulCore(state)?safeClone(state):null);
   pendingIdentityAliasesOwner=userId;pendingIdentityAliases=collectPendingIdentityAliases(userId,localFallback,loginSeed,state,readAccountState(userId));
   let pendingCleanupChanged=false;
   const out=await readOwnProfileDirect({url:cloudDataConfig.url,key:cloudDataConfig.key,accessToken:cloudSession.access_token,userId,timeoutMs:10000});
-  if(String(cloudSession?.user?.id||"")!==userId)return {ok:false,error:"account_changed"};
+  if(String(cloudSession?.user?.id||"")!==userId||sessionApplyKey(cloudSession)!==restoreSession)return {ok:false,error:"account_changed"};
   if(!out?.ok)return out||{ok:false,error:"direct_profile_failed"};
   if(out.state?.player_id&&String(out.state.player_id)!==userId)return {ok:false,error:"profile_owner_mismatch"};
+  const localSaveMetadata=mergeDeviceCloudSaveMetadata([localFallback,state,readAccountState(userId)],userId);
+  if(staleProfileRestore(out.updated_at,localSaveMetadata))return {ok:true,ignored_stale_restore:true};
   cloudProfileVerified=true;canonicalRosterReady=false;cloudRevision=out.updated_at||null;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
   if(!out.state){renderBeta();return {ok:true,cloud_empty:true,direct:true};}
   const remote=hydrateCloudState(out.state,initialState(),userId);
@@ -1369,7 +1686,7 @@ async function pullDirectOwnProfile(loginSeed=null){
   state.player_id=userId;state.updated_at=preferLocal?(state.updated_at||out.updated_at||new Date().toISOString()):(out.state?.updated_at||out.updated_at||state.updated_at);
   const hqNeedsPush=playerHqNeedsCloudSync(state.player,remote.player,{sameAccount:String(state.player_id||"")===userId&&String(remote.player_id||"")===userId});
   const squadConflict=squadResult.conflicts.length>0,needsPush=preferLocal||squadResult.localNewer.length>0||hqNeedsPush;
-  state.sync={...state.sync,status:squadConflict||needsPush?"waiting":"ok",last_sync:out.updated_at||new Date().toISOString(),last_error:squadConflict?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(squadConflict||needsPush)};
+  state.sync={...state.sync,...localSaveMetadata,status:squadConflict||needsPush?"waiting":"ok",last_sync:out.updated_at||new Date().toISOString(),last_error:squadConflict?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(squadConflict||needsPush)};
    safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-direct-rls-pull");rememberAccountState(userId,state);
    refreshPlayerAdviceIfChanged();suppressPush=false;render();renderBeta();renderProvider();
   if(squadConflict)cloudDirty=false;
@@ -1380,6 +1697,7 @@ async function pullDirectOwnProfile(loginSeed=null){
 
 async function pullServerState(loginSeed=null,{fastRestore=false}={}){
   if(!cloudSession?.access_token)return {skipped:true};
+  const restoreSession=sessionApplyKey(cloudSession);
   const userId=String(cloudSession.user?.id||""),localFallback=hasMeaningfulCore(loginSeed)?safeClone(loginSeed):(hasMeaningfulCore(state)?safeClone(state):null);
   pendingIdentityAliasesOwner=userId;pendingIdentityAliases=collectPendingIdentityAliases(userId,localFallback,loginSeed,state,readAccountState(userId));
   let pendingCleanupChanged=false;
@@ -1387,7 +1705,7 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
   try{
     const stateUrl=fastRestore?"/api/state?restore=1":"/api/state",stateTimeout=fastRestore?20000:25000;
     const {response:r,json:j}=await fetchJsonBounded(stateUrl,{cache:"no-store",headers:authHeaders()},stateTimeout);appendServerRestoreTrace(j?.restore_trace);
-    if(String(cloudSession?.user?.id||"")!==userId)return {ok:false,error:"account_changed"};
+    if(String(cloudSession?.user?.id||"")!==userId||sessionApplyKey(cloudSession)!==restoreSession)return {ok:false,error:"account_changed"};
     if(!r.ok){
       if(j?.error==="database_schema_missing"){state.sync.last_error=t("cloud_schema_missing");state.sync.status="offline";renderProvider()}
       betaState=betaStateAfterVerifiedStateRead(betaState,{ok:false,status:r.status,error:j?.error||"",consentVersion:BETA_CONSENT_VERSION});
@@ -1396,6 +1714,8 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     // A successful /api/state response can only happen after server-side invitation + consent
     // validation. Treat it as authoritative proof of beta access and reveal the restored state.
     betaState=betaStateAfterVerifiedStateRead(betaState,{ok:true,status:r.status,consentVersion:BETA_CONSENT_VERSION});
+    const localSaveMetadata=mergeDeviceCloudSaveMetadata([localFallback,state,readAccountState(userId)],userId);
+    if(staleProfileRestore(j?.updated_at,localSaveMetadata)){cloudHydrationPending=false;return {ok:true,ignored_stale_restore:true};}
     cloudProfileVerified=true;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
     cloudRevision=j?.updated_at||null;
     canonicalRosterReady=j?.alliance_roster_repair?.status==="canonical_roster_applied";
@@ -1440,9 +1760,11 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     state.updated_at=preferLocal&&!j?.alliance_roster_repair?.changed?(state.updated_at||new Date().toISOString()):(j.state?.updated_at||j.updated_at||state.updated_at);
     const hqNeedsPush=playerHqNeedsCloudSync(state.player,remote.player,{sameAccount:String(state.player_id||"")===userId&&String(remote.player_id||"")===userId});
     const squadConflict=squadResult.conflicts.length>0,needsPush=preferLocal||squadResult.localNewer.length>0||hqNeedsPush;
-    state.sync={...state.sync,status:squadConflict||needsPush?"waiting":"ok",last_sync:j.updated_at||new Date().toISOString(),last_error:squadConflict?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(squadConflict||needsPush)};
+    state.sync={...state.sync,...localSaveMetadata,status:squadConflict||needsPush?"waiting":"ok",last_sync:j.updated_at||new Date().toISOString(),last_error:squadConflict?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(squadConflict||needsPush)};
      safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull");rememberAccountState(userId,state);
-     refreshPlayerAdviceIfChanged();cloudProfileVerified=true;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;cloudHydrationPending=false;pushBootstrapStage("PROFILE_HYDRATE",bootstrapNow()-hydrateStarted,"ok");render();renderBeta();suppressPush=false;
+     refreshPlayerAdviceIfChanged();cloudProfileVerified=true;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;cloudHydrationPending=false;pushBootstrapStage("PROFILE_HYDRATE",bootstrapNow()-hydrateStarted,"ok");
+     // A profile read is not an acknowledgement of a write in this session.
+     render();renderBeta();suppressPush=false;
     // If an unsent local state is newer (for example because an oversized keepalive write was
     // deferred), push it normally in the foreground after the authoritative pull/merge.
     if(squadConflict)cloudDirty=false;
@@ -1890,19 +2212,22 @@ function performSquadSwap(fromId,toId){
 }
 function renderSquads(){
   const box=$("#squadList");if(!box)return;box.innerHTML="";
+  const review=squadReviewStatus(state);
   state.squads.forEach((sq,i)=>{
     const id=i+1,shell=document.createElement("div");shell.className="squadShell";shell.dataset.squadId=String(id);
-     const name=`${t("squad")} ${id}`,optional4=i===3&&!squadHasSavedData(sq),compositionConflict=sq.composition_conflict?.status==="needs_verification",freshness=optional4?t("optional_squad4"):(compositionConflict?t("hero_confirm_needed"):(sq.needs_rescan?t("sync_needed"):(sq.updated_at?updatedLabel(sq.updated_at):t("sync_needed"))));
-     const heroes=fixedHeroSlots(sq.heroes),needsHeroConfirm=!optional4&&heroes.some(h=>isGenericHeroName(h?.name))&&squadHasSavedData(sq);
+     const row=review.rows[i],name=`${t("squad")} ${id}`,freshness=squadReviewHeader(row,t);
+     const heroes=fixedHeroSlots(sq.heroes),needsHeroConfirm=row.hasData&&heroes.some(h=>isGenericHeroName(h?.name))&&squadHasSavedData(sq);
     const swapTargets=squadHasSavedData(sq)?state.squads.map((target,ti)=>({id:ti+1,target})).filter(x=>x.id!==id&&squadHasSavedData(x.target)):[];
     const swapButton=swapTargets.length?`<button class="squadSwapBtn" type="button" data-squad-swap-toggle="${id}" aria-label="${esc(t("squad_swap_aria",{squad:id}))}" title="${esc(t("squad_swap"))}">⇄</button>`:"";
     const swapMenu=swapTargets.length?`<div class="squadSwapMenu hidden" data-squad-swap-menu="${id}"><span>${esc(t("squad_swap_with"))}</span>${swapTargets.map(x=>`<button type="button" class="squadSwapTarget" data-squad-swap-target="${x.id}">${esc(t("squad"))} ${x.id}</button>`).join("")}</div>`:"";
       shell.innerHTML=`<details class="squad" data-squad-id="${id}"><summary class="squadHead"><span class="squadNo">${id}</span><span class="squadName"><b>${esc(name)}</b><small>${esc(freshness)}</small></span><span class="squadPower">${esc(fmtConfirmedSquadPower(sq))}</span><span class="chev" aria-hidden="true"></span></summary><div id="squadBody${id}" class="squadBody">${Array.from({length:5},(_,j)=>{const h=heroes[j]||emptyHero(j+1),hn=isGenericHeroName(h.name)?`${t("hero")} ${j+1} · ${t("hero_unconfirmed")}`:h.name;const detail=heroDetailLine(h,hn);return `<div class="heroRow"${!isGenericHeroName(h.name)?` data-hero="${esc(canonicalStoredHeroName(h.name))}`:""}><div class="heroAvatar">${j+1}</div><div class="heroInfo"><b>${esc(hn)}</b><small>${esc(detail.main)}</small>${detail.stats?`<span class="heroWeaponStats">${esc(detail.stats)}</span>`:""}</div><div class="heroPwr">${esc(fmtHeroPowerForDisplay(sq,h))}</div></div>`}).join("")}${needsHeroConfirm?inlineHeroConfirmationHtml(sq,id):""}</div></details>${swapButton}${swapMenu}`;
+      shell.querySelector(".squadName small")?.classList.add("squadReviewHint");
+      shell.querySelector(".squadBody")?.insertAdjacentHTML("afterbegin",squadReviewRowHtml(row,t));
     box.appendChild(shell);
     const pending=sq.composition_conflict?.scan_pending;
     if(Array.isArray(pending)&&pending.length){
       const notice=document.createElement("p");notice.className="notice warn";
-      notice.textContent=`${lang.startsWith("fr")?"À confirmer":"To confirm"} : ${pending.map(item=>squadPendingDescription(item,lang)).join(" ; ")}`;
+      notice.textContent=`${lang.startsWith("fr")?"À confirmer":"To confirm"} : ${uniqueSquadPending(pending).map(item=>squadPendingDescription(item,lang)).join(" ; ")}`;
       shell.querySelector(".squadBody")?.prepend(notice);
     }
     const swapBtn=shell.querySelector(".squadSwapBtn");
@@ -2090,7 +2415,7 @@ function renderProPriority(analysis){
     if(!requirePro())return;
     const button=event.currentTarget,status=knowledgePanel.querySelector("[data-knowledge-status]");
     button.disabled=true;
-    const finish=beginActiveLoadingOperation("advice:knowledge");
+    const finish=analysisIndicator.begin("advice:knowledge",{targets:event.currentTarget});
     try{
       const {response,json}=await fetchJsonBounded("/api/advice?action=knowledge_refresh",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:"{}"},25000);
       if(!response.ok||!json?.ok)throw Error("knowledge_unavailable");
@@ -2457,6 +2782,7 @@ async function recalculateAllianceEventPlan(eventType){
   const button=$("#allianceEventDetail")?.querySelector("[data-alliance-event-plan]");
   eventResearchPending.add(eventType);
   if(button){button.disabled=true;button.textContent=lang==="fr"?"Recalcul en cours…":"Recalculating…"}
+  const finishLoading=analysisIndicator.begin("event-research",{targets:button});
   let research={status:"unavailable",event_type:eventType,error:"research_request_failed"};
   try{
     const response=await fetchSessionCritical("/api/advice?action=event_research",{
@@ -2467,6 +2793,7 @@ async function recalculateAllianceEventPlan(eventType){
     if(response.ok&&result.research)research={...result.research,received_at:result.server_time||null};
   }catch{}
   finally{
+    finishLoading();
     eventResearchPending.delete(eventType);
     if(button){button.disabled=false;button.textContent=lang==="fr"?"Recalculer le plan":"Recalculate plan"}
   }
@@ -3225,6 +3552,7 @@ function openDrawer(name){
   if(["account","player","alliance","vs","season","qg35Coach"].includes(String(name||"")))safeRenderStep(`DRAWER_REFRESH_${String(name||"").toUpperCase()}`,render);
   closeDrawers({preserveReturn:true});
   $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false")}
+  analysisIndicator.refresh();
   returnViewController?.remember(name);
   if(name==="account"){safeRenderStep("ACCOUNT_OPEN_FIELDS",renderAccountFields);safeRenderStep("ACCOUNT_OPEN_AUTH",renderAuth);safeRenderStep("ACCOUNT_OPEN_BETA",renderBeta);safeRenderStep("ACCOUNT_OPEN_PRO",renderPro)}
   if(betaPrivateDataVisible()&&name==="player")safeRenderStep("PLAYER_OPEN_CORE",()=>renderPlayerCoreSummary(state.player,state.drone||{}));
@@ -3234,7 +3562,7 @@ function openDrawer(name){
   if(betaPrivateDataVisible()&&name==="qg35Coach")safeRenderStep("QG35_COACH_OPEN",renderEndgameCoachDrawer);
   if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)
 }
-function closeDrawers({preserveReturn=false}={}){unmountAuthControls();closeAlliancePlayerProfile();closeAllianceEventDetail();$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")});if(!preserveReturn)returnViewController?.remember(null)}
+function closeDrawers({preserveReturn=false}={}){unmountAuthControls();closeAlliancePlayerProfile();closeAllianceEventDetail();$("#backdrop").classList.remove("open");$$('.drawer').forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true")});analysisIndicator.refresh();if(!preserveReturn)returnViewController?.remember(null)}
 
 $$('[data-open]').forEach(b=>b.addEventListener("click",()=>{if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer(b.dataset.open)}));$("#homeProBtn")?.addEventListener("click",()=>{openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"start"}),140)});$$('[data-close]').forEach(b=>b.addEventListener("click",closeDrawers));$("#backdrop").addEventListener("click",closeDrawers);$("#accountBtn").addEventListener("click",()=>openDrawer("account"));$("#adviceAction").addEventListener("click",()=>{if(state.player.name&&(!requireBetaAccess()||!requireBetaConsent()))return;if(playerNeedsOnboarding()&&betaPrivateDataVisible()){const next=playerOnboardingStatus().next_type||"profile";return openQuickScan(next)}openDrawer(state.player.name?"player":"account")});$("#languageSelect").addEventListener("change",e=>{languageChoice=e.target.value;safeLocalSet(LANG_KEY,languageChoice);applyLanguage()});
 $("#qg35CoachCard")?.addEventListener("click",event=>{const card=event.currentTarget;if(card?.disabled||!betaPrivateDataVisible())return;if(!requireBetaAccess()||!requireBetaConsent())return;openDrawer("qg35Coach")});
@@ -3257,7 +3585,7 @@ $("#saveProfileBtn").addEventListener("click",async()=>{
   state.player={...state.player,name,server_id:server,hq_level:hqUpdate.player.hq_level,hq_level_source:hqUpdate.player.hq_level_source,hq_level_confirmed_at:hqUpdate.player.hq_level_confirmed_at,updated_at:confirmedAt};
   const ctxAgeRaw=String($("#fAccountAge")?.value??"").trim(),ctxAge=ctxAgeRaw===""?null:Number(ctxAgeRaw);state.player_context={...(state.player_context||{}),objective:$("#fObjective")?.value||"auto",account_age_days:ctxAge!==null&&Number.isFinite(ctxAge)&&ctxAge>=0?Math.round(ctxAge):null,server_profile:$("#fServerProfile")?.value||"auto",updated_at:confirmedAt};state.player.role=safeSelfRole(requestedRole);state.alliance.server_id=state.player.server_id;state.alliance.tag=$("#fAlliance").value.trim().toUpperCase();state.vs.our_alliance=state.alliance.tag;reconcileCurrentPlayerAllianceIdentity({touch:true});recordProgressionSnapshot("manual_profile");saveState();
   if(btn){btn.disabled=true;btn.textContent=t("syncing")}show(t("syncing"));clearTimeout(pushTimer);pushTimer=null;
-  try{const saved=await pushServerState();if(!saved?.ok){show(t("profile_saved_pending"),true);return}const joined=await joinPendingAlliance();if(joined)await pushServerState();show(t("profile_saved_cloud"),false);setTimeout(closeDrawers,650)}catch{show(t("profile_saved_pending"),true)}finally{if(btn){btn.disabled=false;btn.textContent=t("save")}}
+  try{const saved=await pushServerState({userRequested:true});if(!saved?.ok){show(t("profile_saved_pending"),true);return}const joined=await joinPendingAlliance();if(joined)await pushServerState();show(t("profile_saved_cloud"),false);setTimeout(closeDrawers,650)}catch{show(t("profile_saved_pending"),true)}finally{if(btn){btn.disabled=false;btn.textContent=t("save")}}
 });
 
 async function syncAll(){
@@ -3267,6 +3595,7 @@ async function syncAll(){
   const requestOwner=String(cloudSession?.user?.id||"");
   const btns=[$("#syncAllBtn"),$("#syncPlayerBtn")].filter(Boolean);
   btns.forEach(b=>{b.disabled=true;b.textContent=t("syncing")});
+  const finishLoading=analysisIndicator.begin("sync",{targets:btns});
   try{
     if(!rosterPending&&!hasMeaningfulCore(state)&&cloudSession?.access_token){
       const recovered=await reconcileAuthenticatedRuntime("manual-sync",{force:true});
@@ -3323,7 +3652,7 @@ async function syncAll(){
        }else{state.sync.last_error=t("offline_keep");state.sync.status="offline";saveState()}
      }
   }finally{
-    btns.forEach((b,i)=>{b.disabled=false;b.textContent=i===0?t("public_refresh"):t("public_button")});
+    finishLoading();btns.forEach((b,i)=>{b.disabled=false;b.textContent=i===0?t("public_refresh"):t("public_button")});
   }
 }
 $("#syncAllBtn").addEventListener("click",syncAll);$("#syncPlayerBtn").addEventListener("click",syncAll);
@@ -3341,7 +3670,7 @@ function beginActiveLoadingOperation(kind="scan"){
   };
 }
 async function fetchWarBoostScan(payload){
-  const finishOperation=beginActiveLoadingOperation();
+  const finishOperation=beginActiveLoadingOperation(payload?.scan_type==="alliance_roster"?"scan:roster":"scan");
   try{return await fetchJsonBounded("/api/scan",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(payload)},90000)}
   catch(error){
     if(error?.code==="request_timeout")throw Object.assign(new Error(t("scan_timeout")),
@@ -3498,8 +3827,7 @@ function scanReviewFormEdits(draft){
       if(!input)return {error:"scan_review_form_missing",path:row.path};
       if(row.field==="name"&&row.path.includes("heroes")&&row.evidence?.requires_confirmation){
         const acknowledged=container.querySelector(`[data-scan-review-identity-ack="${id}"]`)?.checked===true;
-        const corrected=Boolean(input.value&&canonicalStoredHeroName(input.value)!==canonicalStoredHeroName(row.value));
-        if(!acknowledged&&!corrected){issues.push({path:row.path,reason:"uncertain"});edits.push({path:row.path,value:""});continue}
+        if(!acknowledged){issues.push({path:row.path,reason:"uncertain"});edits.push({path:row.path,value:""});continue}
       }
       edits.push({path:row.path,value:input.value,badInput:input.validity?.badInput===true});
     }
@@ -3511,6 +3839,16 @@ function updateScanReviewRaritySummary(container,id,index){
   if(!summary)return;
   const names=[...container.querySelectorAll(`[data-scan-gear-rarity="${id}"][data-scan-gear-part="${index}"]:checked`)].map(input=>t(`scan_review_rarity_${input.value}`));
   summary.textContent=`${t("scan_review_label_gear_rarity")} : ${names.join(" / ")||t("scan_review_status_missing")}`;
+}
+function handleScanReviewChange(event){
+  const input=event.target.closest?.("[data-scan-gear-rarity]");
+  if(input)updateScanReviewRaritySummary(event.currentTarget,input.dataset.scanGearRarity,input.dataset.scanGearPart);
+  const name=event.target.closest?.("[data-scan-review-id]");
+  if(!name)return;
+  const id=Number(name.dataset.scanReviewId),row=pendingScanReview?.displayRows?.[id];
+  if(row?.field!=="name"||!row.path?.includes("heroes")||!row.evidence?.requires_confirmation)return;
+  const ack=event.currentTarget.querySelector(`[data-scan-review-identity-ack="${id}"]`);
+  if(ack)ack.checked=false;
 }
 function translateOpenScanReview(statusBeforeLanguage){
   const status=$("#scanStatus");
@@ -3564,7 +3902,7 @@ function showSquadScanStatus(status,pending){
   if(!pending.length){showConfirmedScanStatus(status,"scan_saved");return}
   status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_partial_saved";
   status.dataset.squadPending=JSON.stringify(pending);
-  status.replaceChildren(document.createTextNode(`${t("scan_review_partial_saved")} ${t("scan_review_remaining_fields")} : ${pending.map(item=>squadPendingDescription(item,lang)).join(" ; ")}`));
+  status.replaceChildren(document.createTextNode(`${t("scan_review_partial_saved")} ${t("scan_review_remaining_fields")} : ${uniqueSquadPending(pending).map(item=>squadPendingDescription(item,lang)).join(" ; ")}`));
 }
 function filterReviewedSquadWeapons(heroSlots=[],weapons=[]){
   return (Array.isArray(weapons)?weapons:[]).filter(weapon=>{
@@ -3656,7 +3994,7 @@ function confirmScanReview(){
       const applied=applyReviewedSquad(merged,{squadId:squadIndex+1,heroes:heroSlots,updatedAt:now,issues,powerConfirmed:!squadPowerMissing,evidence:draft.ocrEvidence||[],evidenceAt:draft.scannedAt||now,identityReviewConfirmed:true});
       if(squadPowerMissing&&!applied.acceptedFields){
         const box=$("#scanReviewError");
-        if(box){box.classList.remove("hidden");box.textContent=`${lang.startsWith("fr")?"Aucune valeur fiable à confirmer : puissance d’escouade manquante et aucun champ de héros associé sans ambiguïté.":"No reliable value to confirm: missing squad power and no unambiguously linked hero field."} ${applied.pending.filter(item=>item.field==="name").map(item=>squadPendingDescription(item,lang)).join(" ; ")}`}
+        if(box){box.classList.remove("hidden");box.textContent=`${lang.startsWith("fr")?"Aucune valeur fiable à confirmer : puissance d’escouade manquante et aucun champ de héros associé sans ambiguïté.":"No reliable value to confirm: missing squad power and no unambiguously linked hero field."} ${uniqueSquadPending(applied.pending).filter(item=>item.field==="name").map(item=>squadPendingDescription(item,lang)).join(" ; ")}`}
         return;
       }
       merged=applied.state;squadPending=applied.pending;
@@ -3684,7 +4022,7 @@ function confirmScanReview(){
 }
 $("#confirmScanReviewBtn")?.addEventListener("click",confirmScanReview);
 $("#discardScanReviewBtn")?.addEventListener("click",()=>{discardScanReviewDraft();const status=$("#scanStatus");if(status){status.className="notice";status.dataset.scanReviewStatusKey="scan_review_discarded";status.textContent=t("scan_review_discarded")}});
-$("#scanReviewRows")?.addEventListener("change",event=>{const input=event.target.closest?.("[data-scan-gear-rarity]");if(input)updateScanReviewRaritySummary(event.currentTarget,input.dataset.scanGearRarity,input.dataset.scanGearPart)});
+$("#scanReviewRows")?.addEventListener("change",handleScanReviewChange);
 $("#scanUnlinkedWeapons")?.addEventListener("click",event=>{const button=event.target.closest?.("[data-associate-weapon]");if(button)associatePendingSquadWeapon(button)});
 let scanReviewStatusBeforeLanguage=null;
 document.addEventListener("change",event=>{
@@ -3717,12 +4055,15 @@ $("#scanFile").addEventListener("change",async e=>{
   const limit=playerScanBatchLimit(scanType);
   if(files.length>limit){const status=$("#scanStatus");if(status){status.className="notice warn";status.textContent=lang.startsWith("fr")?`Choisis au maximum ${limit} capture${limit>1?"s":""}.`:`Choose at most ${limit} screenshot${limit>1?"s":""}.`}e.target.value="";return}
   const selection=beginNewScanFileSelection();
+  const selectionIsCurrent=()=>selection.fileRevision===scanFileSelectionRevision&&selection.revision===scanInputRevision&&selection.owner===pendingScanOwner();
+  const finishLoading=beginActiveLoadingOperation("scan");
+  $("#scanStatus").textContent=t("analysis_busy");
   try{
-    await selection.clearPending;if(selection.fileRevision!==scanFileSelectionRevision)return;
+    await selection.clearPending;if(!selectionIsCurrent())return;
     const multi=scanType==="technology",selected=files;
     const cap=/^squad[1-4]$/.test(scanType)?Math.floor(MAX_FORMATION_BATCH_LENGTH/selected.length):multi?1_900_000:3_900_000;
     const images=[];for(const file of selected)images.push(await imageToDataUrlLimited(file,cap));
-    if(selection.fileRevision!==scanFileSelectionRevision)return;
+    if(!selectionIsCurrent())return;
     scanImageDataList=images;scanImageData=images[0]||null;
     const names=selected.map(file=>String(file.name||"capture.jpg"));scanImageNames=names;scanImageName=names.join(", ");
     updateTechnologyScanPreview(names);$("#clearScanCaptureBtn")?.classList.remove("hidden");
@@ -3730,9 +4071,10 @@ $("#scanFile").addEventListener("change",async e=>{
     if(multi)kept=await savePendingTechnologyFiles(selection.owner,selected);
     else if(!/^squad[1-4]$/.test(scanType))kept=await savePendingSingleScan(selection.owner,{scan_type:scanType,image_data_url:scanImageData,image_data_urls:images,name:scanImageName});
     else{const cleared=await Promise.all([clearPendingSingleScan(selection.owner),clearPendingTechnologyFiles(selection.owner)]);kept=cleared.every(Boolean)}
-    if(selection.fileRevision!==scanFileSelectionRevision)return;
+    if(!selectionIsCurrent())return;
     $("#scanStatus").className=kept?"notice":"notice warn";$("#scanStatus").textContent=t(kept?"scan_ready":"scan_pending_local_failed");
-  }catch{if(selection.fileRevision===scanFileSelectionRevision){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_error")}}
+  }catch{if(selectionIsCurrent()){$("#scanStatus").className="notice warn";$("#scanStatus").textContent=t("scan_error")}}
+  finally{finishLoading()}
 });
 $("#scanType")?.addEventListener("change",()=>{
   const next=$("#scanType")?.value,previous=$("#scanType")?.dataset.previousType;
@@ -4081,6 +4423,17 @@ function rosterConfidenceLabel(value){
   return confidence===null?rosterSyncCopy(lang).unknownConfidence:Math.round(confidence*100)+" %";
 }
 function resolveCurrentRosterScanDraft(rows=rosterScanDraft){return resolveRosterScanRows(rows,currentRosterIdentityCollections(),currentRosterIdentityContext())}
+function addManualRosterScanMember(){
+  const status=$("#rosterScanStatus");
+  if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}
+  if($("#rosterScanAnalyzeBtn")?.disabled||rosterImportInFlight)return;
+  collectRosterScanDraftFromDom();
+  rosterScanDraft.push({name:"",role:null,hq_level:null,power_m:null,confidence:null,source:"manual_import",rank_confirmation_status:"unconfirmed"});
+  if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;
+  renderRosterScanDraft();
+  if(status){status.className="notice";status.textContent=t("roster_manual_help");status.classList.remove("hidden")}
+  $("#rosterScanDraft")?.querySelector("[data-roster-draft-index]:last-child input")?.focus();
+}
 function rosterIdentityStatusText(r){
   const pOld=Number(r?.previous_power_m),pNow=Number(r?.power_m),powerDelta=Number.isFinite(pOld)&&Number.isFinite(pNow)?` · ${fmtPower(pOld)} → ${fmtPower(pNow)}`:"";
   if(r?.identity_status==="existing")return `${t("roster_identity_existing")}${powerDelta}`;
@@ -4095,6 +4448,11 @@ function renderRosterScanDraft(){
   const box=$("#rosterScanDraft"),btn=$("#rosterScanImportBtn");if(!box)return;if(btn)btn.classList.toggle("hidden",!rosterScanDraft.length);
   if(btn)btn.disabled=rosterScanHasUnresolvedIdentity(rosterScanDraft);
   box.innerHTML=rosterScanDraft.length?rosterScanDraft.map((r,i)=>`<div class="rosterScanRow" data-roster-draft-index="${i}"><input data-rsf="name" value="${esc(r.name)}" aria-label="${esc(t("nickname"))}"/><select data-rsf="role"><option value=""${!r.role?" selected":""}>—</option>${["R5","R4","R3","R2","R1"].map(x=>`<option value="${x}"${r.role===x?" selected":""}>${x}</option>`).join("")}</select><input data-rsf="hq" inputmode="numeric" value="${esc(r.hq_level??"")}" placeholder="QG"/><input data-rsf="power" inputmode="decimal" value="${esc(r.power_m??"")}" placeholder="M"/><button type="button" data-roster-draft-remove="${i}">×</button><div class="rosterScanConfidence">${esc(t("roster_scan_confidence"))}: ${esc(rosterConfidenceLabel(r.confidence))}</div>${r.confidence===null||r.confidence===0?`<div class="privacyText">${esc(rosterSyncCopy(lang).verifyName)}</div>`:""}<div class="rosterIdentityStatus ${esc(r.identity_status||"new")}">${esc(rosterIdentityStatusText(r))}${r.identity_status==="possible"?` <button type="button" class="smallBtn" data-roster-confirm-match="${i}">${esc(t("roster_identity_use_match"))}</button>`:""}</div></div>`).join(""):`<div class="privacyText">${esc(t("roster_scan_empty"))}</div>`;
+  box.querySelectorAll("[data-roster-draft-index]").forEach(row=>{
+    const select=row.querySelector('[data-rsf="role"]');
+    select?.setAttribute("aria-label",t("roster_rank_required"));
+    if(select&&!select.value){const help=document.createElement("div");help.className="privacyText";help.textContent=t("roster_rank_required");row.append(help)}
+  });
   box.querySelectorAll("[data-roster-draft-remove]").forEach(b=>b.addEventListener("click",()=>{rosterScanDraft.splice(Number(b.dataset.rosterDraftRemove),1);renderRosterScanDraft()}));
   box.querySelectorAll("[data-roster-confirm-match]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.rosterConfirmMatch),row=rosterScanDraft[i];if(!row)return;rosterScanDraft[i]=confirmRosterScanPossibleMatch(row,currentRosterIdentityCollections(),currentRosterIdentityContext());renderRosterScanDraft()}));
   box.querySelectorAll("[data-roster-draft-index]").forEach(row=>row.addEventListener("change",()=>{const i=Number(row.dataset.rosterDraftIndex),cur=rosterScanDraft[i];if(!cur)return;cur.name=row.querySelector('[data-rsf="name"]')?.value.trim()||"";cur.role=scanRole(row.querySelector('[data-rsf="role"]')?.value);cur.rank_confirmation_status="unconfirmed";const h=Number(row.querySelector('[data-rsf="hq"]')?.value),p=Number(String(row.querySelector('[data-rsf="power"]')?.value||"").replace(',','.'));cur.hq_level=Number.isFinite(h)&&h>0?Math.round(h):null;cur.power_m=Number.isFinite(p)&&p>0?Math.round(p*100)/100:null;rosterScanDraft[i]=resolveRosterScanRows([cur],currentRosterIdentityCollections(),currentRosterIdentityContext())[0];renderRosterScanDraft()}));
@@ -4111,9 +4469,25 @@ async function persistRosterCandidate(candidate){
   if(!betaConsentAccepted())throw Object.assign(new Error("roster_consent_required"),{code:"roster_consent_required",write_state:"not_attempted"});
   const owner=String(cloudSession.user.id);
   if(String(candidate.player_id||"")!==owner)throw Object.assign(new Error("account_owner_mismatch"),{code:"account_owner_mismatch"});
-  const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),
-    body:JSON.stringify(rosterImportRequest(candidate,lang))},20000);
+  // A response belongs to an account AND alliance scope, never just a user ID.
+  // A delayed refusal is equally unsafe to merge into a newly selected alliance.
+  const scope=value=>JSON.stringify([String(value?.player_id||""),
+    normalizeServerId(value?.player?.server_id),normalizeServerId(value?.alliance?.server_id||value?.player?.server_id),
+    normalizeAllianceTag(value?.alliance?.tag),String(value?.alliance?.id||"")]);
+  const requestScope=scope(candidate);
+  if(scope(state)!==requestScope)throw Object.assign(new Error("roster_context_changed"),{code:"roster_context_changed",write_state:"not_attempted"});
+  let reply;
+  try{
+    reply=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),
+      body:JSON.stringify(rosterImportRequest(candidate,lang))},20000);
+  }catch(error){
+    if(String(cloudSession?.user?.id||"")!==owner||scope(state)!==requestScope)
+      throw Object.assign(new Error("roster_context_changed"),{code:"roster_context_changed"});
+    throw error;
+  }
+  const {response:r,json:j}=reply;
   if(String(cloudSession?.user?.id||"")!==owner)throw Object.assign(new Error("account_changed"),{code:"account_changed"});
+  if(scope(state)!==requestScope)throw Object.assign(new Error("roster_context_changed"),{code:"roster_context_changed"});
   if(j?.state?.player_id&&String(j.state.player_id)!==owner)throw Object.assign(new Error("profile_owner_mismatch"),{code:"profile_owner_mismatch"});
   if(j?.operation==="alliance_roster"&&j.player_id!==owner)
     throw Object.assign(new Error("profile_owner_mismatch"),{code:"profile_owner_mismatch"});
@@ -4137,10 +4511,18 @@ function renderRosterSyncDiagnostic(status){
   }
   details.querySelector("pre").textContent=JSON.stringify(rosterDiagnostics(),null,2);
 }
+function beginRosterUpdateFeedback(source,status){
+  const button=$("#"+(source==="roster_scan"?"rosterScanImportBtn":"rosterImportBtn"));
+  if(status){status.className="notice";status.textContent=t("alliance_update_busy");status.classList.remove("hidden")}
+  const finish=beginLoadingButton(analysisIndicator,button,{kind:"roster:update",
+    label:()=>t("alliance_update_busy"),idleLabel:()=>t(source==="roster_scan"?"roster_scan_import":"import_roster")});
+  return finish;
+}
 let rosterImportInFlight=false;
 async function applyRosterRows(imported,{complete=false,status=null,source="manual_import"}={}){
   if(rosterImportInFlight)return null;
   rosterImportInFlight=true;
+  const finishLoading=beginRosterUpdateFeedback(source,status);
   try{
   const requestOwner=String(cloudSession?.user?.id||"");
   const now=new Date().toISOString(),rows=(Array.isArray(imported)?imported:[]).filter(x=>x?.name).map(row=>({...row,server_id:state.player?.server_id||row.server_id||"",alliance_tag:state.alliance?.tag||row.alliance_tag||"",source,updated_at:row.updated_at||now}));
@@ -4154,7 +4536,7 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
   candidate.alliance.roster_sync_status="pending";candidate.alliance.roster_sync_error=null;candidate.alliance.updated_at=now;candidate.sync.sources={...candidate.sync.sources,alliance:true};
   let synced=null;const rosterRevision=localStateRevision;
   try{synced=await persistRosterCandidate(candidate)}catch(error){
-    if(error?.code==="account_changed"||(requestOwner&&String(cloudSession?.user?.id||"")!==requestOwner))return {...result,synced:false,error};
+    if(error?.code==="account_changed"||error?.code==="roster_context_changed"||(requestOwner&&String(cloudSession?.user?.id||"")!==requestOwner))return {...result,synced:false,error};
     const changedDuringSync=localStateRevision!==rosterRevision;
     let merged=mergeStateProtected(state,candidate,{preferBase:changedDuringSync});
     merged=reconcileCloudSquads(state,candidate,merged).state;
@@ -4172,6 +4554,7 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
         diagnostic.write_state==="not_attempted"?null:copy.partial,copy.refresh].filter(Boolean).join(" ");
       status.classList.remove("hidden");renderRosterSyncDiagnostic(status);
     }
+    if(status)status.textContent+=` [${diagnostic.code}]`;
     return {...result,synced:false,error,diagnostic,locally_saved:locallySaved};
   }
   cloudRevision=synced?.updated_at||cloudRevision;
@@ -4194,10 +4577,11 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
     $("#"+status.id+"PrivateDiagnostic")?.remove();status.className=stillPending?"notice warn":"notice";
     status.textContent=stillPending?[rosterSyncCopy(lang).pending,rosterSyncCopy(lang).refresh].join(" "):
       complete?t("roster_import_complete_result",{active:result.summary.active_count,review:result.summary.review_count,added:result.summary.added,returned:result.summary.returned}):t("roster_import_partial_result",{count:result.summary.imported,added:result.summary.added,returned:result.summary.returned});
+    if(!stillPending)status.textContent=`${t("alliance_update_done")} — ${status.textContent}`;
     status.classList.remove("hidden");
   }
   return {...result,synced:!stillPending,roster_persisted:true};
-  }finally{rosterImportInFlight=false}
+  }finally{finishLoading();rosterImportInFlight=false}
 }
 function renderRosterScanFiles(){
   const info=$("#rosterScanFileInfo"),list=$("#rosterScanFileList");
@@ -4219,31 +4603,45 @@ $("#rosterScanFiles")?.addEventListener("change",async e=>{
   const kept=await persistPendingRosterQueue();
   if(!kept&&rosterScanFiles.length){const st=$("#rosterScanStatus");if(st){st.className="notice warn";st.textContent=t("scan_pending_local_failed");st.classList.remove("hidden")}}
 });
+$("#rosterScanAddMemberBtn")?.addEventListener("click",()=>{
+  addManualRosterScanMember();
+});
 $("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{
   const status=$("#rosterScanStatus"),btn=$("#rosterScanAnalyzeBtn");
+  if(btn.disabled)return;
   if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}
   if(!rosterScanFiles.length){if(status){status.className="notice warn";status.textContent=t("roster_scan_choose_first");status.classList.remove("hidden")}return}
   if(!requireBetaAccess()||!requireBetaConsent())return;
   if(!cloudSession?.access_token){openDrawer("account");return}
   const revision=scanInputRevision,owner=pendingScanOwner(),files=[...rosterScanFiles];
   const isCurrent=()=>revision===scanInputRevision&&owner===pendingScanOwner();
+  collectRosterScanDraftFromDom();
   btn.disabled=true;const old=btn.textContent;btn.textContent=t("scan_processing");
+  const manualBtn=$("#rosterScanAddMemberBtn");if(manualBtn)manualBtn.disabled=true;
   if(status){status.className="notice";status.textContent=t("roster_scan_processing",{count:files.length});status.classList.remove("hidden")}
+  const finishAnalysis=beginActiveLoadingOperation("scan:roster");
+  let unreadable=0;
   try{
-    let rows=[];
+    let rows=[...rosterScanDraft];
     for(let i=0;i<files.length;i++){
       const image=await imageToDataUrl(files[i]);if(!isCurrent())return;
       const {response:r,json:j}=await fetchWarBoostScan({scan_type:"alliance_roster",locale:lang,image_data_url:image,current_state:state});
       if(!isCurrent())return;
-      if(!r.ok)throw new Error(j.message||j.error||"scan_failed");
+      if(!r.ok){
+        if(r.status===422&&j?.error==="scan_no_useful_data"){unreadable++;continue}
+        throw new Error(j.message||j.error||"scan_failed");
+      }
       rows=mergeRosterScanRows(rows,j.roster_rows||[]);
+      // Keep every completed image even if a later image times out. Owner/revision
+      // was checked above; no import or cloud mutation takes place here.
+      rosterScanDraft=resolveCurrentRosterScanDraft(rows);renderRosterScanDraft();
       if(status)status.textContent=t("roster_scan_progress",{done:i+1,total:files.length,rows:rows.length});
     }
     if(!isCurrent())return;
     rosterScanDraft=resolveCurrentRosterScanDraft(mergeRosterScanRows([],rows));renderRosterScanDraft();
-    if(status){status.className="notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})}
-  }catch(e){if(isCurrent()&&status){status.className="notice warn";status.textContent=analysisFailureMessage(e,t)}}
-  finally{if(isCurrent()){btn.disabled=false;btn.textContent=old}}
+    if(status){status.className=unreadable?"notice warn":"notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})+(unreadable?" "+t("roster_scan_unreadable",{count:unreadable}):"")}
+  }catch(e){if(isCurrent()&&status){status.className="notice warn";status.textContent=analysisFailureMessage(e,t)+(unreadable?" "+t("roster_scan_unreadable",{count:unreadable}):"")}}
+  finally{finishAnalysis();if(isCurrent()){btn.disabled=false;btn.textContent=old;if(manualBtn)manualBtn.disabled=false}}
 });
 $("#rosterScanImportBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}collectRosterScanDraftFromDom();if(rosterScanHasUnresolvedIdentity(rosterScanDraft)){if(status){status.className="notice warn";status.textContent=t("roster_identity_unresolved_block");status.classList.remove("hidden")}renderRosterScanDraft();return}if(rosterScanDraft.some(row=>!scanRole(row?.role))){if(status){status.className="notice warn";status.textContent="Chaque grade doit être confirmé avant l’import.";status.classList.remove("hidden")}return}const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=await applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result?.synced){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";void clearPendingRosterFiles(pendingScanOwner());renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
 
@@ -4252,10 +4650,12 @@ $("#rosterImportBtn")?.addEventListener("click",async()=>{
   const now=new Date().toISOString(),complete=$("#rosterFullSnapshot")?.checked===true;
   const imported=parseRosterImport($("#rosterImportText")?.value||"",{now}).map(row=>({...row,server_id:state.player?.server_id||row.server_id||"",alliance_tag:state.alliance?.tag||row.alliance_tag||""}));
   if(!imported.length){if(status){status.className="notice warn";status.textContent=t("import_error")}return}
+  if(imported.some(row=>!/^R[1-5]$/.test(row.role||""))){if(status){status.className="notice warn";status.textContent=t("roster_rank_required")}return}
   const result=await applyRosterRows(imported,{complete,status,source:"manual_import"});if(!result?.synced)return;
   if($("#rosterImportText"))$("#rosterImportText").value="";if($("#rosterFullSnapshot"))$("#rosterFullSnapshot").checked=false;
 });
 $("#eventImportBtn")?.addEventListener("click",async()=>{
+  if($("#eventImportBtn")?.disabled)return;
   const status=$("#eventImportStatus");
   if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}
   const parsed=parseParticipationImport($("#eventImportText")?.value||""),members=state.alliance.members||[];
@@ -4267,10 +4667,14 @@ $("#eventImportBtn")?.addEventListener("click",async()=>{
   }
   if(!applied){if(status){status.className="notice warn";status.textContent=t("participation_import_none",{errors:parsed.errors.length,unmatched:unmatched+ambiguous})}return}
   state.alliance.updated_at=new Date().toISOString();state.sync.sources={...state.sync.sources,alliance:true};saveState();
+  const finishLoading=beginLoadingButton(analysisIndicator,$("#eventImportBtn"),{kind:"participation",
+    label:()=>t("syncing"),idleLabel:()=>t("participation_import_button")});
+  try{
   const synced=await pushServerState();
   if(!synced?.ok){showAllianceRoleGuard(status);return}
   if(status){status.className="notice";status.textContent=t("participation_import_done",{count:applied,unmatched:unmatched+ambiguous,errors:parsed.errors.length})}
   if($("#eventImportText"))$("#eventImportText").value="";
+  }finally{finishLoading()}
 });
 
 $("#shareInviteBtn").addEventListener("click",async()=>{const btn=$("#shareInviteBtn");if(!requireBetaAccess()||!requireBetaConsent())return;if(!["R4","R5"].includes(normalizedRole(state.player?.role))){inviteMessage(t("alliance_invite_manager_only"));return}if(!cloudSession?.access_token){inviteMessage(t("alliance_invite_connect"));openDrawer("account");return}const original=btn?.textContent;if(btn){btn.disabled=true;btn.textContent="…"}try{const saved=await pushServerState();if(!saved?.ok)throw Object.assign(new Error("cloud_save_required"),{code:"cloud_save_required"});const {response:rr,json:jj}=await fetchJsonBounded("/api/invite",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({name:state.alliance.name||state.alliance.tag||"WarBoost"})},18000);if(!rr.ok||!jj.invite_code)throw Object.assign(new Error(jj.message||jj.error||"invite_failed"),{code:jj.error||"invite_failed"});const code=jj.invite_code;state.alliance.id=jj.alliance?.id||state.alliance.id;state.alliance.server_id=jj.alliance?.server_id||state.player?.server_id||state.alliance.server_id;state.alliance.tag=jj.alliance?.tag||state.alliance.tag;state.alliance.name=jj.alliance?.name||state.alliance.name;state.alliance.invite_code=code;state.alliance.role=jj.role||state.alliance.role;state.alliance.management_verified=jj.scope_verified===true&&["R4","R5"].includes(normalizedRole(jj.role));state.vs.our_alliance=state.alliance.tag;state.sync.sources={...state.sync.sources,alliance:true};saveState();inviteMessage(t("alliance_invite_ready_scoped",{server:state.alliance.server_id||state.player?.server_id||"—",alliance:state.alliance.tag||"—"}),true);const url=`${location.origin}${location.pathname}?join=${encodeURIComponent(code)}`,text=`WarBoost · ${t("server")} ${state.alliance.server_id||state.player?.server_id||"—"} · ${state.alliance.tag||"—"} · ${code}`;try{if(navigator.share)await navigator.share({title:`WarBoost · ${t("alliance")}`,text,url});else{await navigator.clipboard.writeText(`${text}\n${url}`);if(btn){btn.textContent=t("copy");setTimeout(()=>{btn.textContent=t("share")},1400)}}}catch{}}catch(e){const key={manager_role_required:"alliance_invite_manager_only",manager_roster_match_required:"alliance_manager_roster_match_required",manager_roster_role_required:"alliance_invite_manager_only",alliance_roster_identity_ambiguous:"alliance_roster_identity_ambiguous",lastwar_nickname_required:"lastwar_nickname_required",lastwar_server_required:"lastwar_server_required",lastwar_alliance_required:"lastwar_alliance_required",alliance_space_exists_invitation_required:"alliance_space_exists_invitation_required",alliance_owner_scope_conflict:"alliance_owner_scope_conflict",alliance_scope_ambiguous_admin_required:"alliance_scope_ambiguous_admin_required",cloud_save_required:"offline_keep"}[e.code]||"alliance_invite_failed";inviteMessage(t(key))}finally{if(btn){btn.disabled=false;if(btn.textContent==="…")btn.textContent=original||t("share")}}});
@@ -4324,8 +4728,9 @@ $("#supportBtn")?.addEventListener("click",()=>{openDrawer("support");renderSupp
 $("#supportSubmitBtn")?.addEventListener("click",submitSupportTicket);
 $("#supportRefreshBtn")?.addEventListener("click",refreshSupportTickets);
 
+const LIVE_COMMERCIAL_CONSENT_VERSION_UI="2026-11-pro-live-managed-payments-v1";
 function proMessage(text,ok=false){const el=$("#proMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
-function renderCommercialPreview(){const box=$("#proCommercialPreview"),price=$("#commercialPreviewPrice"),note=$("#commercialPreviewNote");if(!box)return;if(isNativeWarBoost){box.classList.add("hidden");return}box.classList.remove("hidden");if(price)price.textContent=formatProPrice(proState.plan||{amount:499,currency:"eur"});if(note)note.textContent=proState.mode==="test"?"STRIPE TEST uniquement — aucun paiement réel. Abonnement mensuel, renouvellement automatique, résiliation en fin de période dans le portail client. TVA, factures et CGV à finaliser avant toute vente réelle.":t("commercial_preview_note")}
+function renderCommercialPreview(){const box=$("#proCommercialPreview"),price=$("#commercialPreviewPrice"),note=$("#commercialPreviewNote");if(!box)return;if(isNativeWarBoost){box.classList.add("hidden");return}box.classList.remove("hidden");if(price)price.textContent=formatProPrice(proState.plan||{amount:499,currency:"eur"});if(note)note.textContent=proState.mode==="test"?"STRIPE TEST uniquement — aucun paiement réel. Abonnement mensuel, renouvellement automatique, résiliation en fin de période dans le portail client. TVA, factures et CGV à finaliser avant toute vente réelle.":proState.mode==="live"?t("pro_live_price_note"):t("commercial_preview_note")}
 function renderPro(){
   const pill=$("#proPill"),btn=$("#proActionBtn"),title=$("#proTitle"),price=$("#proPrice"),section=$("#proSection");
   if(!pill||!btn)return;
@@ -4338,23 +4743,28 @@ function renderPro(){
   }
   let portalBtn=$("#proPortalBtn");
   if(portalBtn&&!portalBtn.dataset.billingBound){portalBtn.addEventListener("click",()=>openProAction(true));portalBtn.dataset.billingBound="true"}
-  if(portalBtn){portalBtn.classList.toggle("hidden",!proState.can_manage_billing||safeLaunchBetaMode()||Boolean(proState.subscription));portalBtn.disabled=!proState.test_payments_enabled}
+  if(portalBtn){portalBtn.classList.toggle("hidden",!proState.can_manage_billing||safeLaunchBetaMode()||Boolean(proState.subscription));portalBtn.disabled=!proState.portal_enabled}
+  const live=proState.mode==="live",liveReady=Boolean(proState.live_payments_enabled);
+  $("#proLiveConsentRow")?.classList.toggle("hidden",!live||!liveReady||Boolean(proState.subscription));
+  $("#proLivePriceNote")?.classList.toggle("hidden",!live);
+  $("#proLiveDisabledNote")?.classList.toggle("hidden",!live||liveReady||Boolean(proState.subscription));
   const logged=Boolean(cloudSession?.user),beta=safeLaunchBetaMode(),included=Boolean(beta&&logged&&proState.active);
   section?.classList.toggle("betaIncluded",beta);renderCommercialPreview();
-  pill.textContent=included?"BÊTA GRATUITE":proState.active?"PRO · TEST":"FREE";
+  pill.textContent=included?"BÊTA GRATUITE":proState.active?(live?"PRO · LIVE":"PRO · TEST"):"FREE";
   pill.classList.toggle("active",Boolean(proState.active));
   if(!logged){title.textContent="WarBoost PRO";price.textContent=t("connect_for_pro");btn.textContent=t("login");btn.disabled=false;return}
   if(included){title.textContent=t("beta_pro_included");price.textContent="Accès PRO gratuit conservé pendant la phase bêta.";btn.textContent=proState.can_manage_billing?"Portail client · TEST":t("beta_pro_included");btn.disabled=!proState.can_manage_billing||!proState.test_payments_enabled;return}
-  title.textContent=proState.active?"WarBoost PRO · TEST":"WarBoost PRO — 4,99 € / mois";
-  price.textContent=proState.subscription?.cancel_at_period_end?`Résiliation prévue à l’échéance : ${proState.subscription.current_period_end||"à confirmer"}`:proState.active?"Abonnement TEST actif — aucun débit réel.":"Abonnement mensuel préparé. Aucun paiement réel disponible.";
+  title.textContent=live?"WarBoost PRO — 4,99 € / mois":proState.active?"WarBoost PRO · TEST":"WarBoost PRO — 4,99 € / mois";
+  price.textContent=proState.subscription?.cancel_at_period_end?`Résiliation prévue à l’échéance : ${proState.subscription.current_period_end||"à confirmer"}`:
+    live?t("pro_live_price_note"):proState.active?"Abonnement TEST actif — aucun débit réel.":"Abonnement mensuel préparé. Aucun paiement réel disponible.";
   const manage=Boolean(proState.subscription);
-  btn.textContent=manage?"Portail client · TEST":"Essayer Checkout · TEST";
-  btn.disabled=!proState.test_payments_enabled||!proState.configured;
+  btn.textContent=manage?(live?t("pro_live_portal"):"Portail client · TEST"):live?t("pro_live_subscribe"):"Essayer Checkout · TEST";
+  btn.disabled=manage?!proState.portal_enabled:live?!liveReady:!proState.test_payments_enabled||!proState.configured;
 }
-async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok)proState={...j,active:Boolean(j.active),beta:j.beta!==false,payments_enabled:false,test_payments_enabled:Boolean(j.test_payments_enabled),entitlement:j.entitlement||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null}}renderPro();const result=new URLSearchParams(location.search).get("billing");if(result==="test-success")proMessage(proState.active?"Droit PRO confirmé par le serveur. Aucun paiement réel.":"Retour Checkout TEST reçu. Activation en attente du webhook Stripe ; ce retour seul ne donne aucun droit.")}
+async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,portal_enabled:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok)proState={...j,active:Boolean(j.active),beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),test_payments_enabled:Boolean(j.test_payments_enabled),live_payments_enabled:Boolean(j.live_payments_enabled),portal_enabled:Boolean(j.portal_enabled),entitlement:j.entitlement||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,portal_enabled:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,portal_enabled:false,commercial_preview:true,subscription:null}}renderPro();const result=new URLSearchParams(location.search).get("billing");if(result==="test-success")proMessage(proState.active?"Droit PRO confirmé par le serveur. Aucun paiement réel.":"Retour Checkout TEST reçu. Activation en attente du webhook Stripe ; ce retour seul ne donne aucun droit.");if(result==="live-success")proMessage(t("pro_live_success"),false)}
 function requirePro(){if(safeLaunchBetaMode()){if(!requireBetaAccess()||!requireBetaConsent())return false;return true}if(proState.active)return true;openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"center"}),160);proMessage(cloudSession?.user?t("pro_required"):t("connect_pro"));return false}
 let proActionBusy=false;
-async function openProAction(portalOnly=false){if(!cloudSession?.user){openDrawer("account");return}if(proState.beta!==false&&!proState.can_manage_billing){proMessage(t("beta_payment_disabled"),true);return}if(!proState.test_payments_enabled||proActionBusy){proMessage(t("commercial_payment_not_ready"));return}const btn=$("#proActionBtn");proActionBusy=true;if(btn){btn.disabled=true;btn.textContent="…"}try{const action=portalOnly===true||proState.subscription||(safeLaunchBetaMode()&&proState.can_manage_billing)?"portal":"checkout",{response:r,json:j}=await fetchJsonBounded("/api/pro",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({action})},15000);const url=new URL(String(j.url||""),"https://invalid.test");if(!r.ok||j.test!==true||url.protocol!=="https:"||!["checkout.stripe.com","billing.stripe.com"].includes(url.hostname))throw new Error(j.message||j.error||t("commercial_payment_not_ready"));location.href=url.href}catch(e){proMessage(e.message||t("commercial_payment_not_ready"))}finally{proActionBusy=false;renderPro()}}
+async function openProAction(portalOnly=false){if(!cloudSession?.user){openDrawer("account");return}if(proState.beta!==false&&!proState.can_manage_billing){proMessage(t("beta_payment_disabled"),true);return}if(proActionBusy){proMessage(t("commercial_payment_not_ready"));return}const live=proState.mode==="live",enabled=live?proState.live_payments_enabled:proState.test_payments_enabled;const action=portalOnly===true||proState.subscription||(safeLaunchBetaMode()&&proState.can_manage_billing)?"portal":"checkout";if(action==="checkout"&&!enabled){proMessage(live?t("pro_live_disabled"):t("commercial_payment_not_ready"));return}if(action==="portal"&&!proState.portal_enabled){proMessage(t("commercial_payment_not_ready"));return}if(live&&action==="checkout"&&!$("#proLiveConsent")?.checked){proMessage(t("pro_live_consent_required"));return}const btn=$("#proActionBtn");proActionBusy=true;if(btn){btn.disabled=true;btn.textContent="…"}try{const payload={action};if(live&&action==="checkout")payload.consent_version=LIVE_COMMERCIAL_CONSENT_VERSION_UI;const {response:r,json:j}=await fetchJsonBounded("/api/pro",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify(payload)},15000);const url=new URL(String(j.url||""),"https://invalid.test"),modeOkay=live?j.live===true:j.test===true;if(!r.ok||!modeOkay||url.protocol!=="https:"||!["checkout.stripe.com","billing.stripe.com"].includes(url.hostname))throw new Error(j.message||j.error||t("commercial_payment_not_ready"));location.href=url.href}catch(e){proMessage(e.message||t("commercial_payment_not_ready"))}finally{proActionBusy=false;renderPro()}}
 $("#betaConsent")?.addEventListener("change",async e=>{const key=betaConsentStorageKey();if(!key){e.target.checked=false;return}if(e.target.checked){localStorage.setItem(key,"1");if(cloudSession?.access_token){resetBootstrapDiagnostics("consent");const pulled=await restoreAuthenticatedProfile(safeClone(state),{reason:"consent"});/* legacy: await pullServerState(safeClone(state),{fastRestore:true}) */if((pulled?.ok||pulled?.cloud_empty)&&betaAccessAllowed()&&hasMeaningfulCore(state))void pushServerState();void refreshPro()}}else{localStorage.removeItem(key);betaState={...betaState,restore_error:null};render();renderBeta();renderPro()}});
 $("#betaRestoreRetryBtn")?.addEventListener("click",retryCloudProfileRestore);
 $("#betaFeedbackBtn")?.addEventListener("click",()=>{if(!requireBetaAccess())return;openDrawer("feedback")});
@@ -4442,7 +4852,23 @@ $("#resendOtpBtn")?.addEventListener("click",async()=>{
 }
 $("#betaCodeActivateBtn")?.addEventListener("click",activateBetaCode);
 $("#betaAccessCode")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();activateBetaCode()}});
-$("#logoutBtn")?.addEventListener("click",async()=>{const signedOutUserId=String(cloudSession?.user?.id||"");if(signedOutUserId&&String(state?.player_id||"")===signedOutUserId)rememberAccountState(signedOutUserId,state);if(cloud)await cloud.auth.signOut();clearSignedOutAuthUi();cloudSession=null;cloudRevision=null;proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};betaState={...betaState,allowed:false,access_status:"sign-in-required"};render();renderAuth();renderBeta()});
+$("#logoutBtn")?.addEventListener("click",async()=>{
+  const signedOutUserId=String(cloudSession?.user?.id||""),signOutClient=cloud;
+  if(signedOutUserId&&String(state?.player_id||"")===signedOutUserId)rememberAccountState(signedOutUserId,state);
+  // Let the Auth adapter emit its synchronous SIGNED_OUT transition while it
+  // can still observe the old owner (pending scan/session cleanup).
+  let signOutPending;
+  try{if(signOutClient)signOutPending=signOutClient.auth.signOut()}catch{}
+  // Hide private data synchronously. A delayed/rejected logout must neither
+  // leave it visible nor clear a different account that signs in meanwhile.
+  clearSignedOutAuthUi();cloudSession=null;cloudRevision=null;
+  proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};
+  betaState={...betaState,allowed:false,access_status:"sign-in-required"};
+  render();renderAuth();renderBeta();
+  try{await signOutPending}catch{
+    // Local signout is already complete. No stale state mutation or retry.
+  }
+});
 mountAccountDeletion({
   getSession:()=>cloudSession,
   onDeleting:()=>{suppressPush=true;clearTimeout(pushTimer);clearTimeout(cloudRetryTimer);cloudRetryTimer=null},

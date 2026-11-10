@@ -5,14 +5,36 @@ import {readFile} from "node:fs/promises";
 // Read-only audit of objects reachable from this branch but not its remote base.
 // Never scans local backups, credentials, production data or other branches.
 const git=(...args)=>execFileSync("git",["--no-optional-locks",...args],{encoding:"utf8"});
-assert.equal(git("branch","--show-current").trim(),"public-beta-safe-launch");
-const base=git("rev-parse","origin/public-beta-safe-launch").trim();
+const branch=git("branch","--show-current").trim();
+const bases=new Map([
+  ["public-beta-safe-launch","origin/public-beta-safe-launch"],
+  ["warboost-secure-release-prep-20261110-local","origin/warboost-secure-release-prep-20261110"]
+]);
+const baseRef=bases.get(branch);
+assert.ok(baseRef,`privacy check is not enabled for branch ${branch}`);
+const base=git("rev-parse",baseRef).trim();
 git("merge-base","--is-ancestor",base,"HEAD");
 const commits=git("rev-list",`${base}..HEAD`).trim().split(/\s+/).filter(Boolean);
 const forbidden=/^(?:attached_assets\/|\.local\/private-(?:git-backups|scan-captures)\/|generated-artifacts\/)/;
 for(const commit of commits){
   const paths=git("diff-tree","--no-commit-id","--name-only","--diff-filter=AM","-r",commit).trim().split("\n").filter(Boolean);
   assert.ok(!paths.some(path=>forbidden.test(path)),`private/generated asset introduced by ${commit}`);
+}
+const pendingPaths=new Set([
+  ...git("diff","--name-only","--diff-filter=AM").trim().split("\n"),
+  ...git("diff","--cached","--name-only","--diff-filter=AM").trim().split("\n"),
+  ...git("ls-files","--others","--exclude-standard").trim().split("\n")
+].filter(Boolean));
+const pendingCredential=/(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{12,}|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g;
+for(const path of pendingPaths){
+  assert.ok(!forbidden.test(path)&&!/^private-download\/|\.zip$/i.test(path),`private/generated path in pending changes: ${path}`);
+  const bytes=await readFile(path);
+  assert.ok(!bytes.subarray(0,4).equals(Buffer.from([0x50,0x4b,0x03,0x04])),`archive in pending file: ${path}`);
+  const text=bytes.toString("utf8");
+  for(const match of text.matchAll(pendingCredential)){
+    if(/fixture|dummy|placeholder|not[_-]?real|test[_-]?only/i.test(match[0]))continue;
+    assert.fail(`credential-like value in pending file: ${path}`);
+  }
 }
 let blobs=0,pngs=0;
 for(const entry of git("rev-list","--objects","HEAD",`^${base}`).trim().split("\n").filter(Boolean)){
@@ -35,4 +57,7 @@ for(const file of [".gitignore",".replitignore"]){
   for(const path of ["/attached_assets/","/.local/private-git-backups/","/.local/private-scan-captures/","/generated-artifacts/"])
     assert.ok(contents.split(/\r?\n/).includes(path),`${file} must exclude ${path}`);
 }
-console.log(`PASS pre-push privacy: ${commits.length} commits, ${blobs} new blobs, ${pngs} new PNGs; no private upload, recovery bundle or PNG metadata.`);
+const vercelIgnore=(await readFile(".vercelignore","utf8")).split(/\r?\n/);
+for(const path of ["/private-download/","/attached_assets/","/.local/","/generated-artifacts/"])
+  assert.ok(vercelIgnore.includes(path),`.vercelignore must exclude ${path}`);
+console.log(`PASS pre-push privacy: ${commits.length} commits, ${blobs} new blobs, ${pngs} new PNGs; private uploads, source archive and generated artifacts excluded.`);

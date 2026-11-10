@@ -13,7 +13,7 @@ for(const file of ["index.html","security.html","privacy.html","delete-account.h
   assert.equal(await read(`web-dist/${file}`),await read(file),`${file} must remain the original web source`);
 }
 assert.doesNotMatch(await read("web-dist/index.html"),/class="warboost-native"|warboost-source-commit|\/native\.css/);
-for(const name of ["api","server.mjs","supabase","scripts","package.json",".git",".env","mobile","native.css"]){
+for(const name of ["api","server.mjs","supabase","scripts","package.json",".git",".env","mobile","native.css","private-download",".local","attached_assets"]){
   await assert.rejects(access(`web-dist/${name}`),{code:"ENOENT"});
 }
 async function verifyFiles(dir){

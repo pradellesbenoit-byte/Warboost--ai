@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import {COMPLETED_LOCALES} from "../lib/locales/completed.js";
 import {translator,translationDiagnostics} from "../i18n.js";
+import {gearRepairPreviewCopy} from "../lib/gear-repair-preview-copy.js";
 let checks=0;
 for(const [code,copy] of Object.entries(COMPLETED_LOCALES))for(const [key,text] of Object.entries(copy)){
   const source=translator("en-GB")(key);
@@ -16,5 +17,15 @@ for(const [code,copy] of Object.entries(COMPLETED_LOCALES))for(const [key,text] 
 const keys=new Set();
 for(const path of ["index.html","app.js",...fs.readdirSync("lib").filter(name=>name.endsWith(".js")).map(name=>`lib/${name}`)])
   for(const match of fs.readFileSync(path,"utf8").matchAll(/(?:data-i18n(?:-aria|-alt|-placeholder)?=["']|\bt\(["'])([a-z][a-z0-9_]+)["']/g))keys.add(match[1]);
+// These dynamic prefixes and gear-repair labels are supplied by locale-specific
+// copy providers rather than the static i18n packs.
+for(const key of [...keys])if(key.endsWith("_")&&(key.startsWith("account_sync_")||key.startsWith("squad_compare_")))keys.delete(key);
+for(const key of [...keys])if(key.startsWith("gear_repair_"))keys.delete(key);
 for(const row of translationDiagnostics([...keys]))assert.deepEqual(row.missing,[],`${row.code}: unresolved UI keys`);
+const gearEnglish=gearRepairPreviewCopy("en");
+for(const code of ["fr","en",...Object.keys(COMPLETED_LOCALES)]){
+  const copy=gearRepairPreviewCopy(code);
+  assert.deepEqual(Object.keys(copy).sort(),Object.keys(gearEnglish).sort(),`${code}: gear-repair copy keys`);
+  for(const [key,text] of Object.entries(copy))assert.ok(typeof text==="string"&&text.trim()&&text!==key,`${code}/${key}: missing gear-repair translation`);
+}
 console.log(`PASS ${checks} completed translations in ${Object.keys(COMPLETED_LOCALES).length} non-English locales; placeholders, numbers, tags, URLs retained; ${keys.size} UI keys resolve in 23 locales. Native review not simulated.`);
