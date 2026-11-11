@@ -24,6 +24,15 @@ assert.doesNotMatch(await read("web-dist/index.html"),/class="warboost-native"|w
 for(const name of ["api","server.mjs","supabase","scripts","package.json",".git",".env","mobile","native.css","private-download",".local","attached_assets"]){
   await assert.rejects(access(`web-dist/${name}`),{code:"ENOENT"});
 }
+const webNativeBridge=await read("web-dist/lib/mobile-capacitor.js");
+assert.match(webNativeBridge,/Native Capacitor bridge is not bundled in the web output/);
+assert.doesNotMatch(webNativeBridge,/@capacitor\/|from\s*["']node:/,
+  "the web-only native bridge stub must not import native or Node dependencies");
+const nativeBuilder=await read("scripts/build-mobile-web.mjs");
+assert.ok(nativeBuilder.indexOf('await moduleTree("lib/mobile-runtime.js")')<nativeBuilder.indexOf('await build({entryPoints:["mobile/capacitor-entry.js"]'),
+  "the native builder must replace the web-only stub with the actual Capacitor bundle");
+assert.match(nativeBuilder,/outfile:`\$\{out\}\/lib\/mobile-capacitor\.js`/,
+  "the native Capacitor bridge keeps its existing mobile output path");
 const sourceApp=await read("app.js");
 const sourceAppImports=collectLocalJsImports(sourceApp);
 const versionedAppImports=sourceAppImports.filter(reference=>reference.query);
@@ -75,8 +84,8 @@ async function verifyFiles(dir){
     for(const reference of collectLocalJsImports(source)){
       assert.equal(reference.query,"",`${file}: local JS import must not contain a query suffix`);
       if(file==="web-dist/lib/mobile-runtime.js"&&reference.path==="./mobile-capacitor.js"){
-        assert.match(await read(file),/if\(!isNativeWarBoost\)return/);
-        continue;
+        assert.match(await read(file),/if\(!isNativeWarBoost\)return/,
+          "web runtime must continue to guard the lazy native import");
       }
       const relativeFile=file.slice("web-dist/".length);
       const target=posix.normalize(posix.join(posix.dirname(relativeFile),reference.path));
