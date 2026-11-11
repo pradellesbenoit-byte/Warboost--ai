@@ -8,7 +8,8 @@ const git=(...args)=>execFileSync("git",["--no-optional-locks",...args],{encodin
 const branch=git("branch","--show-current").trim();
 const bases=new Map([
   ["public-beta-safe-launch","origin/public-beta-safe-launch"],
-  ["warboost-secure-release-prep-20261110-local","origin/warboost-secure-release-prep-20261110"]
+  ["warboost-secure-release-prep-20261110-local","origin/warboost-secure-release-prep-20261110"],
+  ["warboost-preview-isolation-20261110-local","origin/warboost-secure-release-prep-20261110"]
 ]);
 const baseRef=bases.get(branch);
 assert.ok(baseRef,`privacy check is not enabled for branch ${branch}`);
