@@ -95,7 +95,7 @@ const wrapper=app.slice(app.indexOf("const eventResearchPending="),app.indexOf("
 let resolveRequest,generated=0;
 const state={alliance:{id:"a"}},session={user:{id:"u"}};
 const sandbox={state,cloudSession:session,lang:"fr",hasDeclaredAllianceCommandRole:()=>true,
-  $:()=>null,authHeaders:x=>x,generateAllianceEventPlan:()=>generated++,
+  $:()=>null,authHeaders:x=>x,analysisIndicator:{begin:()=>()=>{}},generateAllianceEventPlan:()=>generated++,
   fetchSessionCritical:()=>new Promise(resolve=>resolveRequest=resolve)};
 vm.runInNewContext(`${wrapper};globalThis.recalculate=recalculateAllianceEventPlan`,sandbox);
 const job=sandbox.recalculate("desert_storm");

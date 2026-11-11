@@ -172,7 +172,9 @@ globalThis.fetch=async(url,options={})=>{
   const u=new URL(String(url));assert.equal(u.origin,"https://profile-isolation-fixture.invalid");
   const method=options.method||"GET",token=String(options.headers?.authorization||"").replace(/^Bearer\s+/i,"");
   const owner=sessionOwner.get(token)||actor.id;calls.push({table:u.pathname.split("/").at(-1),method,owner});
-  if(u.pathname==="/auth/v1/user")return new Response(JSON.stringify(forged?{}:{id:owner}),{status:forged?401:200});
+  if(u.pathname==="/auth/v1/user")return new Response(JSON.stringify(forged?{}:{
+    id:owner,email:`${owner}@example.test`,email_confirmed_at:"2026-11-01T00:00:00.000Z"
+  }),{status:forged?401:200});
   if(u.pathname==="/rest/v1/wb1_profiles"){
     if(method==="PATCH"){
       const state=JSON.parse(options.body).state;

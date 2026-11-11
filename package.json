@@ -16,6 +16,8 @@
     "test:squad-scan-targets": "node scripts/verify-squad-scan-targets.mjs",
     "test:analysis-indicator": "node scripts/verify-analysis-indicator.mjs",
     "test:prepush-privacy": "node scripts/verify-prepush-privacy.mjs",
+    "preview:game-data-reset": "node scripts/preview-game-data-reset.mjs --environment=test --branch=warboost-preview-isolation-20261110 --project-ref=zaioadmbhqzeihkvdjsd",
+    "test:game-data-reset-plan": "node scripts/verify-game-data-reset-plan.mjs",
     "test:translation-completion": "node scripts/verify-translation-completion.mjs",
     "audit:languages": "node scripts/audit-language-coverage.mjs",
     "test:squad-provenance": "node scripts/verify-squad-provenance.mjs",
