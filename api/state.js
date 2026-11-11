@@ -260,4 +260,97 @@ export default async function handler(req,res){
       try{rosterRepair=await canonicalizeAllianceState(current,playerId)}
       catch{rosterRepair={state:current,changed:false,status:"canonicalization_deferred"}}
       const finalState=rosterRepair.state;
-      return res.status(200).json({ok:true,state:finalState,updated_at:row?.updated_at||finalState.updated_at,hero_history_recovery:recoverySummary(n
+      return res.status(200).json({ok:true,state:finalState,updated_at:row?.updated_at||finalState.updated_at,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
+    }
+
+    saveStage="authentication";
+    const {user}=await requireProductUser(req,{consent:true,trace}),playerId=user.id,userMode=userConfigured()&&Boolean(access);
+    const getOwn=()=>userMode?getProfileForUser(playerId,access):getProfile(playerId);
+    const saveOwn=(state,expectedUpdatedAt)=>userMode?saveProfileForUserIfUnchanged(playerId,state,access,expectedUpdatedAt):saveProfileIfUnchanged(playerId,state,expectedUpdatedAt);
+    const snapshotOwn=(state,source)=>userMode?insertSnapshotForUser(playerId,state,access,source):insertSnapshot(playerId,state,source);
+    const historyOwn=limit=>userMode?listSnapshotsForUser(playerId,access,limit):listSnapshots(playerId,limit);
+
+    if(req.method==="GET"){
+      const profileStarted=Date.now();
+      let row;
+      try{row=await getOwn();trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"ok",error:null})}
+      catch(error){trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"error",error:String(error?.code||error?.name||"profile_read_failed")});throw error}
+      if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:userMode?"user-rls":"service",restore_mode:"full",restore_trace:restoreTrace});
+      const current=normalizeState({...row.state,player_id:playerId});
+      // Legacy HF8.6.18 verifier marker only: fastRestore; restore_mode:"fast-profile"; status:"deferred_fast_restore"; if(fastRestore)return
+      let snapshots=[];try{snapshots=await historyOwn(100)}catch{}
+      const recovered=recoverHeroData(current,{historicalStates:(snapshots||[]).map(x=>({state:x?.state,captured_at:x?.captured_at,source:x?.source||"wb1_snapshots"}))});
+      let finalState=normalizeState({...recovered.state,player_id:playerId}),updatedAt=row.updated_at||finalState.updated_at;
+      const rosterRepair=await canonicalizeAllianceState(finalState,playerId);
+      finalState=rosterRepair.state;
+      const normalizedHeroPowerDataChanged=heroPowerRepairProjection(row.state)!==heroPowerRepairProjection(finalState);
+      if(recovered.changed||rosterRepair.changed||normalizedHeroPowerDataChanged){
+        try{const saved=await saveOwn(finalState,row.updated_at||null);finalState=normalizeState(saved?.state||finalState);updatedAt=saved?.updated_at||updatedAt}
+        catch(error){if(error?.code!=="profile_write_conflict")throw error;const latest=await getOwn();finalState=normalizeState({...latest?.state,player_id:playerId});updatedAt=latest?.updated_at||updatedAt}
+      }
+      return res.status(200).json({ok:true,state:finalState,updated_at:updatedAt,hero_history_recovery:recoverySummary(recovered),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:userMode?"user-rls":"service",restore_trace:restoreTrace});
+    }
+
+    if(req.method==="POST"){
+      saveStage="validation";
+      const contentType=String(req.headers?.["content-type"]||"").split(";")[0].trim().toLowerCase();
+      if(contentType&&contentType!=="application/json")
+        return res.status(415).json({error:"unsupported_content_type"});
+      if(!req.body?.state||typeof req.body.state!=="object"||Array.isArray(req.body.state))
+        return res.status(400).json({error:"invalid_payload"});
+      saveStage="profile_read";
+      const previous=await getOwn();
+      saveStage="version_check";
+      const baseUpdatedAt=req.body?.base_updated_at===null?null:String(req.body?.base_updated_at||"").trim()||null;
+      if(previous?.updated_at&&baseUpdatedAt!==String(previous.updated_at)){
+        return res.status(409).json({error:"profile_write_conflict",message:"Le profil a été modifié sur un autre appareil.",state:previous.state,updated_at:previous.updated_at});
+      }
+      if(!previous?.state&&baseUpdatedAt!==null)return res.status(409).json({error:"profile_write_conflict",message:"Le profil cloud a changé. Recharge les données avant de réessayer.",state:null,updated_at:previous?.updated_at||null});
+      // An empty cloud profile may be the result of a deliberate reset. A stale
+      // browser must not silently recreate it, even when base_updated_at is null.
+      // The client must explicitly acknowledge creating a new empty-cloud profile.
+      if(!previous?.state&&req.body?.empty_profile_ack!==true){
+        return res.status(409).json({error:"empty_profile_ack_required",message:"Le profil cloud est vide. Confirme explicitement la création d’un nouveau profil avant d’enregistrer des données locales.",state:null,updated_at:previous?.updated_at||null});
+      }
+      saveStage="normalization";
+      let incoming=normalizeState({...req.body?.state,player_id:playerId});
+      let recovered=null;
+      if(previous?.state){
+        const previousState=normalizeState({...previous.state,player_id:playerId});
+        incoming.player={...incoming.player,...mergePlayerHqFields(previousState.player,incoming.player,{sameAccount:true})};
+        recovered=recoverHeroData(incoming,{historicalStates:[{state:previous.state,captured_at:previous.updated_at,source:"previous_profile"}]});
+        incoming=normalizeState({...recovered.state,player_id:playerId});
+        if(heroDataSignature(previous.state)!==heroDataSignature(incoming)){
+          saveStage="history";writeState="unknown";
+          try{await snapshotOwn(normalizeState({...previous.state,player_id:playerId}),"warboost-prewrite")}catch{}
+        }
+      }
+      saveStage="alliance_reconciliation";writeState="unknown";
+      // Profile writes hydrate canonical metadata, but never mutate an alliance.
+      // Explicit authorized alliance/sync operations own roster/rank/link updates.
+      const rosterRepair=await canonicalizeAllianceState(incoming,playerId,{allowWrites:false});
+      incoming=rosterRepair.state;
+      saveStage="profile_write";
+      let row;
+      try{row=await saveOwn(incoming,previous?.updated_at||null)}
+      catch(error){
+        if(error?.code!=="profile_write_conflict")throw error;
+        saveStage="profile_read";
+        const latest=await getOwn();
+        return res.status(409).json({error:"profile_write_conflict",message:error.message,state:latest?.state||null,updated_at:latest?.updated_at||null});
+      }
+      writeState=row?.state&&row?.updated_at?"confirmed":"unknown";saveStage="response";
+      return res.status(200).json({ok:true,write_confirmed:Boolean(row?.state&&row?.updated_at),state:row?.state||incoming,updated_at:row?.updated_at||incoming.updated_at,hero_history_recovery:recoverySummary(recovered),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:userMode?"user-rls":"service"});
+    }
+
+    res.setHeader("Allow","GET, POST");return res.status(405).json({error:"method_not_allowed"});
+  }catch(e){
+    if(diagnosticPost){
+      const status=Number.isInteger(e.status)&&e.status>=400&&e.status<=599?e.status:500;
+      const code=publicSaveError(e,status);
+      if(code==="BETA_CONSENT_REQUIRED")saveStage="consent";
+      return res.status(status).json({error:code});
+    }
+    return res.status(e.status||500).json({error:e.code||"state_error",message:e.message,restore_trace:restoreTrace});
+  }
+}
