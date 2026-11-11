@@ -7,6 +7,7 @@ import {recoverHeroData,heroDataSignature} from "../lib/hero-history.js";
 import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../lib/beta-access.js";
 import {requireProductUser} from "../lib/pro-access.js";
 import {requireUser} from "../lib/auth.js";
+import {assertFreeAccount} from "../lib/free-access.js";
 import {createGearRepairHandler} from "../lib/gear-repair-server.js";
 import {GEAR_REPAIR_RELEASE_APPROVED} from "../lib/gear-repair-contract.js";
 import {gearRepairRpcForUser} from "../lib/supabase.js";
@@ -228,7 +229,7 @@ export default async function handler(req,res){
     const access=accessToken(req),fastRestore=req.method==="GET"&&fastRestoreRequested(req);
     // Explicit read-only check: no invitation acceptance, repair, merge or profile write.
     if(req.method==="GET"&&req.query?.action==="sync_status"){
-      const user=await requireUser(req);
+      const user=assertFreeAccount(await requireUser(req));
       if(betaConsentHeader(req)!==BETA_CONSENT_VERSION)
         return res.status(428).json({error:"BETA_CONSENT_REQUIRED"});
       const row=configured()?await getProfile(String(user.id),{timeoutMs:4000}):
@@ -242,7 +243,7 @@ export default async function handler(req,res){
     // while the browser aborted at 6.5 s; on a Vercel cold start this could never reliably finish.
     if(fastRestore){
       const authStarted=Date.now();let user;
-      try{user=await requireUser(req);trace({stage:"AUTH_USER",ms:Math.max(0,Date.now()-authStarted),status:"ok",error:null})}
+      try{user=assertFreeAccount(await requireUser(req));trace({stage:"AUTH_USER",ms:Math.max(0,Date.now()-authStarted),status:"ok",error:null})}
       catch(error){trace({stage:"AUTH_USER",ms:Math.max(0,Date.now()-authStarted),status:"error",error:String(error?.code||error?.name||"auth_failed")});throw error}
       if(betaConsentHeader(req)!==BETA_CONSENT_VERSION)return res.status(428).json({error:"BETA_CONSENT_REQUIRED",message:"Consentement bêta requis avant l'envoi de données",restore_trace:orderedRestoreTrace(restoreTrace)});
       const playerId=String(user.id),profileStarted=Date.now();
