@@ -1,5 +1,13 @@
-import {cp, mkdir, readFile, readdir, rm} from "node:fs/promises";
+import {cp, mkdir, readFile, readdir, rm, writeFile} from "node:fs/promises";
 import {posix} from "node:path";
+import {
+  collectLocalJsImports,
+  collectServiceWorkerModuleUrls,
+  relativeOutputSpecifier,
+  rewriteLocalJsImports,
+  rewriteServiceWorkerModuleUrls,
+  versionedLocalJsPath,
+} from "./web-module-urls.mjs";
 
 // Publish original browser sources, never the native HTML transformations.
 // API routes remain at repository root for Vercel's serverless discovery.
@@ -13,21 +21,37 @@ for(const file of [...pages,"manifest.webmanifest",...(await readdir(".")).filte
 }
 await cp("assets",`${out}/assets`,{recursive:true});
 const visited=new Set();
-async function copyModule(file){
-  if(visited.has(file))return;
+async function copyModule(file,query=""){
+  file=posix.normalize(file);
   if(!/^(?:lib\/[\w/-]+\.js|[\w-]+\.js)$/.test(file))throw new Error(`Non-public module: ${file}`);
-  visited.add(file);
+  const outputPath=versionedLocalJsPath(file,query);
+  const key=`${file}\0${query}`;
+  if(visited.has(key))return outputPath;
+  visited.add(key);
   const source=await readFile(file,"utf8");
-  await mkdir(posix.dirname(`${out}/${file}`),{recursive:true});
-  await cp(file,`${out}/${file}`);
-  for(const match of source.matchAll(/(?:from\s*|import\s*\(?\s*)["'](\.[^"']+\.js)(?:\?[^"']*)?["']/g)){
+  const references=collectLocalJsImports(source);
+  for(const reference of references){
     // Generated only for Capacitor; guarded by isNativeWarBoost in this module.
-    if(file==="lib/mobile-runtime.js"&&match[1]==="./mobile-capacitor.js")continue;
-    await copyModule(posix.normalize(posix.join(posix.dirname(file),match[1])));
+    if(file==="lib/mobile-runtime.js"&&reference.path==="./mobile-capacitor.js")continue;
+    await copyModule(
+      posix.normalize(posix.join(posix.dirname(file),reference.path)),
+      reference.query,
+    );
   }
+  let output= rewriteLocalJsImports(source,(reference)=>{
+    if(file==="lib/mobile-runtime.js"&&reference.path==="./mobile-capacitor.js")return reference.specifier;
+    const targetSource=posix.normalize(posix.join(posix.dirname(file),reference.path));
+    const targetOutput=versionedLocalJsPath(targetSource,reference.query);
+    return relativeOutputSpecifier(outputPath,targetOutput);
+  });
+  if(file==="sw.js")output=rewriteServiceWorkerModuleUrls(output);
+  const destination=`${out}/${outputPath}`;
+  await mkdir(posix.dirname(destination),{recursive:true});
+  await writeFile(destination,output);
+  return outputPath;
 }
 for(const file of roots)await copyModule(file);
 // Keep modules explicitly cached by the PWA even if not statically imported.
 const sw=await readFile("sw.js","utf8");
-for(const match of sw.matchAll(/["']\/(lib\/[^"'?]+\.js)(?:\?[^"']*)?["']/g))await copyModule(match[1]);
-console.log(`PASS web build: ${pages.length} original pages, PWA and ${visited.size} browser modules in ${out}; native/server/private files excluded.`);
+for(const reference of collectServiceWorkerModuleUrls(sw))await copyModule(reference.path,reference.query);
+console.log(`PASS web build: ${pages.length} original pages, PWA and ${visited.size} browser modules/assets in ${out}; local module cache versions use query-free paths; native/server/private files excluded.`);
