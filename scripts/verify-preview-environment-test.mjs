@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {validatePreviewEnvironment} from "../lib/preview-environment.js";
 
 const projectRef = "zaioadmbhqzeihkvdjsd";
-const branch = "warboost-secure-release-prep-20261110";
+const branch = "warboost-preview-isolation-20261110";
 const jwt = (ref, role) => `header.${Buffer.from(JSON.stringify({ref, role})).toString("base64url")}.signature`;
 const valid = () => ({
   VERCEL_ENV: "preview",
@@ -17,11 +17,14 @@ const cases = [
   ["production build is not changed by the staging guard", {VERCEL_ENV: "production"}, true],
   ["isolated target branch and project pass", valid(), true],
   ["wrong preview branch is blocked", {...valid(), VERCEL_GIT_COMMIT_REF: "main"}, false],
+  ["previous secure release branch is not accepted", {...valid(), VERCEL_GIT_COMMIT_REF: "warboost-secure-release-prep-20261110"}, false],
   ["production Supabase URL is blocked", {...valid(), SUPABASE_URL: "https://production.supabase.co"}, false],
   ["production project public key is blocked", {...valid(), SUPABASE_ANON_KEY: jwt("production", "anon")}, false],
   ["production project service key is blocked", {...valid(), SUPABASE_SERVICE_ROLE_KEY: jwt("production", "service_role")}, false],
+  ["missing service role key is blocked", {...valid(), SUPABASE_SERVICE_ROLE_KEY: ""}, false],
   ["opaque publishable key is blocked without project proof", {...valid(), SUPABASE_ANON_KEY: "sb_publishable_fixture"}, false],
   ["Stripe credentials are blocked for sync-only Preview", {...valid(), STRIPE_SECRET_KEY: "sk_test_fixture"}, false],
+  ["TEST billing mode is blocked for sync-only Preview", {...valid(), WARBOOST_COMMERCIAL_MODE: "test"}, false],
   ["OpenAI credentials are blocked to prevent paid requests", {...valid(), OPENAI_API_KEY: "fixture-only"}, false],
   ["LIVE activation settings are blocked", {...valid(), WARBOOST_LIVE_PAYMENTS_ENABLED: "false"}, false],
   ["conflicting Supabase URL aliases are blocked", {...valid(), NEXT_PUBLIC_SUPABASE_URL: "https://production.supabase.co"}, false],

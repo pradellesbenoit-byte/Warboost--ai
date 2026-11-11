@@ -96,8 +96,13 @@ test("invalid/low visual scores, unsupported contexts and insufficient features 
 test("contradictory OCR/name/portrait never selects one identity automatically",()=>{
   assert.equal(squadEvidence({...text("DVA"),name:"Mason"}).name,null);
   const clash=squadEvidence({...text("DVA"),...visual("Mason")});
-  assert.equal(clash.name,null);assert.equal(clash.evidence.identity.method,"conflicting_identity");
-  assert.equal(clash.evidence.identity.tier,"low");
+  assert.equal(clash.name,"DVA");
+  assert.equal(clash.evidence.identity.method,"visible_text");
+  assert.equal(clash.evidence.identity.tier,"strong");
+  assert.equal(clash.evidence.identity.requires_confirmation,true);
+  assert.equal(clash.evidence.identity.portrait.candidate,"Mason");
+  assert.equal(clash.evidence.identity.portrait.reference_verified,false);
+  assert.equal(clash.evidence.identity.portrait.diagnostic.reason,"weak_portrait_overruled");
   assert.equal(squadEvidence({name_text:"Mar",name_evidence:"visible_fragment",name_confidence:.96,...visual("Mason")}).name,null);
 });
 test("31 names are present in prompts; old shortlist does not constrain recognition",()=>{
@@ -192,7 +197,7 @@ test("actual form collector excludes unchecked proposals but accepts individual 
   });
   assert.equal(applied.complete,false);assert.deepEqual(confirmedSquadHints(applied.state,1,"owner"),[]);
   assert.equal(owned.patch.squads[0].power,44.43);
-  inputs[0].value="Williams";acknowledgements.slice(1).forEach(ack=>{ack.checked=true});
+  inputs[0].value="Williams";acknowledgements.forEach(ack=>{ack.checked=true});
   form=collect(draft);
   assert.equal(form.issues.length,0);
   owned=applyOwnedScanReview(draft,"owner",form.edits);
