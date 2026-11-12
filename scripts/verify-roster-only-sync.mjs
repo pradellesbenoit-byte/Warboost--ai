@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import {readFile} from "node:fs/promises";
-import {rosterImportRequest,adoptRosterOnlyReply,rosterReplyConfirmed,safeRosterDiagnostic} from "../lib/roster-sync.js";
+import {rosterImportRequest,adoptRosterOnlyReply,rosterReplyConfirmed,rosterStateFingerprint,safeRosterDiagnostic} from "../lib/roster-sync.js";
 
 const api=await readFile(new URL("../api/sync.js",import.meta.url),"utf8"),imports={};
+const app=await readFile(new URL("../app.js",import.meta.url),"utf8");
 for(const [,names,path] of api.matchAll(/^import\s+\{([^}]+)\}\s+from\s+["']([^"']+)["'];/gm)){
   const module=await import(new URL(path,new URL("../api/sync.js",import.meta.url)));
   for(const name of names.split(",").map(n=>n.trim()))imports[name]=module[name];
@@ -15,13 +16,16 @@ const member={name:"Synthetic Manager",player_id:owner,warboost_linked:true,iden
 const other={name:"Synthetic Existing",role:"R3",server_id:"123",alliance_tag:"TEST",hq_level:30,power_m:150};
 const newMember={name:"Synthetic New",role:"R2",server_id:"123",alliance_tag:"TEST",hq_level:20,power_m:99};
 function harness(options={}){
+  const initialRoster=copy(options.canonicalMembers||[member,other]);
+  const profileMember=initialRoster.find(row=>row.player_id===owner)||initialRoster[0]||member;
   const cloud=imports.normalizeState({player_id:owner,player:{name:member.name,server_id:"123",role:"R4",hq_level:35},
-    alliance:{id:"synthetic-alliance",tag:"TEST",server_id:"123",members:[member,other],roster_updated_at:revision},
+    alliance:{id:"synthetic-alliance",tag:"TEST",server_id:"123",members:initialRoster,roster_updated_at:revision},
     squads:[{id:1,power:44.43,updated_at:revision}],drone:{level:100},technology:{hero_tech_pct:17},
     hero_progression:[{hero_name:"Murphy",stars:5}],confirmed_history:["synthetic-confirmation"]});
   // Saved opaque historical fields must remain byte-for-byte unchanged, not normalized and rewritten.
   cloud.extra_history={retained:true};
-  let canonical=copy([member,other]),version=revision,attempts=0,successfulWrites=0,otherWrites=0;
+  cloud.player.name=profileMember.name;cloud.player.hq_level=profileMember.hq_level;
+  let canonical=copy(initialRoster),version=revision,attempts=0,successfulWrites=0,otherWrites=0;
   if(options.role)canonical[0].role=options.role;
   if(options.unlinked){canonical[0].warboost_linked=false;delete canonical[0].player_id}
   const before=copy(cloud);
@@ -41,8 +45,8 @@ function harness(options={}){
       const observed=copy(canonical);
       if(options.readMismatch&&successfulWrites)observed.pop();
       return {alliance:{id:"synthetic-alliance",server_id:"123",tag:"TEST",owner_player_id:"another-account",
-        roster:observed,updated_at:version,roster_updated_at:version},
-        membership:{alliance_id:id,player_id:owner,role:options.role||"R4"},
+         roster:observed,updated_at:version,roster_updated_at:version},
+         membership:{alliance_id:id,player_id:owner,role:options.role||profileMember.role||"R4"},
         roster:copy(canonical),cloud_roster:[],roster_tombstones:[]};
     },
     updateAllianceScopeRoster:async patch=>{
@@ -63,7 +67,7 @@ function harness(options={}){
   vm.runInContext(api.replace(/^import .*$/gm,"").replace("export default async function handler","async function handler"),context);
   const local=copy(cloud);local.squads[0].power=99;local.player.hq_level=1;
   local.drone.level=1;local.technology.hero_tech_pct=0;local.extra_history={retained:false};
-  local.alliance.members=[newMember];local.alliance.roster_sync_status="pending";
+  local.alliance.members=copy(options.localMembers||[newMember]);local.alliance.roster_sync_status="pending";
   const request=rosterImportRequest(local,"fr");
   async function send(body=request){
     const res={statusCode:200,setHeader(){},status(n){this.statusCode=n;return this},json(data){this.body=copy(data);return this}};
@@ -104,6 +108,60 @@ await test("adopting roster response preserves all local personal changes and pe
   assert.deepEqual(concurrent.alliance.members,h.local.alliance.members);
   assert.equal(concurrent.alliance.roster_sync_status,"pending");
   assert.throws(()=>adoptRosterOnlyReply(h.local,{...result.body,player_id:"another-account"}));
+});
+await test("Seth I power 304.3M to 318M survives unrelated local change and server refresh",async()=>{
+  const seth={...member,name:"Seth I",role:"R4",hq_level:35,power_m:304.3,updated_at:revision};
+  const another={...other,name:"Synthetic Other",role:"R3",hq_level:30,power_m:150,updated_at:revision};
+  const progressed={...seth,power_m:318,updated_at:nextRevision};
+  const h=harness({canonicalMembers:[seth,another],localMembers:[progressed,another]});
+  const result=await h.send();
+  assert.equal(result.statusCode,200,JSON.stringify(result.body));
+  assert.ok(rosterReplyConfirmed(result.body));
+  assert.equal(h.canonical.length,2,"existing member is updated without adding a duplicate");
+  assert.equal(h.canonical[0].power_m,318);
+  assert.equal(h.canonical[0].hq_level,35);
+  assert.equal(h.canonical[0].role,"R4");
+  assert.equal(h.canonical[1].power_m,150,"another member is unchanged");
+  const rosterBefore=rosterStateFingerprint(h.local),localDuring=copy(h.local);
+  localDuring.player.hq_level=36;
+  localDuring.player_context={...(localDuring.player_context||{}),objective:"local-change"};
+  assert.equal(rosterStateFingerprint(localDuring),rosterBefore,"unrelated profile changes do not count as roster edits");
+  const refreshed=adoptRosterOnlyReply(localDuring,result.body,{changedDuringSync:true,rosterChangedDuringSync:false});
+  const refreshedSeth=refreshed.alliance.members.filter(row=>row.name==="Seth I");
+  assert.equal(refreshedSeth.length,1);
+  assert.equal(refreshedSeth[0].power_m,318,"confirmed canonical reply replaces the stale displayed value");
+  assert.equal(refreshed.alliance.members.find(row=>row.name==="Synthetic Other").power_m,150);
+  assert.equal(refreshed.alliance.roster_sync_status,"synced");
+  assert.equal(refreshed.player.hq_level,36,"concurrent personal data remains untouched");
+  assert.equal(refreshed.player_context.objective,"local-change");
+});
+await test("missing scan fields preserve confirmed roster values during server merge",async()=>{
+  const seth={...member,name:"Seth I",role:"R4",hq_level:35,power_m:304.3,updated_at:revision};
+  const another={...other,name:"Synthetic Other",role:"R3",hq_level:30,power_m:150,updated_at:revision};
+  const incomplete={...seth,hq_level:null,power_m:null,updated_at:nextRevision};
+  const h=harness({canonicalMembers:[seth,another],localMembers:[incomplete,another]});
+  const result=await h.send();
+  assert.equal(result.statusCode,200,JSON.stringify(result.body));
+  const refreshed=adoptRosterOnlyReply(h.local,result.body);
+  const saved=refreshed.alliance.members.find(row=>row.name==="Seth I");
+  assert.equal(saved.hq_level,35);assert.equal(saved.power_m,304.3);assert.equal(saved.role,"R4");
+  assert.equal(refreshed.alliance.members.length,2);
+});
+await test("a real concurrent roster edit stays pending and is never overwritten by an older reply",async()=>{
+  const h=harness(),result=await h.send();
+  const concurrentLocal=copy(h.local);
+  concurrentLocal.alliance.members[0]={...concurrentLocal.alliance.members[0],power_m:333};
+  const fingerprint=rosterStateFingerprint(concurrentLocal);
+  const retained=adoptRosterOnlyReply(concurrentLocal,result.body,{changedDuringSync:true,rosterChangedDuringSync:true});
+  assert.equal(retained.alliance.members[0].power_m,333);
+  assert.equal(retained.alliance.roster_sync_status,"pending");
+  assert.equal(retained.alliance.roster_updated_at,revision,"do not advance CAS revision while retaining unsent local roster edits");
+  assert.equal(rosterStateFingerprint(retained),fingerprint);
+});
+await test("app roster apply and retry paths compare roster-specific fingerprints",()=>{
+  assert.match(app,/const rosterAtRequest=rosterStateFingerprint\(state\)/);
+  assert.match(app,/rosterChangedDuringSync=rosterStateFingerprint\(state\)!==rosterAtRequest/);
+  assert.match(app,/rosterChangedDuringSync\}\);/);
 });
 await test("empty or complete smaller imports never implicitly remove members",async()=>{
   const h=harness(),empty=await h.send({...h.request,roster_patch:{...h.request.roster_patch,members:[]}});

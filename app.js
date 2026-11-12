@@ -62,7 +62,7 @@ import {normalizeAvailabilityRecord,mergeAvailabilityRecords,countAvailabilitySl
 import {appendProgressionSnapshot,mergeProgressionSnapshots,progressionComparison,strongestSquadFromState} from "./lib/progression-history.js";
 import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMIT} from "./lib/roster-scan-queue.js";
 import {cleanRosterOcrName,rosterIdentityKey,resolveRosterScanRows,confirmRosterScanPossibleMatch,rosterScanHasUnresolvedIdentity} from "./lib/roster-identity-resolution.js";
-import {parseRosterConfidence,safeRosterDiagnostic,recordRosterDiagnostic,rosterDiagnostics,rosterFailureKind,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest} from "./lib/roster-sync.js";
+import {parseRosterConfidence,safeRosterDiagnostic,recordRosterDiagnostic,rosterDiagnostics,rosterFailureKind,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest,rosterStateFingerprint} from "./lib/roster-sync.js";
 import {rosterSyncCopy} from "./lib/roster-sync-copy.js";
 import {canonicalRosterMemberKey,previewAllianceRankChanges,applyAllianceRankChanges,permissionTransitions,rankManagementKey,confirmedCanonicalSelfRole} from "./lib/alliance-rank-management.js";
 import {preferredRankEvidence,rankConfirmationStatus} from "./lib/rank-provenance.js";
@@ -3608,8 +3608,10 @@ async function syncAll(){
     const userId=requestOwner,syncRevision=localStateRevision;
     if(!userId||String(state.player_id||"")!==userId)return;
     if(rosterPending){
+      const rosterAtRequest=rosterStateFingerprint(state);
       const reply=await persistRosterCandidate(state);
-      state=adoptRosterOnlyReply(state,reply,{changedDuringSync:localStateRevision!==syncRevision});
+      const rosterChangedDuringSync=rosterStateFingerprint(state)!==rosterAtRequest;
+      state=adoptRosterOnlyReply(state,reply,{changedDuringSync:localStateRevision!==syncRevision,rosterChangedDuringSync});
       saveState({cloudSave:false});render();
       $("#playerSyncInfo").textContent=state.alliance.roster_sync_status==="pending"?
         rosterSyncCopy(lang).pending:t("safe_sync_done");
@@ -4525,6 +4527,7 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
   const finishLoading=beginRosterUpdateFeedback(source,status);
   try{
   const requestOwner=String(cloudSession?.user?.id||"");
+  const rosterAtRequest=rosterStateFingerprint(state);
   const now=new Date().toISOString(),rows=(Array.isArray(imported)?imported:[]).filter(x=>x?.name).map(row=>({...row,server_id:state.player?.server_id||row.server_id||"",alliance_tag:state.alliance?.tag||row.alliance_tag||"",source,updated_at:row.updated_at||now}));
   if(!rows.length){if(status){status.className="notice warn";status.textContent=t("import_error");status.classList.remove("hidden")}return null}
   const candidate=JSON.parse(JSON.stringify(state)),result=applyRosterImportLifecycle({members:candidate.alliance.members,review:candidate.alliance.roster_review,former:candidate.alliance.former_members,removal_tombstones:candidate.alliance.roster_removal_tombstones},rows,{complete,now});
@@ -4559,8 +4562,9 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
   }
   cloudRevision=synced?.updated_at||cloudRevision;
   const changedDuringSync=localStateRevision!==rosterRevision;
+  const rosterChangedDuringSync=rosterStateFingerprint(state)!==rosterAtRequest;
   if(synced?.operation==="alliance_roster"){
-    state=adoptRosterOnlyReply(state,synced,{changedDuringSync});
+    state=adoptRosterOnlyReply(state,synced,{changedDuringSync,rosterChangedDuringSync});
   }else if(synced?.state){
     const remote=hydrateCloudState(synced.state,initialState(),requestOwner);
     const merged=preservePendingRoster(state,mergeStateProtected(state,remote,{preferBase:changedDuringSync}));
@@ -4571,7 +4575,9 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
   }
   if(synced?.operation!=="alliance_roster")
     state=adoptCanonicalPendingAccounts(state,synced?.state||null,{available:synced?.alliance_pending_source==="canonical"});
-  state.alliance.roster_sync_status=changedDuringSync&&state.alliance.roster_sync_status==="pending"?"pending":"synced";state.alliance.roster_sync_error=null;saveState({cloudSave:false});render();
+  const keepPending=synced?.operation==="alliance_roster"?rosterChangedDuringSync:
+    changedDuringSync&&state.alliance.roster_sync_status==="pending";
+  state.alliance.roster_sync_status=keepPending?"pending":"synced";state.alliance.roster_sync_error=null;saveState({cloudSave:false});render();
   const stillPending=state.alliance.roster_sync_status==="pending";
   if(status){
     $("#"+status.id+"PrivateDiagnostic")?.remove();status.className=stillPending?"notice warn":"notice";

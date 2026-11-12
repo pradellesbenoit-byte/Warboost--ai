@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import {readFile} from "node:fs/promises";
-import {parseRosterConfidence,safeRosterDiagnostic,recordRosterDiagnostic,rosterDiagnostics,rosterFailureKind,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest} from "../lib/roster-sync.js";
+import {parseRosterConfidence,safeRosterDiagnostic,recordRosterDiagnostic,rosterDiagnostics,rosterFailureKind,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest,rosterStateFingerprint} from "../lib/roster-sync.js";
 import {ROSTER_SYNC_LOCALES,rosterSyncCopy} from "../lib/roster-sync-copy.js";
 import {applyRosterImportLifecycle} from "../lib/alliance-roster-lifecycle.js";
 import {createAnalysisIndicator,beginLoadingButton} from "../lib/analysis-indicator.js";
@@ -74,7 +74,7 @@ function browserContext(){
     normalizeServerId,normalizeAllianceTag,
     betaAccessAllowed:()=>true,betaConsentAccepted:()=>true,authHeaders:h=>h,cloudRevision:revision,
     localStateRevision:0,lang:"fr",t:key=>key,parseRosterConfidence,safeRosterDiagnostic,
-     recordRosterDiagnostic,rosterFailureKind,rosterSyncCopy,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest,
+     recordRosterDiagnostic,rosterFailureKind,rosterSyncCopy,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest,rosterStateFingerprint,
     canonicalRosterMemberKey:r=>r.name,
     applyRosterImportLifecycle,
     mergeStateProtected:(base,incoming,{preferBase=false}={})=>structuredClone(preferBase?base:incoming),
