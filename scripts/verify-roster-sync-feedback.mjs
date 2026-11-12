@@ -70,7 +70,8 @@ const seed=()=>({player_id:owner,player:{name:"Synthetic Manager",server_id:"123
     roster_review:[],former_members:[],roster_updated_at:revision},sync:{sources:{}}});
 function browserContext(){
   const state=seed();
-  const context=vm.createContext({state,cloudSession:{access_token:"synthetic-session",user:{id:owner}},
+  const statusNodes={};
+  const context=vm.createContext({state,statusNodes,cloudSession:{access_token:"synthetic-session",user:{id:owner}},
     normalizeServerId,normalizeAllianceTag,
     betaAccessAllowed:()=>true,betaConsentAccepted:()=>true,authHeaders:h=>h,cloudRevision:revision,
     localStateRevision:0,lang:"fr",t:key=>key,parseRosterConfidence,safeRosterDiagnostic,
@@ -80,14 +81,14 @@ function browserContext(){
     mergeStateProtected:(base,incoming,{preferBase=false}={})=>structuredClone(preferBase?base:incoming),
     reconcileCloudSquads:(_base,_incoming,merged)=>({state:merged}),
     hydrateCloudState:v=>structuredClone(v),initialState:seed,preservePendingRoster:(_local,remote)=>remote,
-    adoptCanonicalPendingAccounts:v=>v,saveState:()=>true,render:()=>{},$:()=>null,
+    adoptCanonicalPendingAccounts:v=>v,saveState:()=>true,render:()=>{},$:(selector)=>statusNodes[String(selector).replace(/^#/,"")]||null,
     renderRosterSyncDiagnostic:()=>{},beginLoadingButton,analysisIndicator:createAnalysisIndicator()});
-  vm.runInContext(slice("function beginRosterUpdateFeedback(","let rosterImportInFlight=false;"),context);
+  vm.runInContext(slice("function setRosterUpdateStatus(","let rosterImportInFlight=false;"),context);
   vm.runInContext(slice("async function persistRosterCandidate(","function renderRosterSyncDiagnostic("),context);
   vm.runInContext(slice("let rosterImportInFlight=false;","function renderRosterScanFiles("),context);
   return context;
 }
-const status=()=>({id:"synthetic-status",textContent:"",classList:{remove(){}}});
+const status=()=>({id:"synthetic-status",textContent:"",className:"",classList:{remove(){}}});
 const row={name:"Synthetic New",role:"R3",hq_level:35,power_m:229};
 await test("late roster success or failure cannot overwrite a different alliance or server",async()=>{
   for(const field of ["tag","server_id","id"]){
@@ -142,10 +143,11 @@ await test("explicit canonical acknowledgement accepted, including safe older AP
   }
 });
 await test("retry retains original complete-snapshot date; duplicate simultaneous confirmation not sent",async()=>{
-  const c=browserContext();let finish,calls=0;
+  const c=browserContext(),notice=status();c.statusNodes[notice.id]=notice;let finish,calls=0;
   c.fetchJsonBounded=()=>{calls++;return new Promise(resolve=>{finish=resolve})};
-  const first=c.applyRosterRows([row],{complete:true,status:status()});
-  assert.equal(await c.applyRosterRows([row],{complete:true}),null);assert.equal(calls,1);
+  const first=c.applyRosterRows([row],{complete:true,status:notice});
+  const duplicate=await c.applyRosterRows([row],{complete:true,status:notice});
+  assert.equal(duplicate.synced,false);assert.equal(duplicate.error.code,"roster_update_in_progress");assert.equal(calls,1);
   finish({response:{ok:false,status:500},json:{error:"sync_failed"}});
   await first;const snapshot=c.state.alliance.roster_snapshot_complete_at;
   c.fetchJsonBounded=async()=>({response:{ok:false,status:409},json:{error:"alliance_write_conflict"}});
@@ -180,13 +182,58 @@ await test("partial-write API error remains pending with true technical outcome 
   assert.ok(c.state.alliance.members.some(r=>r.name==="Existing"));
 });
 await test("late account change cannot save a result into another account",async()=>{
-  const c=browserContext();let saved=0;c.saveState=()=>{saved++;return true};
+  const c=browserContext(),notice=status();c.statusNodes[notice.id]=notice;let saved=0;c.saveState=()=>{saved++;return true};
   c.fetchJsonBounded=async()=>{c.cloudSession.user.id="other-owner";return {response:{ok:true,status:200},json:{ok:true,state:seed()}}};
-  const result=await c.applyRosterRows([row]);assert.equal(result.synced,false);
+  const result=await c.applyRosterRows([row],{status:notice});assert.equal(result.synced,false);
   assert.equal(saved,0);assert.equal(result.error.code,"account_changed");
+  assert.match(c.statusNodes[notice.id].textContent,/Session non valide/);
+});
+await test("roster context changed during request is visible and does not mutate the new roster",async()=>{
+  const c=browserContext(),notice=status();c.statusNodes[notice.id]=notice;
+  c.fetchJsonBounded=async()=>{c.state.alliance.tag="OTHER";return {response:{ok:true,status:200},json:{ok:true,state:seed()}}};
+  const before=JSON.stringify(c.state.alliance.members),result=await c.applyRosterRows([row],{status:notice});
+  assert.equal(result.synced,false);assert.equal(result.error.code,"roster_context_changed");
+  assert.match(c.statusNodes[notice.id].textContent,/Conflit de versions/);
+  assert.equal(JSON.stringify(c.state.alliance.members),before);
+});
+await test("partial Seth I update adopts confirmed 318M, preserves others, and reports after render replaces status node",async()=>{
+  const c=browserContext(),notice=status();c.statusNodes[notice.id]=notice;
+  c.state.alliance.members=[
+    {name:"Seth I",role:"R4",server_id:"123",alliance_tag:"TEST",hq_level:35,power_m:304.3},
+    {name:"Other member",role:"R2",server_id:"123",alliance_tag:"TEST",hq_level:28,power_m:170}
+  ];
+  const otherBefore=plain(c.state.alliance.members[1]);
+  c.render=()=>{c.statusNodes[notice.id]=status()};
+  c.fetchJsonBounded=async(_path,request)=>{
+    const body=JSON.parse(request.body),updated=body.roster_patch.members;
+    assert.equal(updated.find(member=>member.name==="Seth I").power_m,318);
+    assert.equal(updated.length,2);
+    return {response:{ok:true,status:200},json:{ok:true,operation:"alliance_roster",player_id:owner,
+      updated_at:"2026-11-12T12:00:00.000Z",
+      alliance_pending_source:"canonical",
+      roster_confirmation:{requested:true,persisted:true},
+      alliance:{members:updated,canonical_roster:updated,roster_updated_at:"2026-11-12T12:00:00.000Z",roster_sync_status:"synced"}}};
+  };
+  const result=await c.applyRosterRows([{name:"Seth I",role:"R4",hq_level:35,power_m:318}],{complete:false,status:notice,source:"roster_scan"});
+  assert.equal(result.synced,true);assert.equal(result.roster_persisted,true);
+  assert.equal(c.state.alliance.members.find(member=>member.name==="Seth I").power_m,318);
+  assert.deepEqual(plain(c.state.alliance.members.find(member=>member.name==="Other member")),otherBefore);
+  assert.match(c.statusNodes[notice.id].textContent,/alliance_update_done/);
+});
+await test("exceptions after confirmed server reply report warning instead of silent success",async()=>{
+  const c=browserContext(),notice=status();c.statusNodes[notice.id]=notice;
+  c.fetchJsonBounded=async(_path,request)=>{const body=JSON.parse(request.body);return {response:{ok:true,status:200},
+    json:{ok:true,operation:"alliance_roster",player_id:owner,alliance_pending_source:"canonical",
+      roster_confirmation:{requested:true,persisted:true},
+      alliance:{members:body.roster_patch.members,canonical_roster:body.roster_patch.members,roster_sync_status:"synced"}}}};
+  c.adoptRosterOnlyReply=()=>{throw new Error("synthetic_render_adoption_failure")};
+  const result=await c.applyRosterRows([row],{status:notice});
+  assert.equal(result.synced,false);assert.equal(result.server_confirmed,true);
+  assert.match(c.statusNodes[notice.id].textContent,/Cloud writes may already have occurred|Des écritures cloud peuvent déjà avoir eu lieu/);
+  assert.doesNotMatch(c.statusNodes[notice.id].textContent,/alliance_update_done/);
 });
 await test("new local edits during successful request remain pending, never claim fully synced",async()=>{
-  const c=browserContext(),notice=status();
+  const c=browserContext(),notice=status();c.statusNodes[notice.id]=notice;
   c.fetchJsonBounded=async(_path,request)=>{
     const body=JSON.parse(request.body);c.localStateRevision++;
     c.state.alliance.roster_sync_status="pending";c.state.alliance.members[0].hq_level=36;
@@ -313,12 +360,15 @@ await test("actual roster button feedback is immediate, blocks doubles and clean
     const c=browserContext(),notice=status(),button={disabled:false,textContent:"Import",attrs:{},
       setAttribute(k,v){this.attrs[k]=v},removeAttribute(k){delete this.attrs[k]}};
     c.$=id=>id==="#rosterImportBtn"?button:null;
-    let settle,calls=0;
+    let settle,calls=0,saves=0;c.saveState=()=>{saves++;return true};
     c.fetchJsonBounded=()=>{calls++;return new Promise((resolve,reject)=>{settle={resolve,reject}})};
     const pending=c.applyRosterRows([row],{status:notice});
     assert.equal(button.disabled,true);assert.equal(button.textContent,"alliance_update_busy");
     assert.equal(button.attrs["data-wb-analysis-active"],"true");
-    assert.equal(await c.applyRosterRows([row],{status:notice}),null);assert.equal(calls,1);
+    const duplicate=await c.applyRosterRows([row],{status:notice});
+    assert.equal(duplicate.synced,false);assert.equal(duplicate.error.code,"roster_update_in_progress");
+    assert.equal(calls,1);assert.equal(saves,0);
+    assert.match(notice.textContent,/alliance_update_busy/);assert.equal(notice.className,"notice warn");
     if(outcome==="timeout")settle.reject(Object.assign(Error("private detail"),{code:"request_timeout"}));
     else settle.resolve({response:{ok:outcome!=="409",status:outcome==="409"?409:200},
       json:outcome==="confirmed"?{ok:true,operation:"alliance_roster",player_id:owner,

@@ -4513,24 +4513,37 @@ function renderRosterSyncDiagnostic(status){
   }
   details.querySelector("pre").textContent=JSON.stringify(rosterDiagnostics(),null,2);
 }
+function setRosterUpdateStatus(status,source,message,warning=false){
+  const fallbackId=source==="roster_scan"?"rosterScanStatus":"rosterImportStatus";
+  const target=(status?.id?$("#"+status.id):null)||$("#"+fallbackId)||status;
+  if(!target)return false;
+  target.className=warning?"notice warn":"notice";
+  target.textContent=message;
+  target.classList?.remove("hidden");
+  return true;
+}
 function beginRosterUpdateFeedback(source,status){
   const button=$("#"+(source==="roster_scan"?"rosterScanImportBtn":"rosterImportBtn"));
-  if(status){status.className="notice";status.textContent=t("alliance_update_busy");status.classList.remove("hidden")}
+  setRosterUpdateStatus(status,source,t("alliance_update_busy"));
   const finish=beginLoadingButton(analysisIndicator,button,{kind:"roster:update",
     label:()=>t("alliance_update_busy"),idleLabel:()=>t(source==="roster_scan"?"roster_scan_import":"import_roster")});
   return finish;
 }
 let rosterImportInFlight=false;
 async function applyRosterRows(imported,{complete=false,status=null,source="manual_import"}={}){
-  if(rosterImportInFlight)return null;
+  if(rosterImportInFlight){
+    setRosterUpdateStatus(status,source,t("alliance_update_busy"),true);
+    return {synced:false,error:{code:"roster_update_in_progress"}};
+  }
   rosterImportInFlight=true;
-  const finishLoading=beginRosterUpdateFeedback(source,status);
+  let finishLoading=()=>{},serverConfirmed=false,result=null;
   try{
+  finishLoading=beginRosterUpdateFeedback(source,status);
   const requestOwner=String(cloudSession?.user?.id||"");
   const rosterAtRequest=rosterStateFingerprint(state);
   const now=new Date().toISOString(),rows=(Array.isArray(imported)?imported:[]).filter(x=>x?.name).map(row=>({...row,server_id:state.player?.server_id||row.server_id||"",alliance_tag:state.alliance?.tag||row.alliance_tag||"",source,updated_at:row.updated_at||now}));
-  if(!rows.length){if(status){status.className="notice warn";status.textContent=t("import_error");status.classList.remove("hidden")}return null}
-  const candidate=JSON.parse(JSON.stringify(state)),result=applyRosterImportLifecycle({members:candidate.alliance.members,review:candidate.alliance.roster_review,former:candidate.alliance.former_members,removal_tombstones:candidate.alliance.roster_removal_tombstones},rows,{complete,now});
+  if(!rows.length){setRosterUpdateStatus(status,source,t("import_error"),true);return {synced:false,error:{code:"empty_roster_import"}}}
+  const candidate=JSON.parse(JSON.stringify(state));result=applyRosterImportLifecycle({members:candidate.alliance.members,review:candidate.alliance.roster_review,former:candidate.alliance.former_members,removal_tombstones:candidate.alliance.roster_removal_tombstones},rows,{complete,now});
   candidate.alliance.members=result.members.map(row=>({...row,canonical_member_key:canonicalRosterMemberKey(row,{serverId:candidate.alliance.server_id||candidate.player?.server_id,allianceTag:candidate.alliance.tag})}));
   candidate.alliance.roster_review=result.review;candidate.alliance.former_members=[];candidate.alliance.roster_removal_tombstones=result.removal_tombstones||candidate.alliance.roster_removal_tombstones||[];
   // A retry of a pending snapshot must not falsely date the same capture as newer
@@ -4539,7 +4552,11 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
   candidate.alliance.roster_sync_status="pending";candidate.alliance.roster_sync_error=null;candidate.alliance.updated_at=now;candidate.sync.sources={...candidate.sync.sources,alliance:true};
   let synced=null;const rosterRevision=localStateRevision;
   try{synced=await persistRosterCandidate(candidate)}catch(error){
-    if(error?.code==="account_changed"||error?.code==="roster_context_changed"||(requestOwner&&String(cloudSession?.user?.id||"")!==requestOwner))return {...result,synced:false,error};
+    if(error?.code==="account_changed"||error?.code==="roster_context_changed"||(requestOwner&&String(cloudSession?.user?.id||"")!==requestOwner)){
+      const copy=rosterSyncCopy(lang),message=error?.code==="roster_context_changed"?copy.conflict:copy.auth;
+      setRosterUpdateStatus(status,source,message,true);
+      return {...result,synced:false,error};
+    }
     const changedDuringSync=localStateRevision!==rosterRevision;
     let merged=mergeStateProtected(state,candidate,{preferBase:changedDuringSync});
     merged=reconcileCloudSquads(state,candidate,merged).state;
@@ -4551,15 +4568,14 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
     const diagnostic=recordRosterDiagnostic(safeRosterDiagnostic(error)),copy=rosterSyncCopy(lang);
     merged.alliance.roster_sync_status="pending";merged.alliance.roster_sync_error=copy[rosterFailureKind(diagnostic)];
     state=merged;const locallySaved=saveState({cloudSave:false});render();
-    if(status){
-      status.className="notice warn";
-      status.textContent=[locallySaved?copy.pending:copy.storage,state.alliance.roster_sync_error,
-        diagnostic.write_state==="not_attempted"?null:copy.partial,copy.refresh].filter(Boolean).join(" ");
-      status.classList.remove("hidden");renderRosterSyncDiagnostic(status);
-    }
-    if(status)status.textContent+=` [${diagnostic.code}]`;
+    const message=[locallySaved?copy.pending:copy.storage,state.alliance.roster_sync_error,
+      diagnostic.write_state==="not_attempted"?null:copy.partial,copy.refresh].filter(Boolean).join(" ")+` [${diagnostic.code}]`;
+    const visibleStatus=(status?.id?$("#"+status.id):null)||status;
+    setRosterUpdateStatus(visibleStatus,source,message,true);
+    if(visibleStatus)renderRosterSyncDiagnostic(visibleStatus);
     return {...result,synced:false,error,diagnostic,locally_saved:locallySaved};
   }
+  serverConfirmed=true;
   cloudRevision=synced?.updated_at||cloudRevision;
   const changedDuringSync=localStateRevision!==rosterRevision;
   const rosterChangedDuringSync=rosterStateFingerprint(state)!==rosterAtRequest;
@@ -4579,14 +4595,20 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
     changedDuringSync&&state.alliance.roster_sync_status==="pending";
   state.alliance.roster_sync_status=keepPending?"pending":"synced";state.alliance.roster_sync_error=null;saveState({cloudSave:false});render();
   const stillPending=state.alliance.roster_sync_status==="pending";
-  if(status){
-    $("#"+status.id+"PrivateDiagnostic")?.remove();status.className=stillPending?"notice warn":"notice";
-    status.textContent=stillPending?[rosterSyncCopy(lang).pending,rosterSyncCopy(lang).refresh].join(" "):
-      complete?t("roster_import_complete_result",{active:result.summary.active_count,review:result.summary.review_count,added:result.summary.added,returned:result.summary.returned}):t("roster_import_partial_result",{count:result.summary.imported,added:result.summary.added,returned:result.summary.returned});
-    if(!stillPending)status.textContent=`${t("alliance_update_done")} — ${status.textContent}`;
-    status.classList.remove("hidden");
-  }
+  if(status?.id)$("#"+status.id+"PrivateDiagnostic")?.remove();
+  const successMessage=stillPending?[rosterSyncCopy(lang).pending,rosterSyncCopy(lang).refresh].join(" "):
+    complete?t("roster_import_complete_result",{active:result.summary.active_count,review:result.summary.review_count,added:result.summary.added,returned:result.summary.returned}):t("roster_import_partial_result",{count:result.summary.imported,added:result.summary.added,returned:result.summary.returned});
+  setRosterUpdateStatus(status,source,stillPending?successMessage:`${t("alliance_update_done")} — ${successMessage}`,stillPending);
   return {...result,synced:!stillPending,roster_persisted:true};
+  }catch(error){
+    const copy=rosterSyncCopy(lang);
+    const diagnostic=recordRosterDiagnostic(safeRosterDiagnostic(error));
+    const message=error?.code==="account_changed"?copy.auth:
+      error?.code==="roster_context_changed"?copy.conflict:
+      serverConfirmed?[copy.partial,copy.refresh].join(" "):
+      [copy[rosterFailureKind(diagnostic)],copy.refresh].join(" ");
+    setRosterUpdateStatus(status,source,message,true);
+    return {...(result||{}),synced:false,error,diagnostic,server_confirmed:serverConfirmed};
   }finally{finishLoading();rosterImportInFlight=false}
 }
 function renderRosterScanFiles(){
