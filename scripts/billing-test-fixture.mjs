@@ -6,30 +6,34 @@ export const userA="10000000-0000-4000-8000-000000000001";
 export const userB="10000000-0000-4000-8000-000000000002";
 export const userBeta="10000000-0000-4000-8000-000000000003";
 export const userFree="10000000-0000-4000-8000-000000000004";
+export const userLive="10000000-0000-4000-8000-000000000005";
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json"}});
 export async function billingFixture(){
   const pg=new PGlite();
-  await pg.exec(`create schema auth;create role anon;create role authenticated;create role service_role;
+  await pg.exec(`create schema auth;create role anon;create role authenticated;create role service_role bypassrls;
     create table auth.users(id uuid primary key,email text,created_at timestamptz default now());
     create function auth.uid() returns uuid language sql as $$select null::uuid$$;
     create table public.wb1_beta_invites(id uuid primary key default gen_random_uuid(),email text unique,status text,
       invited_at timestamptz default now(),accepted_user_id text,expires_at timestamptz,accepted_at timestamptz,updated_at timestamptz);`);
-  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"]])
+  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLive,"live@example.test"]])
     await pg.query("insert into auth.users(id,email,created_at) values($1,$2,now()-interval '1 day')",[id,email]);
   await pg.query("insert into wb1_beta_invites(email,status,invited_at,accepted_user_id) values('beta@example.test','accepted',now()-interval '1 day',$1)",[userBeta]);
-  const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql"];
+  const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql","supabase/migration_v2_5_33_live_billing_preparation.sql"];
   for(const path of migrations)await pg.exec(fs.readFileSync(path,"utf8"));
   const oldEnv={...process.env},oldFetch=globalThis.fetch;
   Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"test",WARBOOST_APP_URL:"https://beta.warboost.fr",STRIPE_SECRET_KEY:"sk_test_fixture_only",
     STRIPE_WEBHOOK_SECRET:"whsec_fixture_only",STRIPE_PRICE_PRO_MONTHLY:"price_pro_test",STRIPE_PRODUCT_PRO:"prod_pro_test",
     SUPABASE_URL:"https://fixture.invalid",SUPABASE_ANON_KEY:"anon-fixture",SUPABASE_SERVICE_ROLE_KEY:"service-fixture",WARBOOST_BETA_EMAILS:"",WARBOOST_SUPPORT_ADMINS:""});
   const fixture={pg,migrations,calls:[],customers:new Map(),subscriptions:new Map(),sessions:new Map(),idempotency:new Map(),
-    failDb:false,failApplyOnce:false,failCheckoutOnce:false,priceOverride:{},productOverride:{},providerLive:false,card:"accepted"};
-  fixture.price=()=>({id:"price_pro_test",object:"price",active:true,livemode:false,product:"prod_pro_test",unit_amount:499,currency:"eur",type:"recurring",
-    billing_scheme:"per_unit",recurring:{interval:"month",interval_count:1,usage_type:"licensed"},...fixture.priceOverride});
-  fixture.sub=(customer,id="sub_test_one",status="active")=>({id,object:"subscription",livemode:false,customer,status,
+    failDb:false,failApplyOnce:false,failCheckoutOnce:false,priceOverride:{},livePriceOverride:{},productOverride:{},providerLive:false,card:"accepted"};
+  fixture.price=(mode="test")=>mode==="live"?
+    ({id:"price_pro_live_fixture",object:"price",active:true,livemode:true,product:"prod_pro_live_fixture",unit_amount:499,currency:"eur",tax_behavior:"inclusive",type:"recurring",
+      billing_scheme:"per_unit",recurring:{interval:"month",interval_count:1,usage_type:"licensed"},...fixture.livePriceOverride}):
+    ({id:"price_pro_test",object:"price",active:true,livemode:false,product:"prod_pro_test",unit_amount:499,currency:"eur",type:"recurring",
+      billing_scheme:"per_unit",recurring:{interval:"month",interval_count:1,usage_type:"licensed"},...fixture.priceOverride});
+  fixture.sub=(customer,id="sub_test_one",status="active",mode="test")=>({id,object:"subscription",livemode:mode==="live",customer,status,
     metadata:{},current_period_end:Math.floor(Date.now()/1000)+86400,cancel_at_period_end:false,
-    items:{data:[{quantity:1,price:fixture.price()}]}});
+    items:{data:[{quantity:1,price:fixture.price(mode)}]}});
   fixture.rpc=async(name,args)=>{
     const names=Object.keys(args),params=Object.values(args);
     const result=await pg.query(`select public.${name}(${names.map((n,i)=>`${n} => $${i+1}`).join(",")}) as result`,params);
@@ -38,6 +42,7 @@ export async function billingFixture(){
   globalThis.fetch=async(input,opts={})=>{
     const u=new URL(String(input));
     fixture.calls.push({host:u.hostname,path:u.pathname,opts});
+    const liveRequest=Boolean(process.env.STRIPE_LIVE_SECRET_KEY)&&opts.headers?.authorization===`Bearer ${process.env.STRIPE_LIVE_SECRET_KEY}`;
     if(u.hostname==="fixture.invalid"){
       if(fixture.failDb)return json({code:"DB_UNAVAILABLE"},503);
       if(u.pathname==="/auth/v1/user"){
@@ -74,29 +79,36 @@ export async function billingFixture(){
     if(key&&fixture.idempotency.has(key))return json(fixture.idempotency.get(key));
     let out;
     if(path==="prices/price_pro_test")out=fixture.price();
+    else if(path==="prices/price_pro_live_fixture")out=fixture.price("live");
     else if(path==="products/prod_pro_test")out={id:"prod_pro_test",object:"product",livemode:false,active:true,...fixture.productOverride};
+    else if(path==="products/prod_pro_live_fixture")out={id:"prod_pro_live_fixture",object:"product",livemode:true,active:true,tax_code:"txcd_fixture",...fixture.productOverride};
     else if(path==="customers"){
-      const id=`cus_test_${fixture.customers.size+1}`;out={id,object:"customer",livemode:false};fixture.customers.set(id,out);
+      const id=`cus_${liveRequest?"live":"test"}_${fixture.customers.size+1}`;
+      out={id,object:"customer",livemode:liveRequest,address:params.get("address[country]")?{country:params.get("address[country]")}:null};
+      fixture.customers.set(id,out);
+    }else if(path.startsWith("customers/")){
+      out=fixture.customers.get(path.split("/")[1]);
     }else if(path==="subscriptions"){
       out={object:"list",has_more:false,data:[...fixture.subscriptions.values()].filter(s=>s.customer===u.searchParams.get("customer"))};
     }else if(path.startsWith("subscriptions/"))out=fixture.subscriptions.get(path.split("/")[1]);
     else if(path==="checkout/sessions"){
-      const id=`cs_test_${fixture.sessions.size+1}`;out={id,object:"checkout.session",livemode:false,url:`https://checkout.stripe.com/c/pay/${id}`,
+      const id=`cs_${liveRequest?"live":"test"}_${fixture.sessions.size+1}`;out={id,object:"checkout.session",livemode:liveRequest,url:`https://checkout.stripe.com/c/pay/${id}`,
         customer:params.get("customer"),client_reference_id:params.get("client_reference_id"),status:"open",expires_at:Number(params.get("expires_at"))};
       fixture.sessions.set(id,out);
       if(key)fixture.idempotency.set(key,out);
       if(fixture.failCheckoutOnce){fixture.failCheckoutOnce=false;throw Error("SIMULATED_CONNECTION_LOSS_AFTER_STRIPE_CREATION")}
-    }else if(path==="billing_portal/sessions")out={id:"bps_test",object:"billing_portal.session",livemode:false,url:"https://billing.stripe.com/p/session/test"};
+    }else if(path==="billing_portal/sessions")out={id:`bps_${liveRequest?"live":"test"}`,object:"billing_portal.session",livemode:liveRequest,url:`https://billing.stripe.com/p/session/${liveRequest?"live":"test"}`};
     else throw Error(`Unexpected provider fixture endpoint ${path}`);
     if(!out)return json({error:{message:"Fixture object missing"}},404);
     if(fixture.providerLive)out={...out,livemode:true};
     if(key)fixture.idempotency.set(key,out);
     return json(out);
   };
-  fixture.event=(type,obj,created=Math.floor(Date.now()/1000),id=`evt_test_${crypto.randomUUID().replaceAll("-","")}`)=>({id,type,created,livemode:false,data:{object:obj}});
-  fixture.sign=event=>{
+  fixture.event=(type,obj,created=Math.floor(Date.now()/1000),id=`evt_test_${crypto.randomUUID().replaceAll("-","")}`,livemode=false)=>({id,type,created,livemode,data:{object:obj}});
+  fixture.sign=(event,signingLive=event.livemode)=>{
     const raw=JSON.stringify(event),t=Math.floor(Date.now()/1000);
-    return [raw,`t=${t},v1=${crypto.createHmac("sha256","whsec_fixture_only").update(`${t}.${raw}`).digest("hex")}`];
+    const secret=signingLive?"whsec_live_fixture_only":"whsec_fixture_only";
+    return [raw,`t=${t},v1=${crypto.createHmac("sha256",secret).update(`${t}.${raw}`).digest("hex")}`];
   };
   fixture.close=async()=>{globalThis.fetch=oldFetch;process.env=oldEnv;await pg.close()};
   return fixture;

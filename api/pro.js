@@ -4,27 +4,34 @@ import {entitlementForUser} from "../lib/pro-access.js";
 import {billingRow} from "../lib/billing-store.js";
 import {commercialConfig,commercialStatusForUser,createCheckoutForUser,createPortalForUser,processWebhook,readRawBody,paymentWebhookSignature} from "../lib/commercial-pro.js";
 
-// Safe Launch defaults to OFF. Only explicit TEST mode can contact Stripe; LIVE is hard-blocked.
+// Safe Launch defaults to OFF. TEST and LIVE use separate credentials and storage.
 // Preserve the exact signed bytes (Vercel and local server).
 export const config={api:{bodyParser:false}};
 
 function jsonBody(raw){try{return raw?JSON.parse(raw):{}}catch{return {}}}
+async function postJsonBody(req){
+  const parsed=req.body;
+  if(parsed&&typeof parsed==="object"&&!Buffer.isBuffer(parsed)&&!Array.isArray(parsed))return parsed;
+  return jsonBody(await readRawBody(req));
+}
 
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store, max-age=0");
   const commerce=commercialConfig();
   try{
-    // TEST webhook endpoint: /api/pro?action=webhook.
+    // TEST and LIVE webhooks are explicitly selected and independently verified.
     if(req.method==="POST"&&String(req.query?.action||"")==="webhook"){
-      if(commerce.mode!=="test")return res.status(403).json({ok:false,error:"SAFE_LAUNCH_PAYMENT_DISABLED",message:"Stripe TEST uniquement ; paiements réels désactivés."});
+      const webhookMode=String(req.query?.mode||"")==="live"?"live":"test";
+      if(webhookMode==="live"?!commerce.live_webhooks_enabled:commerce.mode!=="test")
+        return res.status(403).json({ok:false,error:"SAFE_LAUNCH_PAYMENT_DISABLED",message:"Canal de webhook Stripe désactivé ou non configuré."});
       const raw=await readRawBody(req),signature=paymentWebhookSignature(req);
-      const result=await processWebhook(raw,signature);return res.status(200).json(result);
+      const result=await processWebhook(raw,signature,webhookMode);return res.status(200).json(result);
     }
 
     const user=await requireUser(req),beta=await betaAccessForUserAsync(user);
     if(req.method==="GET"){
       const entitlement=await entitlementForUser(user,{beta});
-      const account=entitlement.schema_ready?await billingRow("warboost_billing_accounts","user_id",user.id):null;
+        const account=entitlement.schema_ready?await billingRow("warboost_billing_accounts","user_id",user.id):null;
       return res.status(200).json({
         ok:true,beta:entitlement.source==="beta",release:true,safe_launch:true,commercial:true,
         configured:commerce.configured&&entitlement.schema_ready,enforced:true,allowed:true,
@@ -32,24 +39,34 @@ export default async function handler(req,res){
          beta_access_status:beta.access_status,beta_code_eligible:beta.code_eligible===true&&entitlement.source!=="beta",
         consent_version:beta.consent_version,access_status:entitlement.source==="beta"?"beta-granted":"account",
         active:entitlement.active,status:entitlement.source==="beta"?"beta":entitlement.subscription?.status||"free",
-        plan:commerce.plan,payments_enabled:false,test_payments_enabled:commerce.test_payments_enabled&&entitlement.schema_ready,
-        pro_included:entitlement.source==="beta",entitlement,subscription:entitlement.subscription,can_manage_billing:Boolean(account?.stripe_customer_id),
-        commercial_preview:commerce.mode!=="test",mode:commerce.mode,activation_requirements:commerce.activation_requirements
+         plan:commerce.plan,payments_enabled:commerce.live_payments_enabled&&entitlement.schema_ready,
+         test_payments_enabled:commerce.test_payments_enabled&&entitlement.schema_ready,
+         live_payments_enabled:commerce.live_payments_enabled&&entitlement.schema_ready,live_provider_ready:commerce.live_provider_ready&&entitlement.schema_ready,
+         live_webhooks_enabled:commerce.live_webhooks_enabled,
+         commercial_consent_version:commerce.commercial_consent_version,terms_url:commerce.terms_url,privacy_url:commerce.privacy_url,
+         live_approved_billing_countries:commerce.activation_requirements.live.approved_billing_countries,
+         pro_included:entitlement.source==="beta",entitlement,subscription:entitlement.subscription,
+         can_manage_billing:Boolean(account?.stripe_customer_id||account?.stripe_live_customer_id),
+         commercial_preview:commerce.mode!=="test",mode:commerce.mode,activation_requirements:commerce.activation_requirements
       });
     }
 
     if(req.method==="POST"){
-      if(commerce.mode!=="test")return res.status(403).json({
-        ok:false,error:"SAFE_LAUNCH_PAYMENT_DISABLED",
-        message:"WarBoost payments are disabled in the Safe Launch beta. PRO features are included for invited testers."
-      });
-      const raw=await readRawBody(req),body=jsonBody(raw),action=String(body?.action||"").toLowerCase();
+      const body=await postJsonBody(req),action=String(body?.action||"").toLowerCase();
       if(action==="checkout"){
         const entitlement=await entitlementForUser(user,{beta});
         if(entitlement.source==="beta")return res.status(409).json({ok:false,error:"BETA_PRO_INCLUDED",message:"Votre accès PRO bêta reste gratuit. Aucun abonnement nécessaire."});
-        return res.status(200).json({ok:true,...await createCheckoutForUser(user)});
+        if(commerce.mode==="test"&&commerce.test_payments_enabled)
+          return res.status(200).json({ok:true,...await createCheckoutForUser(user,{mode:"test"})});
+        if(commerce.mode==="live"&&commerce.live_payments_enabled)
+          return res.status(200).json({ok:true,...await createCheckoutForUser(user,{mode:"live",commercialConsent:body})});
+        return res.status(403).json({ok:false,error:"SAFE_LAUNCH_PAYMENT_DISABLED",message:"Les paiements sont désactivés tant que les prérequis commerciaux LIVE ne sont pas vérifiés."});
       }
-      if(action==="portal")return res.status(200).json({ok:true,...await createPortalForUser(user)});
+      if(action==="portal"){
+        if(commerce.mode==="test"&&commerce.test_payments_enabled)return res.status(200).json({ok:true,...await createPortalForUser(user,{mode:"test"})});
+        if(commerce.mode==="live"&&commerce.live_provider_ready)return res.status(200).json({ok:true,...await createPortalForUser(user,{mode:"live"})});
+        return res.status(403).json({ok:false,error:"SAFE_LAUNCH_PAYMENT_DISABLED",message:"Le portail de facturation n’est pas configuré pour cet environnement."});
+      }
       return res.status(400).json({ok:false,error:"unknown_pro_action"});
     }
     return res.status(405).json({error:"method_not_allowed"});

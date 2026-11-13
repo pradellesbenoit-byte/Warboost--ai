@@ -2925,3 +2925,41 @@ for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
   scan_review_identity_conflict:"Full image: {full}; enlarged portrait: {zoom} — conflicting proposals. Choose the correct hero, then tick “I confirm this hero”.",
   scan_review_portrait_diagnostic:"Portrait diagnostic"
 });
+
+Object.assign(EN,{
+  pro_live_consent:"I agree to the €4.99 monthly subscription, automatic renewal, and the linked Terms and Privacy Policy. I can cancel through the customer portal.",
+  pro_live_country:"Billing country",
+  pro_live_country_placeholder:"Choose a country",
+  pro_live_terms:"Terms",
+  pro_live_privacy:"Privacy policy",
+  pro_live_blocked:"LIVE checkout is unavailable until the merchant, tax, legal, country and security requirements are verified.",
+  pro_live_cancel:"Manage or cancel subscription",
+  pro_live_checkout:"Subscribe · LIVE",
+  pro_live_active:"LIVE subscription active. Access is confirmed by signed server webhook.",
+  pro_live_note:"Target price €4.99 per month. LIVE remains disabled until all merchant, legal, tax and country checks are approved."
+});
+Object.assign(FR,{
+  pro_live_consent:"J’accepte l’abonnement de 4,99 € par mois, son renouvellement automatique, ainsi que les Conditions et la Politique de confidentialité liées. Je peux résilier depuis le portail client.",
+  pro_live_country:"Pays de facturation",
+  pro_live_country_placeholder:"Choisir un pays",
+  pro_live_terms:"Conditions",
+  pro_live_privacy:"Politique de confidentialité",
+  pro_live_blocked:"Le paiement LIVE reste indisponible tant que les prérequis marchand, fiscaux, légaux, pays et sécurité ne sont pas vérifiés.",
+  pro_live_cancel:"Gérer ou résilier l’abonnement",
+  pro_live_checkout:"S’abonner · LIVE",
+  pro_live_active:"Abonnement LIVE actif. L’accès est confirmé par un webhook serveur signé.",
+  pro_live_note:"Prix cible : 4,99 € par mois. LIVE reste désactivé tant que les contrôles marchand, légaux, fiscaux et pays ne sont pas approuvés."
+});
+for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
+  pro_live_consent:FR.pro_live_consent,pro_live_country:FR.pro_live_country,
+  pro_live_country_placeholder:FR.pro_live_country_placeholder,pro_live_terms:FR.pro_live_terms,
+  pro_live_privacy:FR.pro_live_privacy,pro_live_blocked:FR.pro_live_blocked,
+  pro_live_cancel:FR.pro_live_cancel,pro_live_checkout:FR.pro_live_checkout,
+  pro_live_active:FR.pro_live_active,pro_live_note:FR.pro_live_note
+}:{
+  pro_live_consent:EN.pro_live_consent,pro_live_country:EN.pro_live_country,
+  pro_live_country_placeholder:EN.pro_live_country_placeholder,pro_live_terms:EN.pro_live_terms,
+  pro_live_privacy:EN.pro_live_privacy,pro_live_blocked:EN.pro_live_blocked,
+  pro_live_cancel:EN.pro_live_cancel,pro_live_checkout:EN.pro_live_checkout,
+  pro_live_active:EN.pro_live_active,pro_live_note:EN.pro_live_note
+});
