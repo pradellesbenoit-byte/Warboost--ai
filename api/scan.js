@@ -439,7 +439,7 @@ export default async function handler(req,res){
   const startedAt=Date.now();
   const timing=createScanTiming({startedAt});
   try{
-    const {user}=await timing.measure("access",()=>requireProductUser(req,{consent:true,pro:true}));
+    const {user}=await timing.measure("access",()=>requireProductUser(req,{consent:true}));
     const scanType=String(req.body?.scan_type||"profile").toLowerCase(),locale=String(req.body?.locale||"fr"),currentState=req.body?.current_state&&typeof req.body.current_state==="object"?req.body.current_state:null;
     const scanTypeValid=/^(profile|squad[1-4]|drone|exclusive|awakening|shop|vs|season|technology|alliance_roster|secret_mobile_squad)$/.test(scanType);
     scanTypeForLog=scanTypeValid?scanType:"invalid";
