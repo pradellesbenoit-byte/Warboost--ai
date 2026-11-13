@@ -2936,7 +2936,10 @@ Object.assign(EN,{
   pro_live_cancel:"Manage or cancel subscription",
   pro_live_checkout:"Subscribe · LIVE",
   pro_live_active:"LIVE subscription active. Access is confirmed by signed server webhook.",
-  pro_live_note:"Target price €4.99 per month. LIVE remains disabled until all merchant, legal, tax and country checks are approved."
+  pro_live_note:"Target price €4.99 per month. LIVE remains disabled until all merchant, legal, tax and country checks are approved.",
+  pro_test_country:"Billing country for the TEST simulation",
+  pro_country_required:"Choose an allowed billing country before continuing.",
+  pro_country_disclaimer:"The selected country is a self-declared prefilter, not proof of tax residence. LIVE payments remain disabled until authoritative pre-charge checks are available."
 });
 Object.assign(FR,{
   pro_live_consent:"J’accepte l’abonnement de 4,99 € par mois, son renouvellement automatique, ainsi que les Conditions et la Politique de confidentialité liées. Je peux résilier depuis le portail client.",
@@ -2948,18 +2951,25 @@ Object.assign(FR,{
   pro_live_cancel:"Gérer ou résilier l’abonnement",
   pro_live_checkout:"S’abonner · LIVE",
   pro_live_active:"Abonnement LIVE actif. L’accès est confirmé par un webhook serveur signé.",
-  pro_live_note:"Prix cible : 4,99 € par mois. LIVE reste désactivé tant que les contrôles marchand, légaux, fiscaux et pays ne sont pas approuvés."
+  pro_live_note:"Prix cible : 4,99 € par mois. LIVE reste désactivé tant que les contrôles marchand, légaux, fiscaux et pays ne sont pas approuvés.",
+  pro_test_country:"Pays de facturation pour la simulation TEST",
+  pro_country_required:"Choisissez un pays de facturation autorisé avant de continuer.",
+  pro_country_disclaimer:"Le pays choisi est un préfiltre déclaratif, pas une preuve de résidence fiscale. Les paiements LIVE restent bloqués tant qu’un contrôle préalable autoritatif n’est pas disponible."
 });
 for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
   pro_live_consent:FR.pro_live_consent,pro_live_country:FR.pro_live_country,
   pro_live_country_placeholder:FR.pro_live_country_placeholder,pro_live_terms:FR.pro_live_terms,
   pro_live_privacy:FR.pro_live_privacy,pro_live_blocked:FR.pro_live_blocked,
   pro_live_cancel:FR.pro_live_cancel,pro_live_checkout:FR.pro_live_checkout,
-  pro_live_active:FR.pro_live_active,pro_live_note:FR.pro_live_note
+  pro_live_active:FR.pro_live_active,pro_live_note:FR.pro_live_note,
+  pro_test_country:FR.pro_test_country,pro_country_required:FR.pro_country_required,
+  pro_country_disclaimer:FR.pro_country_disclaimer
 }:{
   pro_live_consent:EN.pro_live_consent,pro_live_country:EN.pro_live_country,
   pro_live_country_placeholder:EN.pro_live_country_placeholder,pro_live_terms:EN.pro_live_terms,
   pro_live_privacy:EN.pro_live_privacy,pro_live_blocked:EN.pro_live_blocked,
   pro_live_cancel:EN.pro_live_cancel,pro_live_checkout:EN.pro_live_checkout,
-  pro_live_active:EN.pro_live_active,pro_live_note:EN.pro_live_note
+  pro_live_active:EN.pro_live_active,pro_live_note:EN.pro_live_note,
+  pro_test_country:EN.pro_test_country,pro_country_required:EN.pro_country_required,
+  pro_country_disclaimer:EN.pro_country_disclaimer
 });

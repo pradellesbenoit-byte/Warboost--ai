@@ -44,6 +44,8 @@ export default async function handler(req,res){
          live_payments_enabled:commerce.live_payments_enabled&&entitlement.schema_ready,live_provider_ready:commerce.live_provider_ready&&entitlement.schema_ready,
          live_webhooks_enabled:commerce.live_webhooks_enabled,
          commercial_consent_version:commerce.commercial_consent_version,terms_url:commerce.terms_url,privacy_url:commerce.privacy_url,
+         test_checkout_enabled:commerce.test_checkout_enabled,
+         test_approved_billing_countries:commerce.test_approved_billing_countries,
          live_approved_billing_countries:commerce.activation_requirements.live.approved_billing_countries,
          pro_included:entitlement.source==="beta",entitlement,subscription:entitlement.subscription,
          can_manage_billing:Boolean(account?.stripe_customer_id||account?.stripe_live_customer_id),
@@ -57,9 +59,9 @@ export default async function handler(req,res){
         const entitlement=await entitlementForUser(user,{beta});
         if(entitlement.source==="beta")return res.status(409).json({ok:false,error:"BETA_PRO_INCLUDED",message:"Votre accès PRO bêta reste gratuit. Aucun abonnement nécessaire."});
         if(commerce.mode==="test"&&commerce.test_payments_enabled)
-          return res.status(200).json({ok:true,...await createCheckoutForUser(user,{mode:"test"})});
+          return res.status(200).json({ok:true,...await createCheckoutForUser(user,{mode:"test",billingCountry:body.billing_country})});
         if(commerce.mode==="live"&&commerce.live_payments_enabled)
-          return res.status(200).json({ok:true,...await createCheckoutForUser(user,{mode:"live",commercialConsent:body})});
+          return res.status(200).json({ok:true,...await createCheckoutForUser(user,{mode:"live",commercialConsent:body,billingCountry:body.billing_country})});
         return res.status(403).json({ok:false,error:"SAFE_LAUNCH_PAYMENT_DISABLED",message:"Les paiements sont désactivés tant que les prérequis commerciaux LIVE ne sont pas vérifiés."});
       }
       if(action==="portal"){

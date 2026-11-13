@@ -9,11 +9,22 @@ assert.equal(config.buildCommand,"npm run build:web");
 assert.equal(pkg.scripts.build,"npm run build:web");
 assert.equal(pkg.scripts["build:mobile"],"node scripts/build-mobile-web.mjs");
 assert.equal(pkg.scripts["mobile:sync"],"npm run build:mobile && npx cap sync");
-for(const file of ["index.html","security.html","privacy.html","delete-account.html","support-admin.html","manifest.webmanifest","sw.js","app.js","publisher-ui.js"]){
-  assert.equal(await read(`web-dist/${file}`),await read(file),`${file} must remain the original web source`);
+function isUnpublishedDraft(html){
+  const draft=/\bBROUILLON\s+NON\s+(?:VALID[ÉE]|PUBLI[ÉE])(?:\s|<|$)/i.test(html);
+  const noindex=[...html.matchAll(/<meta\b[^>]*>/gi)].some(([tag])=>
+    /name\s*=\s*["']robots["']/i.test(tag)&&/content\s*=\s*["'][^"']*\bnoindex\b[^"']*["']/i.test(tag));
+  return draft&&noindex;
+}
+for(const file of ["index.html","offline.html","privacy.html","security.html","legal.html","delete-account.html","reset-password.html","support-admin.html"]){
+  const source=await read(file,"utf8");
+  if(isUnpublishedDraft(source)){
+    await assert.rejects(access(`web-dist/${file}`),{code:"ENOENT"},`${file} marked unpublished must not be in web output`);
+    continue;
+  }
+  assert.equal(await read(`web-dist/${file}`),source,`${file} must remain unchanged in web output`);
 }
 assert.doesNotMatch(await read("web-dist/index.html"),/class="warboost-native"|warboost-source-commit|\/native\.css/);
-for(const name of ["api","server.mjs","supabase","scripts","package.json",".git",".env","mobile","native.css"]){
+for(const name of ["api","server.mjs","supabase","scripts","docs","package.json",".git",".env","mobile","native.css"]){
   await assert.rejects(access(`web-dist/${name}`),{code:"ENOENT"});
 }
 async function verifyFiles(dir){
@@ -39,9 +50,14 @@ async function verifyFiles(dir){
   }
 }
 await verifyFiles("web-dist");
-for(const match of (await read("sw.js")).matchAll(/["'](\/[^"']+)["']/g)){
+const outputSw=await read("web-dist/sw.js");
+for(const file of ["legal.html","privacy.html"]){
+  if(isUnpublishedDraft(await read(file,"utf8")))
+    assert.equal(outputSw.includes(`"/${file}"`)||outputSw.includes(`'/${file}'`),false,`${file} draft must not be precached`);
+}
+for(const match of outputSw.matchAll(/["'](\/[^"']+)["']/g)){
   const path=match[1].split("?")[0];
   if(path==="/"||path.startsWith("/api/"))continue;
   await access(`web-dist${path}`);
 }
-console.log("PASS web output: Vercel configuration, unchanged web/PWA pages, complete local JS imports/cache assets, no native or private/server sources.");
+console.log("PASS web output: Vercel configuration, unchanged published pages, drafts excluded from pages and service-worker cache, complete local JS imports/cache assets, no native or private/server sources.");

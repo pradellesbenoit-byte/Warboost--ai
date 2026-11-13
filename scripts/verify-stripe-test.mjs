@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {billingFixture,userA,userB,userBeta,userFree,userLive} from "./billing-test-fixture.mjs";
+import {billingFixture,userA,userB,userBeta,userFree,userLive,userCountry} from "./billing-test-fixture.mjs";
 import {commercialConfig,createCheckoutForUser,createPortalForUser,processWebhook,verifyWebhookSignature,subscriptionActive,readRawBody,recordLiveConsent} from "../lib/commercial-pro.js";
 import {entitlementForUser,requireProductUser} from "../lib/pro-access.js";
 import proHandler from "../api/pro.js";
@@ -11,6 +11,7 @@ const fixture=await billingFixture();
 let passed=0;
 const test=async(name,fn)=>{await fn();passed++;console.log(`BILLING ✓ ${name}`)};
 const user=id=>({id,email:id===userBeta?"beta@example.test":id===userA?"a@example.test":id===userB?"b@example.test":"free@example.test"});
+const createTestCheckout=(account,options={})=>createCheckoutForUser(account,{billingCountry:"FR",...options});
 const deliver=e=>processWebhook(...fixture.sign(e));
 async function call(handler,id,{method="GET",query={},body=null,parsedOnly=false}={}){
   let result;
@@ -54,27 +55,60 @@ try{
     assert.equal(commercialConfig().payments_enabled,false);
     await assert.rejects(createCheckoutForUser(user(userA)),{code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
     process.env.WARBOOST_COMMERCIAL_MODE="test";process.env.STRIPE_SECRET_KEY="sk_live_fixture_not_real";
-    await assert.rejects(createCheckoutForUser(user(userA)),{code:"STRIPE_TEST_KEY_REQUIRED"});
+    await assert.rejects(createTestCheckout(user(userA)),{code:"STRIPE_TEST_KEY_REQUIRED"});
     assert.equal(fixture.calls.filter(x=>x.host==="api.stripe.com").length,n);process.env.STRIPE_SECRET_KEY="sk_test_fixture_only";
   });
   await test("Wrong amount/currency/product/interval count/usage/livemode Price rejected before checkout",async()=>{
     for(const override of [{unit_amount:599},{currency:"usd"},{product:"prod_other"},{recurring:{interval:"month",interval_count:3,usage_type:"licensed"}},
       {recurring:{interval:"month",interval_count:1,usage_type:"metered"}},{livemode:true},{active:false},{id:"price_other"}]){
-      fixture.priceOverride=override;await assert.rejects(createCheckoutForUser(user(userA)));
+      fixture.priceOverride=override;await assert.rejects(createTestCheckout(user(userA)));
     }
     fixture.priceOverride={};fixture.productOverride={active:false};
-    await assert.rejects(createCheckoutForUser(user(userA)),{code:"PRO_PRODUCT_MISMATCH"});fixture.productOverride={};
+    await assert.rejects(createTestCheckout(user(userA)),{code:"PRO_PRODUCT_MISMATCH"});fixture.productOverride={};
     assert.equal(fixture.sessions.size,0);
   });
+  await test("TEST Checkout validates country server-side before any Stripe request or billing reservation",async()=>{
+    assert.equal(commercialConfig().test_checkout_enabled,true);
+    assert.deepEqual(commercialConfig().test_approved_billing_countries,["FR"]);
+    const stripeCalls=()=>fixture.calls.filter(x=>x.host==="api.stripe.com");
+    const reservations=async()=>(await fixture.pg.query("select count(*)::int n from warboost_checkout_attempts")).rows[0].n;
+    const before=stripeCalls().length,sessions=fixture.sessions.size,customers=fixture.customers.size;
+    const reservationCount=await reservations();
+    await assert.rejects(createCheckoutForUser(user(userCountry)),{code:"BILLING_COUNTRY_REQUIRED"});
+    await assert.rejects(createCheckoutForUser(user(userCountry),{billingCountry:"US"}),{code:"BILLING_COUNTRY_NOT_APPROVED"});
+    assert.equal(stripeCalls().length,before);
+    assert.equal(fixture.sessions.size,sessions);assert.equal(fixture.customers.size,customers);
+    assert.equal(await reservations(),reservationCount);
+    process.env.WARBOOST_TEST_BILLING_PREFLIGHT_ENABLED="false";
+    await assert.rejects(createCheckoutForUser(user(userCountry),{billingCountry:"FR"}),{code:"BILLING_COUNTRY_PREFLIGHT_NOT_CONFIGURED"});
+    process.env.WARBOOST_TEST_BILLING_PREFLIGHT_ENABLED="true";
+    assert.equal(stripeCalls().length,before);
+    const apiMissing=await call(proHandler,userCountry,{method:"POST",body:{action:"checkout"}});
+    assert.equal(apiMissing.code,400);assert.equal(apiMissing.data.error,"BILLING_COUNTRY_REQUIRED");
+    const apiDenied=await call(proHandler,userCountry,{method:"POST",body:{action:"checkout",billing_country:"US"}});
+    assert.equal(apiDenied.code,403);assert.equal(apiDenied.data.error,"BILLING_COUNTRY_NOT_APPROVED");
+    assert.equal(stripeCalls().length,before);
+    assert.equal(await reservations(),reservationCount);
+    const allowed=await call(proHandler,userCountry,{method:"POST",body:{action:"checkout",billing_country:"fr"}});
+    assert.equal(allowed.code,200);assert.equal(allowed.data.mode,"test");assert.equal(allowed.data.test,true);
+    assert.equal(fixture.sessions.size,sessions+1);assert.equal(fixture.customers.size,customers+1);
+    assert.equal(await reservations(),reservationCount+1);
+    const latestSession=[...fixture.sessions.values()].at(-1);
+    const createdCustomer=[...fixture.customers.values()].find(row=>row.id===latestSession.customer);
+    assert.equal(createdCustomer.address.country,"FR","country is normalized and attached only after allowlist validation");
+    assert.equal(allowed.data.live,false);
+    assert.ok(stripeCalls().some(x=>x.path==="/v1/checkout/sessions"));
+  });
   await test("Two simultaneous tabs: one persistent Checkout, target 499 EUR monthly and TEST return URLs",async()=>{
-    const results=await Promise.allSettled([createCheckoutForUser(user(userA)),createCheckoutForUser(user(userA))]);
+    const sessionsBefore=fixture.sessions.size,customersBefore=fixture.customers.size;
+    const results=await Promise.allSettled([createTestCheckout(user(userA)),createTestCheckout(user(userA))]);
     assert.equal(results.filter(x=>x.status==="fulfilled").length,1);
     assert.equal(results.find(x=>x.status==="rejected").reason.code,"CHECKOUT_IN_PROGRESS");
-    assert.equal(fixture.sessions.size,1);assert.equal(fixture.customers.size,1);
-    const retry=await createCheckoutForUser(user(userA));assert.equal(retry.url,results.find(x=>x.status==="fulfilled").value.url);
+    assert.equal(fixture.sessions.size,sessionsBefore+1);assert.equal(fixture.customers.size,customersBefore+1);
+    const retry=await createTestCheckout(user(userA));assert.equal(retry.url,results.find(x=>x.status==="fulfilled").value.url);
     assert.equal((await fixture.rpc("warboost_live_claim_checkout",{p_user_id:userA})).state,"busy",
       "an open TEST session blocks a simultaneous LIVE checkout");
-    const params=new URLSearchParams(fixture.calls.find(x=>x.path==="/v1/checkout/sessions").opts.body);
+    const params=new URLSearchParams(fixture.calls.filter(x=>x.path==="/v1/checkout/sessions").at(-1).opts.body);
     assert.equal(params.get("line_items[0][price]"),"price_pro_test");assert.equal(params.get("line_items[0][quantity]"),"1");
     assert.equal(params.get("success_url"),"https://beta.warboost.fr/?billing=test-success");
     assert.equal(params.get("cancel_url"),"https://beta.warboost.fr/?billing=test-cancel");
@@ -156,7 +190,7 @@ try{
     assert.equal((await entitlementForUser(user(userA))).subscription.cancel_at_period_end,false);
   });
   await test("Active subscription prevents another Checkout; expired/mismatched price never grants PRO",async()=>{
-    await assert.rejects(createCheckoutForUser(user(userA)),{code:"PRO_SUBSCRIPTION_EXISTS"});
+    await assert.rejects(createTestCheckout(user(userA)),{code:"PRO_SUBSCRIPTION_EXISTS"});
     const row=(await fixture.pg.query("select * from warboost_subscriptions where user_id=$1",[userA])).rows[0];
     for(const bad of [{current_period_end:null},{current_period_end:"bad"},{stripe_price_id:"price_other"},{stripe_product_id:"prod_other"},{livemode:true},{plan:"free"}])
       assert.equal(subscriptionActive({...row,...bad}),false);
@@ -186,10 +220,10 @@ try{
     assert.equal((await entitlementForUser(user(userFree))).tier,"FREE");
   });
   await test("Nonce preserved after provider success/network loss; retry cannot create second session",async()=>{
-    fixture.failCheckoutOnce=true;await assert.rejects(createCheckoutForUser(user(userB)));
+    fixture.failCheckoutOnce=true;await assert.rejects(createTestCheckout(user(userB)));
     const count=fixture.sessions.size;
     await fixture.pg.query("update warboost_checkout_attempts set lease_until=now()-interval '1 second' where user_id=$1",[userB]);
-    await createCheckoutForUser(user(userB));assert.equal(fixture.sessions.size,count);
+    await createTestCheckout(user(userB));assert.equal(fixture.sessions.size,count);
   });
   await test("Server-only journal is minimal, browser contains no Stripe secrets; exact raw-body required",async()=>{
     for(const file of ["app.js","index.html","sw.js","publisher-ui.js"])
@@ -320,7 +354,8 @@ try{
 
     const authSource=fs.readFileSync("api/pro.js","utf8");
     assert.match(authSource,/const user=await requireUser\(req\)/);
-    assert.match(authSource,/createCheckoutForUser\(user,\{mode:"live",commercialConsent:body\}\)/);
+    assert.match(authSource,/createCheckoutForUser\(user,\{mode:"live",commercialConsent:body,billingCountry:body\.billing_country\}\)/);
+    assert.match(authSource,/createCheckoutForUser\(user,\{mode:"test",billingCountry:body\.billing_country\}\)/);
     assert.doesNotMatch(authSource,/commercialConsent:\s*\{[^}]*user_id\s*:\s*body/i);
 
     const deletedUser="10000000-0000-4000-8000-000000000006";

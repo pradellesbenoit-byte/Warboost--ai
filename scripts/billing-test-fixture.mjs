@@ -7,6 +7,7 @@ export const userB="10000000-0000-4000-8000-000000000002";
 export const userBeta="10000000-0000-4000-8000-000000000003";
 export const userFree="10000000-0000-4000-8000-000000000004";
 export const userLive="10000000-0000-4000-8000-000000000005";
+export const userCountry="10000000-0000-4000-8000-000000000007";
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json"}});
 export async function billingFixture(){
   const pg=new PGlite();
@@ -15,7 +16,7 @@ export async function billingFixture(){
     create function auth.uid() returns uuid language sql as $$select null::uuid$$;
     create table public.wb1_beta_invites(id uuid primary key default gen_random_uuid(),email text unique,status text,
       invited_at timestamptz default now(),accepted_user_id text,expires_at timestamptz,accepted_at timestamptz,updated_at timestamptz);`);
-  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLive,"live@example.test"]])
+  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLive,"live@example.test"],[userCountry,"country@example.test"]])
     await pg.query("insert into auth.users(id,email,created_at) values($1,$2,now()-interval '1 day')",[id,email]);
   await pg.query("insert into wb1_beta_invites(email,status,invited_at,accepted_user_id) values('beta@example.test','accepted',now()-interval '1 day',$1)",[userBeta]);
   const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql","supabase/migration_v2_5_33_live_billing_preparation.sql"];
@@ -23,6 +24,7 @@ export async function billingFixture(){
   const oldEnv={...process.env},oldFetch=globalThis.fetch;
   Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"test",WARBOOST_APP_URL:"https://beta.warboost.fr",STRIPE_SECRET_KEY:"sk_test_fixture_only",
     STRIPE_WEBHOOK_SECRET:"whsec_fixture_only",STRIPE_PRICE_PRO_MONTHLY:"price_pro_test",STRIPE_PRODUCT_PRO:"prod_pro_test",
+    WARBOOST_TEST_BILLING_PREFLIGHT_ENABLED:"true",WARBOOST_TEST_APPROVED_BILLING_COUNTRIES:"FR",
     SUPABASE_URL:"https://fixture.invalid",SUPABASE_ANON_KEY:"anon-fixture",SUPABASE_SERVICE_ROLE_KEY:"service-fixture",WARBOOST_BETA_EMAILS:"",WARBOOST_SUPPORT_ADMINS:""});
   const fixture={pg,migrations,calls:[],customers:new Map(),subscriptions:new Map(),sessions:new Map(),idempotency:new Map(),
     failDb:false,failApplyOnce:false,failCheckoutOnce:false,priceOverride:{},livePriceOverride:{},productOverride:{},providerLive:false,card:"accepted"};
