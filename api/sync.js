@@ -109,7 +109,8 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
             const snapshotAt=Date.parse(merged.alliance?.roster_snapshot_complete_at||""),serverRosterAt=Date.parse(ctx.alliance?.roster_updated_at||"");
             const completeSnapshotFresh=Number.isFinite(snapshotAt)&&snapshotAt>0&&(!Number.isFinite(serverRosterAt)||snapshotAt>serverRosterAt);
             if(scope.server_id===targetServer&&scope.alliance_tag===targetTag&&candidateRoster.length>0&&(completeSnapshotFresh||candidateRoster.length>=existingCount)){
-              const canonicalMerged=completeSnapshotFresh?replaceCanonicalRosterFromCompleteSnapshot(ctx.alliance?.roster,candidateRoster,{serverId:targetServer,allianceTag:targetTag}):mergeCanonicalRoster(ctx.alliance?.roster,candidateRoster,{serverId:targetServer,allianceTag:targetTag});
+              const genericSyncOptions={serverId:targetServer,allianceTag:targetTag,preserveExistingPower:true};
+              const canonicalMerged=completeSnapshotFresh?replaceCanonicalRosterFromCompleteSnapshot(ctx.alliance?.roster,candidateRoster,genericSyncOptions):mergeCanonicalRoster(ctx.alliance?.roster,candidateRoster,genericSyncOptions);
                 rosterWriteAttempted=true;
                 await updateAllianceScopeRoster({alliance_id:ctx.alliance.id,roster:canonicalMerged,expected_updated_at:ctx.alliance.updated_at});
                rosterPersisted=true;
