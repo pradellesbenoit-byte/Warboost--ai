@@ -32,6 +32,7 @@ process.env.WARBOOST_VISION_ENDPOINT="https://vision.test.invalid/scan";
 process.env.WARBOOST_VISION_SECRET="vision-test-secret";
 delete process.env.OPENAI_API_KEY;
 const {BETA_CONSENT_VERSION}=await import("../lib/beta-access.js");
+const {translator}=await import("../i18n.js");
 const {default:handler}=await import("../api/scan.js");
 
 let providerOutput={state:{player:{hq_level:35}}};
@@ -44,7 +45,7 @@ globalThis.fetch=async(input,init={})=>{
   const url=new URL(String(input));
   if(url.pathname==="/auth/v1/user"){
     const token=String(init.headers?.authorization||"").replace(/^Bearer\s+/i,"");
-    return new Response(JSON.stringify({id:token,email:"allowed@test.invalid"}),{status:200});
+    return new Response(JSON.stringify({id:token,email:token==="free-scan-user"?"free@test.invalid":"allowed@test.invalid"}),{status:200});
   }
   if(url.pathname.startsWith("/rest/v1/wb1_beta_invites")){
     return new Response("[]",{status:200});
@@ -100,6 +101,21 @@ async function call(req=request()){
     assert.equal(providerCalls,0);
   }finally{console.error=old}
   console.log("PASS: scan route enforces user authentication and current beta consent");
+}
+
+// An authenticated player without a beta grant or paid entitlement may use
+// FREE scans. Consent, image validation, and the bounded abuse guard remain.
+{
+  providerOutput={state:{player:{hq_level:35,power_m:210.5}}};
+  const before=providerCalls;
+  const freeScan=await call(request({token:"free-scan-user",body:{scan_type:"profile"}}));
+  assert.equal(freeScan.status,200);
+  assert.equal(freeScan.body.state.player.power_m,210.5);
+  assert.equal(providerCalls,before+1);
+  assert.match(translator("fr")("profile_alliance_separation_note"),/roster partagé/);
+  assert.match(translator("en-GB")("profile_alliance_separation_note"),/shared alliance roster/);
+  assert.match(translator("es")("profile_alliance_separation_note"),/shared alliance roster/,"other locales safely fall back to English");
+  console.log("PASS: authenticated non-PRO player completes a FREE scan; profile/roster copy has FR/EN and safe fallback");
 }
 
 // Existing image validation remains bounded and rejects malformed captures.
@@ -162,8 +178,14 @@ async function call(req=request()){
 // Hints come from the authenticated owner's cloud row, never browser claims.
 {
   const token="squad-context-owner",names=["Kimberly","Murphy","Marshall","DVA","Stetmann"];
-  profileFixtures.set(token,{player_id:token,squads:[{confirmed_composition:names,composition_confirmed_at:"2026-10-01T00:00:00Z"}]});
-  providerOutput={squads:[{power:"44,43M",heroes:[{name_text:"Kimber",name_evidence:"visible_fragment",name_confidence:.96,power_text:"5,65M",power_confidence:.97}]}]};
+  profileFixtures.set(token,{player_id:token,squads:[{id:1,composition_source:"explicit_confirmation",
+    confirmed_composition:names,composition_confirmed_at:"2026-10-01T00:00:00Z"}]});
+  providerOutput={captures:[{image_index:0,screen_type:"formation_details",exclusive_weapons:[],
+    squads:[{power:"44,43M",power_confidence:.96,heroes:[
+      {name_text:"Kimber",name_evidence:"visible_fragment",name_confidence:.96,name_image_index:0,
+        power_text:"5,65M",power_confidence:.97},
+      {},{},{},{}
+    ]}]}]};
   const out=await call(request({token,body:{scan_type:"squad1",current_state:{player_id:token,squads:[{confirmed_composition:["Tesla"],composition_confirmed_at:"2026-10-07T00:00:00Z"}]}}}));
   assert.equal(out.status,200);
   assert.equal(out.body.state.squads[0].heroes[0].name,"Kimberly");

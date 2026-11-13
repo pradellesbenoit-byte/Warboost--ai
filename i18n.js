@@ -880,6 +880,8 @@ Object.assign(RO,{clear_capture:"Șterge captura de pe acest dispozitiv",privacy
 Object.assign(EL,{clear_capture:"Διαγραφή στιγμιότυπου από αυτή τη συσκευή",privacy_scan:"Το στιγμιότυπο διατηρείται προσωρινά σε αυτή τη συσκευή ώστε να μην χρειάζεται να το επιλέξεις ξανά. Η αρχική εικόνα δεν αποθηκεύεται ποτέ στο προφίλ WarBoost Cloud και λήγει αυτόματα."});
 Object.assign(CS,{clear_capture:"Odstranit snímek z tohoto zařízení",privacy_scan:"Snímek je dočasně uložen v tomto zařízení, abys ho nemusel znovu vybírat. Původní obrázek se nikdy neukládá do profilu WarBoost Cloud a automaticky vyprší."});
 Object.assign(SV,{clear_capture:"Ta bort skärmbilden från den här enheten",privacy_scan:"Skärmbilden sparas tillfälligt på den här enheten så att du slipper välja den igen. Råbilden sparas aldrig i din WarBoost Cloud-profil och upphör automatiskt."});
+Object.assign(EN,{profile_alliance_separation_note:"Updating your personal profile does not automatically change the shared alliance roster. Only R4/R5 managers can update that roster."});
+Object.assign(FR,{profile_alliance_separation_note:"Mettre à jour ce profil personnel ne modifie pas automatiquement la puissance du roster partagé de l’alliance. Seuls les responsables R4/R5 peuvent mettre à jour ce roster."});
 export function translator(lang){const pack=packs[lang]||EN;return (key,vars={})=>{let text=COMPLETED_LOCALES[lang]?.[key]??BETA_INVITATION_COPY[lang]?.[key]??pack[key]??BETA_INVITATION_COPY["en-GB"][key]??EN[key]??key;for(const [k,v] of Object.entries(vars))text=text.replaceAll(`{${k}}`,String(v));return text}}
 
 // ===== V2.5.5 · Audit completion: persistence, 7-day plan, R5/R4, voice =====
