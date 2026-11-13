@@ -5,8 +5,14 @@ import {readFile} from "node:fs/promises";
 // Read-only audit of objects reachable from this branch but not its remote base.
 // Never scans local backups, credentials, production data or other branches.
 const git=(...args)=>execFileSync("git",["--no-optional-locks",...args],{encoding:"utf8"});
-assert.equal(git("branch","--show-current").trim(),"public-beta-safe-launch");
-const base=git("rev-parse","origin/public-beta-safe-launch").trim();
+const branch=git("branch","--show-current").trim();
+const protectedBranchBases=new Map([
+  ["public-beta-safe-launch","origin/public-beta-safe-launch"],
+  ["warboost-roster-fix-20261112","origin/warboost-roster-fix-20261112"]
+]);
+const baseRef=protectedBranchBases.get(branch);
+assert.ok(baseRef,`privacy audit is not authorized for branch ${branch||"(detached HEAD)"}`);
+const base=git("rev-parse",baseRef).trim();
 git("merge-base","--is-ancestor",base,"HEAD");
 const commits=git("rev-list",`${base}..HEAD`).trim().split(/\s+/).filter(Boolean);
 const forbidden=/^(?:attached_assets\/|\.local\/private-(?:git-backups|scan-captures)\/|generated-artifacts\/)/;
