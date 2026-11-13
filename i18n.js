@@ -2904,18 +2904,67 @@ const AUTH_REQUEST_SUPERSEDED={
 };
 for(const [code,copy] of Object.entries(AUTH_REQUEST_SUPERSEDED))packs[code].auth_request_superseded=copy;
 
-// Explicit English fallback for roster correction; no raw translation keys.
-for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
+// Explicit copy for roster correction; English is also the universal fallback.
+const ROSTER_SCAN_COPY_FR={
   roster_manual_add:"Ajouter un membre manuellement",
   roster_rank_required:"Grade R1–R5 à confirmer avant import",
   roster_manual_help:"Saisis le pseudo et confirme explicitement son grade R1–R5 avant l’import. Aucun grade n’est deviné.",
-  roster_scan_unreadable:"{count} capture(s) non lue(s). Les autres lignes sont conservées ; vérifie-les ou ajoute le membre manuellement."
-}:{
+  roster_scan_unreadable:"{count} capture(s) non lue(s). Les autres lignes sont conservées ; vérifie-les ou ajoute le membre manuellement.",
+  roster_scan_retry_failed:"Reprendre {count} capture(s)",
+  roster_scan_files_failed:"{count} capture(s) en échec. Les résultats déjà lus sont conservés ; tu peux reprendre les captures concernées.",
+  roster_capture_status_pending:"En attente",
+  roster_capture_status_processing:"Analyse en cours…",
+  roster_capture_status_success:"Analysée",
+  roster_capture_status_unreadable:"Illisible — à reprendre",
+  roster_capture_status_too_large:"Trop volumineuse",
+  roster_capture_status_rate_limited:"Limite temporaire",
+  roster_capture_status_auth:"Session expirée",
+  roster_capture_status_forbidden:"Accès refusé",
+  roster_capture_status_server:"Service indisponible",
+  roster_capture_status_network:"Réseau interrompu",
+  roster_capture_status_timeout:"Délai dépassé",
+  roster_capture_status_invalid:"Image invalide",
+  roster_capture_status_failed:"Échec — à reprendre",
+  roster_scan_error_rate_limited:"Limite temporaire de scans atteinte. Attends {seconds} secondes avant de reprendre. {done}/{total} captures traitées; les résultats déjà lus sont conservés.",
+  roster_scan_error_too_large:"Cette capture dépasse la limite d’envoi. Choisis une image plus petite; les résultats précédents sont conservés.",
+  roster_scan_error_auth:"La session a expiré. Reconnecte-toi avant de poursuivre. {done}/{total} captures traitées; les résultats déjà lus sont conservés.",
+  roster_scan_error_forbidden:"Accès refusé. Vérifie ton accès et tes droits R4/R5 avant de reprendre. {done}/{total} captures traitées; les résultats déjà lus sont conservés.",
+  roster_scan_error_server:"Le service d’analyse est temporairement indisponible. Réessaie plus tard. {done}/{total} captures traitées; les résultats déjà lus sont conservés.",
+  roster_scan_error_network:"La connexion a été interrompue. Vérifie le réseau avant de reprendre. {done}/{total} captures traitées; les résultats déjà lus sont conservés.",
+  roster_scan_error_timeout:"L’analyse a dépassé le délai prévu. Réessaie plus tard. {done}/{total} captures traitées; les résultats déjà lus sont conservés.",
+  roster_scan_error_failed:"Une capture a échoué. Vérifie son statut avant de la reprendre. {done}/{total} captures traitées; les résultats déjà lus sont conservés."
+};
+const ROSTER_SCAN_COPY_EN={
   roster_manual_add:"Add a member manually",
   roster_rank_required:"Confirm R1–R5 rank before import",
   roster_manual_help:"Enter the nickname and explicitly confirm their R1–R5 rank before import. No rank is guessed.",
-  roster_scan_unreadable:"{count} unreadable capture(s). Other rows are kept; review them or add the member manually."
-});
+  roster_scan_unreadable:"{count} unreadable capture(s). Other rows are kept; review them or add the member manually.",
+  roster_scan_retry_failed:"Resume {count} capture(s)",
+  roster_scan_files_failed:"{count} capture(s) failed. Results already read are kept; you can resume the affected captures.",
+  roster_capture_status_pending:"Waiting",
+  roster_capture_status_processing:"Analyzing…",
+  roster_capture_status_success:"Analyzed",
+  roster_capture_status_unreadable:"Unreadable — retry",
+  roster_capture_status_too_large:"Too large",
+  roster_capture_status_rate_limited:"Temporary limit",
+  roster_capture_status_auth:"Session expired",
+  roster_capture_status_forbidden:"Access denied",
+  roster_capture_status_server:"Service unavailable",
+  roster_capture_status_network:"Connection interrupted",
+  roster_capture_status_timeout:"Timed out",
+  roster_capture_status_invalid:"Invalid image",
+  roster_capture_status_failed:"Failed — retry",
+  roster_scan_error_rate_limited:"Temporary scan limit reached. Wait {seconds} seconds before resuming. {done}/{total} captures processed; results already read are kept.",
+  roster_scan_error_too_large:"This capture exceeds the upload limit. Choose a smaller image; previous results are kept.",
+  roster_scan_error_auth:"Your session expired. Sign in again before continuing. {done}/{total} captures processed; results already read are kept.",
+  roster_scan_error_forbidden:"Access denied. Check access and R4/R5 permissions before resuming. {done}/{total} captures processed; results already read are kept.",
+  roster_scan_error_server:"The analysis service is temporarily unavailable. Try again later. {done}/{total} captures processed; results already read are kept.",
+  roster_scan_error_network:"The connection was interrupted. Check your network before resuming. {done}/{total} captures processed; results already read are kept.",
+  roster_scan_error_timeout:"The analysis timed out. Try again later. {done}/{total} captures processed; results already read are kept.",
+  roster_scan_error_failed:"A capture failed. Check its status before resuming. {done}/{total} captures processed; results already read are kept."
+};
+Object.assign(EN,ROSTER_SCAN_COPY_EN);
+for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?ROSTER_SCAN_COPY_FR:ROSTER_SCAN_COPY_EN);
 
 // Explicit English fallback in every locale; no raw translation keys.
 for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{

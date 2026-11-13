@@ -60,7 +60,7 @@ import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
 import {CANYON_STORM_RULESET,buildCanyonPlan,normalizeCanyonState,mergeCanyonState,clearCanyonPreparationSelection} from "./lib/canyon-storm-plan.js";
 import {normalizeAvailabilityRecord,mergeAvailabilityRecords,countAvailabilitySlots,recommendBestSlot,availabilityCapacityRoster} from "./lib/alliance-availability-planner.js";
 import {appendProgressionSnapshot,mergeProgressionSnapshots,progressionComparison,strongestSquadFromState} from "./lib/progression-history.js";
-import {appendRosterScanFiles,removeRosterScanFile,DEFAULT_ROSTER_SCAN_FILE_LIMIT} from "./lib/roster-scan-queue.js";
+import {appendRosterScanFiles,removeRosterScanFile,rosterScanFileKey,DEFAULT_ROSTER_SCAN_FILE_LIMIT} from "./lib/roster-scan-queue.js";
 import {cleanRosterOcrName,rosterIdentityKey,resolveRosterScanRows,confirmRosterScanPossibleMatch,rosterScanHasUnresolvedIdentity} from "./lib/roster-identity-resolution.js";
 import {parseRosterConfidence,safeRosterDiagnostic,recordRosterDiagnostic,rosterDiagnostics,rosterFailureKind,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest,rosterStateFingerprint} from "./lib/roster-sync.js";
 import {rosterSyncCopy} from "./lib/roster-sync-copy.js";
@@ -570,7 +570,7 @@ function bindAllianceAccordions(){
 }
 let alliancePlayerModalScrollTop=0,alliancePlayerModalHistory=false,alliancePlayerModalLastFocus=null,alliancePlayerModalBodyStyles=null;
 let scanImageDataList=[],scanImageNames=[];
-let rosterScanFiles=[],rosterScanDraft=[],desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
+let rosterScanFiles=[],rosterScanDraft=[],rosterScanCaptureStates=new Map(),desertStormRoleResyncPromise=null,desertStormRoleResyncAttempted=false,rankManagerRoleResyncPromise=null,rosterDiagnosticPromise=null,rosterDiagnostic={status:"idle",source:"unknown",canonical_count:null,cloud_member_count:null,link_status:"unknown",link_candidates:[],account_identity:null,at:0};
 let recentlyGeneratedDesertStormPlan=null;
 let rankManagerSearchTerm="",rankChangeDraft=new Map(),rankManagerSearchRenderGeneration=0,sharedRosterLinkPromise=null;
 function searchInputIsContentEditable(input){return Boolean(input?.isContentEditable||input?.getAttribute?.("contenteditable")==="plaintext-only")}
@@ -610,7 +610,7 @@ let pendingScanReview=null;
 let pendingScanRestoreInFlight=null,pendingScanRestoreOwner="";
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
 function discardScanReviewDraft(){if(typeof analysisIndicator!=="undefined")analysisIndicator.cancel("scan");pendingScanReview=null;$("#scanReviewPanel")?.classList.add("hidden");$("#scanUnlinkedWeapons")?.classList.add("hidden");const rows=$("#scanReviewRows");if(rows)rows.replaceChildren();const ack=$("#scanSquadTargetConfirmed");if(ack)ack.checked=false}
-function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageNames=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];pendingExclusiveRequest=null;pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");updateTechnologyScanPreview([]);const rf=$("#rosterScanFiles");if(rf)rf.value="";renderRosterScanFiles();renderRosterScanDraft();
+function resetPendingScanUi(){scanInputRevision++;scanFileSelectionRevision++;discardScanReviewDraft();pendingHeroSquadId=null;pendingHeroSuggestions=[];pendingHeroScanSlots=[];pendingHeroScannedAt=null;pendingHeroOwner="";$("#heroConfirmPanel")?.classList.add("hidden");scanImageData=null;scanImageDataList=[];scanImageNames=[];scanImageName="capture.jpg";rosterScanFiles=[];rosterScanDraft=[];rosterScanCaptureStates.clear();pendingExclusiveRequest=null;pendingExclusiveScan=[];pendingExclusiveScannedAt=null;const f=$("#scanFile"),p=$("#scanPreview"),clear=$("#clearScanCaptureBtn"),panel=$("#exclusiveConfirmPanel");if(f)f.value="";if(p){p.removeAttribute("src");p.classList.add("hidden")}if(clear)clear.classList.add("hidden");if(panel)panel.classList.add("hidden");updateTechnologyScanPreview([]);const rf=$("#rosterScanFiles");if(rf){rf.value="";rf.disabled=false}renderRosterScanFiles();renderRosterScanDraft();
   pendingScanRestoreInFlight=null;pendingScanRestoreOwner="";
   const rosterStatus=$("#rosterScanStatus"),rosterButton=$("#rosterScanAnalyzeBtn"),fullSnapshot=$("#rosterScanFullSnapshot");
   if(rosterStatus){rosterStatus.textContent="";rosterStatus.classList.add("hidden")}
@@ -4611,19 +4611,62 @@ async function applyRosterRows(imported,{complete=false,status=null,source="manu
     return {...(result||{}),synced:false,error,diagnostic,server_confirmed:serverConfirmed};
   }finally{finishLoading();rosterImportInFlight=false}
 }
+function rosterScanFileStatus(file){return rosterScanCaptureStates.get(rosterScanFileKey(file))||"pending"}
+function rosterScanFileStatusLabelKey(value){
+  return ({
+    pending:"roster_capture_status_pending",processing:"roster_capture_status_processing",
+    success:"roster_capture_status_success",unreadable:"roster_capture_status_unreadable",
+    too_large:"roster_capture_status_too_large",rate_limited:"roster_capture_status_rate_limited",
+    auth:"roster_capture_status_auth",forbidden:"roster_capture_status_forbidden",
+    server:"roster_capture_status_server",network:"roster_capture_status_network",
+    timeout:"roster_capture_status_timeout",invalid:"roster_capture_status_invalid",
+    failed:"roster_capture_status_failed"
+  })[value]||"roster_capture_status_pending";
+}
+function rosterScanErrorKind(response,error){
+  const httpStatus=Number(response?.status||error?.http_status||error?.status||0);
+  const code=String(error?.code||"").toUpperCase();
+  if(code.includes("TIMEOUT")||error?.name==="AbortError")return "timeout";
+  if(httpStatus===429)return "rate_limited";
+  if(httpStatus===413)return "too_large";
+  if(httpStatus===401)return "auth";
+  if(httpStatus===403)return "forbidden";
+  if(httpStatus>=500)return "server";
+  if(!httpStatus)return "network";
+  return "failed";
+}
+function rosterScanErrorMessage(kind,translate,{done=0,total=0,seconds=60}={}){
+  const safeKind=["rate_limited","too_large","auth","forbidden","server","network","timeout","failed"].includes(kind)?kind:"failed";
+  return translate(`roster_scan_error_${safeKind}`,{done,total,seconds});
+}
 function renderRosterScanFiles(){
-  const info=$("#rosterScanFileInfo"),list=$("#rosterScanFileList");
+  const info=$("#rosterScanFileInfo"),list=$("#rosterScanFileList"),analyze=$("#rosterScanAnalyzeBtn");
   if(info)info.textContent=rosterScanFiles.length?t("roster_scan_files",{count:rosterScanFiles.length}):"";
+  if(analyze&&!analyze.disabled){
+    const attempted=rosterScanFiles.some(file=>{const value=rosterScanCaptureStates.get(rosterScanFileKey(file));return Boolean(value&&value!=="pending")});
+    const retryCount=rosterScanFiles.filter(file=>rosterScanFileStatus(file)!=="success").length;
+    analyze.textContent=attempted&&retryCount?t("roster_scan_retry_failed",{count:retryCount}):t("roster_scan_analyze");
+  }
   if(!list)return;
-  list.innerHTML=rosterScanFiles.map((file,i)=>`<div class="rosterScanFileItem"><div><b>${i+1}</b><span>${esc(file?.name||`capture-${i+1}`)}</span><small>${Number(file?.size)>0?`${Math.max(1,Math.round(Number(file.size)/1024))} Ko`:""}</small></div><button type="button" data-roster-file-remove="${i}" aria-label="${esc(t("roster_scan_remove_row"))}" title="${esc(t("roster_scan_remove_row"))}">×</button></div>`).join("");
-  list.querySelectorAll("[data-roster-file-remove]").forEach(btn=>btn.addEventListener("click",async()=>{rosterScanFiles=removeRosterScanFile(rosterScanFiles,Number(btn.dataset.rosterFileRemove));rosterScanDraft=[];renderRosterScanFiles();renderRosterScanDraft();const kept=await persistPendingRosterQueue();if(!kept&&rosterScanFiles.length){const st=$("#rosterScanStatus");if(st){st.className="notice warn";st.textContent=t("scan_pending_local_failed");st.classList.remove("hidden")}}}));
+  list.innerHTML=rosterScanFiles.map((file,i)=>{
+    const captureStatus=rosterScanFileStatus(file),statusKey=rosterScanFileStatusLabelKey(captureStatus);
+    return `<div class="rosterScanFileItem"><div><b>${i+1}</b><span>${esc(file?.name||`capture-${i+1}`)}</span><small>${Number(file?.size)>0?`${Math.max(1,Math.round(Number(file.size)/1024))} Ko`:""}</small><small class="privacyText" role="status">${esc(t(statusKey))}</small></div><button type="button" data-roster-file-remove="${i}" aria-label="${esc(t("roster_scan_remove_row"))}" title="${esc(t("roster_scan_remove_row"))}"${analyze?.disabled?" disabled":""}>×</button></div>`;
+  }).join("");
+  list.querySelectorAll("[data-roster-file-remove]").forEach(btn=>btn.addEventListener("click",async()=>{
+    const index=Number(btn.dataset.rosterFileRemove),removed=rosterScanFiles[index];
+    if(removed)rosterScanCaptureStates.delete(rosterScanFileKey(removed));
+    rosterScanFiles=removeRosterScanFile(rosterScanFiles,index);
+    renderRosterScanFiles();renderRosterScanDraft();
+    const kept=await persistPendingRosterQueue();
+    if(!kept&&rosterScanFiles.length){const st=$("#rosterScanStatus");if(st){st.className="notice warn";st.textContent=t("scan_pending_local_failed");st.classList.remove("hidden")}}
+  }));
 }
 $("#rosterScanFiles")?.addEventListener("change",async e=>{
   const result=appendRosterScanFiles(rosterScanFiles,e.target.files,{limit:ROSTER_SCAN_FILE_LIMIT});
   rosterScanFiles=result.files;
-  // Any queue change invalidates the previous OCR draft. Re-analysis always uses
-  // the complete current queue, preventing stale first-capture results.
-  if(result.added>0){rosterScanDraft=[];renderRosterScanDraft();const st=$("#rosterScanStatus");if(st){st.className="notice";st.textContent=t("roster_scan_reanalyze");st.classList.remove("hidden")}}
+  for(const file of rosterScanFiles)if(!rosterScanCaptureStates.has(rosterScanFileKey(file)))rosterScanCaptureStates.set(rosterScanFileKey(file),"pending");
+  // Keep OCR rows from completed captures when the player appends more files.
+  if(result.added>0){renderRosterScanDraft();const st=$("#rosterScanStatus");if(st){st.className="notice";st.textContent=t("roster_scan_reanalyze");st.classList.remove("hidden")}}
   // Android can return one screenshot per picker opening. Reset only the native
   // input so the next tap appends another image to our persistent queue.
   e.target.value="";
@@ -4644,34 +4687,94 @@ $("#rosterScanAnalyzeBtn")?.addEventListener("click",async()=>{
   const revision=scanInputRevision,owner=pendingScanOwner(),files=[...rosterScanFiles];
   const isCurrent=()=>revision===scanInputRevision&&owner===pendingScanOwner();
   collectRosterScanDraftFromDom();
+  let filesToAnalyze=files.filter(file=>rosterScanFileStatus(file)!=="success"&&rosterScanFileStatus(file)!=="processing");
+  // A deliberate second click after all files succeeded means re-analyze them;
+  // after a partial stop, only failed/unreadable/pending captures are retried.
+  if(!filesToAnalyze.length)filesToAnalyze=files;
   btn.disabled=true;const old=btn.textContent;btn.textContent=t("scan_processing");
-  const manualBtn=$("#rosterScanAddMemberBtn");if(manualBtn)manualBtn.disabled=true;
-  if(status){status.className="notice";status.textContent=t("roster_scan_processing",{count:files.length});status.classList.remove("hidden")}
+  const manualBtn=$("#rosterScanAddMemberBtn"),fileInput=$("#rosterScanFiles");if(manualBtn)manualBtn.disabled=true;if(fileInput)fileInput.disabled=true;
+  if(status){status.className="notice";status.textContent=t("roster_scan_processing",{count:filesToAnalyze.length});status.classList.remove("hidden")}
   const finishAnalysis=beginActiveLoadingOperation("scan:roster");
-  let unreadable=0;
+  let unreadable=0,failed=0,done=0,stopMessage="";
   try{
     let rows=[...rosterScanDraft];
-    for(let i=0;i<files.length;i++){
-      const image=await imageToDataUrl(files[i]);if(!isCurrent())return;
-      const {response:r,json:j}=await fetchWarBoostScan({scan_type:"alliance_roster",locale:lang,image_data_url:image,current_state:state});
+    for(let i=0;i<filesToAnalyze.length;i++){
+      const file=filesToAnalyze[i],fileKey=rosterScanFileKey(file);
+      if(!isCurrent())return;
+      rosterScanCaptureStates.set(fileKey,"processing");renderRosterScanFiles();
+      let image;
+      try{image=await imageToDataUrl(file)}catch(error){
+        if(!isCurrent())return;
+        const kind=/size|large/i.test(String(error?.code||""))?"too_large":"invalid";
+        rosterScanCaptureStates.set(fileKey,kind);failed++;done++;renderRosterScanFiles();
+        if(status)status.textContent=t("roster_scan_progress",{done,total:filesToAnalyze.length,rows:rows.length});
+        continue;
+      }
+      if(!isCurrent())return;
+      let r,j;
+      try{
+        ({response:r,json:j}=await fetchWarBoostScan({
+          scan_type:"alliance_roster",locale:lang,image_data_url:image,
+          current_state:{player_id:String(cloudSession?.user?.id||""),alliance:{tag:String(state?.alliance?.tag||"")}}
+        }));
+      }catch(error){
+        if(!isCurrent())return;
+        const kind=rosterScanErrorKind(null,error);
+        rosterScanCaptureStates.set(fileKey,kind);failed++;renderRosterScanFiles();
+        stopMessage=rosterScanErrorMessage(kind,t,{done,total:filesToAnalyze.length,seconds:60});
+        break;
+      }
       if(!isCurrent())return;
       if(!r.ok){
-        if(r.status===422&&j?.error==="scan_no_useful_data"){unreadable++;continue}
-        throw new Error(j.message||j.error||"scan_failed");
+        if(r.status===422&&j?.error==="scan_no_useful_data"){
+          rosterScanCaptureStates.set(fileKey,"unreadable");unreadable++;done++;renderRosterScanFiles();
+          if(status)status.textContent=t("roster_scan_progress",{done,total:filesToAnalyze.length,rows:rows.length});
+          continue;
+        }
+        const kind=rosterScanErrorKind(r,{code:j?.error});
+        rosterScanCaptureStates.set(fileKey,kind);failed++;renderRosterScanFiles();
+        if(kind==="too_large"){
+          done++;
+          if(status)status.textContent=t("roster_scan_progress",{done,total:filesToAnalyze.length,rows:rows.length});
+          continue;
+        }
+        const rawRetry=Number(r.headers?.get?.("Retry-After"));
+        const seconds=Number.isFinite(rawRetry)&&rawRetry>0?Math.min(300,Math.max(1,Math.ceil(rawRetry))):60;
+        stopMessage=rosterScanErrorMessage(kind,t,{done,total:filesToAnalyze.length,seconds});
+        break;
       }
       rows=mergeRosterScanRows(rows,j.roster_rows||[]);
       // Keep every completed image even if a later image times out. Owner/revision
       // was checked above; no import or cloud mutation takes place here.
       rosterScanDraft=resolveCurrentRosterScanDraft(rows);renderRosterScanDraft();
-      if(status)status.textContent=t("roster_scan_progress",{done:i+1,total:files.length,rows:rows.length});
+      rosterScanCaptureStates.set(fileKey,"success");done++;renderRosterScanFiles();
+      if(status)status.textContent=t("roster_scan_progress",{done,total:filesToAnalyze.length,rows:rows.length});
     }
     if(!isCurrent())return;
     rosterScanDraft=resolveCurrentRosterScanDraft(mergeRosterScanRows([],rows));renderRosterScanDraft();
-    if(status){status.className=unreadable?"notice warn":"notice";status.textContent=t("roster_scan_ready",{count:rosterScanDraft.length})+(unreadable?" "+t("roster_scan_unreadable",{count:unreadable}):"")}
-  }catch(e){if(isCurrent()&&status){status.className="notice warn";status.textContent=analysisFailureMessage(e,t)+(unreadable?" "+t("roster_scan_unreadable",{count:unreadable}):"")}}
-  finally{finishAnalysis();if(isCurrent()){btn.disabled=false;btn.textContent=old;if(manualBtn)manualBtn.disabled=false}}
+    if(status){
+      status.className=stopMessage||unreadable||failed?"notice warn":"notice";
+      status.textContent=stopMessage||t("roster_scan_ready",{count:rosterScanDraft.length});
+      if(unreadable)status.textContent+=" "+t("roster_scan_unreadable",{count:unreadable});
+      if(failed&&!stopMessage)status.textContent+=" "+t("roster_scan_files_failed",{count:failed});
+    }
+  }catch(error){
+    if(isCurrent()&&status){
+      const kind=rosterScanErrorKind(null,error);
+      status.className="notice warn";
+      status.textContent=rosterScanErrorMessage(kind,t,{done,total:filesToAnalyze.length,seconds:60});
+      if(unreadable)status.textContent+=" "+t("roster_scan_unreadable",{count:unreadable});
+    }
+  }finally{
+    finishAnalysis();
+    if(isCurrent()){
+      btn.disabled=false;btn.textContent=old;
+      if(manualBtn)manualBtn.disabled=false;if(fileInput)fileInput.disabled=false;
+      renderRosterScanFiles();
+    }
+  }
 });
-$("#rosterScanImportBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}collectRosterScanDraftFromDom();if(rosterScanHasUnresolvedIdentity(rosterScanDraft)){if(status){status.className="notice warn";status.textContent=t("roster_identity_unresolved_block");status.classList.remove("hidden")}renderRosterScanDraft();return}if(rosterScanDraft.some(row=>!scanRole(row?.role))){if(status){status.className="notice warn";status.textContent="Chaque grade doit être confirmé avant l’import.";status.classList.remove("hidden")}return}const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=await applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result?.synced){rosterScanDraft=[];rosterScanFiles=[];if($("#rosterScanFiles"))$("#rosterScanFiles").value="";void clearPendingRosterFiles(pendingScanOwner());renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
+$("#rosterScanImportBtn")?.addEventListener("click",async()=>{const status=$("#rosterScanStatus");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}collectRosterScanDraftFromDom();if(rosterScanHasUnresolvedIdentity(rosterScanDraft)){if(status){status.className="notice warn";status.textContent=t("roster_identity_unresolved_block");status.classList.remove("hidden")}renderRosterScanDraft();return}if(rosterScanDraft.some(row=>!scanRole(row?.role))){if(status){status.className="notice warn";status.textContent="Chaque grade doit être confirmé avant l’import.";status.classList.remove("hidden")}return}const rows=mergeRosterScanRows([],rosterScanDraft).filter(x=>x.name);const complete=$("#rosterScanFullSnapshot")?.checked===true;const result=await applyRosterRows(rows,{complete,status,source:"roster_scan"});if(result?.synced){rosterScanDraft=[];rosterScanFiles=[];rosterScanCaptureStates.clear();if($("#rosterScanFiles"))$("#rosterScanFiles").value="";void clearPendingRosterFiles(pendingScanOwner());renderRosterScanFiles();if($("#rosterScanFullSnapshot"))$("#rosterScanFullSnapshot").checked=false;renderRosterScanDraft()}});
 
 $("#rosterImportBtn")?.addEventListener("click",async()=>{
   const status=$("#rosterImportStatus");if(!hasDeclaredAllianceCommandRole()){showAllianceRoleGuard(status);return}
