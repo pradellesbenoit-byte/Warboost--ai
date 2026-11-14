@@ -49,14 +49,23 @@ try{
   run("clé anon d'un autre projet refusée",()=>{
     assert.equal(previewSupabaseIsolationFailure({...baseEnv,SUPABASE_ANON_KEY:jwt("anon","otherproject0000000000")}),"PREVIEW_SUPABASE_PUBLIC_KEY_NOT_TEST");
   });
+  run("clé anon effective d'un autre projet refusée malgré alias TEST",()=>{
+    assert.equal(previewSupabaseIsolationFailure({...baseEnv,SUPABASE_ANON_KEY:jwt("anon","otherproject0000000000"),SUPABASE_PUBLISHABLE_KEY:validPublic}),"PREVIEW_SUPABASE_PUBLIC_KEY_NOT_TEST");
+  });
+  run("alias publishable opaque ignorée si la clé anon effective est TEST",()=>{
+    assert.equal(previewSupabaseIsolationFailure({...baseEnv,SUPABASE_PUBLISHABLE_KEY:"sb_publishable_fixture"}),null);
+  });
+  run("clé publique effective absente refusée",()=>{
+    assert.equal(previewSupabaseIsolationFailure({...baseEnv,SUPABASE_ANON_KEY:"",SUPABASE_PUBLISHABLE_KEY:"",NEXT_PUBLIC_SUPABASE_ANON_KEY:"",NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:"",VITE_SUPABASE_ANON_KEY:""}),"PREVIEW_SUPABASE_PUBLIC_KEY_NOT_TEST");
+  });
   run("clé publique de rôle privilégié refusée",()=>{
     assert.equal(previewSupabaseIsolationFailure({...baseEnv,SUPABASE_ANON_KEY:validService}),"PREVIEW_SUPABASE_PUBLIC_KEY_NOT_TEST");
   });
   run("clé service_role d'un autre projet refusée",()=>{
     assert.equal(previewSupabaseIsolationFailure({...baseEnv,SUPABASE_SERVICE_ROLE_KEY:jwt("service_role","otherproject0000000000")}),"PREVIEW_SUPABASE_SERVICE_KEY_NOT_TEST");
   });
-  run("clé moderne opaque refusée sans supposer son projet",()=>{
-    assert.equal(previewSupabaseIsolationFailure({...baseEnv,SUPABASE_PUBLISHABLE_KEY:"sb_publishable_fixture"}),"PREVIEW_SUPABASE_PUBLIC_KEY_NOT_TEST");
+  run("clé moderne opaque refusée si elle est la clé effective",()=>{
+    assert.equal(previewSupabaseIsolationFailure({...baseEnv,SUPABASE_ANON_KEY:"",SUPABASE_PUBLISHABLE_KEY:"sb_publishable_fixture"}),"PREVIEW_SUPABASE_PUBLIC_KEY_NOT_TEST");
   });
   run("production inchangée par le garde de branche Preview",()=>{
     const production={...baseEnv,VERCEL_ENV:"production",SUPABASE_URL:"https://production-project.supabase.co"};
