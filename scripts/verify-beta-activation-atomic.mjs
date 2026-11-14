@@ -23,6 +23,10 @@ async function rows(text){return JSON.parse(await sql(`select coalesce(json_agg(
 const uuid=n=>`50000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
 const ids=[uuid(1),uuid(2),uuid(3)],source="beta-code-hf8.6.5";
 const validCode="SYNTHETIC-ATOMIC-AUDIT";
+const originalDateNow=Date.now;
+const codeDeadline=Date.parse(fs.readFileSync("api/support.js","utf8").match(/const BETA_CODE_ACCEPT_UNTIL=Date\.parse\("([^"]+)"\)/)[1]);
+const syntheticPreDeadlineNow=codeDeadline-24*60*60*1000;
+const syntheticActivePolicyUntil="2099-12-31T23:59:59Z";
 Object.assign(process.env,{
   SUPABASE_URL:"https://beta-fixture.invalid",SUPABASE_ANON_KEY:"fixture",SUPABASE_SERVICE_ROLE_KEY:"fixture",
   WARBOOST_COMMERCIAL_MODE:"off",WARBOOST_BETA_EMAILS:"",WARBOOST_SUPPORT_ADMINS:"",
@@ -74,10 +78,10 @@ async function request(handler,id,body){
 }
 const activate=(id=ids[0],code=validCode)=>request(support,id,{action:"beta_code_activate",code,email:"untrusted@example.test",user_id:ids[2],nickname:"Untrusted"});
 const count=()=>sql(`select count(*) from wb1_beta_invites where invited_by_user_id=${quote(source)} and status in ('pending','accepted')`);
-async function reset(){await sql("delete from wb1_beta_invites;update wb1_beta_signup_policy set accept_until='2026-10-31T23:59:59Z'");}
+async function reset(){await sql(`delete from wb1_beta_invites;update wb1_beta_signup_policy set accept_until=${quote(syntheticActivePolicyUntil)}::timestamptz`);}
 async function seed({status="accepted",owner=null,expired=false,email="player1@example.test"}={}){
   await sql(`insert into wb1_beta_invites(email,status,accepted_user_id,invited_by_user_id,expires_at)
-    values(${quote(email)},${quote(status)},${owner?quote(owner):"null"},${quote(source)},${expired?"now()-interval '1 day'":"null"})`);
+    values(${quote(email)},${quote(status)},${owner?quote(owner):"null"},${quote(source)},${expired?`${quote("2026-01-01T00:00:00Z")}::timestamptz`:"null"})`);
 }
 try{
   execFileSync("initdb",["-D",data,"-U","wb_audit","--auth=trust","--no-locale","-E","UTF8"],{stdio:"ignore"});
@@ -101,7 +105,14 @@ try{
   let p=await request(pro,ids[0]);assert.equal(p.json.allowed,true);assert.equal(p.json.alliance_beta_allowed,false);
   assert.equal(betaCodeVisible(p.json,{logged:true}),true);assert.equal(p.json.entitlement.source,"free");
   assert.equal(betaCodeVisible(p.json,{logged:false}),false);assert.equal(betaCodeVisible(p.json,{logged:true,betaGranted:true}),false);
-  let r=await activate(ids[0],"WRONG");assert.equal(r.json.error,"BETA_CODE_INVALID");assert.equal(await count(),"0");
+  let r;
+  if(originalDateNow()>codeDeadline){
+    r=await activate(ids[0],"WRONG");assert.equal(r.json.error,"BETA_CODE_EXPIRED");assert.equal(await count(),"0");
+    console.log("PASS the public beta code remains expired after its configured deadline");
+  }
+  Date.now=()=>syntheticPreDeadlineNow;
+  await sql(`update wb1_beta_signup_policy set accept_until=${quote(syntheticActivePolicyUntil)}::timestamptz`);
+  r=await activate(ids[0],"WRONG");assert.equal(r.json.error,"BETA_CODE_INVALID");assert.equal(await count(),"0");
   missingRpc=true;r=await activate();assert.equal(r.status,503);assert.equal(r.json.error,"BETA_ACTIVATION_SCHEMA_MISSING");assert.equal(await count(),"0");missingRpc=false;
   r=await activate();assert.equal(r.status,200);assert.equal(r.json.allowed,true);assert.equal(await count(),"1");
   const first=(await rows("select * from wb1_beta_invites"))[0];assert.equal(first.email,"player1@example.test");assert.equal(first.accepted_user_id,ids[0]);
@@ -122,6 +133,7 @@ try{
   await reset();await seed({status:"revoked",owner:ids[0]});r=await activate();assert.equal(r.json.error,"BETA_ACCESS_REVOKED");assert.equal(await count(),"0");
   p=await request(pro,ids[0]);assert.equal(p.json.allowed,true);assert.equal(betaCodeVisible(p.json,{logged:true}),false);
   console.log("PASS stable auth identity, foreign owner refusal without mutation, CAS acceptance and revoked behavior");
+  Date.now=originalDateNow;
   for(const status of ["pending","accepted"]){
     await reset();await seed({status,owner:status==="accepted"?ids[0]:null,expired:true});
     const snapshot=await sql("select row_to_json(r) from wb1_beta_invites r");
@@ -140,6 +152,7 @@ try{
   r=await activate();assert.equal(r.json.error,"BETA_CODE_EXPIRED");assert.equal(await count(),"0");
   await seed({owner:ids[0]});r=await activate();assert.equal(r.json.already_allowed,true);
   console.log("PASS expired invitation/code refused without partial writes; previously accepted access survives code deadline");
+  Date.now=()=>syntheticPreDeadlineNow;
   await reset();
   await sql(`insert into wb1_beta_invites(email,status,invited_by_user_id)
     select 'seed'||n||'@example.test','accepted',${quote(source)} from generate_series(1,24) n`);
@@ -196,4 +209,4 @@ try{
     for(const key of ["beta_invitation_other_account","beta_access_expired","beta_code_invalid","beta_code_full"])
       assert.notEqual(translator(language)(key),key);
   console.log("PASS UI success requires explicit server approval; all supported languages have refusal messages");
-}finally{cleanup();}
+}finally{Date.now=originalDateNow;cleanup();}

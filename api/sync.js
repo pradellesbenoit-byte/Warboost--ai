@@ -33,14 +33,14 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
         if(Object.hasOwn(req.body,"base_roster_updated_at"))request.base_roster_updated_at=req.body.base_roster_updated_at;
         else delete request.base_roster_updated_at;
       }
-      const result=await syncAllianceRoster(request,{playerId,access,betaAllowed:beta.allowed},
+       const result=await syncAllianceRoster(request,{playerId,access,betaAllowed:beta.allowed||beta.account_access_allowed},
         {configured,userConfigured,getProfile,getProfileForUser,getAllianceRoster,updateAllianceScopeRoster});
       return res.status(result.status).json(result.body);
     }
     const userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,alliancePendingCanonical=false;
     // Personal synchronization has no legacy code requirement. Alliance paths retain their beta gate.
     const allianceBeta=await betaAccessForUserAsync(user);
-    if(requestedRosterSync&&!allianceBeta.allowed)return res.status(403).json({error:"BETA_INVITE_REQUIRED",roster_confirmation:rosterConfirmation()});
+    if(requestedRosterSync&&!allianceBeta.allowed&&!allianceBeta.account_access_allowed)return res.status(403).json({error:"BETA_INVITE_REQUIRED",roster_confirmation:rosterConfirmation()});
     if(requestedRosterSync&&!configured())throw Object.assign(new Error("Roster cloud service unavailable"),{status:503,code:"roster_cloud_service_unavailable"});
     if(configured()||userMode){
       saved=userMode?await getProfileForUser(playerId,access):await getProfile(playerId);
@@ -65,7 +65,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
     const now=new Date().toISOString();
     merged.sync={...merged.sync,provider,provider_kind:providerKind,access_status:"safe-launch-external-disabled",capabilities,status:"ok",last_sync:now,last_error:null,auto_ready:true,sources:{...merged.sync?.sources,official:false,public:false,scan:Boolean(merged.sync?.last_scan),alliance:false}};
     if(configured()||userMode){
-      if(configured()&&allianceBeta.allowed){
+      if(configured()&&(allianceBeta.allowed||allianceBeta.account_access_allowed)){
         let ctx=await getAllianceRoster(playerId,{serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag}).catch(error=>{if(requestedRosterSync)throw error;return null});
         if(requestedRosterSync&&!ctx?.alliance)throw Object.assign(new Error("Canonical alliance unavailable"),{status:409,code:"roster_context_unavailable"});
         if(requestedRosterSync&&Object.hasOwn(req.body||{},"base_roster_updated_at")){

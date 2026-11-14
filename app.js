@@ -802,7 +802,7 @@ returnViewController=createReturnViewController({documentRef:document,windowRef:
 function betaConsentStorageKey(){const id=String(cloudSession?.user?.id||"").trim();return id?`${BETA_CONSENT_KEY}:${id}`:null}
 function betaConsentAccepted(){const key=betaConsentStorageKey();return Boolean(key&&localStorage.getItem(key)==="1")}
 function authHeaders(extra={}){return {...extra,...(cloudSession?.access_token?{authorization:`Bearer ${cloudSession.access_token}`}:{}) ,...(betaConsentAccepted()?{"x-warboost-beta-consent":BETA_CONSENT_VERSION}:{})}}
-function betaAccessAllowed(){return Boolean(cloudSession?.user)&&(!betaState.enforced||betaState.allowed)}
+function betaAccessAllowed(){return Boolean(cloudSession?.user)&&(!betaState.enforced||betaState.allowed||betaState.account_access_allowed)}
 function runtimeAccessState(){return deriveRuntimeAccessState({userId:String(cloudSession?.user?.id||""),stateOwnerId:String(state?.player_id||""),betaAllowed:betaAccessAllowed(),consentAccepted:betaConsentAccepted(),betaAccessStatus:betaState?.access_status})}
 function betaPrivateDataVisible(){return runtimeAccessState().privateVisible}
 function safeLaunchBetaMode(){return proState?.entitlement?.source==="beta"||proState?.beta!==false}
@@ -1271,7 +1271,7 @@ async function refreshBeta(){
     const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));
     if(requestKey!==sessionApplyKey(cloudSession))return betaState;
     if(r.ok&&j.ok){
-      betaState={...betaState,release:j.release!==false,enforced:Boolean(j.enforced??j.beta_enforced),configured:Boolean(j.beta_configured??j.enforced??j.beta_enforced),allowed:Boolean(j.allowed??j.active),access_status:j.access_status||j.beta_access||(j.active?"invited":"invite-required"),consent_version:j.consent_version||BETA_CONSENT_VERSION,payments_enabled:false,pro_included:Boolean(j.pro_included),alliance_beta_allowed:Boolean(j.alliance_beta_allowed),beta_access_status:j.beta_access_status||j.beta_access||"invite-required",beta_code_eligible:j.beta_code_eligible===true};
+      betaState={...betaState,release:j.release!==false,enforced:Boolean(j.enforced??j.beta_enforced),configured:Boolean(j.beta_configured??j.enforced??j.beta_enforced),allowed:Boolean(j.allowed??j.active),account_access_allowed:j.account_access_allowed===true,access_status:j.access_status||j.beta_access||(j.active?"invited":"invite-required"),consent_version:j.consent_version||BETA_CONSENT_VERSION,payments_enabled:false,pro_included:Boolean(j.pro_included),alliance_beta_allowed:Boolean(j.alliance_beta_allowed),beta_access_status:j.beta_access_status||j.beta_access||"invite-required",beta_code_eligible:j.beta_code_eligible===true};
       proState={...proState,...j,entitlement:j.entitlement||null};renderPro();
     }else{
       const code=String(j?.error||"").toUpperCase(),definitive=r.status===403||["BETA_INVITE_REQUIRED","BETA_INVITE_REVOKED","BETA_INVITE_EXPIRED"].includes(code);
@@ -1327,7 +1327,7 @@ async function applySessionCore(session){
   const preSessionState=safeClone(state);
   cloudSession=session||null;
   const nextUserId=String(cloudSession?.user?.id||"");
-  if(previousUserId!==nextUserId){cloudProfileVerified=false;canonicalRosterReady=false;cloudRevision=null;betaState={...betaState,alliance_beta_allowed:false,beta_code_eligible:false,beta_access_status:"checking"};if($("#betaAccessCode"))$("#betaAccessCode").value="";$("#betaCodeStatus")?.classList.add("hidden");if($("#betaCodeActivateBtn"))$("#betaCodeActivateBtn").disabled=false}
+  if(previousUserId!==nextUserId){cloudProfileVerified=false;canonicalRosterReady=false;cloudRevision=null;betaState={...betaState,account_access_allowed:false,alliance_beta_allowed:false,beta_code_eligible:false,beta_access_status:"checking"};if($("#betaAccessCode"))$("#betaAccessCode").value="";$("#betaCodeStatus")?.classList.add("hidden");if($("#betaCodeActivateBtn"))$("#betaCodeActivateBtn").disabled=false}
   const nextPendingOwner=pendingScanOwner(cloudSession);
 
   // HF8.6.15 keeps HF8.6.14 immediate session rendering and additionally bounds every foreground auth/cloud write.
@@ -1467,10 +1467,10 @@ function renderAuth(){
 }
 function renderBeta(){
   const pill=$("#betaAccessPill"),status=$("#betaAccessStatus"),row=$("#betaConsentRow"),checkbox=$("#betaConsent"),codeBox=$("#betaCodeBox"),retry=$("#betaRestoreRetryBtn"),checking=Boolean(cloudSession?.user&&betaState.access_status==="checking"),restoreFailed=Boolean(cloudSession?.user&&betaConsentAccepted()&&!cloudProfileVerified&&betaState.restore_error);
-  const canUseCode=betaCodeVisible(betaState,{logged:Boolean(cloudSession?.user),betaGranted:proState?.beta===true});
   const invited=Boolean(cloudSession?.user&&betaState.alliance_beta_allowed===true);
-  if(pill){pill.textContent=!cloudSession?.user?t("beta_signin_short"):checking?t("syncing"):restoreFailed?t("update"):invited?t("beta_invited_short"):canUseCode?t("beta_code_short"):proState?.beta===true?"PRO β":"FREE";pill.className=`pill ${invited&&!restoreFailed?"active":"warn"}`}
-  if(status){status.className=`notice${invited&&!restoreFailed?"":" warn"}`;status.textContent=betaAccessMessage()}
+  const canUseCode=betaCodeVisible(betaState,{logged:Boolean(cloudSession?.user),betaGranted:proState?.beta===true}),previewFreeAccount=Boolean(cloudSession?.user&&betaState.account_access_allowed===true),accessActive=invited||previewFreeAccount;
+  if(pill){pill.textContent=!cloudSession?.user?t("beta_signin_short"):checking?t("syncing"):restoreFailed?t("update"):invited?t("beta_invited_short"):canUseCode?t("beta_code_short"):proState?.beta===true?"PRO β":"FREE";pill.className=`pill ${accessActive&&!restoreFailed?"active":"warn"}`}
+  if(status){status.className=`notice${accessActive&&!restoreFailed?"":" warn"}`;status.textContent=betaAccessMessage()}
   if(status&&runtimeAccessState().phase==="ready"&&currentAccountSyncView().kind!=="verified")status.classList.add("warn");
   if(retry){retry.classList.toggle("hidden",!restoreFailed);retry.disabled=cloudHydrationPending}
   let check=$("#accountSyncCheckBtn");
@@ -1490,8 +1490,8 @@ function renderBeta(){
   if(codeBox)codeBox.classList.toggle("hidden",!canUseCode);
   if(row)row.classList.toggle("hidden",!cloudSession?.user||!betaAccessAllowed());
   if(checkbox)checkbox.checked=betaConsentAccepted();
-  $$('.moduleCard').forEach(x=>{const locked=Boolean(checking||!cloudSession?.user||(betaState.enforced&&!betaState.allowed)||(restoreFailed&&!betaPrivateDataVisible()));x.classList.toggle("betaLocked",locked);x.setAttribute("aria-disabled",locked?"true":"false")});
-  const fab=$("#betaFeedbackBtn");if(fab)fab.classList.toggle("hidden",Boolean(!cloudSession?.user||(betaState.enforced&&!betaState.allowed)));
+  $$('.moduleCard').forEach(x=>{const locked=Boolean(checking||!cloudSession?.user||(betaState.enforced&&!betaAccessAllowed())||(restoreFailed&&!betaPrivateDataVisible()));x.classList.toggle("betaLocked",locked);x.setAttribute("aria-disabled",locked?"true":"false")});
+  const fab=$("#betaFeedbackBtn");if(fab)fab.classList.toggle("hidden",Boolean(!cloudSession?.user||(betaState.enforced&&!betaAccessAllowed())));
 }
 function authMessage(text,ok=false){const el=$("#authMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
 
