@@ -1,3 +1,5 @@
+import {assertPreviewSupabaseIsolation} from "../lib/preview-supabase-isolation.js";
+
 function pick(...names){
   for(const name of names){
     const value=process.env[name];
@@ -8,6 +10,16 @@ function pick(...names){
 
 export default function handler(req,res){
   res.setHeader("Cache-Control","no-store, max-age=0");
+
+  try {
+    assertPreviewSupabaseIsolation();
+  } catch (error) {
+    return res.status(503).json({
+      configured:false,
+      error:error?.code||"PREVIEW_SUPABASE_ISOLATION_FAILED",
+      message:"Configuration Supabase de Preview refusée."
+    });
+  }
 
   const url=pick(
     "SUPABASE_URL",

@@ -4,10 +4,11 @@ import {betaAccessForUserAsync} from "../lib/beta-access.js";
 import {fetchWithTimeout} from "../lib/http-timeout.js";
 import {activateBetaInvitationAtomic,betaInvitationError} from "../lib/beta-invitation-store.js";
 import accountDeletionHandler from "../lib/account-deletion-handler.js";
+import {assertPreviewSupabaseIsolation} from "../lib/preview-supabase-isolation.js";
 
 function pick(...names){for(const n of names){const v=process.env[n];if(typeof v==="string"&&v.trim())return v.trim()}return ""}
-const sbUrl=()=>pick("SUPABASE_URL","NEXT_PUBLIC_SUPABASE_URL","VITE_SUPABASE_URL").replace(/\/$/,"");
-const serviceKey=()=>pick("SUPABASE_SERVICE_ROLE_KEY");
+const sbUrl=()=>{assertPreviewSupabaseIsolation();return pick("SUPABASE_URL","NEXT_PUBLIC_SUPABASE_URL","VITE_SUPABASE_URL").replace(/\/$/,"")};
+const serviceKey=()=>{assertPreviewSupabaseIsolation();return pick("SUPABASE_SERVICE_ROLE_KEY")};
 const configured=()=>Boolean(sbUrl()&&serviceKey());
 function adminEmails(){return [...new Set(String(process.env.WARBOOST_SUPPORT_ADMINS||"").split(/[;,\n]/).map(x=>x.trim().toLowerCase()).filter(Boolean))]}
 const DEFAULT_BETA_CODE_HASH="13da15f59b83d395f6a637de15953870754436f9069d2819f78becb9a8bf2a32";
