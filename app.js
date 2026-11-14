@@ -54,6 +54,7 @@ import {desertStormMemberKeys,normalizeDesertStormSelections,normalizeDesertStor
 import {createIdleLifecycle} from "./lib/idle-lifecycle.js?v=warboost-startup-screen-r1";
 import {runAuthenticatedIdleResume} from "./lib/session-resume.js?v=hf8630-idle-resume-r1";
 import {createLoadingScreenController,revealExactLoadingArtwork} from "./lib/loading-screen.js?v=warboost-startup-screen-r2";
+import {safePreviewCloudConfigDiagnostic} from "./lib/preview-cloud-config-diagnostic.js";
 import {createReturnViewController} from "./lib/return-view.js?v=warboost-startup-screen-r1";
 import {unlockDesertStormSearchInput} from "./lib/desert-storm-search.js";
 import {desertStormMissionLabel} from "./lib/desert-storm-labels.js";
@@ -476,6 +477,7 @@ function loadState(){
 }
 
 let state=loadState(),serverNow=new Date(),pushTimer=null,cloudRetryTimer=null,cloudPullRetryTimer=null,cloudDirty=false,localStateRevision=0,cloudRevision=null,suppressPush=false,cloudHydrationPending=false,cloudProfileVerified=false,canonicalRosterReady=false,cloud=null,cloudSession=null,cloudRecoveryRedirect="",cloudDataConfig={url:"",key:""},sessionApplyInFlight=null,lastAppliedSessionKey="",runtimeReconcileInFlight=null,lastRuntimeReconcileAt=0,cloudInit={status:"starting",configured:false,transport:"direct-supabase-auth-api",error:null},proState={active:false,status:"free",configured:false,plan:null,beta:false,payments_enabled:false,commercial_preview:false,subscription:null},betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true},scanImageData=null,scanImageName="capture.jpg",supportTicketsState=[],supportBusy=false;
+let previewCloudConfigDiagnostic="";
 let currentPlayerAdviceAnalysis=null,currentAcquisitionViews=[],activeAcquisitionShopView=null;
 let playerAdviceGeneration=0,playerAdvicePendingSignature="",playerAdviceRenderedSignature="",playerAdviceHasRun=false;
 let foregroundClockInterval=null,foregroundServerTimeInterval=null,foregroundPausedAt=null,idleResumeInFlight=null,idleLifecycle=null;
@@ -1233,11 +1235,11 @@ async function fetchJsonBounded(input,init={},timeoutMs=12000){
 }
 
 async function initCloudAuth(){
-  cloud=null;cloudSession=null;cloudRecoveryRedirect="";cloudDataConfig={url:"",key:""};cloudProfileVerified=false;canonicalRosterReady=false;cloudInit={status:"loading-config",configured:false,transport:"direct-supabase-auth-api",error:null};renderAuth();
+  cloud=null;cloudSession=null;cloudRecoveryRedirect="";cloudDataConfig={url:"",key:""};cloudProfileVerified=false;canonicalRosterReady=false;previewCloudConfigDiagnostic="";cloudInit={status:"loading-config",configured:false,transport:"direct-supabase-auth-api",error:null};renderAuth();
   let cfg;
   try{
     const {response:r,json}=await fetchJsonBounded("/api/cloud-config",{cache:"no-store"},8000);cfg=json;
-    if(!r.ok)throw Object.assign(new Error("cloud-config request failed"),{code:"cloud_config_unreachable"});
+    if(!r.ok){previewCloudConfigDiagnostic=safePreviewCloudConfigDiagnostic(r.status,json);throw Object.assign(new Error("cloud-config request failed"),{code:"cloud_config_unreachable"})}
   }catch(error){cloudInit={status:"config-unreachable",configured:false,transport:"direct-supabase-auth-api",error:error?.code||error?.name||"network"};renderAuth();renderBeta();return}
   if(!cfg?.configured||!cfg?.url||!cfg?.key){cloudInit={status:"config-missing",configured:false,transport:"direct-supabase-auth-api",error:"missing_config"};renderAuth();renderBeta();return}
   cloudRecoveryRedirect=/^https:\/\//i.test(String(cfg?.recovery_redirect_url||""))?String(cfg.recovery_redirect_url):"";
@@ -5166,7 +5168,13 @@ async function initializeWarBoost(){
   ]);
   const cloudUnavailable=["config-unreachable","config-missing"].includes(cloudInit?.status)
     ||Boolean(cloudSession?.access_token&&betaConsentAccepted()&&betaState?.restore_error);
-  if(cloudUnavailable){loadingScreen?.setStage("offline");loadingScreen?.setRetryVisible(true)}
+  if(cloudUnavailable){
+    loadingScreen?.setStage("offline");loadingScreen?.setRetryVisible(true);
+    if(previewCloudConfigDiagnostic&&cloudInit.status==="config-unreachable"){
+      const stage=$("#loadingStage");
+      if(stage)stage.textContent=`${stage.textContent} · Diagnostic Preview: ${previewCloudConfigDiagnostic}`;
+    }
+  }
   else await loadingScreen?.hide();
   idleLifecycle?.start({markReady:true});
 }

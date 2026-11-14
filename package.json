@@ -26,7 +26,7 @@
     "test:gear-repair-server": "node --check lib/gear-repair-server.js && node scripts/verify-gear-repair-server.mjs",
     "test:cloud-save-diagnostic": "node scripts/verify-cloud-save-diagnostic.mjs",
     "test:public-static-files": "node scripts/verify-public-static-files.mjs",
-    "test:preview-supabase-isolation": "node --check lib/preview-supabase-isolation.js && node --check scripts/verify-preview-supabase-isolation.mjs && node --check api/cloud-config.js && node --check lib/beta-invitation-store.js && node scripts/verify-preview-supabase-isolation.mjs",
+    "test:preview-supabase-isolation": "node --check lib/preview-supabase-isolation.js && node --check lib/preview-cloud-config-diagnostic.js && node --check scripts/verify-preview-supabase-isolation.mjs && node --check api/cloud-config.js && node --check lib/beta-invitation-store.js && node scripts/verify-preview-supabase-isolation.mjs",
     "test:prepush-privacy": "node scripts/verify-prepush-privacy.mjs",
     "test:translation-completion": "node scripts/verify-translation-completion.mjs",
     "audit:languages": "node scripts/audit-language-coverage.mjs",

@@ -1,4 +1,12 @@
-import {assertPreviewSupabaseIsolation} from "../lib/preview-supabase-isolation.js";
+import {assertPreviewSupabaseIsolation,isWarboostPreviewDeployment} from "../lib/preview-supabase-isolation.js";
+
+const PREVIEW_ISOLATION_ERRORS=new Set([
+  "PREVIEW_SUPABASE_URL_NOT_TEST",
+  "PREVIEW_SUPABASE_URL_ALIAS_MISMATCH",
+  "PREVIEW_SUPABASE_PUBLIC_KEY_NOT_TEST",
+  "PREVIEW_SUPABASE_SERVICE_KEY_NOT_TEST",
+  "PREVIEW_SUPABASE_ISOLATION_FAILED"
+]);
 
 function pick(...names){
   for(const name of names){
@@ -14,9 +22,11 @@ export default function handler(req,res){
   try {
     assertPreviewSupabaseIsolation();
   } catch (error) {
+    const code=PREVIEW_ISOLATION_ERRORS.has(error?.code)?error.code:"PREVIEW_SUPABASE_ISOLATION_FAILED";
     return res.status(503).json({
       configured:false,
-      error:error?.code||"PREVIEW_SUPABASE_ISOLATION_FAILED",
+      error:code,
+      ...(isWarboostPreviewDeployment()?{preview_diagnostic:true}:{}),
       message:"Configuration Supabase de Preview refusée."
     });
   }
