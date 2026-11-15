@@ -57,9 +57,27 @@ export default async function handler(req,res){
 
     if(req.method==="POST"){
       const body=await postJsonBody(req),action=String(body?.action||"").toLowerCase();
-      if(action==="checkout"){
+      if(action==="checkout"||action==="checkout_test_beta"){
         const entitlement=await entitlementForUser(user,{beta});
-        if(entitlement.source==="beta")return res.status(409).json({ok:false,error:"BETA_PRO_INCLUDED",message:"Votre accès PRO bêta reste gratuit. Aucun abonnement nécessaire."});
+        const betaTestCheckout=
+  action==="checkout_test_beta" &&
+  commerce.mode==="test" &&
+  commerce.test_checkout_enabled===true &&
+  body?.confirm_test_only===true;
+
+if(action==="checkout_test_beta"&&!betaTestCheckout)
+  return res.status(403).json({
+    ok:false,
+    error:"TEST_CHECKOUT_DISABLED",
+    message:"Parcours de test indisponible."
+  });
+
+if(entitlement.source==="beta"&&!betaTestCheckout)
+  return res.status(409).json({
+    ok:false,
+    error:"BETA_PRO_INCLUDED",
+    message:"Votre accès PRO bêta reste gratuit. Aucun abonnement nécessaire."
+  });
         if(commerce.mode==="test"&&commerce.test_payments_enabled)
           return res.status(200).json({ok:true,...await createCheckoutForUser(user,{mode:"test",billingCountry:body.billing_country})});
         if(commerce.mode==="live"&&commerce.live_payments_enabled)
