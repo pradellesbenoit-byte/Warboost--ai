@@ -7,6 +7,7 @@ import {BETA_CONSENT_VERSION} from "../lib/beta-access.js";
 import {accountSyncErrorKind,accountSyncView,createCloudOperations,deviceCloudSaveMetadata,transientCloudFailure,confirmedWriteReceipt,mergeDeviceCloudSaveMetadata} from "../lib/account-sync-feedback.js";
 import {safeSaveDiagnostic,createSaveDiagnostic,newSaveCorrelation,publicSaveError} from "../lib/cloud-save-diagnostic.js";
 import {translator} from "../i18n.js";
+import {normalizeResetGeneration} from "../lib/reset-generation.js";
 let checks=0;
 const check=(name,fn)=>{fn();checks++;console.log("PASS "+name)};
 const stamp="2026-10-14T18:20:00.000Z",privateText="PRIVATE_SQL token=PRIVATE email@example.test signed=https://private.invalid";
@@ -31,11 +32,15 @@ const profile=normalizeState({player_id:"fixture-owner",player:{name:"fixture",s
   squads:[1,2,3,4].map(id=>({id,power:40+id,heroes:[],updated_at:stamp})),updated_at:stamp});
 const originalProfile=JSON.stringify(profile),originalFetch=globalThis.fetch;
 let scenario={},calls=[];
+const onlyReadRequests=()=>calls.every(call=>call.method==="GET"||
+  (call.method==="POST"&&call.path==="/rest/v1/rpc/wb1_get_own_reset_generation"));
 globalThis.fetch=async(input,init={})=>{
   const url=new URL(String(input));assert.equal(url.origin,"https://cloud-diagnostic-fixture.invalid");
   const method=init.method||"GET";calls.push({path:url.pathname,method});
   if(url.pathname==="/auth/v1/user")
     return new Response(JSON.stringify(scenario.authStatus?{error:"invalid"}:{id:"fixture-owner"}),{status:scenario.authStatus||200});
+  if(url.pathname==="/rest/v1/rpc/wb1_get_own_reset_generation")
+    return new Response("0");
   if(url.pathname==="/rest/v1/wb1_profiles"){
     if(scenario.throwError)throw scenario.throwError;
     if(method==="GET"&&scenario.readStatus)return new Response(JSON.stringify({code:scenario.sql,message:privateText}),{status:scenario.readStatus});
@@ -52,7 +57,7 @@ async function post(overrides={}){
   let status=200,json;
   const req={method:"POST",query:{},headers:{authorization:"Bearer fixture-session",
     "x-warboost-beta-consent":BETA_CONSENT_VERSION,"content-type":"application/json",...overrides.headers},
-    body:{state:JSON.parse(originalProfile),base_updated_at:stamp,...overrides.body}};
+    body:{state:JSON.parse(originalProfile),base_updated_at:stamp,reset_generation:0,...overrides.body}};
   if(overrides.noAuth)delete req.headers.authorization;
   calls=[];
   await handler(req,{setHeader(){},status(value){status=value;return this},json(value){json=value;return this}});
@@ -86,7 +91,7 @@ try{
     assert.equal(readDenied.json.diagnostic.stage,"profile_read");
     assert.equal(readDenied.json.diagnostic.code,"database_permissions_missing");
     assert.equal(readDenied.json.diagnostic.write_state,"not_attempted");
-    assert.ok(calls.every(call=>call.method==="GET"));
+    assert.ok(onlyReadRequests(),"only the read-only own reset-generation RPC may use POST");
   });
   scenario={throwError:Object.assign(Error(privateText),{status:504,code:"SUPABASE_USER_TIMEOUT"})};
   const timed=await post();
@@ -112,7 +117,7 @@ try{
     check("actual POST "+name+" refuses before any upstream write",()=>{
       assert.equal(result.status,status);assert.equal(result.json.error,code);
       assert.equal(result.json.diagnostic.stage,stage);assert.equal(result.json.diagnostic.write_state,"not_attempted");
-      assert.ok(calls.every(call=>call.method==="GET"));
+      assert.ok(onlyReadRequests(),"no profile write is allowed before these validations");
     });
   }
   scenario={status:403,sql:"synthetic"};
@@ -139,6 +144,8 @@ function fn(name){
 }
 const ctx=vm.createContext({state:JSON.parse(originalProfile),cloudSession:{user:{id:"fixture-owner"},access_token:"fixture"},
   cloudRevision:stamp,cloudProfileVerified:true,cloudDirty:true,accountSaveBusy:false,accountSyncCheckBusy:false,
+  resetGenerationPendingUserId:"fixture-owner",resetGenerationVerifiedUserId:"fixture-owner",
+  resetGenerationValue:0,normalizeResetGeneration,
   accountSyncOperations:createCloudOperations(),cloudRetryFailures:0,localStateRevision:1,suppressPush:false,
   cloudRetryTimer:null,pushTimer:null,clearTimeout(){},navigator:{onLine:true},Date,
   sessionApplyKey:session=>session?.access_token||"",betaAccessAllowed:()=>true,betaConsentAccepted:()=>true,
@@ -147,7 +154,7 @@ const ctx=vm.createContext({state:JSON.parse(originalProfile),cloudSession:{user
   hasMeaningfulCore:()=>true,renderBeta(){},analysisIndicator:{begin:()=>()=>{}},$:()=>null,
   markCloudPending(code){ctx.cloudDirty=true;ctx.state.sync={...ctx.state.sync,last_error:code,pending_cloud_save:true}},
   scheduleCloudRetry(){},fetchJsonBounded:null,verifiedAccountWriteReply:()=>false});
-vm.runInContext(fn("recordAccountSyncResult")+"\n"+fn("currentAccountSyncView")+"\n"+fn("pushServerState"),ctx);
+ vm.runInContext(fn("resetGenerationVerifiedFor")+"\n"+fn("recordAccountSyncResult")+"\n"+fn("currentAccountSyncView")+"\n"+fn("pushServerState"),ctx);
 const fourSquads=JSON.stringify(ctx.state.squads);
 const diagnostic=createSaveDiagnostic({stage:"profile_write",status:503,code:"database_permissions_missing"});
 ctx.fetchJsonBounded=async()=>({response:{ok:false,status:503},json:{error:"database_permissions_missing",diagnostic,

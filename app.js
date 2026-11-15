@@ -887,7 +887,8 @@ function accountSyncMessage(){
     conflict:"account_sync_conflict",network:"account_sync_network",timeout:"account_sync_timeout",server:"account_sync_server",unknown:"account_sync_unknown",unconfirmed:"account_sync_unconfirmed"};
   const format=value=>new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"medium"}).format(new Date(value));
   const confirmedText=t("account_sync_confirmed_label")+": "+(view.lastConfirmedAt?format(view.lastConfirmedAt):t("account_sync_confirmed_none"));
-  const localKey={clear:"account_sync_local_clear",squad_conflict:"account_sync_squad_conflict",version_conflict:"account_sync_version_conflict"}[view.localKind]||keys[view.localKind]||"account_sync_unconfirmed";
+  const localKey={clear:"account_sync_local_clear",cloud_read_verified:"account_sync_check_ok",
+    squad_conflict:"account_sync_squad_conflict",version_conflict:"account_sync_version_conflict"}[view.localKind]||keys[view.localKind]||"account_sync_unconfirmed";
   const localText=t("account_sync_local_label")+": "+t(localKey);
   const checkText=t("account_sync_check_label")+": "+(view.checkKind?t(checkKeys[view.checkKind]||"account_sync_unconfirmed"):t("account_sync_check_none"));
   const attemptDate=view.attemptAt?new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"short"}).format(new Date(view.attemptAt)):"";

@@ -7,6 +7,7 @@ import {safeSaveDiagnostic} from "../lib/cloud-save-diagnostic.js";
 import {ACCOUNT_SYNC_COPY} from "../lib/account-sync-copy.js";
 import {translator} from "../i18n.js";
 import {normalizeState} from "../lib/normalize.js";
+import {normalizeResetGeneration,resetGenerationDecision} from "../lib/reset-generation.js";
 
 let checks=0,translations=0;
 const test=(label,run)=>{run();checks++;console.log("PASS "+label)};
@@ -26,6 +27,13 @@ test("verified server receipt is distinct from complete synchronization",()=>{
   const view=accountSyncView({sync:saved.sync});
   assert.equal(view.lastConfirmedAt,now);assert.equal(view.localKind,"clear");
   assert.equal(view.confirmedAt,null);assert.equal(view.kind,"unknown");
+});
+test("successful read-only cloud check is distinct from a confirmed write",()=>{
+  const view=accountSyncView({sync:saved.sync,check:{kind:"verified"},revision:now});
+  assert.equal(view.localKind,"cloud_read_verified");
+  assert.equal(view.checkKind,"verified");
+  assert.equal(view.lastConfirmedAt,now,"the historical write receipt remains visible");
+  assert.equal(view.confirmedAt,null,"a read-only check does not create a write confirmation");
 });
 test("success then local squad conflict keeps the success and the conflict",()=>{
   const view=accountSyncView({sync:{...saved.sync,pending_cloud_save:true,last_error:"squad_freshness_ambiguous"}});
@@ -110,8 +118,9 @@ function declaration(name){
 test("actual own-account cache preserves receipt across gameplay normalization and reload",()=>{
   const memory=new Map([["fixture:"+owner,JSON.stringify(saved)]]);
   const storage=vm.createContext({localStorage:{getItem:key=>memory.get(key)||null,setItem:(key,value)=>memory.set(key,value)},
-    accountStateKey:id=>"fixture:"+id,hasMeaningfulCore:()=>true,safeClone:clone,mergeDeviceCloudSaveMetadata,cloudDirty:true});
-  vm.runInContext(["readAccountState","rememberAccountState"].map(declaration).join("\n"),storage);
+    accountStateKey:id=>"fixture:"+id,hasMeaningfulCore:()=>true,safeClone:clone,mergeDeviceCloudSaveMetadata,cloudDirty:true,
+    resetGenerationPendingUserId:owner,resetGenerationVerifiedUserId:owner,resetGenerationValue:0,normalizeResetGeneration});
+  vm.runInContext(["resetGenerationVerifiedFor","readAccountState","rememberAccountState"].map(declaration).join("\n"),storage);
   const normalized=normalizeState(clone(saved));
   assert.equal(normalized.sync.last_confirmed_write_receipt,undefined,"gameplay normalization intentionally omits device receipts");
   storage.rememberAccountState(owner,normalized);
@@ -125,12 +134,19 @@ let resolveRead;
 const ctx=vm.createContext({Date,Intl,clearTimeout(){},cloudRetryTimer:null,pushTimer:null,
   cloudSession:{access_token:session,user:{id:owner}},betaState:{allowed:true},state:clone(saved),
   accountSyncOperations:createCloudOperations(),cloudDirty:false,cloudRevision:now,locale:"fr",
+  resetGenerationPendingUserId:owner,resetGenerationVerifiedUserId:owner,resetGenerationValue:0,normalizeResetGeneration,
+  activateVerifiedResetGeneration:(userId,value)=>{
+    const decision=resetGenerationDecision(null,value);
+    return String(userId)===owner&&decision.ok&&decision.action==="allow_legacy"
+      ?{ok:true,generation:decision.serverGeneration,action:decision.action,cacheInvalidated:false,localState:null}
+      :{ok:false,error:decision.reason||"reset_generation_unverified"};
+  },
   navigator:{onLine:true},sessionApplyKey:value=>value?.access_token||"",betaConsentAccepted:()=>true,
   hasMeaningfulCore:()=>true,safeClone:clone,collectPendingIdentityAliases:()=>[],readAccountState:()=>null,
   readOwnProfileDirect:()=>new Promise(resolve=>{resolveRead=resolve}),cloudDataConfig:{url:"https://fixture.invalid",key:"fixture"},
   safeSaveDiagnostic,confirmedWriteReceipt,mergeDeviceCloudSaveMetadata,staleProfileRestore,transientCloudFailure,
   accountSyncView,t:translator("fr")});
-vm.runInContext(["recordAccountSyncResult","currentAccountSyncView","accountSyncMessage","pullDirectOwnProfile","pullServerState"].map(declaration).join("\n"),ctx);
+vm.runInContext(["resetGenerationVerifiedFor","recordAccountSyncResult","currentAccountSyncView","accountSyncMessage","pullDirectOwnProfile","pullServerState"].map(declaration).join("\n"),ctx);
 const captureBefore=clone(saved);
 const pending=ctx.pullDirectOwnProfile(captureBefore);
 const operation=ctx.accountSyncOperations.begin(session,"save");
@@ -177,7 +193,7 @@ const nextOperation=ctx.accountSyncOperations.begin(renewedSession,"save");
 ctx.recordAccountSyncResult({kind:"verified",revision:newest,at:newest,diagnostic:diagnostic(newest)},renewedSession,nextOperation);
 ctx.cloudRevision=newest;
 const afterNewWrite=JSON.stringify(ctx.state);
-resolveServerRead({response:{ok:true,status:200},json:{ok:true,state:captureBefore,updated_at:old}});
+resolveServerRead({response:{ok:true,status:200},json:{ok:true,state:captureBefore,updated_at:old,reset_generation:0}});
 const ignoredServer=await pendingServer;
 test("actual API restore arriving after success cannot roll back feedback, version or four squads",()=>{
   assert.equal(ignoredServer.ignored_stale_restore,true);assert.equal(JSON.stringify(ctx.state),afterNewWrite);
@@ -203,5 +219,29 @@ test("eight new labels resolve in all 22 languages / 23 locales",()=>{
       assert.ok(copy[name]?.trim(),`${code}:${name}`);assert.equal(translator(code)(name),copy[name]);translations++;
     }
   }
+});
+test("actual French panel reports a successful read check without claiming a new save",()=>{
+  const priorState=ctx.state,priorOperations=ctx.accountSyncOperations,priorRevision=ctx.cloudRevision,priorSession=ctx.cloudSession;
+  ctx.state=clone(saved);
+  ctx.cloudSession={access_token:session,user:{id:owner}};
+  ctx.state.squads=ctx.state.squads.map(({composition_conflict,...squad})=>squad);
+  ctx.cloudRevision=now;
+  ctx.cloudDirty=false;
+  ctx.accountSyncOperations=createCloudOperations();
+  const read=ctx.accountSyncOperations.begin(session,"check");
+  ctx.accountSyncOperations.complete(read,{kind:"verified"},session);
+  const writeReceiptBefore=JSON.stringify(ctx.state.sync.last_confirmed_write_receipt);
+  const confirmedAtBefore=ctx.state.sync.last_confirmed_write_at;
+  const view=ctx.currentAccountSyncView(),text=ctx.accountSyncMessage();
+  assert.equal(view.localKind,"cloud_read_verified");
+  assert.equal(view.lastConfirmedAt,now,"the earlier confirmed write is retained as history");
+  assert.equal(view.confirmedAt,null,"the read-only check is not a write receipt");
+  assert.match(text,/Dernière sauvegarde cloud confirmée/);
+  assert.match(text,/Éléments locaux à vérifier: Vérification réussie — aucune sauvegarde effectuée/);
+  assert.match(text,/Vérification réussie — aucune sauvegarde effectuée/);
+  assert.doesNotMatch(text,/Aucun marqueur local\/cloud enregistré ; le cloud actuel n’est pas vérifié/);
+  assert.equal(JSON.stringify(ctx.state.sync.last_confirmed_write_receipt),writeReceiptBefore);
+  assert.equal(ctx.state.sync.last_confirmed_write_at,confirmedAtBefore);
+  ctx.state=priorState;ctx.accountSyncOperations=priorOperations;ctx.cloudRevision=priorRevision;ctx.cloudSession=priorSession;
 });
 console.log(`PASS account receipt separation: ${checks} groups, ${translations} localized labels; real presentation/restore functions, synthetic in-memory data, no network or real account writes.`);

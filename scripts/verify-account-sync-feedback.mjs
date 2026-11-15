@@ -7,6 +7,7 @@ import {translator} from "../i18n.js";
 import {createAnalysisIndicator,beginLoadingButton} from "../lib/analysis-indicator.js";
 import {createSaveDiagnostic,safeSaveDiagnostic,newSaveCorrelation,publicSaveError} from "../lib/cloud-save-diagnostic.js";
 import stateHandler from "../api/state.js";
+import {normalizeResetGeneration} from "../lib/reset-generation.js";
 
 let checks=0,translations=0;
 const check=(label,run)=>{run();checks++;console.log("PASS "+label)};
@@ -71,12 +72,13 @@ const ctx=vm.createContext({accountSyncReceipt:null,accountSyncCheckBusy:false,
   accountSyncOperations:createCloudOperations(),accountSaveBusy:false,cloudRetryFailures:0,Date,
   clearTimeout:()=>{},cloudRetryTimer:null,pushTimer:null,
   cloudSession:{access_token:"synthetic",user:{id:"owner"}},cloudRevision:stamp,cloudProfileVerified:true,
+  resetGenerationPendingUserId:"owner",resetGenerationVerifiedUserId:"owner",resetGenerationValue:0,normalizeResetGeneration,
   cloudDirty:false,state:{player_id:"owner",sync:{pending_cloud_save:true},squads:[{id:1,heroes:[{name:"Murphy"}]}]},
   navigator:{onLine:true},sessionApplyKey:session=>session?.user?.id==="owner"?key:"other",
   betaConsentAccepted:()=>true,betaAccessAllowed:()=>true,beginLoadingButton,analysisIndicator:indicator,
   $:()=>button,t:translator("fr"),renderBeta:()=>{},accountSyncErrorKind,accountSyncView,
   fetchJsonBounded:null});
-vm.runInContext(fn("recordAccountSyncResult")+"\n"+fn("checkAccountCloudStatus"),ctx);
+vm.runInContext(fn("resetGenerationVerifiedFor")+"\n"+fn("recordAccountSyncResult")+"\n"+fn("checkAccountCloudStatus"),ctx);
 let requests=0,settle;
 const before=JSON.stringify(ctx.state);
 ctx.fetchJsonBounded=(url,init)=>{
@@ -357,6 +359,7 @@ globalThis.fetch=async(input,init={})=>{
   const url=String(input);assert.ok(url.startsWith("https://sync-fixture.invalid/"));
   upstreams.push({path:new URL(url).pathname,method:init.method||"GET"});
   if(url.includes("/auth/v1/user"))return new Response(JSON.stringify(authStatus===200?{id:"owner"}:{error:"invalid"}),{status:authStatus});
+  if(url.endsWith("/rest/v1/rpc/wb1_get_own_reset_generation"))return new Response("0");
   assert.ok(url.includes("/rest/v1/"));
   return new Response(JSON.stringify([{player_id:"owner",state:{player_id:"owner",squads:[{id:1,power:44.43}]},updated_at:stamp}]));
 };
@@ -374,10 +377,15 @@ try{
   const {BETA_CONSENT_VERSION}=await import("../lib/beta-access.js");
   const result=await api({authorization:"Bearer synthetic","x-warboost-beta-consent":BETA_CONSENT_VERSION});
   check("actual status endpoint returns version only, no profile or identity data",()=>{
-    assert.equal(result.status,200);assert.deepEqual(Object.keys(result.json).sort(),["ok","owner_verified","profile_present","updated_at"]);
+    assert.equal(result.status,200);assert.deepEqual(Object.keys(result.json).sort(),["ok","owner_verified","profile_present","reset_generation","updated_at"]);
+    assert.equal(result.json.reset_generation,0);
     assert.equal(result.json.updated_at,stamp);assert.equal(result.json.profile_present,true);
-    assert.ok(upstreams.every(r=>r.method==="GET"));
-    assert.ok(upstreams.every(r=>!r.path.includes("rpc")&&!r.path.includes("invitation")&&!r.path.includes("invite")));
+    const resetReads=upstreams.filter(r=>r.path.endsWith("/rpc/wb1_get_own_reset_generation"));
+    assert.equal(resetReads.length,1,"only the required own reset-generation read uses an RPC");
+    assert.ok(upstreams.every(r=>r.method==="GET"||
+      (r.method==="POST"&&r.path.endsWith("/rpc/wb1_get_own_reset_generation"))));
+    assert.ok(upstreams.every(r=>!r.path.includes("invitation")&&!r.path.includes("invite")&&
+      (!r.path.includes("/rpc/")||r.path.endsWith("/rpc/wb1_get_own_reset_generation"))));
   });
   authStatus=401;
   const rejected=await api({authorization:"Bearer synthetic","x-warboost-beta-consent":BETA_CONSENT_VERSION});
