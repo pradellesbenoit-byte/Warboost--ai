@@ -31,6 +31,7 @@ function harness(options={}){
   const before=copy(cloud);
   const context=vm.createContext({...imports,console,
     configured:()=>!options.unavailable,userConfigured:()=>Boolean(options.userMode),
+    getAccountResetGeneration:async()=>0,
     requireProductUser:async(_req,config)=>{
       assert.equal(config.consent,true);
       if(options.authError)throw Object.assign(Error("private auth detail"),{status:options.authError==="AUTH_REQUIRED"?401:428,code:options.authError});
@@ -68,7 +69,7 @@ function harness(options={}){
   const local=copy(cloud);local.squads[0].power=99;local.player.hq_level=1;
   local.drone.level=1;local.technology.hero_tech_pct=0;local.extra_history={retained:false};
   local.alliance.members=copy(options.localMembers||[newMember]);local.alliance.roster_sync_status="pending";
-  const request=rosterImportRequest(local,"fr");
+  const request={...rosterImportRequest(local,"fr"),reset_generation:0};
   async function send(body=request){
     const res={statusCode:200,setHeader(){},status(n){this.statusCode=n;return this},json(data){this.body=copy(data);return this}};
     await context.handler({method:"POST",headers:{authorization:"Bearer synthetic-token"},body},res);
@@ -207,7 +208,7 @@ await test("session, consent, beta and cloud failures explicitly report not_atte
   }
 });
 await test("personal sync still refuses ambiguous squads, before all writes",async()=>{
-  const h=harness(),result=await h.send({operation:"player_sync",state:h.local,base_updated_at:revision,base_roster_updated_at:revision});
+  const h=harness(),result=await h.send({operation:"player_sync",state:h.local,base_updated_at:revision,base_roster_updated_at:revision,reset_generation:0});
   assert.equal(result.statusCode,409);assert.equal(result.body.error,"squad_freshness_ambiguous");
   assert.equal(result.body.roster_confirmation.write_state,"not_attempted");
   assert.equal(h.attempts,0);assert.equal(h.otherWrites,0);

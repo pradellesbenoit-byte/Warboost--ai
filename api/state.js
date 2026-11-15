@@ -1,4 +1,5 @@
-import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
+import {configured,userConfigured,getProfile,getProfileForUser,getAccountResetGeneration,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
+import {resetGenerationRequestMatches} from "../lib/reset-generation.js";
 import {createSaveDiagnostic,newSaveCorrelation,publicSaveError} from "../lib/cloud-save-diagnostic.js";
 import {getSquadsForUser} from "../lib/supabase.js";
 import {createSquadCompareHandler} from "../lib/squad-compare-handler.js";
@@ -231,10 +232,11 @@ export default async function handler(req,res){
       const user=await requireUser(req);
       if(betaConsentHeader(req)!==BETA_CONSENT_VERSION)
         return res.status(428).json({error:"BETA_CONSENT_REQUIRED"});
+      const reset_generation=await getAccountResetGeneration(String(user.id),access);
       const row=configured()?await getProfile(String(user.id),{timeoutMs:4000}):
         await getProfileForUser(String(user.id),access,{timeoutMs:4000});
       return res.status(200).json({ok:true,owner_verified:true,
-        profile_present:Boolean(row?.state),updated_at:row?.updated_at||null});
+        profile_present:Boolean(row?.state),updated_at:row?.updated_at||null,reset_generation});
     }
 
     // HF8.6.20 login-critical path: authenticate once, then validate the invitation and read the
@@ -246,6 +248,7 @@ export default async function handler(req,res){
       catch(error){trace({stage:"AUTH_USER",ms:Math.max(0,Date.now()-authStarted),status:"error",error:String(error?.code||error?.name||"auth_failed")});throw error}
       if(betaConsentHeader(req)!==BETA_CONSENT_VERSION)return res.status(428).json({error:"BETA_CONSENT_REQUIRED",message:"Consentement bêta requis avant l'envoi de données",restore_trace:orderedRestoreTrace(restoreTrace)});
       const playerId=String(user.id),profileStarted=Date.now();
+      const reset_generation=await getAccountResetGeneration(playerId,access);
       const profilePromise=(configured()?getProfile(playerId,{timeoutMs:4000}):getProfileForUser(playerId,access,{timeoutMs:4000}))
         .then(row=>{trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"ok",error:null});return row})
         .catch(error=>{trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"error",error:String(error?.code||error?.name||"profile_read_failed")});throw error});
@@ -253,20 +256,21 @@ export default async function handler(req,res){
       const [beta,row]=await Promise.all([betaPromise,profilePromise]);
       // Personal restore is authenticated and consent-bound, not invitation-bound.
       // The beta lookup remains diagnostic only; canonical alliance authorization below is unchanged.
-      if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
+      if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,reset_generation,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
       const current=normalizeState({...row.state,player_id:playerId});
       let rosterRepair;
       try{rosterRepair=await canonicalizeAllianceState(current,playerId)}
       catch{rosterRepair={state:current,changed:false,status:"canonicalization_deferred"}}
       const finalState=rosterRepair.state;
-      return res.status(200).json({ok:true,state:finalState,updated_at:row?.updated_at||finalState.updated_at,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
+      return res.status(200).json({ok:true,state:finalState,updated_at:row?.updated_at||finalState.updated_at,reset_generation,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:configured()?"service-fast":"user-rls-fast",restore_mode:"fast-profile",restore_strategy:"parallel",restore_trace:orderedRestoreTrace(restoreTrace)});
     }
 
     saveStage="authentication";
     const {user}=await requireProductUser(req,{consent:true,trace}),playerId=user.id,userMode=userConfigured()&&Boolean(access);
+    const reset_generation=await getAccountResetGeneration(playerId,access);
     const getOwn=()=>userMode?getProfileForUser(playerId,access):getProfile(playerId);
-    const saveOwn=(state,expectedUpdatedAt)=>userMode?saveProfileForUserIfUnchanged(playerId,state,access,expectedUpdatedAt):saveProfileIfUnchanged(playerId,state,expectedUpdatedAt);
-    const snapshotOwn=(state,source)=>userMode?insertSnapshotForUser(playerId,state,access,source):insertSnapshot(playerId,state,source);
+    const saveOwn=(state,expectedUpdatedAt)=>userMode?saveProfileForUserIfUnchanged(playerId,state,access,expectedUpdatedAt,reset_generation):saveProfileIfUnchanged(playerId,state,expectedUpdatedAt,reset_generation);
+    const snapshotOwn=(state,source)=>userMode?insertSnapshotForUser(playerId,state,access,source,reset_generation):insertSnapshot(playerId,state,source,reset_generation);
     const historyOwn=limit=>userMode?listSnapshotsForUser(playerId,access,limit):listSnapshots(playerId,limit);
 
     if(req.method==="GET"){
@@ -274,7 +278,7 @@ export default async function handler(req,res){
       let row;
       try{row=await getOwn();trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"ok",error:null})}
       catch(error){trace({stage:"PROFILE_READ",ms:Math.max(0,Date.now()-profileStarted),status:"error",error:String(error?.code||error?.name||"profile_read_failed")});throw error}
-      if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:userMode?"user-rls":"service",restore_mode:"full",restore_trace:restoreTrace});
+      if(!row?.state)return res.status(200).json({ok:true,state:null,updated_at:row?.updated_at||null,reset_generation,hero_history_recovery:recoverySummary(null),alliance_roster_repair:{changed:false,status:"empty_profile"},access_mode:userMode?"user-rls":"service",restore_mode:"full",restore_trace:restoreTrace});
       const current=normalizeState({...row.state,player_id:playerId});
       // Legacy HF8.6.18 verifier marker only: fastRestore; restore_mode:"fast-profile"; status:"deferred_fast_restore"; if(fastRestore)return
       let snapshots=[];try{snapshots=await historyOwn(100)}catch{}
@@ -287,7 +291,7 @@ export default async function handler(req,res){
         try{const saved=await saveOwn(finalState,row.updated_at||null);finalState=normalizeState(saved?.state||finalState);updatedAt=saved?.updated_at||updatedAt}
         catch(error){if(error?.code!=="profile_write_conflict")throw error;const latest=await getOwn();finalState=normalizeState({...latest?.state,player_id:playerId});updatedAt=latest?.updated_at||updatedAt}
       }
-      return res.status(200).json({ok:true,state:finalState,updated_at:updatedAt,hero_history_recovery:recoverySummary(recovered),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:userMode?"user-rls":"service",restore_trace:restoreTrace});
+      return res.status(200).json({ok:true,state:finalState,updated_at:updatedAt,reset_generation,hero_history_recovery:recoverySummary(recovered),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:userMode?"user-rls":"service",restore_trace:restoreTrace});
     }
 
     if(req.method==="POST"){
@@ -297,6 +301,11 @@ export default async function handler(req,res){
         return res.status(415).json({error:"unsupported_content_type"});
       if(!req.body?.state||typeof req.body.state!=="object"||Array.isArray(req.body.state))
         return res.status(400).json({error:"invalid_payload"});
+      if(!resetGenerationRequestMatches(req.body?.reset_generation,reset_generation)){
+        const canonical=await getOwn();
+        return res.status(409).json({error:"reset_required",reset_generation,state:canonical?.state||null,
+          updated_at:canonical?.updated_at||null,write_confirmed:false});
+      }
       saveStage="profile_read";
       const previous=await getOwn();
       saveStage="version_check";
@@ -333,11 +342,12 @@ export default async function handler(req,res){
         return res.status(409).json({error:"profile_write_conflict",message:error.message,state:latest?.state||null,updated_at:latest?.updated_at||null});
       }
       writeState=row?.state&&row?.updated_at?"confirmed":"unknown";saveStage="response";
-      return res.status(200).json({ok:true,write_confirmed:Boolean(row?.state&&row?.updated_at),state:row?.state||incoming,updated_at:row?.updated_at||incoming.updated_at,hero_history_recovery:recoverySummary(recovered),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:userMode?"user-rls":"service"});
+      return res.status(200).json({ok:true,write_confirmed:Boolean(row?.state&&row?.updated_at),state:row?.state||incoming,updated_at:row?.updated_at||incoming.updated_at,reset_generation,hero_history_recovery:recoverySummary(recovered),alliance_roster_repair:{changed:rosterRepair.changed,status:rosterRepair.status},access_mode:userMode?"user-rls":"service"});
     }
 
     res.setHeader("Allow","GET, POST");return res.status(405).json({error:"method_not_allowed"});
   }catch(e){
+    if(e?.code==="reset_required")return res.status(409).json({error:"reset_required",write_confirmed:false});
     if(diagnosticPost){
       const status=Number.isInteger(e.status)&&e.status>=400&&e.status<=599?e.status:500;
       const code=publicSaveError(e,status);

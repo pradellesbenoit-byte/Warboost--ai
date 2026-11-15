@@ -2,7 +2,7 @@ import {mergeNewest,normalizeState} from "../lib/normalize.js";
 import {reconcileCloudSquads} from "../lib/squad-freshness.js";
 import {syncAllianceRoster} from "../lib/roster-import-sync.js";
 import {rosterImportRequest} from "../lib/roster-sync.js";
-import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,getAllianceRoster,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
+import {configured,userConfigured,getProfile,getProfileForUser,getAccountResetGeneration,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,getAllianceRoster,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
 import {requireBetaUser} from "../lib/beta-access.js";
 import {requireProductUser} from "../lib/pro-access.js";
 import {betaAccessForUserAsync} from "../lib/beta-access.js";
@@ -16,6 +16,7 @@ import {protectCanonicalRosterNames,applyCanonicalRenames} from "../lib/alliance
 import {canonicalAllianceAuthorization,authorizationMessage} from "../lib/alliance-authorization.js";
 import {mergePlayerAvailabilityIntoRoster,mergeEventAvailabilities,mergeAvailabilityHistory} from "../lib/event-availability.js";
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
+import {resetGenerationRequestMatches} from "../lib/reset-generation.js";
 void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remains exported and audited
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
@@ -24,6 +25,9 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
     write_state:rosterPersisted?"confirmed":rosterWriteAttempted?"unknown":"not_attempted"});
   try{
     const {user}=await requireProductUser(req,{consent:true}),playerId=user.id,access=accessToken(req);
+    const reset_generation=await getAccountResetGeneration(playerId,access);
+    if(!resetGenerationRequestMatches(req.body?.reset_generation,reset_generation))
+      return res.status(409).json({error:"reset_required",reset_generation,write_confirmed:false});
     if(req.body?.operation==="alliance_roster"||
       (!req.body?.operation&&req.body?.state?.alliance?.roster_sync_status==="pending")){
       const beta=await betaAccessForUserAsync(user);
@@ -35,7 +39,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
       }
        const result=await syncAllianceRoster(request,{playerId,access,betaAllowed:beta.allowed||beta.account_access_allowed},
         {configured,userConfigured,getProfile,getProfileForUser,getAllianceRoster,updateAllianceScopeRoster});
-      return res.status(result.status).json(result.body);
+      return res.status(result.status).json({...result.body,reset_generation});
     }
     const userMode=userConfigured()&&Boolean(access),current=normalizeState({...req.body?.state,player_id:playerId}),requestedRosterSync=current.alliance?.roster_sync_status==="pending";let base=current,saved=null,alliancePendingCanonical=false;
     // Personal synchronization has no legacy code requirement. Alliance paths retain their beta gate.
@@ -158,15 +162,16 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
             return res.status(409).json({error:"roster_canonical_persist_required",message,authorization:currentAuthorization,roster_confirmation:rosterConfirmation(),canonical_count:Array.isArray(ctx.alliance?.roster)?ctx.alliance.roster.length:0,candidate_count:Array.isArray(merged.alliance?.members)?merged.alliance.members.length:0});
           }
         merged=applyCanonicalRenames(merged);
-        const written=await saveProfileIfUnchanged(playerId,merged,saved?.updated_at||null);saved=written||saved;await insertSnapshot(playerId,merged,provider);
+        const written=await saveProfileIfUnchanged(playerId,merged,saved?.updated_at||null,reset_generation);saved=written||saved;await insertSnapshot(playerId,merged,provider,reset_generation);
       }else if(userMode){
         const ownLink=linkCurrentPlayerIdentityIntoRoster(merged.alliance?.members,{playerId,name:merged.player?.name,serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag,activityEvents:merged.activity_events,updatedAt:now});
-        merged.alliance={...merged.alliance,members:ownLink.members,identity_link_status:ownLink.status};const written=await saveProfileForUserIfUnchanged(playerId,merged,access,saved?.updated_at||null);saved=written||saved;await insertSnapshotForUser(playerId,merged,access,provider)
+        merged.alliance={...merged.alliance,members:ownLink.members,identity_link_status:ownLink.status};const written=await saveProfileForUserIfUnchanged(playerId,merged,access,saved?.updated_at||null,reset_generation);saved=written||saved;await insertSnapshotForUser(playerId,merged,access,provider,reset_generation)
       }
     }
     const cfg={official:false,approved:false,legacy:false,authorization_status:"safe-launch-disabled",safe_launch_lock:true};
-    return res.status(200).json({ok:true,provider,provider_kind:providerKind,capabilities,sources:merged.sync.sources,roster_confirmation:rosterConfirmation(),alliance_pending_source:alliancePendingCanonical?"canonical":"unavailable",provider_config:cfg,public_config:cfg,safe_launch:true,synced_at:merged.sync.last_sync,state:merged,updated_at:saved?.updated_at||null,access_mode:userMode?"user-rls":"service"});
+    return res.status(200).json({ok:true,provider,provider_kind:providerKind,capabilities,sources:merged.sync.sources,roster_confirmation:rosterConfirmation(),alliance_pending_source:alliancePendingCanonical?"canonical":"unavailable",provider_config:cfg,public_config:cfg,safe_launch:true,synced_at:merged.sync.last_sync,state:merged,updated_at:saved?.updated_at||null,reset_generation,access_mode:userMode?"user-rls":"service"});
   }catch(e){
+    if(e?.code==="reset_required")return res.status(409).json({error:"reset_required",write_confirmed:false});
     const upstream=String(e.body?.code||"");
     return res.status(e.status||500).json({error:e.code||"sync_failed",
       message:rosterConfirmation().requested?"Roster synchronization not finalized. Review private diagnostics.":e.name==="AbortError"?"Source timeout":e.message,

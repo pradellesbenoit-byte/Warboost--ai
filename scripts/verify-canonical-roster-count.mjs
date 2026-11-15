@@ -59,6 +59,7 @@ async function apiFunctions(path,shared,dirty){
   const user={id:"fixture-account"};
   Object.assign(context,{
     configured:()=>true,userConfigured:()=>false,
+    getAccountResetGeneration:async()=>0,
     requireBetaUser:async()=>({user}),
     requireProductUser:async()=>({user,entitlement:{active:true,source:"beta"}}),
     betaAccessForUserAsync:async()=>({allowed:true,configured:true}),
@@ -113,7 +114,7 @@ for(const n of [99,100]){
   const stateApi=await apiFunctions("../api/state.js",shared,dirty);
   count((await stateApi.canonicalizeAllianceState(dirty,"fixture-account")).state,n,"actual API canonicalization");
   const syncApi=await apiFunctions("../api/sync.js",shared,dirty);
-  const synced=await responseOf(syncApi.handler,{method:"POST",headers:{},body:{state:dirty,base_updated_at:stamp}});
+  const synced=await responseOf(syncApi.handler,{method:"POST",headers:{},body:{state:dirty,base_updated_at:stamp,reset_generation:0}});
   count(synced.state,n,"actual API sync with mocked isolated database");
   const diagnosticApi=await apiFunctions("../api/alliance-role.js",shared,dirty);
   const diagnostic=await responseOf(diagnosticApi.handler,{method:"GET",headers:{},query:{action:"roster_diagnostic"}});

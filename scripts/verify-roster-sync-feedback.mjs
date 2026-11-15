@@ -74,6 +74,7 @@ function browserContext(){
   const context=vm.createContext({state,statusNodes,cloudSession:{access_token:"synthetic-session",user:{id:owner}},
     normalizeServerId,normalizeAllianceTag,
     betaAccessAllowed:()=>true,betaConsentAccepted:()=>true,authHeaders:h=>h,cloudRevision:revision,
+    resetGenerationVerifiedFor:()=>true,resetGenerationValue:0,
     localStateRevision:0,lang:"fr",t:key=>key,parseRosterConfidence,safeRosterDiagnostic,
      recordRosterDiagnostic,rosterFailureKind,rosterSyncCopy,rosterReplyConfirmed,adoptRosterOnlyReply,rosterImportRequest,rosterStateFingerprint,
     canonicalRosterMemberKey:r=>r.name,
@@ -263,6 +264,7 @@ async function serverCase({role="R4",stale=false,snapshotFailure=false,noContext
   let writes=0,profiles=0;const writePayloads=[];
   const context=vm.createContext({...imports,
     configured:()=>!unavailable,userConfigured:()=>false,
+    getAccountResetGeneration:async()=>0,
     requireProductUser:async()=>({user:{id:owner}}),betaAccessForUserAsync:async()=>({allowed:true}),
     getProfile:async()=>({state:structuredClone(state),updated_at:revision}),
     getAllianceRoster:async()=>{if(reloadFailure&&writes>0)throw Object.assign(Error("private endpoint"),{status:503,code:"SUPABASE_SERVICE_TIMEOUT"});if(readFailure)throw Object.assign(Error("private SQL"),{status:503,code:"database_schema_missing",body:{code:"42P01"}});return noContext?null:structuredClone(ctx)},
@@ -273,7 +275,7 @@ async function serverCase({role="R4",stale=false,snapshotFailure=false,noContext
     console});
   vm.runInContext(api.replace(/^import .*$/gm,"").replace("export default async function handler","async function handler"),context);
   const response={statusCode:200,setHeader(){},status(code){this.statusCode=code;return this},json(body){this.body=plain(body);return this}};
-   await context.handler({method:"POST",headers:{},body:request||{state,base_updated_at:revision,base_roster_updated_at:stale?"old":revision}},response);
+   await context.handler({method:"POST",headers:{},body:request||{state,base_updated_at:revision,base_roster_updated_at:stale?"old":revision,reset_generation:0}},response);
   return {...response,writes,profiles,writePayloads};
 }
 await test("actual API success positively acknowledges canonical roster persistence",async()=>{
@@ -331,6 +333,7 @@ await test("actual saveState local-only option disables automatic profile schedu
   let scheduled=0,stored=0;
   const c=vm.createContext({state:seed(),cloudSession:{user:{id:owner}},APP_VERSION:"synthetic",
     STORE_KEY:"synthetic",localStateRevision:0,suppressPush:false,render:()=>{},
+    resetGenerationVerifiedFor:()=>true,resetGenerationValue:0,
     repairLegacySquadIdentity:state=>({state}),backfillConfirmedHeroPowers:state=>({state}),
     safeLocalSet:()=>{stored++;return true},rememberLastGoodState:()=>{},rememberAccountState:()=>{},
     hasMeaningfulCore:()=>true,scheduleServerSave:()=>{scheduled++}});

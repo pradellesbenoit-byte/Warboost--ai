@@ -9,6 +9,7 @@ import {createGearRepairPreview} from "./lib/gear-repair-preview.js";
 import {gearRepairPreviewHtml} from "./lib/gear-repair-preview-view.js";
 import {gearRepairPreviewCopy} from "./lib/gear-repair-preview-copy.js";
 import {createSaveDiagnostic,safeSaveDiagnostic,newSaveCorrelation,publicSaveError} from "./lib/cloud-save-diagnostic.js";
+import {normalizeResetGeneration,resetGenerationDecision,resetGenerationRequestMatches,quarantineOwnedAccountCaches,preserveForeignCacheBeforeReplace} from "./lib/reset-generation.js";
 import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
 import {buildPlayerScanOptions,normalizePlayerScanType,scanSquadId} from "./lib/player-scan-types.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation,heroDisplayName} from "./lib/heroes.js";
@@ -128,13 +129,18 @@ const RELEASE_LABEL="HF8.6.34"; // Dated in-game shop observations and currency-
 const STORE_KEY="warboost_v1_core_state", CLIENT_KEY="warboost_v1_client_id", LANG_KEY="warboost_v12_language";
 const BACKUP_KEY="warboost_last_good_state", ACCOUNT_STATE_PREFIX="warboost_account_state:", VOICE_ENABLED_KEY="warboost_voice_enabled", VOICE_ID_KEY="warboost_voice_id";
 const BETA_CONSENT_KEY="warboost_beta_consent_2026_09_05_safe_launch_v2", BETA_CONSENT_VERSION="2026-09-05-safe-launch-v2", PENDING_JOIN_CODE_KEY="warboost_pending_join_code";
+const RESET_GENERATION_KEY_PREFIX="warboost_reset_generation:";
 const LEGACY_LANGUAGE_KEYS=["wb17_language","wb171_language","warboost_language"];
 const LEGACY_DATA_KEYS=["wb12_account","wb11_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster","wb19_imported_players"];
 
 function uid(){return crypto.randomUUID?.()||`wb-${Date.now()}-${Math.random().toString(16).slice(2)}`}
 let volatileClientId="";
+let resetGenerationPendingUserId="",resetGenerationVerifiedUserId="",resetGenerationValue=null;
+function resetGenerationVerifiedFor(userId){return Boolean(userId&&String(resetGenerationPendingUserId)===String(userId)&&String(resetGenerationVerifiedUserId)===String(userId)&&normalizeResetGeneration(resetGenerationValue)!==null)}
+function resetGenerationCacheKey(userId){return `${RESET_GENERATION_KEY_PREFIX}${encodeURIComponent(String(userId||""))}`}
+function isGameCacheKey(key){return key===STORE_KEY||key===BACKUP_KEY||String(key||"").startsWith(ACCOUNT_STATE_PREFIX)||LEGACY_DATA_KEYS.includes(String(key||""))}
 function clientId(){if(volatileClientId)return volatileClientId;try{let id=localStorage.getItem(CLIENT_KEY);if(!id){id=uid();localStorage.setItem(CLIENT_KEY,id)}volatileClientId=id;return id}catch{volatileClientId=uid();return volatileClientId}}
-function safeLocalSet(key,value){try{localStorage.setItem(key,value);return true}catch{return false}}
+function safeLocalSet(key,value){if(resetGenerationPendingUserId&&!resetGenerationVerifiedFor(resetGenerationPendingUserId)&&isGameCacheKey(key))return false;try{if(resetGenerationPendingUserId&&resetGenerationVerifiedFor(resetGenerationPendingUserId)&&[STORE_KEY,BACKUP_KEY].includes(String(key))){const archived=preserveForeignCacheBeforeReplace(localStorage,{key:String(key),userId:resetGenerationPendingUserId});if(!archived.ok)return false}localStorage.setItem(key,value);return true}catch{return false}}
 function emptyHero(i){return {name:"",level:null,stars:null,power:null,exclusive:null,gear:null,awakening:null}}
 function emptySquad(i){return {id:i,name:`Squad ${i}`,power:null,last_confirmed_power:null,power_sync_status:"confirmed",updated_at:null,needs_rescan:false,composition_changed_at:null,composition_confirmed_at:null,composition_source:null,confirmed_composition:Array.from({length:5},()=>""),composition_conflict:null,heroes:Array.from({length:5},emptyHero)}}
 function initialState(){return {version:APP_VERSION,player_id:clientId(),updated_at:null,player:{name:"",server_id:"",hq_level:null,hq_level_source:null,hq_level_confirmed_at:null,power_m:null,coordinates:null,role:"R1",updated_at:null},player_context:{objective:"auto",account_age_days:null,server_profile:"auto",updated_at:null},activity_events:[],player_availability:[],availability_history:[],exclusive_weapons:[],hero_progression:[],hero_profiles:[],progression_snapshots:[],drone:{level:null,power_m:null,updated_at:null},shop:{store_type:"",currency:"",currency_balance:null,vip_level:null,vip_days_remaining:null,offers:[],snapshots:[],updated_at:null},squads:[1,2,3,4].map(emptySquad),alliance:{id:null,owner_player_id:null,server_id:"",tag:"",name:"",role:"R1",cloud_role_verified:false,management_verified:false,invite_code:"",members:[],roster_review:[],former_members:[],roster_removal_tombstones:[],event_availability:[],availability_history:[],roster_updated_at:null,roster_snapshot_complete_at:null,unlinked_accounts:[],identity_link_status:"unknown",desert_storm:{team:"A",battle_time:"",registered_keys:[],plan:null,availability_reset_at:null,updated_at:null},canyon:normalizeCanyonState({}),updated_at:null},vs:{week:null,day:null,theme:"",our_alliance:"",our_tag:"",our_server_id:"",opponent:"",opponent_tag:"",opponent_server_id:"",our_score:null,their_score:null,our_percent:null,their_percent:null,time_remaining_text:"",time_remaining_seconds:null,personal_name:"",personal_rank:null,personal_score:null,leaderboard:[],score_confirmed:false,snapshots:[],updated_at:null},season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:null,resistance:null,focus:null,lifecycle:"unknown",lifecycle_source:null,ended_at:null,measured_hybrid_synergy:false,awakening_swap:null,updated_at:null},technology:{type_mastery_pct:null,hero_tech_pct:null,siege_to_seize_pct:null,defensive_fortification_pct:null,tactical_weapon_pct:null,updated_at:null},sync:{provider:"warboost-local",provider_kind:"local",access_status:"pending",capabilities:[],status:"local",last_sync:null,last_error:null,auto_ready:true,last_scan:null,official_last_sync:null,public_last_sync:null,sources:{official:false,public:false,scan:false,alliance:false}}}}
@@ -363,10 +369,11 @@ function preservePendingRoster(local={},remote={}){
   return {...remote,alliance:{...remote.alliance,members:localMembers,roster_review:Array.isArray(local.alliance.roster_review)?local.alliance.roster_review:remote.alliance?.roster_review||[],former_members:[],roster_removal_tombstones:normalizeRosterRemovalTombstones([...(local.alliance.roster_removal_tombstones||[]),...(remote.alliance?.roster_removal_tombstones||[]),...(local.alliance.former_members||[]),...(remote.alliance?.former_members||[])]),roster_snapshot_complete_at:local.alliance.roster_snapshot_complete_at||remote.alliance?.roster_snapshot_complete_at||null,roster_sync_status:"pending",roster_sync_error:local.alliance.roster_sync_error||null}};
 }
 function safeClone(value){try{return typeof structuredClone==="function"?structuredClone(value):JSON.parse(JSON.stringify(value))}catch{return value}}
-function rememberLastGoodState(value,reason="local"){if(!hasMeaningfulCore(value))return;try{localStorage.setItem(BACKUP_KEY,JSON.stringify({saved_at:new Date().toISOString(),reason,state:safeClone(value)}))}catch{}}
-function readLastGoodState(){try{return JSON.parse(localStorage.getItem(BACKUP_KEY)||"null")?.state||null}catch{return null}}
+function rememberLastGoodState(value,reason="local"){if(resetGenerationPendingUserId&&!resetGenerationVerifiedFor(resetGenerationPendingUserId))return;if(!hasMeaningfulCore(value))return;try{localStorage.setItem(BACKUP_KEY,JSON.stringify({saved_at:new Date().toISOString(),reason,state:safeClone(value)}))}catch{}}
+function readLastGoodState(){if(resetGenerationPendingUserId&&!resetGenerationVerifiedFor(resetGenerationPendingUserId))return null;try{return JSON.parse(localStorage.getItem(BACKUP_KEY)||"null")?.state||null}catch{return null}}
 function accountStateKey(userId){const id=String(userId||"").trim();return id?`${ACCOUNT_STATE_PREFIX}${id}`:null}
 function rememberAccountState(userId,value){
+  if(resetGenerationPendingUserId&&!resetGenerationVerifiedFor(userId))return;
   const key=accountStateKey(userId);if(!key||!hasMeaningfulCore(value))return;
   try{
     const previous=readAccountState(userId),copy=safeClone(value);
@@ -377,7 +384,36 @@ function rememberAccountState(userId,value){
     localStorage.setItem(key,JSON.stringify({...copy,player_id:String(userId)}));
   }catch{}
 }
-function readAccountState(userId){const key=accountStateKey(userId);if(!key)return null;try{const parsed=JSON.parse(localStorage.getItem(key)||"null");return parsed&&String(parsed.player_id||"")===String(userId)?parsed:null}catch{return null}}
+function readAccountState(userId){if(resetGenerationPendingUserId&&!resetGenerationVerifiedFor(userId))return null;const key=accountStateKey(userId);if(!key)return null;try{const parsed=JSON.parse(localStorage.getItem(key)||"null");return parsed&&String(parsed.player_id||"")===String(userId)?parsed:null}catch{return null}}
+function activateVerifiedResetGeneration(userId,serverValue,legacyCandidate=null){
+  const id=String(userId||"").trim(),serverGeneration=normalizeResetGeneration(serverValue);
+  if(!id||serverGeneration===null)return {ok:false,error:"reset_generation_unverified"};
+  let markerRaw=null;
+  try{markerRaw=localStorage.getItem(resetGenerationCacheKey(id))}catch{return {ok:false,error:"reset_generation_storage_unavailable"}}
+  if(markerRaw!==null&&normalizeResetGeneration(markerRaw)===null)return {ok:false,error:"reset_generation_marker_invalid"};
+  const decision=resetGenerationDecision(markerRaw,serverGeneration);
+  if(!decision.ok)return {ok:false,error:decision.reason};
+  let quarantined=0;
+  if(decision.action==="invalidate_cache"){
+    const result=quarantineOwnedAccountCaches(localStorage,{userId:id,serverGeneration,keys:{
+      store:STORE_KEY,backup:BACKUP_KEY,accountPrefix:ACCOUNT_STATE_PREFIX,legacy:LEGACY_DATA_KEYS
+    },extra:String(legacyCandidate?.player_id||"")===id?[{key:"session-memory",value:legacyCandidate}]:[]});
+    if(!result.ok)return {ok:false,error:result.reason||"reset_cache_quarantine_failed"};
+    quarantined=result.captured;
+  }
+  resetGenerationPendingUserId=id;resetGenerationVerifiedUserId=id;resetGenerationValue=serverGeneration;
+  safeLocalSet(resetGenerationCacheKey(id),String(serverGeneration));
+  const accountCache=decision.action==="invalidate_cache"?null:readAccountState(id);
+  const candidateOwner=String(legacyCandidate?.player_id||"");
+  const candidate=decision.action==="invalidate_cache"?null:
+    accountCache||(candidateOwner===id?legacyCandidate:null);
+  if(candidate&&hasMeaningfulCore(candidate)){
+    rememberAccountState(id,{...safeClone(candidate),player_id:id});
+    rememberLastGoodState({...safeClone(candidate),player_id:id},"verified-reset-generation-cache");
+  }
+  return {ok:true,generation:serverGeneration,action:decision.action,cacheInvalidated:decision.action==="invalidate_cache",
+    quarantined,localState:candidate&&hasMeaningfulCore(candidate)?safeClone(candidate):null};
+}
 function stateTimestamp(value){const n=Date.parse(value?.updated_at||"");return Number.isFinite(n)?n:0}
 function safestLoginSeed(userId,currentState){
   const id=String(userId||"").trim(),owner=String(currentState?.player_id||"").trim(),localOwner=clientId(),cached=readAccountState(id);
@@ -1183,8 +1219,8 @@ function updateScanCaptureMode(){
   updateScanSquadTarget();updateTechnologyScanPreview();
 }
 function applyLanguage(){lang=resolveLanguage(languageChoice);locale=localeFor(lang);t=translator(lang);document.documentElement.lang=lang;document.documentElement.dir=dirFor(lang);$$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});$$('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));$$('[data-i18n-alt]').forEach(el=>el.setAttribute('alt',t(el.dataset.i18nAlt)));$$('[data-i18n-placeholder]').forEach(el=>{const text=t(el.dataset.i18nPlaceholder);el.setAttribute('placeholder',text);if(el.isContentEditable)el.setAttribute('data-placeholder',text)});const sel=$("#languageSelect");if(sel){sel.innerHTML=LANGUAGES.map(([v,label])=>`<option value="${v}">${label}</option>`).join("");sel.value=languageChoice}renderScanTypeOptions();renderClock();render();renderAuth();renderBeta();renderPro();renderVoiceSettings();renderSupportAccess();renderSupportTickets();$("#proPriorityPanel")?.classList.add("hidden");$("#playerSyncInfo")?.classList.remove("hidden")}
-function saveState(options={}){const renderUi=options?.renderUi!==false,signedInUserId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");if(signedInUserId&&ownerId&&ownerId!==signedInUserId){if(hasMeaningfulCore(state))rememberAccountState(ownerId,state);const own=readAccountState(signedInUserId);state=hasMeaningfulCore(own)?hydrateCloudState(own,initialState(),signedInUserId):initialState();state.player_id=signedInUserId;state.sync={...state.sync,status:"waiting",last_error:"account_owner_mismatch",pending_cloud_save:false};if(renderUi)render();return false}if(signedInUserId&&!ownerId)state.player_id=signedInUserId;state=repairLegacySquadIdentity(state).state;state=backfillConfirmedHeroPowers(state).state;state.updated_at=new Date().toISOString();state.version=APP_VERSION;localStateRevision++;const localOk=safeLocalSet(STORE_KEY,JSON.stringify(state));if(!localOk)state.sync={...state.sync,status:"waiting",last_error:"local_storage_unavailable",pending_cloud_save:true};rememberLastGoodState(state,"save");if(signedInUserId&&String(state.player_id||"")===signedInUserId)rememberAccountState(signedInUserId,state);if(renderUi)render();if(options.cloudSave!==false&&!suppressPush&&hasMeaningfulCore(state))scheduleServerSave(localOk?350:0);return localOk}
-function scheduleServerSave(delay=350){cloudDirty=true;clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushServerState(),Math.max(0,Number(delay)||0))}
+function saveState(options={}){const renderUi=options?.renderUi!==false,signedInUserId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");if(signedInUserId&&!resetGenerationVerifiedFor(signedInUserId)){state.sync={...state.sync,status:"waiting",last_error:"reset_generation_unverified",pending_cloud_save:true};if(renderUi)render();return false}if(signedInUserId&&ownerId&&ownerId!==signedInUserId){if(hasMeaningfulCore(state))rememberAccountState(ownerId,state);const own=readAccountState(signedInUserId);state=hasMeaningfulCore(own)?hydrateCloudState(own,initialState(),signedInUserId):initialState();state.player_id=signedInUserId;state.sync={...state.sync,status:"waiting",last_error:"account_owner_mismatch",pending_cloud_save:false};if(renderUi)render();return false}if(signedInUserId&&!ownerId)state.player_id=signedInUserId;state=repairLegacySquadIdentity(state).state;state=backfillConfirmedHeroPowers(state).state;state.updated_at=new Date().toISOString();state.version=APP_VERSION;localStateRevision++;const localOk=safeLocalSet(STORE_KEY,JSON.stringify(state));if(!localOk)state.sync={...state.sync,status:"waiting",last_error:"local_storage_unavailable",pending_cloud_save:true};rememberLastGoodState(state,"save");if(signedInUserId&&String(state.player_id||"")===signedInUserId)rememberAccountState(signedInUserId,state);if(renderUi)render();if(options.cloudSave!==false&&!suppressPush&&hasMeaningfulCore(state))scheduleServerSave(localOk?350:0);return localOk}
+function scheduleServerSave(delay=350){if(cloudSession?.user?.id&&!resetGenerationVerifiedFor(cloudSession.user.id))return;cloudDirty=true;clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushServerState(),Math.max(0,Number(delay)||0))}
 function scheduleCloudRetry(delay=8000){
   const view=currentAccountSyncView();
   if(cloudRetryTimer||!cloudDirty||!navigator.onLine||cloudRetryFailures>=5||
@@ -1325,9 +1361,18 @@ async function applySessionCore(session){
   const previousUserId=String(cloudSession?.user?.id||"");
   const previousPendingOwner=pendingScanOwner(cloudSession);
   const preSessionState=safeClone(state);
+  const nextUserId=String(session?.user?.id||"");
+  if(previousUserId&&previousUserId!==nextUserId&&resetGenerationVerifiedFor(previousUserId)&&
+    String(preSessionState?.player_id||"")===previousUserId)rememberAccountState(previousUserId,preSessionState);
   cloudSession=session||null;
-  const nextUserId=String(cloudSession?.user?.id||"");
+  const resetAlreadyVerified=Boolean(nextUserId&&previousUserId===nextUserId&&resetGenerationVerifiedFor(nextUserId));
   if(previousUserId!==nextUserId){cloudProfileVerified=false;canonicalRosterReady=false;cloudRevision=null;betaState={...betaState,account_access_allowed:false,alliance_beta_allowed:false,beta_code_eligible:false,beta_access_status:"checking"};if($("#betaAccessCode"))$("#betaAccessCode").value="";$("#betaCodeStatus")?.classList.add("hidden");if($("#betaCodeActivateBtn"))$("#betaCodeActivateBtn").disabled=false}
+  if(nextUserId){
+    resetGenerationPendingUserId=nextUserId;
+    if(!resetAlreadyVerified){resetGenerationVerifiedUserId="";resetGenerationValue=null}
+  }else{
+    resetGenerationPendingUserId="";resetGenerationVerifiedUserId="";resetGenerationValue=null;
+  }
   const nextPendingOwner=pendingScanOwner(cloudSession);
 
   // HF8.6.15 keeps HF8.6.14 immediate session rendering and additionally bounds every foreground auth/cloud write.
@@ -1340,25 +1385,17 @@ async function applySessionCore(session){
       resetBootstrapDiagnostics("session");
       // The public beta is server-invite gated. A same-user token refresh must never
       // re-lock an already verified UI while a background revalidation runs.
-      const userId=String(cloudSession.user.id),oldOwner=String(state?.player_id||""),localOwner=clientId();
+      const userId=String(cloudSession.user.id);
       const preserveVerifiedAccess=shouldPreserveVerifiedSessionAccess({previousUserId,nextUserId:userId,cloudProfileVerified,betaAllowed:betaState?.allowed===true,betaAccessStatus:betaState?.access_status});
       betaState=betaStateForSessionBootstrap(betaState,{preserveVerified:preserveVerifiedAccess});
       cloudHydrationPending=true;
 
       // Isolate accounts before any optional asynchronous work can stall.
-      if(oldOwner&&oldOwner!==localOwner&&oldOwner!==userId&&hasMeaningfulCore(state))rememberAccountState(oldOwner,state);
-      const loginSeed=safestLoginSeed(userId,state);
-      state=loginSeed?mergeState(initialState(),loginSeed):initialState();
+      const loginSeed=safeClone(preSessionState);
+      state=resetAlreadyVerified&&hasMeaningfulCore(loginSeed)?hydrateCloudState(loginSeed,initialState(),userId):initialState();
       state.player_id=userId;
-      if(hasMeaningfulCore(loginSeed)){
-        rememberLastGoodState(loginSeed,"before-login-own-state");
-        state=hydrateCloudState(loginSeed,initialState(),userId);
-        safeLocalSet(STORE_KEY,JSON.stringify(state));
-        rememberAccountState(userId,state);
-      }else{
-        // Critical HF8.6.12 guard: never persist this empty in-memory placeholder before
-        // the authenticated cloud read has succeeded.
-      }
+      // No account cache is restored or rewritten until the authenticated server returns
+      // reset_generation. A pre-session candidate remains memory-only for that comparison.
 
       // Render the correctly isolated account now, before cloud/profile requests.
       render();renderAuth();renderBeta();renderPro();renderSupportAccess();
@@ -1382,14 +1419,11 @@ async function applySessionCore(session){
       // user's own Supabase RLS row as a read-only recovery path.
       if(betaConsentAccepted()){
         const pulled=await restoreAuthenticatedProfile(loginSeed,{reason:"session"});
-        if(pulled?.cloud_empty&&hasMeaningfulCore(loginSeed)){
-          state=hydrateCloudState(loginSeed,initialState(),userId);state.player_id=userId;saveState();void pushServerState();
-        }else if(!pulled?.ok&&!pulled?.cloud_empty&&!cloudProfileVerified){
-          if(hasMeaningfulCore(loginSeed)){
-            state=hydrateCloudState(loginSeed,initialState(),userId);safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull-failed-local-fallback");rememberAccountState(userId,state);
-          }else if(hasMeaningfulCore(preSessionState)&&String(preSessionState?.player_id||"")===userId){
-            state=hydrateCloudState(preSessionState,initialState(),userId);safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull-failed-session-fallback");rememberAccountState(userId,state);
-          }
+        if(pulled?.cloud_empty&&hasMeaningfulCore(pulled.local_state)&&resetGenerationVerifiedFor(userId)){
+          state=hydrateCloudState(pulled.local_state,initialState(),userId);state.player_id=userId;saveState();
+        }else if(!pulled?.ok&&!pulled?.cloud_empty&&!cloudProfileVerified&&resetGenerationVerifiedFor(userId)&&
+          hasMeaningfulCore(loginSeed)&&String(loginSeed?.player_id||"")===userId){
+          state=hydrateCloudState(loginSeed,initialState(),userId);safeLocalSet(STORE_KEY,JSON.stringify(state));rememberLastGoodState(state,"cloud-pull-failed-local-fallback");rememberAccountState(userId,state);
         }
       }else{
         await runBootstrapStage("BETA_CHECK",()=>refreshBeta());finishBootstrapDiagnostics(betaState.allowed?"consent-required":"access-check-complete");
@@ -1398,6 +1432,7 @@ async function applySessionCore(session){
       // PRO entitlement and temporary screenshots are not login-critical.
       void refreshPro();void restorePendingScans();
       }else{
+     resetGenerationPendingUserId="";resetGenerationVerifiedUserId="";resetGenerationValue=null;
        cloudProfileVerified=false;canonicalRosterReady=false;
       cloudHydrationPending=false;
       clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
@@ -1563,6 +1598,7 @@ async function pushServerState({keepalive=false,userRequested=false}={}){
   const userId=String(cloudSession?.user?.id||""),ownerId=String(state?.player_id||"");
   const requestSessionKey=sessionApplyKey(cloudSession);
   if(!userId||ownerId!==userId)return {skipped:true,reason:"account_owner_mismatch"};
+  if(!resetGenerationVerifiedFor(userId))return {skipped:true,reason:"reset_generation_unverified"};
   if(state.squads?.some(squad=>squad?.composition_conflict?.reason==="squad_freshness_ambiguous"))return {skipped:true,reason:"squad_confirmation_required"};
   // Never let an empty browser placeholder overwrite a real cloud profile.
   if(!hasMeaningfulCore(state))return {skipped:true,reason:"empty_state_guard"};
@@ -1580,7 +1616,7 @@ async function pushServerState({keepalive=false,userRequested=false}={}){
     delete outbound.sync.last_save_attempt;
     delete outbound.sync.last_confirmed_write_receipt;
     delete outbound.sync.last_confirmed_write_at;
-    const body=JSON.stringify({state:outbound,base_updated_at:cloudRevision});
+    const body=JSON.stringify({state:outbound,base_updated_at:cloudRevision,reset_generation:resetGenerationValue});
     if(keepalive&&!canUseKeepaliveBody(body)){
       // Mobile fetch keepalive has a small request-body quota. The state remains safely in
       // localStorage and cloudDirty stays true; the normal foreground retry will save it.
@@ -1594,6 +1630,13 @@ async function pushServerState({keepalive=false,userRequested=false}={}){
     if(requestSessionKey!==sessionApplyKey(cloudSession))return {skipped:true,reason:"session_changed"};
     if(j?.state?.player_id&&String(j.state.player_id)!==userId)throw new Error("profile_owner_mismatch");
     if(!r.ok){
+      if(r.status===409&&j?.error==="reset_required"){
+        resetGenerationVerifiedUserId="";resetGenerationValue=null;
+        const staleInMemory=safeClone(state),refreshed=await pullServerState(staleInMemory,{fastRestore:true});
+        if(!refreshed?.ok)markCloudPending("reset_generation_unverified");
+        renderBeta();renderProvider();
+        return {ok:false,error:"reset_required",generationRefreshed:Boolean(refreshed?.ok)};
+      }
       const diagnostic=safeSaveDiagnostic(j?.diagnostic)||createSaveDiagnostic({stage:"client_transport",status:r.status,
         code:publicSaveError({code:j?.error},r.status),correlationId,started:saveStarted});
       recordAccountSyncResult({kind:accountSyncErrorKind({status:r.status,code:diagnostic.code}),diagnostic},requestSessionKey,operation);
@@ -1655,7 +1698,9 @@ async function pushServerState({keepalive=false,userRequested=false}={}){
 async function pullDirectOwnProfile(loginSeed=null){
   if(!cloudSession?.access_token||!cloudSession?.user?.id||betaState.allowed!==true||!betaConsentAccepted())return {ok:false,error:"direct_profile_not_authorized"};
   const restoreSession=sessionApplyKey(cloudSession);
-  const userId=String(cloudSession.user.id),localFallback=hasMeaningfulCore(loginSeed)?safeClone(loginSeed):(hasMeaningfulCore(state)?safeClone(state):null);
+  const userId=String(cloudSession.user.id);
+  if(!resetGenerationVerifiedFor(userId))return {ok:false,error:"reset_generation_unverified"};
+  const localFallback=hasMeaningfulCore(loginSeed)?safeClone(loginSeed):(hasMeaningfulCore(state)?safeClone(state):null);
   pendingIdentityAliasesOwner=userId;pendingIdentityAliases=collectPendingIdentityAliases(userId,localFallback,loginSeed,state,readAccountState(userId));
   let pendingCleanupChanged=false;
   const out=await readOwnProfileDirect({url:cloudDataConfig.url,key:cloudDataConfig.key,accessToken:cloudSession.access_token,userId,timeoutMs:10000});
@@ -1700,8 +1745,8 @@ async function pullDirectOwnProfile(loginSeed=null){
 async function pullServerState(loginSeed=null,{fastRestore=false}={}){
   if(!cloudSession?.access_token)return {skipped:true};
   const restoreSession=sessionApplyKey(cloudSession);
-  const userId=String(cloudSession.user?.id||""),localFallback=hasMeaningfulCore(loginSeed)?safeClone(loginSeed):(hasMeaningfulCore(state)?safeClone(state):null);
-  pendingIdentityAliasesOwner=userId;pendingIdentityAliases=collectPendingIdentityAliases(userId,localFallback,loginSeed,state,readAccountState(userId));
+  const userId=String(cloudSession.user?.id||"");let localFallback=null;
+  pendingIdentityAliasesOwner=userId;pendingIdentityAliases=[];
   let pendingCleanupChanged=false;
   cloudHydrationPending=true;renderBeta();
   try{
@@ -1709,10 +1754,22 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     const {response:r,json:j}=await fetchJsonBounded(stateUrl,{cache:"no-store",headers:authHeaders()},stateTimeout);appendServerRestoreTrace(j?.restore_trace);
     if(String(cloudSession?.user?.id||"")!==userId||sessionApplyKey(cloudSession)!==restoreSession)return {ok:false,error:"account_changed"};
     if(!r.ok){
-      if(j?.error==="database_schema_missing"){state.sync.last_error=t("cloud_schema_missing");state.sync.status="offline";renderProvider()}
+      if(j?.error==="database_schema_missing"||j?.error==="RESET_GENERATION_MIGRATION_REQUIRED"){state.sync.last_error=t("cloud_schema_missing");state.sync.status="offline";renderProvider()}
       betaState=betaStateAfterVerifiedStateRead(betaState,{ok:false,status:r.status,error:j?.error||"",consentVersion:BETA_CONSENT_VERSION});
       cloudHydrationPending=false;renderBeta();scheduleCloudPullRetry();return {ok:false,error:j?.error||`state_http_${r.status}`,status:r.status}
     }
+    const generationCheck=activateVerifiedResetGeneration(userId,j?.reset_generation,loginSeed);
+    if(!generationCheck.ok){
+      resetGenerationVerifiedUserId="";resetGenerationValue=null;cloudProfileVerified=false;canonicalRosterReady=false;
+      state=initialState();state.player_id=userId;state.sync={...state.sync,status:"offline",last_error:generationCheck.error,pending_cloud_save:false};
+      cloudHydrationPending=false;render();renderBeta();renderProvider();
+      return {ok:false,error:generationCheck.error,reset_generation_unverified:true};
+    }
+    localFallback=generationCheck.localState;
+    if(generationCheck.cacheInvalidated){state=initialState();state.player_id=userId;state.sync={...state.sync,status:"ok",last_error:null,pending_cloud_save:false}}
+    else if(!hasMeaningfulCore(state)&&hasMeaningfulCore(localFallback))state=hydrateCloudState(localFallback,initialState(),userId);
+    pendingIdentityAliases=collectPendingIdentityAliases(userId,localFallback,generationCheck.cacheInvalidated?null:loginSeed,state,
+      generationCheck.cacheInvalidated?null:readAccountState(userId));
     // A successful /api/state response can only happen after server-side invitation + consent
     // validation. Treat it as authoritative proof of beta access and reveal the restored state.
     betaState=betaStateAfterVerifiedStateRead(betaState,{ok:true,status:r.status,consentVersion:BETA_CONSENT_VERSION});
@@ -1721,7 +1778,15 @@ async function pullServerState(loginSeed=null,{fastRestore=false}={}){
     cloudProfileVerified=true;betaState={...betaState,restore_error:null};clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
     cloudRevision=j?.updated_at||null;
     canonicalRosterReady=j?.alliance_roster_repair?.status==="canonical_roster_applied";
-    if(!j?.state){canonicalRosterReady=false;cloudHydrationPending=false;renderBeta();return {ok:true,cloud_empty:true}}
+    if(!j?.state){
+      canonicalRosterReady=false;cloudProfileVerified=true;betaState={...betaState,restore_error:null};
+      state=localFallback?hydrateCloudState(localFallback,initialState(),userId):initialState();state.player_id=userId;
+      state.sync={...state.sync,status:localFallback?"waiting":"ok",last_error:null,pending_cloud_save:Boolean(localFallback)};
+      safeLocalSet(STORE_KEY,JSON.stringify(state));
+      if(localFallback){rememberLastGoodState(state,"verified-generation-empty-cloud");rememberAccountState(userId,state)}
+      cloudHydrationPending=false;render();renderBeta();
+      return {ok:true,cloud_empty:true,local_state:localFallback,cache_invalidated:generationCheck.cacheInvalidated}
+    }
     if(j.state.player_id&&String(j.state.player_id)!==userId)throw new Error("profile_owner_mismatch");
 
     // HF8.6.12: when the browser has no trustworthy local state, hydrate directly from the
@@ -3599,6 +3664,14 @@ async function syncAll(){
   btns.forEach(b=>{b.disabled=true;b.textContent=t("syncing")});
   const finishLoading=analysisIndicator.begin("sync",{targets:btns});
   try{
+    if(requestOwner&&!resetGenerationVerifiedFor(requestOwner)){
+      const generationRead=await pullServerState(null,{fastRestore:true});
+      if(!generationRead?.ok||!resetGenerationVerifiedFor(requestOwner)){
+        const note=$("#playerSyncInfo");
+        if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("offline_keep")}
+        return;
+      }
+    }
     if(!rosterPending&&!hasMeaningfulCore(state)&&cloudSession?.access_token){
       const recovered=await reconcileAuthenticatedRuntime("manual-sync",{force:true});
       if(!recovered?.ok||!hasMeaningfulCore(state)){
@@ -3619,7 +3692,7 @@ async function syncAll(){
         rosterSyncCopy(lang).pending:t("safe_sync_done");
       return; // A roster retry never submits or marks the personal profile as saved.
     }
-    const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({operation:"player_sync",state,locale:lang,base_updated_at:cloudRevision,base_roster_updated_at:state.alliance?.roster_updated_at||null})},20000);
+    const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({operation:"player_sync",state,locale:lang,base_updated_at:cloudRevision,base_roster_updated_at:state.alliance?.roster_updated_at||null,reset_generation:resetGenerationValue})},20000);
     if(String(cloudSession?.user?.id||"")!==userId)return;
     if(j?.state?.player_id&&String(j.state.player_id)!==userId)throw new Error("profile_owner_mismatch");
     if(rosterPending&&(!r.ok||!rosterReplyConfirmed(j)))throw Object.assign(new Error("roster_sync_failed"),
@@ -3634,6 +3707,14 @@ async function syncAll(){
       const pending=changedDuringSync||squadResult.localNewer.length>0||squadResult.conflicts.length>0;
       state.sync={...state.sync,status:pending?"waiting":"ok",provider:j.provider||state.sync.provider||"warboost-local",provider_kind:j.provider_kind||state.sync.provider_kind||"local",capabilities:j.capabilities||state.sync.capabilities||[],last_sync:j.synced_at||new Date().toISOString(),last_error:squadResult.conflicts.length?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(pending),sources:{...state.sync.sources,...j.sources}};
       saveState();$("#playerSyncInfo").textContent=t(pending?"offline_keep":"safe_sync_done");
+    }else if(r.status===409&&j?.error==="reset_required"){
+      resetGenerationVerifiedUserId="";resetGenerationValue=null;
+      const staleInMemory=safeClone(state),refreshed=await pullServerState(staleInMemory,{fastRestore:true});
+      state.sync.last_error=refreshed?.ok?null:"reset_generation_unverified";
+      state.sync.status=refreshed?.ok?"waiting":"offline";
+      const note=$("#playerSyncInfo");
+      if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("offline_keep")}
+      render();
     }else if(r.status===409&&(j?.error==="profile_write_conflict"||j?.error==="squad_freshness_ambiguous")){
       const remote=j?.state?hydrateCloudState(j.state,initialState(),userId):null;
       if(remote){
@@ -4472,6 +4553,7 @@ async function persistRosterCandidate(candidate){
   if(!betaAccessAllowed())throw Object.assign(new Error("roster_beta_required"),{code:"roster_beta_required",write_state:"not_attempted"});
   if(!betaConsentAccepted())throw Object.assign(new Error("roster_consent_required"),{code:"roster_consent_required",write_state:"not_attempted"});
   const owner=String(cloudSession.user.id);
+  if(!resetGenerationVerifiedFor(owner))throw Object.assign(new Error("reset_generation_unverified"),{code:"reset_generation_unverified",write_state:"not_attempted"});
   if(String(candidate.player_id||"")!==owner)throw Object.assign(new Error("account_owner_mismatch"),{code:"account_owner_mismatch"});
   // A response belongs to an account AND alliance scope, never just a user ID.
   // A delayed refusal is equally unsafe to merge into a newly selected alliance.
@@ -4483,7 +4565,7 @@ async function persistRosterCandidate(candidate){
   let reply;
   try{
     reply=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),
-      body:JSON.stringify(rosterImportRequest(candidate,lang))},20000);
+      body:JSON.stringify({...rosterImportRequest(candidate,lang),reset_generation:resetGenerationValue})},20000);
   }catch(error){
     if(String(cloudSession?.user?.id||"")!==owner||scope(state)!==requestScope)
       throw Object.assign(new Error("roster_context_changed"),{code:"roster_context_changed"});
@@ -5170,9 +5252,14 @@ async function initializeWarBoost(){
       identity:profileIdentity(state),locale:lang}),
     translate:translator,
     request:async(method,payload)=>{
-      if(method==="POST")clearTimeout(pushTimer);
+      if(method==="POST"){
+        clearTimeout(pushTimer);
+        const userId=String(cloudSession?.user?.id||"");
+        if(!resetGenerationVerifiedFor(userId))throw Object.assign(new Error("reset_generation_unverified"),{code:"reset_generation_unverified"});
+      }
+      const body=payload?JSON.stringify(method==="POST"?{...payload,reset_generation:resetGenerationValue}:payload):undefined;
       const {response,json}=await fetchJsonBounded("/api/state?identity=1",{method,cache:"no-store",
-        headers:authHeaders({"content-type":"application/json"}),...(payload?{body:JSON.stringify(payload)}:{})},25000);
+        headers:authHeaders({"content-type":"application/json"}),...(body?{body}:{})},25000);
       if(!response.ok)throw Object.assign(new Error(json.error||"IDENTITY_CHECK_UNAVAILABLE"),{
         code:json.error||"IDENTITY_CHECK_UNAVAILABLE",authority:json.authority});
       return json;

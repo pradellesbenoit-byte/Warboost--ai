@@ -14,12 +14,14 @@ export async function billingFixture(){
   await pg.exec(`create schema auth;create role anon;create role authenticated;create role service_role bypassrls;
     create table auth.users(id uuid primary key,email text,created_at timestamptz default now());
     create function auth.uid() returns uuid language sql as $$select null::uuid$$;
+    create table public.wb1_profiles(player_id text primary key,state jsonb not null default '{}'::jsonb,updated_at timestamptz not null default now());
+    create table public.wb1_snapshots(id bigint generated always as identity primary key,player_id text not null,state jsonb not null,source text not null default 'warboost',captured_at timestamptz not null default now());
     create table public.wb1_beta_invites(id uuid primary key default gen_random_uuid(),email text unique,status text,
       invited_at timestamptz default now(),accepted_user_id text,expires_at timestamptz,accepted_at timestamptz,updated_at timestamptz);`);
   for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLive,"live@example.test"],[userCountry,"country@example.test"]])
     await pg.query("insert into auth.users(id,email,created_at) values($1,$2,now()-interval '1 day')",[id,email]);
   await pg.query("insert into wb1_beta_invites(email,status,invited_at,accepted_user_id) values('beta@example.test','accepted',now()-interval '1 day',$1)",[userBeta]);
-  const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql","supabase/migration_v2_5_33_live_billing_preparation.sql"];
+  const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql","supabase/migration_v2_5_33_live_billing_preparation.sql","supabase/migration_v2_5_34_account_reset_generation.sql"];
   for(const path of migrations)await pg.exec(fs.readFileSync(path,"utf8"));
   const oldEnv={...process.env},oldFetch=globalThis.fetch;
   Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"test",WARBOOST_APP_URL:"https://beta.warboost.fr",STRIPE_SECRET_KEY:"sk_test_fixture_only",
