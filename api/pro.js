@@ -46,7 +46,7 @@ export default async function handler(req,res){
          live_payments_enabled:commerce.live_payments_enabled&&entitlement.schema_ready,live_provider_ready:commerce.live_provider_ready&&entitlement.schema_ready,
          live_webhooks_enabled:commerce.live_webhooks_enabled,
          commercial_consent_version:commerce.commercial_consent_version,terms_url:commerce.terms_url,privacy_url:commerce.privacy_url,
-         test_checkout_enabled:commerce.test_checkout_enabled,
+         test_checkout_enabled:commerce.test_checkout_enabled&&entitlement.schema_ready,
          test_approved_billing_countries:commerce.test_approved_billing_countries,
          live_approved_billing_countries:commerce.activation_requirements.live.approved_billing_countries,
          pro_included:entitlement.source==="beta",entitlement,subscription:entitlement.subscription,
@@ -59,26 +59,27 @@ export default async function handler(req,res){
       const body=await postJsonBody(req),action=String(body?.action||"").toLowerCase();
       if(action==="checkout"||action==="checkout_test_beta"){
         const entitlement=await entitlementForUser(user,{beta});
-        const betaTestCheckout=
-  action==="checkout_test_beta" &&
-  commerce.mode==="test" &&
-  commerce.test_checkout_enabled===true &&
-  body?.confirm_test_only===true;
-
-if(action==="checkout_test_beta"&&!betaTestCheckout)
-  return res.status(403).json({
-    ok:false,
-    error:"TEST_CHECKOUT_DISABLED",
-    message:"Parcours de test indisponible."
-  });
-
-if(entitlement.source==="beta"&&!betaTestCheckout)
-  return res.status(409).json({
-    ok:false,
-    error:"BETA_PRO_INCLUDED",
-    message:"Votre accès PRO bêta reste gratuit. Aucun abonnement nécessaire."
-  });
-        if(commerce.mode==="test"&&commerce.test_payments_enabled)
+        const betaTestCheckout=action==="checkout_test_beta"&&commerce.mode==="test"&&
+          commerce.test_checkout_enabled===true&&body?.confirm_test_only===true;
+        if(action==="checkout_test_beta"&&!betaTestCheckout)
+          return res.status(403).json({
+            ok:false,
+            error:"TEST_CHECKOUT_DISABLED",
+            message:"Checkout TEST indisponible : configuration ou précontrôle du pays manquant. Aucun abonnement n’a été créé."
+          });
+        if(entitlement.source==="beta"&&!betaTestCheckout)
+          return res.status(409).json({
+            ok:false,
+            error:"BETA_PRO_INCLUDED",
+            message:"Votre accès PRO bêta reste gratuit. Aucun abonnement nécessaire."
+          });
+        if(commerce.mode==="test"&&commerce.test_payments_enabled&&!entitlement.schema_ready)
+          return res.status(503).json({
+            ok:false,
+            error:"COMMERCIAL_SCHEMA_MISSING",
+            message:"La base de facturation TEST n’est pas prête. Aucune session Checkout n’a été créée."
+          });
+        if(commerce.mode==="test"&&commerce.test_payments_enabled&&entitlement.schema_ready)
           return res.status(200).json({ok:true,...await createCheckoutForUser(user,{mode:"test",billingCountry:body.billing_country})});
         if(commerce.mode==="live"&&commerce.live_payments_enabled)
           return res.status(200).json({ok:true,...await createCheckoutForUser(user,{mode:"live",commercialConsent:body,billingCountry:body.billing_country})});

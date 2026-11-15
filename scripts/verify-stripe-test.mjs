@@ -51,6 +51,8 @@ try{
     assert.equal(commercialConfig().test_payments_enabled,false);assert.equal(commercialConfig().live_payments_enabled,false);
     const off=await call(proHandler,userLive,{method:"POST",body:{action:"checkout"},parsedOnly:true});
     assert.equal(off.code,403);assert.equal(off.data.error,"SAFE_LAUNCH_PAYMENT_DISABLED");
+    const testOff=await call(proHandler,userLive,{method:"POST",body:{action:"checkout_test_beta",confirm_test_only:true,billing_country:"FR"},parsedOnly:true});
+    assert.equal(testOff.code,403);assert.equal(testOff.data.error,"TEST_CHECKOUT_DISABLED");
     process.env.WARBOOST_COMMERCIAL_MODE="live";
     assert.equal(commercialConfig().payments_enabled,false);
     await assert.rejects(createCheckoutForUser(user(userA)),{code:"LIVE_ACTIVATION_REQUIREMENTS_MISSING"});
@@ -98,6 +100,30 @@ try{
     assert.equal(createdCustomer.address.country,"FR","country is normalized and attached only after allowlist validation");
     assert.equal(allowed.data.live,false);
     assert.ok(stripeCalls().some(x=>x.path==="/v1/checkout/sessions"));
+  });
+  await test("Explicit TEST beta Checkout requires confirmation, approved country and keeps beta PRO free",async()=>{
+    const stripeCalls=()=>fixture.calls.filter(x=>x.host==="api.stripe.com"),before=stripeCalls().length,sessions=fixture.sessions.size;
+    const missingConfirm=await call(proHandler,userBeta,{method:"POST",body:{action:"checkout_test_beta",billing_country:"FR"}});
+    assert.equal(missingConfirm.code,403);assert.equal(missingConfirm.data.error,"TEST_CHECKOUT_DISABLED");
+    const deniedCountry=await call(proHandler,userBeta,{method:"POST",body:{action:"checkout_test_beta",confirm_test_only:true,billing_country:"US"}});
+    assert.equal(deniedCountry.code,403);assert.equal(deniedCountry.data.error,"BILLING_COUNTRY_NOT_APPROVED");
+    assert.equal(stripeCalls().length,before);assert.equal(fixture.sessions.size,sessions);
+    const accepted=await call(proHandler,userBeta,{method:"POST",body:{action:"checkout_test_beta",confirm_test_only:true,billing_country:"FR"}});
+    assert.equal(accepted.code,200);assert.equal(accepted.data.mode,"test");assert.equal(accepted.data.test,true);assert.equal(accepted.data.live,false);
+    assert.equal(fixture.sessions.size,sessions+1);
+    assert.equal((await entitlementForUser(user(userBeta))).source,"beta","the independent free beta grant is preserved");
+    assert.ok(stripeCalls().some(x=>x.path==="/v1/checkout/sessions"));
+  });
+  await test("TEST Checkout button sends the guarded action and announces readiness/errors accessibly",async()=>{
+    const app=fs.readFileSync("app.js","utf8"),markup=fs.readFileSync("index.html","utf8"),api=fs.readFileSync("api/pro.js","utf8");
+    assert.match(app,/action==="checkout_test_beta"/);
+    assert.match(app,/payload\.confirm_test_only=true/);
+    assert.match(app,/test_approved_billing_countries/);
+    assert.match(app,/hasSubscription=Boolean\(proState\.subscription\)/);
+    assert.match(app,/pro_test_checkout_unavailable/);
+    assert.match(markup,/<div id="proMessage" class="notice hidden" aria-live="polite" role="status"><\/div>/);
+    assert.match(api,/test_checkout_enabled:commerce\.test_checkout_enabled&&entitlement\.schema_ready/);
+    assert.match(api,/COMMERCIAL_SCHEMA_MISSING/);
   });
   await test("Two simultaneous tabs: one persistent Checkout, target 499 EUR monthly and TEST return URLs",async()=>{
     const sessionsBefore=fixture.sessions.size,customersBefore=fixture.customers.size;
@@ -191,6 +217,10 @@ try{
   });
   await test("Active subscription prevents another Checkout; expired/mismatched price never grants PRO",async()=>{
     await assert.rejects(createTestCheckout(user(userA)),{code:"PRO_SUBSCRIPTION_EXISTS"});
+    const beforeSessions=fixture.sessions.size;
+    const duplicate=await call(proHandler,userA,{method:"POST",body:{action:"checkout_test_beta",confirm_test_only:true,billing_country:"FR"}});
+    assert.equal(duplicate.code,409);assert.equal(duplicate.data.error,"PRO_SUBSCRIPTION_EXISTS");
+    assert.equal(fixture.sessions.size,beforeSessions,"an active TEST subscription cannot create a second Checkout session");
     const row=(await fixture.pg.query("select * from warboost_subscriptions where user_id=$1",[userA])).rows[0];
     for(const bad of [{current_period_end:null},{current_period_end:"bad"},{stripe_price_id:"price_other"},{stripe_product_id:"prod_other"},{livemode:true},{plan:"free"}])
       assert.equal(subscriptionActive({...row,...bad}),false);
