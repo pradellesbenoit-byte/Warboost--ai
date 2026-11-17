@@ -97,6 +97,12 @@ body{min-height:100vh}.app{width:min(100%,560px);margin:auto;padding:18px 16px 3
 
 /* V1.2.5 — Optional Squad 4 + PRO Squad Intelligence */
 .proPriorityPanel{border-color:#5b4b1e;background:linear-gradient(145deg,#12100a,#0b111e 58%,#09131a)}
+.proTestPaymentFlow{display:grid;gap:10px;margin:12px 0;padding:12px;border:1px solid #354c6d;border-radius:14px;background:#0a1422}
+.proTestPaymentFlow>p,.proTestPaymentFlow small{margin:0;color:#becde0;font-size:12px;line-height:1.5}
+.proTestPaymentElement{min-height:48px;padding:12px;border:1px solid #344663;border-radius:10px;background:#101a2b}
+.proTestPaymentFlow .buttonRow{display:flex;flex-wrap:wrap;gap:8px}
+.proTestPaymentFlow button{min-height:42px;white-space:normal}
+.proTestPaymentFlow .notice{margin:0}
 .proSubTitle{font-size:11px;text-transform:uppercase;letter-spacing:.9px;color:#9eabc2;font-weight:900;margin:12px 0 7px}
 .priorityList{display:grid;gap:8px}
 .priorityCard{display:grid;grid-template-columns:34px 1fr;gap:9px;padding:10px;border-radius:14px;background:#0e1726;border:1px solid #263650}

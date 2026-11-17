@@ -3,6 +3,7 @@ import {betaAccessForUserAsync} from "../lib/beta-access.js";
 import {entitlementForUser} from "../lib/pro-access.js";
 import {billingRow} from "../lib/billing-store.js";
 import {commercialConfig,commercialStatusForUser,createCheckoutForUser,createPortalForUser,processWebhook,readRawBody,paymentWebhookSignature} from "../lib/commercial-pro.js";
+import {createTestPaymentSetup,prepareTestSubscriptionPayment,cancelTestPendingSubscription} from "../lib/stripe-test-payment-flow.js";
 
 // Safe Launch defaults to OFF. TEST and LIVE use separate credentials and storage.
 // Preserve the exact signed bytes (Vercel and local server).
@@ -46,7 +47,10 @@ export default async function handler(req,res){
          live_payments_enabled:commerce.live_payments_enabled&&entitlement.schema_ready,live_provider_ready:commerce.live_provider_ready&&entitlement.schema_ready,
          live_webhooks_enabled:commerce.live_webhooks_enabled,
          commercial_consent_version:commerce.commercial_consent_version,terms_url:commerce.terms_url,privacy_url:commerce.privacy_url,
-         test_checkout_enabled:commerce.test_checkout_enabled&&entitlement.schema_ready,
+          test_checkout_enabled:false,
+          test_payment_element_enabled:commerce.test_payment_element_enabled&&entitlement.schema_ready,
+          test_payment_element_countries:commerce.test_payment_element_countries,
+          test_subscription_consent_version:commerce.test_subscription_consent_version,
          test_approved_billing_countries:commerce.test_approved_billing_countries,
          live_approved_billing_countries:commerce.activation_requirements.live.approved_billing_countries,
          pro_included:entitlement.source==="beta",entitlement,subscription:entitlement.subscription,
@@ -57,8 +61,41 @@ export default async function handler(req,res){
 
     if(req.method==="POST"){
       const body=await postJsonBody(req),action=String(body?.action||"").toLowerCase();
+      if(["test_setup_intent","prepare_test_subscription","cancel_test_pending"].includes(action)){
+        if(commerce.mode!=="test"||!commerce.test_payments_enabled)
+          return res.status(403).json({ok:false,error:"TEST_PAYMENT_FLOW_DISABLED",
+            message:"Le parcours de paiement fractionné est réservé à Stripe TEST configuré. Aucun paiement réel n’est possible ici."});
+        const entitlement=await entitlementForUser(user,{beta});
+        if(!entitlement.schema_ready)
+          return res.status(503).json({ok:false,error:"COMMERCIAL_SCHEMA_MISSING",
+            message:"La base de facturation TEST n’est pas prête. Aucun abonnement n’a été créé."});
+        if(action==="cancel_test_pending"){
+          return res.status(200).json({ok:true,...await cancelTestPendingSubscription(user)});
+        }
+        if(body?.confirm_test_only!==true||body?.test_subscription_consent!==true||
+          body?.test_subscription_consent_version!==commerce.test_subscription_consent_version)
+          return res.status(428).json({ok:false,error:"TEST_SUBSCRIPTION_CONSENT_REQUIRED",
+            message:"Confirmez explicitement l’abonnement mensuel de test avant de continuer."});
+        if(!commerce.test_payment_element_enabled)
+          return res.status(503).json({ok:false,error:"TEST_PAYMENT_ELEMENT_NOT_READY",
+            message:"Le formulaire de paiement TEST ou le précontrôle fiscal n’est pas configuré. Aucun abonnement n’a été créé."});
+        if(action==="test_setup_intent")
+          return res.status(200).json({ok:true,...await createTestPaymentSetup(user,{billingCountry:body.billing_country,consent:body})});
+        return res.status(200).json({ok:true,...await prepareTestSubscriptionPayment(user,{
+          setupIntentId:body.setup_intent_id,billingCountry:body.billing_country,consent:body
+        })});
+      }
       if(action==="checkout"||action==="checkout_test_beta"){
         const entitlement=await entitlementForUser(user,{beta});
+        if(action==="checkout"&&entitlement.source==="beta")
+          return res.status(409).json({
+            ok:false,
+            error:"BETA_PRO_INCLUDED",
+            message:"Votre accès PRO bêta reste gratuit. Aucun abonnement nécessaire."
+          });
+        if(commerce.mode==="test")
+          return res.status(410).json({ok:false,error:"TEST_CHECKOUT_RETIRED",
+            message:"Checkout TEST hébergé est désactivé. Utilisez le parcours en deux étapes avec contrôle du pays avant confirmation."});
         const betaTestCheckout=action==="checkout_test_beta"&&commerce.mode==="test"&&
           commerce.test_checkout_enabled===true&&body?.confirm_test_only===true;
         if(action==="checkout_test_beta"&&!betaTestCheckout)

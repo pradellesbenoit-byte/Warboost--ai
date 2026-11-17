@@ -2994,7 +2994,27 @@ Object.assign(EN,{
   pro_test_checkout_starting:"Preparing Stripe TEST Checkout. No real payment is possible in TEST mode.",
   pro_test_subscription_exists:"A TEST subscription already exists. Use the TEST billing portal; no second subscription was created.",
   pro_test_checkout_network_error:"The billing service could not be reached. No Checkout session was confirmed; try again later.",
-  pro_test_checkout_error:"TEST Checkout could not be started. No real payment was made."
+  pro_test_checkout_error:"TEST Checkout could not be started. No real payment was made.",
+  pro_test_setup_button:"Set up payment method · TEST",
+  pro_test_consent:"I agree to test a recurring €4.99/month subscription in Stripe TEST only.",
+  pro_test_payment_disclaimer:"Stripe-recorded billing details are not proof of residence. TEST mode cannot make real payments.",
+  pro_test_payment_intro:"Step 1: save a card without a charge. The server checks the Stripe-recorded country and tax setup before preparing the TEST invoice.",
+  pro_test_save_card:"Save payment method without a charge",
+  pro_test_prepare_invoice:"Verify tax and prepare the TEST invoice",
+  pro_test_confirm_payment:"Confirm TEST subscription · €4.99/month",
+  pro_test_cancel_pending:"Cancel pending TEST subscription",
+  pro_test_close:"Close",
+  pro_test_setup_starting:"Preparing a Stripe TEST SetupIntent. No charge is made in this step.",
+  pro_test_setup_ready:"The card is saved for TEST. Review the amount and confirm the subscription in the next step.",
+  pro_test_setup_error:"The payment method could not be saved. No subscription was created.",
+  pro_test_payment_preparing:"Checking the Stripe billing country and TEST tax setup before creating an incomplete subscription.",
+  pro_test_payment_waiting:"The TEST invoice is ready for explicit confirmation. No payment has been confirmed yet.",
+  pro_test_payment_pending_webhook:"Stripe confirmed the TEST payment. PRO access remains pending until the signed server webhook is processed.",
+  pro_test_payment_error:"The TEST payment was not confirmed. You can retry or cancel the pending TEST subscription.",
+  pro_test_cancelled:"The incomplete TEST subscription was canceled. No payment was confirmed.",
+  pro_test_country_mismatch:"The billing country recorded by Stripe does not match the selected allowed country. No subscription was created.",
+  pro_test_tax_unresolved:"The TEST tax calculation or country configuration is incomplete. No payment can be confirmed."
+  ,pro_test_element_unavailable:"The secure Stripe TEST form could not be loaded. No subscription was created."
 });
 Object.assign(FR,{
   pro_live_consent:"J’accepte l’abonnement de 4,99 € par mois, son renouvellement automatique, ainsi que les Conditions et la Politique de confidentialité liées. Je peux résilier depuis le portail client.",
@@ -3015,7 +3035,27 @@ Object.assign(FR,{
   pro_test_checkout_starting:"Préparation de Checkout Stripe TEST. Aucun paiement réel n’est possible en mode TEST.",
   pro_test_subscription_exists:"Un abonnement TEST existe déjà. Utilisez le portail TEST ; aucun second abonnement n’a été créé.",
   pro_test_checkout_network_error:"Le service de facturation est injoignable. Aucune session Checkout n’a été confirmée ; réessayez plus tard.",
-  pro_test_checkout_error:"Le Checkout TEST n’a pas pu démarrer. Aucun paiement réel n’a été effectué."
+  pro_test_checkout_error:"Le Checkout TEST n’a pas pu démarrer. Aucun paiement réel n’a été effectué.",
+  pro_test_setup_button:"Préparer le moyen de paiement · TEST",
+  pro_test_consent:"J’accepte de tester un abonnement récurrent de 4,99 € par mois en mode Stripe TEST uniquement.",
+  pro_test_payment_disclaimer:"Les données de facturation enregistrées par Stripe ne prouvent pas le lieu de résidence. Le mode TEST ne permet aucun paiement réel.",
+  pro_test_payment_intro:"Étape 1 : enregistrer la carte sans débit. Le serveur vérifiera le pays enregistré par Stripe et la configuration fiscale avant de préparer la facture TEST.",
+  pro_test_save_card:"Enregistrer le moyen de paiement sans débit",
+  pro_test_prepare_invoice:"Vérifier les taxes et préparer la facture TEST",
+  pro_test_confirm_payment:"Confirmer l’abonnement TEST · 4,99 € / mois",
+  pro_test_cancel_pending:"Annuler l’abonnement TEST en attente",
+  pro_test_close:"Fermer",
+  pro_test_setup_starting:"Préparation d’un SetupIntent Stripe TEST. Cette étape ne débite pas.",
+  pro_test_setup_ready:"La carte est enregistrée pour TEST. Vérifiez le montant et confirmez l’abonnement à l’étape suivante.",
+  pro_test_setup_error:"Le moyen de paiement n’a pas pu être enregistré. Aucun abonnement n’a été créé.",
+  pro_test_payment_preparing:"Vérification du pays enregistré par Stripe et de la configuration fiscale TEST avant la création d’un abonnement incomplet.",
+  pro_test_payment_waiting:"La facture TEST est prête pour une confirmation explicite. Aucun paiement n’est encore confirmé.",
+  pro_test_payment_pending_webhook:"Stripe a confirmé le paiement TEST. L’accès PRO reste en attente du webhook serveur signé.",
+  pro_test_payment_error:"Le paiement TEST n’a pas été confirmé. Vous pouvez réessayer ou annuler l’abonnement TEST en attente.",
+  pro_test_cancelled:"L’abonnement TEST incomplet a été annulé. Aucun paiement n’a été confirmé.",
+  pro_test_country_mismatch:"Le pays de facturation enregistré par Stripe ne correspond pas au pays autorisé sélectionné. Aucun abonnement n’a été créé.",
+  pro_test_tax_unresolved:"Le calcul fiscal ou la configuration du pays TEST est incomplet. Aucun paiement ne peut être confirmé.",
+  pro_test_element_unavailable:"Le formulaire sécurisé Stripe TEST n’a pas pu être chargé. Aucun abonnement n’a été créé."
 });
 for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
   pro_live_consent:FR.pro_live_consent,pro_live_country:FR.pro_live_country,
@@ -3027,7 +3067,17 @@ for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
   pro_country_disclaimer:FR.pro_country_disclaimer,pro_test_checkout_button:FR.pro_test_checkout_button,
   pro_test_checkout_unavailable:FR.pro_test_checkout_unavailable,pro_test_checkout_starting:FR.pro_test_checkout_starting,
   pro_test_subscription_exists:FR.pro_test_subscription_exists,pro_test_checkout_network_error:FR.pro_test_checkout_network_error,
-  pro_test_checkout_error:FR.pro_test_checkout_error
+  pro_test_checkout_error:FR.pro_test_checkout_error,
+  pro_test_setup_button:FR.pro_test_setup_button,pro_test_consent:FR.pro_test_consent,
+  pro_test_payment_disclaimer:FR.pro_test_payment_disclaimer,pro_test_payment_intro:FR.pro_test_payment_intro,
+  pro_test_save_card:FR.pro_test_save_card,pro_test_confirm_payment:FR.pro_test_confirm_payment,
+  pro_test_cancel_pending:FR.pro_test_cancel_pending,pro_test_close:FR.pro_test_close,
+  pro_test_setup_starting:FR.pro_test_setup_starting,pro_test_setup_ready:FR.pro_test_setup_ready,
+  pro_test_setup_error:FR.pro_test_setup_error,pro_test_payment_preparing:FR.pro_test_payment_preparing,
+  pro_test_payment_waiting:FR.pro_test_payment_waiting,pro_test_payment_pending_webhook:FR.pro_test_payment_pending_webhook,
+  pro_test_payment_error:FR.pro_test_payment_error,pro_test_cancelled:FR.pro_test_cancelled,
+  pro_test_country_mismatch:FR.pro_test_country_mismatch,pro_test_tax_unresolved:FR.pro_test_tax_unresolved,
+  pro_test_prepare_invoice:FR.pro_test_prepare_invoice,pro_test_element_unavailable:FR.pro_test_element_unavailable
 }:{
   pro_live_consent:EN.pro_live_consent,pro_live_country:EN.pro_live_country,
   pro_live_country_placeholder:EN.pro_live_country_placeholder,pro_live_terms:EN.pro_live_terms,
@@ -3038,5 +3088,15 @@ for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
   pro_country_disclaimer:EN.pro_country_disclaimer,pro_test_checkout_button:EN.pro_test_checkout_button,
   pro_test_checkout_unavailable:EN.pro_test_checkout_unavailable,pro_test_checkout_starting:EN.pro_test_checkout_starting,
   pro_test_subscription_exists:EN.pro_test_subscription_exists,pro_test_checkout_network_error:EN.pro_test_checkout_network_error,
-  pro_test_checkout_error:EN.pro_test_checkout_error
+  pro_test_checkout_error:EN.pro_test_checkout_error,
+  pro_test_setup_button:EN.pro_test_setup_button,pro_test_consent:EN.pro_test_consent,
+  pro_test_payment_disclaimer:EN.pro_test_payment_disclaimer,pro_test_payment_intro:EN.pro_test_payment_intro,
+  pro_test_save_card:EN.pro_test_save_card,pro_test_confirm_payment:EN.pro_test_confirm_payment,
+  pro_test_cancel_pending:EN.pro_test_cancel_pending,pro_test_close:EN.pro_test_close,
+  pro_test_setup_starting:EN.pro_test_setup_starting,pro_test_setup_ready:EN.pro_test_setup_ready,
+  pro_test_setup_error:EN.pro_test_setup_error,pro_test_payment_preparing:EN.pro_test_payment_preparing,
+  pro_test_payment_waiting:EN.pro_test_payment_waiting,pro_test_payment_pending_webhook:EN.pro_test_payment_pending_webhook,
+  pro_test_payment_error:EN.pro_test_payment_error,pro_test_cancelled:EN.pro_test_cancelled,
+  pro_test_country_mismatch:EN.pro_test_country_mismatch,pro_test_tax_unresolved:EN.pro_test_tax_unresolved,
+  pro_test_prepare_invoice:EN.pro_test_prepare_invoice,pro_test_element_unavailable:EN.pro_test_element_unavailable
 });

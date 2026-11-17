@@ -85,44 +85,36 @@ try{
     await assert.rejects(createCheckoutForUser(user(userCountry),{billingCountry:"FR"}),{code:"BILLING_COUNTRY_PREFLIGHT_NOT_CONFIGURED"});
     process.env.WARBOOST_TEST_BILLING_PREFLIGHT_ENABLED="true";
     assert.equal(stripeCalls().length,before);
-    const apiMissing=await call(proHandler,userCountry,{method:"POST",body:{action:"checkout"}});
-    assert.equal(apiMissing.code,400);assert.equal(apiMissing.data.error,"BILLING_COUNTRY_REQUIRED");
-    const apiDenied=await call(proHandler,userCountry,{method:"POST",body:{action:"checkout",billing_country:"US"}});
-    assert.equal(apiDenied.code,403);assert.equal(apiDenied.data.error,"BILLING_COUNTRY_NOT_APPROVED");
+    const apiLegacy=await call(proHandler,userCountry,{method:"POST",body:{action:"checkout",billing_country:"FR"}});
+    assert.equal(apiLegacy.code,410);assert.equal(apiLegacy.data.error,"TEST_CHECKOUT_RETIRED");
     assert.equal(stripeCalls().length,before);
+    assert.equal(fixture.sessions.size,sessions);assert.equal(fixture.customers.size,customers);
     assert.equal(await reservations(),reservationCount);
-    const allowed=await call(proHandler,userCountry,{method:"POST",body:{action:"checkout",billing_country:"fr"}});
-    assert.equal(allowed.code,200);assert.equal(allowed.data.mode,"test");assert.equal(allowed.data.test,true);
-    assert.equal(fixture.sessions.size,sessions+1);assert.equal(fixture.customers.size,customers+1);
-    assert.equal(await reservations(),reservationCount+1);
-    const latestSession=[...fixture.sessions.values()].at(-1);
-    const createdCustomer=[...fixture.customers.values()].find(row=>row.id===latestSession.customer);
-    assert.equal(createdCustomer.address.country,"FR","country is normalized and attached only after allowlist validation");
-    assert.equal(allowed.data.live,false);
-    assert.ok(stripeCalls().some(x=>x.path==="/v1/checkout/sessions"));
   });
   await test("Explicit TEST beta Checkout requires confirmation, approved country and keeps beta PRO free",async()=>{
     const stripeCalls=()=>fixture.calls.filter(x=>x.host==="api.stripe.com"),before=stripeCalls().length,sessions=fixture.sessions.size;
-    const missingConfirm=await call(proHandler,userBeta,{method:"POST",body:{action:"checkout_test_beta",billing_country:"FR"}});
-    assert.equal(missingConfirm.code,403);assert.equal(missingConfirm.data.error,"TEST_CHECKOUT_DISABLED");
-    const deniedCountry=await call(proHandler,userBeta,{method:"POST",body:{action:"checkout_test_beta",confirm_test_only:true,billing_country:"US"}});
-    assert.equal(deniedCountry.code,403);assert.equal(deniedCountry.data.error,"BILLING_COUNTRY_NOT_APPROVED");
+    for(const body of [
+      {action:"checkout_test_beta",billing_country:"FR"},
+      {action:"checkout_test_beta",confirm_test_only:true,billing_country:"US"},
+      {action:"checkout_test_beta",confirm_test_only:true,billing_country:"FR"}
+    ]){
+      const response=await call(proHandler,userBeta,{method:"POST",body});
+      assert.equal(response.code,410);assert.equal(response.data.error,"TEST_CHECKOUT_RETIRED");
+    }
     assert.equal(stripeCalls().length,before);assert.equal(fixture.sessions.size,sessions);
-    const accepted=await call(proHandler,userBeta,{method:"POST",body:{action:"checkout_test_beta",confirm_test_only:true,billing_country:"FR"}});
-    assert.equal(accepted.code,200);assert.equal(accepted.data.mode,"test");assert.equal(accepted.data.test,true);assert.equal(accepted.data.live,false);
-    assert.equal(fixture.sessions.size,sessions+1);
     assert.equal((await entitlementForUser(user(userBeta))).source,"beta","the independent free beta grant is preserved");
-    assert.ok(stripeCalls().some(x=>x.path==="/v1/checkout/sessions"));
   });
-  await test("TEST Checkout button sends the guarded action and announces readiness/errors accessibly",async()=>{
+  await test("Payment Element TEST button uses the two-stage guarded route and retires hosted checkout",async()=>{
     const app=fs.readFileSync("app.js","utf8"),markup=fs.readFileSync("index.html","utf8"),api=fs.readFileSync("api/pro.js","utf8");
-    assert.match(app,/action==="checkout_test_beta"/);
-    assert.match(app,/payload\.confirm_test_only=true/);
-    assert.match(app,/test_approved_billing_countries/);
+    assert.match(app,/proTestApi\("test_setup_intent"/);
+    assert.match(app,/proTestApi\("prepare_test_subscription"/);
+    assert.match(app,/confirm_test_only:true/);
+    assert.match(app,/test_payment_element_countries/);
     assert.match(app,/hasSubscription=Boolean\(proState\.subscription\)/);
     assert.match(app,/pro_test_checkout_unavailable/);
     assert.match(markup,/<div id="proMessage" class="notice hidden" aria-live="polite" role="status"><\/div>/);
-    assert.match(api,/test_checkout_enabled:commerce\.test_checkout_enabled&&entitlement\.schema_ready/);
+    assert.match(api,/test_checkout_enabled:false/);
+    assert.match(api,/TEST_CHECKOUT_RETIRED/);
     assert.match(api,/COMMERCIAL_SCHEMA_MISSING/);
   });
   await test("Two simultaneous tabs: one persistent Checkout, target 499 EUR monthly and TEST return URLs",async()=>{
@@ -219,7 +211,7 @@ try{
     await assert.rejects(createTestCheckout(user(userA)),{code:"PRO_SUBSCRIPTION_EXISTS"});
     const beforeSessions=fixture.sessions.size;
     const duplicate=await call(proHandler,userA,{method:"POST",body:{action:"checkout_test_beta",confirm_test_only:true,billing_country:"FR"}});
-    assert.equal(duplicate.code,409);assert.equal(duplicate.data.error,"PRO_SUBSCRIPTION_EXISTS");
+    assert.equal(duplicate.code,410);assert.equal(duplicate.data.error,"TEST_CHECKOUT_RETIRED");
     assert.equal(fixture.sessions.size,beforeSessions,"an active TEST subscription cannot create a second Checkout session");
     const row=(await fixture.pg.query("select * from warboost_subscriptions where user_id=$1",[userA])).rows[0];
     for(const bad of [{current_period_end:null},{current_period_end:"bad"},{stripe_price_id:"price_other"},{stripe_product_id:"prod_other"},{livemode:true},{plan:"free"}])
