@@ -3,6 +3,7 @@ import {readFile} from "node:fs/promises";
 import cloudConfig from "../api/cloud-config.js";
 import {
   WARBOOST_PREVIEW_BRANCH,
+  WARBOOST_FREE_ACCOUNT_PREVIEW_BRANCH,
   WARBOOST_TEST_SUPABASE_REF,
   assertPreviewSupabaseIsolation,
   isWarboostPreviewDeployment,
@@ -73,6 +74,12 @@ try{
   });
   run("autre branche Preview hors périmètre",()=>{
     assert.equal(previewSupabaseIsolationFailure({...baseEnv,VERCEL_GIT_COMMIT_REF:"feature-other"}),null);
+  });
+  run("branche d'accès libre dédiée soumise au même contrôle Supabase TEST",()=>{
+    const freePreview={...baseEnv,VERCEL_GIT_COMMIT_REF:WARBOOST_FREE_ACCOUNT_PREVIEW_BRANCH};
+    assert.equal(isWarboostPreviewDeployment(freePreview),true);
+    assert.equal(previewSupabaseIsolationFailure(freePreview),null);
+    assert.equal(previewSupabaseIsolationFailure({...freePreview,SUPABASE_URL:"https://production-project.supabase.co"}),"PREVIEW_SUPABASE_URL_NOT_TEST");
   });
   run("Preview sans référence de branche échoue en mode fermé",()=>{
     assert.equal(previewSupabaseIsolationFailure({...baseEnv,VERCEL_GIT_COMMIT_REF:"",SUPABASE_URL:"https://production-project.supabase.co"}),"PREVIEW_SUPABASE_URL_NOT_TEST");

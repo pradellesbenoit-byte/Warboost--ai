@@ -4,7 +4,7 @@ import proHandler from "../api/pro.js";
 import {requireBetaUser,betaAccessForUserAsync,BETA_CONSENT_VERSION} from "../lib/beta-access.js";
 import {syncAllianceRoster} from "../lib/roster-import-sync.js";
 import {betaCodeVisible} from "../lib/beta-activation-ui.js";
-import {WARBOOST_PREVIEW_BRANCH,WARBOOST_TEST_SUPABASE_REF} from "../lib/preview-supabase-isolation.js";
+import {WARBOOST_FREE_ACCOUNT_PREVIEW_BRANCH,WARBOOST_PREVIEW_BRANCH,WARBOOST_TEST_SUPABASE_REF} from "../lib/preview-supabase-isolation.js";
 
 const originalEnv={...process.env},originalFetch=globalThis.fetch;
 const b64=value=>Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -20,9 +20,10 @@ const users={
   "token-b":{id:"preview-user-b",email:"player-b@example.test",email_confirmed_at:"2026-01-01T00:00:00Z"}
 };
 let restReads=[];
+let inviteRows=new Map();
 const pass=name=>console.log(`PASS ${name}`);
 const response=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json"}});
-function setEnvironment(environment="preview",branch=WARBOOST_PREVIEW_BRANCH){
+function setEnvironment(environment="preview",branch=WARBOOST_FREE_ACCOUNT_PREVIEW_BRANCH){
   for(const name of envNames)delete process.env[name];
   Object.assign(process.env,{
     VERCEL_ENV:environment,
@@ -39,6 +40,7 @@ function setEnvironment(environment="preview",branch=WARBOOST_PREVIEW_BRANCH){
     STRIPE_TEST_SECRET_KEY:""
   });
   restReads=[];
+  inviteRows=new Map();
 }
 globalThis.fetch=async(input,init={})=>{
   const url=String(input),authorization=String(init.headers?.authorization||"");
@@ -49,6 +51,14 @@ globalThis.fetch=async(input,init={})=>{
   if(url.includes("/rest/v1/")){
     restReads.push(url);
     // All test data is synthetic. No unmocked network calls are allowed.
+    if(url.includes("/rest/v1/wb1_beta_invites?")){
+      const parsed=new URL(url),emailFilter=parsed.searchParams.get("email")||"",userFilter=parsed.searchParams.get("accepted_user_id")||"";
+      const rows=[...inviteRows.values()].filter(row=>
+        (!emailFilter||emailFilter===`eq.${row.email}`)&&
+        (!userFilter||userFilter===`eq.${row.accepted_user_id}`)
+      );
+      return response(rows);
+    }
     return response([]);
   }
   throw new Error("Unexpected external request in local preview-access test");
@@ -76,6 +86,43 @@ try{
     assert.equal(beta.account_access_allowed,true);
     assert.equal(beta.allowed,false);
     assert.equal(beta.code_eligible,false);
+  });
+  await run("une invitation révoquée bloque toujours l'accès libre de Preview",async()=>{
+    inviteRows.set("player-a@example.test",{
+      id:"revoked-invite-a",email:"player-a@example.test",status:"revoked",
+      accepted_user_id:"preview-user-a",accepted_at:"2026-01-02T00:00:00Z"
+    });
+    await assert.rejects(
+      ()=>requireBetaUser(req("token-a"),{consent:true}),
+      error=>error.status===403&&error.code==="BETA_INVITE_REVOKED"
+    );
+    inviteRows.clear();
+  });
+  await run("une invitation expirée ou liée à un autre compte bloque l'accès libre",async()=>{
+    inviteRows.set("player-a@example.test",{
+      id:"expired-invite-a",email:"player-a@example.test",status:"accepted",
+      accepted_user_id:"preview-user-a",expires_at:"2026-01-01T00:00:00Z"
+    });
+    await assert.rejects(()=>requireBetaUser(req("token-a"),{consent:true}),
+      error=>error.status===403&&error.code==="BETA_INVITE_EXPIRED");
+    inviteRows.set("player-a@example.test",{
+      id:"other-owner-invite-a",email:"player-a@example.test",status:"accepted",
+      accepted_user_id:"preview-user-b",expires_at:"2027-01-01T00:00:00Z"
+    });
+    await assert.rejects(()=>requireBetaUser(req("token-a"),{consent:true}),
+      error=>error.status===403&&error.code==="BETA_INVITE_REQUIRED");
+    inviteRows.clear();
+  });
+  await run("absence de registre vérifiable refuse l'accès libre de Preview",async()=>{
+    const original=globalThis.fetch;
+    globalThis.fetch=async(input,init={})=>{
+      if(String(input).includes("/rest/v1/wb1_beta_invites?"))return response({message:"relation wb1_beta_invites does not exist"},404);
+      return original(input,init);
+    };
+    try{
+      await assert.rejects(()=>requireBetaUser(req("token-a"),{consent:true}),
+        error=>error.status===403&&error.code==="BETA_INVITE_REQUIRED");
+    }finally{globalThis.fetch=original}
   });
   await run("les sessions distinctes restent attachées à leur utilisateur authentifié",async()=>{
     const a=await requireBetaUser(req("token-a"),{consent:true});
@@ -121,6 +168,11 @@ try{
     assert.equal(beta.allowed,false);
     await assert.rejects(()=>requireBetaUser(req("token-a"),{consent:true}),error=>error.status===403&&error.code==="BETA_INVITE_REQUIRED");
   });
+  await run("la branche Preview roster existante garde son accès TEST ciblé",async()=>{
+    setEnvironment("preview",WARBOOST_PREVIEW_BRANCH);
+    const beta=await betaAccessForUserAsync(users["token-a"]);
+    assert.equal(beta.account_access_allowed,true);
+  });
   await run("une Preview d'une autre branche ou sans référence reste protégée par invitation",async()=>{
     setEnvironment("preview","other-preview-branch");
     const otherBranch=await betaAccessForUserAsync(users["token-a"]);
@@ -140,6 +192,17 @@ try{
     assert.match(syncSource,/canonicalAllianceAuthorization/);
     assert.match(roleSource,/canonicalAllianceAuthorization/);
     assert.match(roleSource,/if\(!access\.allowed\)return res\.status\(403\)\.json\(\{error:"r4_r5_required"\}\)/);
+  });
+  await run("un compte ne peut pas afficher l'état privé d'un autre utilisateur",async()=>{
+    const {canRevealOwnedPrivateState}=await import("../lib/session-bootstrap.js");
+    assert.equal(canRevealOwnedPrivateState({
+      userId:"preview-user-a",stateOwnerId:"preview-user-b",betaAllowed:true,
+      consentAccepted:true,betaAccessStatus:"preview-account"
+    }),false);
+    assert.equal(canRevealOwnedPrivateState({
+      userId:"preview-user-a",stateOwnerId:"preview-user-a",betaAllowed:true,
+      consentAccepted:false,betaAccessStatus:"preview-account"
+    }),false);
   });
   console.log(`Synthetic Supabase requests: ${restReads.length}; no real account or network data used.`);
 }finally{
