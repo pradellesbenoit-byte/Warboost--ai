@@ -12,6 +12,7 @@ const jwt=(role)=>`${b64({alg:"HS256",typ:"JWT"})}.${b64({ref:WARBOOST_TEST_SUPA
 const envNames=[
   "VERCEL_ENV","VERCEL_GIT_COMMIT_REF","SUPABASE_URL","SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY","WARBOOST_BETA_EMAILS","WARBOOST_SUPPORT_ADMINS",
+  "WARBOOST_PRODUCTION_FREE_ACCOUNT_ACCESS_ENABLED",
   "WARBOOST_COMMERCIAL_MODE","WARBOOST_STRIPE_MODE","STRIPE_SECRET_KEY",
   "STRIPE_LIVE_SECRET_KEY","STRIPE_TEST_SECRET_KEY"
 ];
@@ -33,6 +34,7 @@ function setEnvironment(environment="preview",branch=WARBOOST_FREE_ACCOUNT_PREVI
     SUPABASE_SERVICE_ROLE_KEY:jwt("service_role"),
     WARBOOST_BETA_EMAILS:"",
     WARBOOST_SUPPORT_ADMINS:"",
+    WARBOOST_PRODUCTION_FREE_ACCOUNT_ACCESS_ENABLED:"",
     WARBOOST_COMMERCIAL_MODE:"off",
     WARBOOST_STRIPE_MODE:"off",
     STRIPE_SECRET_KEY:"",
@@ -167,6 +169,52 @@ try{
     assert.equal(beta.account_access_allowed,false);
     assert.equal(beta.allowed,false);
     await assert.rejects(()=>requireBetaUser(req("token-a"),{consent:true}),error=>error.status===403&&error.code==="BETA_INVITE_REQUIRED");
+  });
+  await run("Production autorise le compte individuel sans code uniquement avec le drapeau explicite, sans PRO",async()=>{
+    setEnvironment("production");
+    process.env.WARBOOST_PRODUCTION_FREE_ACCOUNT_ACCESS_ENABLED="true";
+    const beta=await betaAccessForUserAsync(users["token-a"]);
+    assert.equal(beta.account_access_allowed,true);
+    assert.equal(beta.allowed,false);
+    assert.equal(beta.code_eligible,false);
+    await assert.rejects(()=>requireBetaUser(req("token-a",{consent:false}),{consent:true}),
+      error=>error.status===428&&error.code==="BETA_CONSENT_REQUIRED");
+    const {user}=await requireBetaUser(req("token-a"),{consent:true});
+    assert.equal(user.id,"preview-user-a");
+    const result=res();
+    await proHandler({method:"GET",headers:{authorization:"Bearer token-a"},query:{}},result);
+    assert.equal(result.statusCode,200);
+    assert.equal(result.body.account_access_allowed,true);
+    assert.equal(result.body.active,false);
+    assert.equal(result.body.pro_included,false);
+  });
+  await run("le drapeau Production ne neutralise ni révocation, expiration, conflit de compte ni registre indisponible",async()=>{
+    setEnvironment("production");
+    process.env.WARBOOST_PRODUCTION_FREE_ACCOUNT_ACCESS_ENABLED="true";
+    const deniedRows=[
+      [{id:"revoked",email:"player-a@example.test",status:"revoked",accepted_user_id:"preview-user-a"},"revoked"],
+      [{id:"expired",email:"player-a@example.test",status:"accepted",accepted_user_id:"preview-user-a",expires_at:"2026-01-01T00:00:00Z"},"expired"],
+      [{id:"other-owner",email:"player-a@example.test",status:"accepted",accepted_user_id:"preview-user-b",expires_at:"2027-01-01T00:00:00Z"},"owner-mismatch"]
+    ];
+    for(const [row,reason] of deniedRows){
+      inviteRows.set("player-a@example.test",row);
+      const beta=await betaAccessForUserAsync(users["token-a"]);
+      assert.equal(beta.account_access_allowed,false,reason);
+      await assert.rejects(()=>requireBetaUser(req("token-a"),{consent:true}),
+        error=>error.status===403);
+      inviteRows.clear();
+    }
+    const original=globalThis.fetch;
+    globalThis.fetch=async(input,init={})=>{
+      if(String(input).includes("/rest/v1/wb1_beta_invites?"))return response({message:"database unavailable"},503);
+      return original(input,init);
+    };
+    try{
+      const beta=await betaAccessForUserAsync(users["token-a"]);
+      assert.equal(beta.account_access_allowed,false);
+      await assert.rejects(()=>requireBetaUser(req("token-a"),{consent:true}),
+        error=>error.status===403||error.status===503);
+    }finally{globalThis.fetch=original}
   });
   await run("la branche Preview roster existante garde son accès TEST ciblé",async()=>{
     setEnvironment("preview",WARBOOST_PREVIEW_BRANCH);
