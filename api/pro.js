@@ -4,7 +4,7 @@ import {entitlementForUser} from "../lib/pro-access.js";
 import {billingRow} from "../lib/billing-store.js";
 import {commercialConfig,commercialStatusForUser,createCheckoutForUser,createPortalForUser,processWebhook,readRawBody,paymentWebhookSignature} from "../lib/commercial-pro.js";
 import {createTestPaymentSetup,prepareTestSubscriptionPayment,cancelTestPendingSubscription} from "../lib/stripe-test-payment-flow.js";
-import {isStripeTestDiagnosticAdmin,stripeTestAccountDiagnosticAvailable,inspectStripeTestAccount} from "../lib/stripe-test-account-diagnostic.js";
+import {isStripeTestDiagnosticAdmin,stripeTestAccountDiagnosticAvailable,stripeTestAccountDiagnosticEnabledFor,inspectStripeTestAccount} from "../lib/stripe-test-account-diagnostic.js";
 
 // Safe Launch defaults to OFF. TEST and LIVE use separate credentials and storage.
 // Preserve the exact signed bytes (Vercel and local server).
@@ -69,6 +69,7 @@ export default async function handler(req,res){
          live_approved_billing_countries:commerce.activation_requirements.live.approved_billing_countries,
          pro_included:entitlement.source==="beta",entitlement,subscription:entitlement.subscription,
          can_manage_billing:Boolean(account?.stripe_customer_id||account?.stripe_live_customer_id),
+         stripe_test_account_diagnostic_enabled:stripeTestAccountDiagnosticEnabledFor(user),
          commercial_preview:commerce.mode!=="test",mode:commerce.mode,activation_requirements:commerce.activation_requirements
       });
     }

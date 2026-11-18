@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import {translator} from "../i18n.js";
 import {
   inspectStripeTestAccount,
   isStripeTestDiagnosticAdmin,
-  stripeTestAccountDiagnosticAvailable
+  stripeTestAccountDiagnosticAvailable,
+  stripeTestAccountDiagnosticEnabledFor
 } from "../lib/stripe-test-account-diagnostic.js";
 
 const names=[
@@ -33,6 +36,13 @@ try{
   process.env.WARBOOST_SUPPORT_ADMINS="admin@example.test";
   assert.equal(isStripeTestDiagnosticAdmin({email:"ADMIN@example.test"}),true);
   assert.equal(isStripeTestDiagnosticAdmin({email:"other@example.test"}),false);
+  assert.equal(stripeTestAccountDiagnosticEnabledFor({email:"admin@example.test"}),true);
+  assert.equal(stripeTestAccountDiagnosticEnabledFor({email:"other@example.test"}),false);
+  configure({env:"production"});
+  assert.equal(stripeTestAccountDiagnosticEnabledFor({email:"admin@example.test"}),false);
+  configure({mode:"live"});
+  assert.equal(stripeTestAccountDiagnosticEnabledFor({email:"admin@example.test"}),false);
+  configure();
   assert.equal(stripeTestAccountDiagnosticAvailable(),true);
   globalThis.fetch=async(url,options)=>{
     calls++;authorizationSeen=options.headers.authorization;
@@ -60,7 +70,29 @@ try{
   globalThis.fetch=async()=>response(200,{object:"account",id:"acct_livewrongmode",livemode:true,email:"must_not_escape"});
   assert.deepEqual(await inspectStripeTestAccount(),{success:false,error_code:"STRIPE_TEST_ACCOUNT_RESPONSE_INVALID"});
 
-  console.log("Stripe TEST account diagnostic: 18 targeted assertions passed (mocked HTTP only; no Stripe request made).");
+  const apiSource=fs.readFileSync(new URL("../api/pro.js",import.meta.url),"utf8");
+  const appSource=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
+  const uiChecks=[
+    [apiSource.includes("stripe_test_account_diagnostic_enabled:stripeTestAccountDiagnosticEnabledFor(user)"),"GET must expose only the server-computed admin/environment gate"],
+    [appSource.includes('proState.stripe_test_account_diagnostic_enabled===true'),"button visibility must require an explicit server true"],
+    [apiSource.includes('if(req.method==="POST"&&String(req.query?.action||"")==="test_stripe_account_diagnostic")'),"diagnostic route must remain action-scoped"],
+    [apiSource.includes("if(!isStripeTestDiagnosticAdmin(diagnosticUser))"),"POST must retain its server-side admin check"],
+    [appSource.includes("fetchJsonBounded(\"/api/pro?action=test_stripe_account_diagnostic\""),"button must call the existing same-origin endpoint"],
+    [appSource.includes("headers:authHeaders({\"content-type\":\"application/json\"})"),"request must use the current authenticated app session"],
+    [appSource.includes('logged&&proState.mode==="test"&&proState.stripe_test_account_diagnostic_enabled===true'),"button must be hidden outside the authenticated TEST Preview eligibility"],
+    [appSource.includes('box.className="buttonRow stripeTestAccountDiagnostic hidden"'),"diagnostic UI must start hidden"],
+    [appSource.includes('status.setAttribute("aria-live","polite")'),"diagnostic result must be announced accessibly"],
+    [appSource.includes("acct_1U4Jj5Gh5pcfWSKy"),"UI must compare against the expected TEST account"]
+  ];
+  for(const [ok,message] of uiChecks)assert.ok(ok,message);
+  assert.ok(!appSource.includes('console.log(cloudSession?.access_token'),"access token must not be logged");
+  assert.equal(translator("fr")("stripe_test_diagnostic_button"),"Diagnostic Stripe TEST");
+  assert.equal(translator("en-GB")("stripe_test_diagnostic_button"),"Stripe TEST diagnostic");
+  assert.match(translator("fr")("stripe_test_diagnostic_match",{account:"acct_demo"}),/acct_demo/);
+  assert.match(translator("fr")("stripe_test_diagnostic_mismatch",{account:"acct_a",expected:"acct_b"}),/acct_a.*acct_b/);
+
+  console.log("Stripe TEST account diagnostic mock responses, environment guards and administrator checks passed (no Stripe request made).");
+  console.log(`Stripe TEST diagnostic UI: ${uiChecks.length+5} visibility, auth, status, localization, and account-match assertions passed.`);
 }finally{
   globalThis.fetch=originalFetch;
   for(const name of names){

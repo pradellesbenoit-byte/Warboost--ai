@@ -4945,6 +4945,50 @@ $("#supportSubmitBtn")?.addEventListener("click",submitSupportTicket);
 $("#supportRefreshBtn")?.addEventListener("click",refreshSupportTickets);
 
 function proMessage(text,ok=false){const el=$("#proMessage");if(!el)return;el.className=`notice${ok?"":" warn"}`;el.textContent=text}
+const EXPECTED_WARBOOST_TEST_STRIPE_ACCOUNT="acct_1U4Jj5Gh5pcfWSKy";
+let stripeTestAccountDiagnosticBusy=false;
+function ensureStripeTestAccountDiagnosticUi(){
+  const section=$("#proSection"),actionButton=$("#proActionBtn");
+  if(!section||!actionButton)return null;
+  let box=$("#stripeTestAccountDiagnostic");
+  if(box)return box;
+  box=document.createElement("div");box.id="stripeTestAccountDiagnostic";box.className="buttonRow stripeTestAccountDiagnostic hidden";
+  const button=document.createElement("button");button.id="stripeTestAccountDiagnosticBtn";button.type="button";button.className="smallBtn stripeTestAccountDiagnosticButton";button.textContent=t("stripe_test_diagnostic_button");button.setAttribute("aria-describedby","stripeTestAccountDiagnosticStatus");
+  const status=document.createElement("div");status.id="stripeTestAccountDiagnosticStatus";status.className="notice hidden";status.setAttribute("role","status");status.setAttribute("aria-live","polite");status.setAttribute("aria-atomic","true");
+  box.append(button,status);actionButton.after(box);button.addEventListener("click",runStripeTestAccountDiagnostic);return box;
+}
+async function runStripeTestAccountDiagnostic(){
+  const button=$("#stripeTestAccountDiagnosticBtn"),status=$("#stripeTestAccountDiagnosticStatus");
+  if(!button||!status||stripeTestAccountDiagnosticBusy)return;
+  if(!cloudSession?.access_token||proState.mode!=="test"||proState.stripe_test_account_diagnostic_enabled!==true){
+    status.className="notice warn";status.textContent=t("stripe_test_diagnostic_unavailable");status.classList.remove("hidden");return;
+  }
+  stripeTestAccountDiagnosticBusy=true;button.disabled=true;button.setAttribute("aria-busy","true");
+  status.className="notice";status.textContent=t("stripe_test_diagnostic_checking");status.classList.remove("hidden");
+  try{
+    const {response,json}=await fetchJsonBounded("/api/pro?action=test_stripe_account_diagnostic",{
+      method:"POST",headers:authHeaders({"content-type":"application/json"}),body:"{}"
+    },10000);
+    if(!response.ok||json?.success!==true){
+      const code=String(json?.error_code||"");
+      const safeCode=/^[A-Z0-9_]{1,80}$/.test(code)?code:`HTTP_${response.status}`;
+      status.className="notice warn";status.textContent=t("stripe_test_diagnostic_error",{code:safeCode});return;
+    }
+    const account=String(json.account_id||"");
+    if(!/^acct_[A-Za-z0-9]+$/.test(account)){
+      status.className="notice warn";status.textContent=t("stripe_test_diagnostic_error",{code:"INVALID_RESPONSE"});return;
+    }
+    const matches=account===EXPECTED_WARBOOST_TEST_STRIPE_ACCOUNT;
+    status.className=matches?"notice":"notice warn";
+    status.textContent=t(matches?"stripe_test_diagnostic_match":"stripe_test_diagnostic_mismatch",{
+      account,expected:EXPECTED_WARBOOST_TEST_STRIPE_ACCOUNT
+    });
+  }catch{
+    status.className="notice warn";status.textContent=t("stripe_test_diagnostic_error",{code:"NETWORK_OR_TIMEOUT"});
+  }finally{
+    stripeTestAccountDiagnosticBusy=false;button.disabled=false;button.removeAttribute("aria-busy");
+  }
+}
 function proTestCheckoutError(code,message){
   if(code==="PRO_SUBSCRIPTION_EXISTS")return t("pro_test_subscription_exists");
   if(code==="BILLING_COUNTRY_REQUIRED"||code==="BILLING_COUNTRY_NOT_APPROVED")return t("pro_country_required");
@@ -5008,6 +5052,7 @@ function renderPro(){
   const pill=$("#proPill"),btn=$("#proActionBtn"),title=$("#proTitle"),price=$("#proPrice"),section=$("#proSection");
   if(!pill||!btn)return;
   if(isNativeWarBoost){
+     $("#stripeTestAccountDiagnostic")?.classList.add("hidden");
      renderProTestAvailability(false);
     $("#proCommercialPreview")?.classList.add("hidden");
     btn.classList.add("hidden");$("#proPortalBtn")?.classList.add("hidden");
@@ -5020,6 +5065,10 @@ function renderPro(){
    const live=proState.mode==="live",testEnabled=Boolean(proState.test_payments_enabled),testCheckoutEnabled=proState.mode==="test"&&Boolean(proState.test_payment_element_enabled)&&testEnabled,liveEnabled=Boolean(proState.live_payments_enabled);
   if(portalBtn){portalBtn.classList.toggle("hidden",!proState.can_manage_billing||safeLaunchBetaMode()||Boolean(proState.subscription));portalBtn.disabled=live?!proState.live_provider_ready:!testEnabled;portalBtn.textContent=live?t("pro_live_cancel"):"Portail client · TEST"}
   const logged=Boolean(cloudSession?.user),beta=safeLaunchBetaMode(),included=Boolean(beta&&logged&&proState.active);
+  const diagnosticUi=ensureStripeTestAccountDiagnosticUi(),diagnosticButton=$("#stripeTestAccountDiagnosticBtn"),diagnosticAllowed=logged&&proState.mode==="test"&&proState.stripe_test_account_diagnostic_enabled===true;
+  if(diagnosticButton)diagnosticButton.textContent=t("stripe_test_diagnostic_button");
+  diagnosticUi?.classList.toggle("hidden",!diagnosticAllowed);
+  if(!diagnosticAllowed){const diagnosticStatus=$("#stripeTestAccountDiagnosticStatus");if(diagnosticStatus){diagnosticStatus.textContent="";diagnosticStatus.classList.add("hidden")}}
   section?.classList.toggle("betaIncluded",beta);renderCommercialPreview();renderProLiveConsent();
    $("#proTestConsent")?.classList.toggle("hidden",!(logged&&testCheckoutEnabled&&!proState.subscription));
   pill.textContent=included?"BÊTA GRATUITE":proState.active?(live?"PRO · LIVE":"PRO · TEST"):"FREE";
@@ -5042,7 +5091,7 @@ function renderPro(){
    btn.disabled=manage?(live?!proState.live_provider_ready:!testEnabled):(live?!liveEnabled:!testCheckoutEnabled);
     renderProTestAvailability(testCheckoutBlocked);
 }
-async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok)proState={...j,active:Boolean(j.active),beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),test_payments_enabled:Boolean(j.test_payments_enabled),live_payments_enabled:Boolean(j.live_payments_enabled),entitlement:j.entitlement||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,commercial_preview:true,subscription:null}}renderPro();const result=new URLSearchParams(location.search).get("billing");if(result==="test-success")proMessage(proState.active?"Droit PRO confirmé par le serveur. Aucun paiement réel.":"Retour Checkout TEST reçu. Activation en attente du webhook Stripe ; ce retour seul ne donne aucun droit.");if(result==="live-success")proMessage(proState.active?"Droit PRO confirmé par le serveur après webhook signé.":"Retour Checkout reçu. L’accès reste en attente du webhook signé; le retour navigateur seul ne donne aucun droit.")}
+async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok)proState={...j,active:Boolean(j.active),beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),test_payments_enabled:Boolean(j.test_payments_enabled),live_payments_enabled:Boolean(j.live_payments_enabled),stripe_test_account_diagnostic_enabled:j.stripe_test_account_diagnostic_enabled===true,entitlement:j.entitlement||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,commercial_preview:true,subscription:null}}renderPro();const result=new URLSearchParams(location.search).get("billing");if(result==="test-success")proMessage(proState.active?"Droit PRO confirmé par le serveur. Aucun paiement réel.":"Retour Checkout TEST reçu. Activation en attente du webhook Stripe ; ce retour seul ne donne aucun droit.");if(result==="live-success")proMessage(proState.active?"Droit PRO confirmé par le serveur après webhook signé.":"Retour Checkout reçu. L’accès reste en attente du webhook signé; le retour navigateur seul ne donne aucun droit.")}
 function requirePro(){if(safeLaunchBetaMode()){if(!requireBetaAccess()||!requireBetaConsent())return false;return true}if(proState.active)return true;openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"center"}),160);proMessage(cloudSession?.user?t("pro_required"):t("connect_pro"));return false}
 let proActionBusy=false,proTestSetupAlreadySucceeded=false,proTestOwnerId="";
 let proTestStripe=null,proTestElements=null,proTestSetupIntentId="",proTestSetupSecret="",proTestPaymentSecret="",proTestPaymentMethodId="";
