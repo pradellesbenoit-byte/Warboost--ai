@@ -4977,11 +4977,38 @@ function renderProLiveConsent(){
     catch{link.removeAttribute("href");link.classList.add("hidden")}
   }
 }
+function renderProTestAvailability(blocked){
+  const status=$("#proTestAvailability"),button=$("#proActionBtn");
+  if(!status)return;
+  if(!blocked){
+    status.classList.add("hidden");status.textContent="";
+    if(button?.getAttribute("aria-describedby")==="proTestAvailability")button.removeAttribute("aria-describedby");
+    return;
+  }
+  const serverDiagnosticsVerified=typeof proState.mode==="string"&&
+    typeof proState.configured==="boolean"&&typeof proState.test_payments_enabled==="boolean"&&
+    typeof proState.test_payment_element_enabled==="boolean";
+  if(serverDiagnosticsVerified){
+    const ready=value=>t(value?"pro_test_diag_ready":"pro_test_diag_blocked");
+    status.textContent=`${t("pro_test_blocked_notice")} ${t("pro_test_blocked_diagnostic",{
+      mode:t(proState.mode==="test"?"pro_test_diag_active":"pro_test_diag_inactive"),
+      setup:ready(proState.configured),
+      billing:ready(proState.test_payments_enabled),
+      element:ready(proState.test_payment_element_enabled),
+      countries:Array.isArray(proState.test_payment_element_countries)?proState.test_payment_element_countries.length:0
+    })}`;
+  }else{
+    status.textContent=t("pro_test_blocked_unverified");
+  }
+  status.classList.remove("hidden");
+  button?.setAttribute("aria-describedby","proTestAvailability");
+}
 function renderCommercialPreview(){const box=$("#proCommercialPreview"),price=$("#commercialPreviewPrice"),note=$("#commercialPreviewNote");if(!box)return;if(isNativeWarBoost){box.classList.add("hidden");return}box.classList.remove("hidden");if(price)price.textContent=formatProPrice(proState.plan||{amount:499,currency:"eur"});if(note)note.textContent=proState.mode==="test"?"STRIPE TEST uniquement — aucun paiement réel. Abonnement mensuel, renouvellement automatique, résiliation en fin de période dans le portail client. TVA, factures et CGV à finaliser avant toute vente réelle.":proState.mode==="live"?t("pro_live_note"):t("commercial_preview_note")}
 function renderPro(){
   const pill=$("#proPill"),btn=$("#proActionBtn"),title=$("#proTitle"),price=$("#proPrice"),section=$("#proSection");
   if(!pill||!btn)return;
   if(isNativeWarBoost){
+     renderProTestAvailability(false);
     $("#proCommercialPreview")?.classList.add("hidden");
     btn.classList.add("hidden");$("#proPortalBtn")?.classList.add("hidden");
     pill.textContent=proState.active?"PRO · BÊTA":"BÊTA";title.textContent="WarBoost PRO";
@@ -4997,21 +5024,23 @@ function renderPro(){
    $("#proTestConsent")?.classList.toggle("hidden",!(logged&&testCheckoutEnabled&&!proState.subscription));
   pill.textContent=included?"BÊTA GRATUITE":proState.active?(live?"PRO · LIVE":"PRO · TEST"):"FREE";
   pill.classList.toggle("active",Boolean(proState.active));
-  if(!logged){title.textContent="WarBoost PRO";price.textContent=t("connect_for_pro");btn.textContent=t("login");btn.disabled=false;return}
+   if(!logged){renderProTestAvailability(false);title.textContent="WarBoost PRO";price.textContent=t("connect_for_pro");btn.textContent=t("login");btn.disabled=false;return}
    if(included){
      title.textContent=t("beta_pro_included");price.textContent="Accès PRO gratuit conservé pendant la phase bêta.";
      const testCheckout=testCheckoutEnabled&&!proState.subscription;
-      btn.textContent=testCheckout?t("pro_test_setup_button"):proState.can_manage_billing?(live?t("pro_live_cancel"):"Portail client · TEST"):t("beta_pro_included");
-     btn.disabled=testCheckout?false:!proState.can_manage_billing||(live?!proState.live_provider_ready:!testEnabled);
-     if(!live&&!proState.subscription&&!testCheckoutEnabled)proMessage(t("pro_test_checkout_unavailable"));
+       const testCheckoutBlocked=!live&&!proState.subscription&&!testCheckoutEnabled;
+       btn.textContent=testCheckout?t("pro_test_setup_button"):testCheckoutBlocked?t("pro_test_blocked_button"):proState.can_manage_billing?(live?t("pro_live_cancel"):"Portail client · TEST"):t("beta_pro_included");
+      btn.disabled=testCheckout?false:testCheckoutBlocked?true:!proState.can_manage_billing||(live?!proState.live_provider_ready:!testEnabled);
+      renderProTestAvailability(testCheckoutBlocked);
      return
    }
   title.textContent=proState.active?(live?"WarBoost PRO":"WarBoost PRO · TEST"):"WarBoost PRO — 4,99 € / mois";
   price.textContent=proState.subscription?.cancel_at_period_end?`Résiliation prévue à l’échéance : ${proState.subscription.current_period_end||"à confirmer"}`:proState.active?(live?t("pro_live_active"):"Abonnement TEST actif — aucun débit réel."):"Abonnement mensuel préparé. Aucun paiement réel disponible.";
    const manage=Boolean(proState.subscription);
-    btn.textContent=manage?(live?t("pro_live_cancel"):"Portail client · TEST"):live?t("pro_live_checkout"):t("pro_test_setup_button");
+     const testCheckoutBlocked=!live&&!manage&&!testCheckoutEnabled;
+     btn.textContent=manage?(live?t("pro_live_cancel"):"Portail client · TEST"):live?t("pro_live_checkout"):testCheckoutBlocked?t("pro_test_blocked_button"):t("pro_test_setup_button");
    btn.disabled=manage?(live?!proState.live_provider_ready:!testEnabled):(live?!liveEnabled:!testCheckoutEnabled);
-   if(!live&&!manage&&!testCheckoutEnabled)proMessage(t("pro_test_checkout_unavailable"));
+    renderProTestAvailability(testCheckoutBlocked);
 }
 async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok)proState={...j,active:Boolean(j.active),beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),test_payments_enabled:Boolean(j.test_payments_enabled),live_payments_enabled:Boolean(j.live_payments_enabled),entitlement:j.entitlement||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,commercial_preview:true,subscription:null}}renderPro();const result=new URLSearchParams(location.search).get("billing");if(result==="test-success")proMessage(proState.active?"Droit PRO confirmé par le serveur. Aucun paiement réel.":"Retour Checkout TEST reçu. Activation en attente du webhook Stripe ; ce retour seul ne donne aucun droit.");if(result==="live-success")proMessage(proState.active?"Droit PRO confirmé par le serveur après webhook signé.":"Retour Checkout reçu. L’accès reste en attente du webhook signé; le retour navigateur seul ne donne aucun droit.")}
 function requirePro(){if(safeLaunchBetaMode()){if(!requireBetaAccess()||!requireBetaConsent())return false;return true}if(proState.active)return true;openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"center"}),160);proMessage(cloudSession?.user?t("pro_required"):t("connect_pro"));return false}
