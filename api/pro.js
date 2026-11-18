@@ -4,6 +4,7 @@ import {entitlementForUser} from "../lib/pro-access.js";
 import {billingRow} from "../lib/billing-store.js";
 import {commercialConfig,commercialStatusForUser,createCheckoutForUser,createPortalForUser,processWebhook,readRawBody,paymentWebhookSignature} from "../lib/commercial-pro.js";
 import {createTestPaymentSetup,prepareTestSubscriptionPayment,cancelTestPendingSubscription} from "../lib/stripe-test-payment-flow.js";
+import {isStripeTestDiagnosticAdmin,stripeTestAccountDiagnosticAvailable,inspectStripeTestAccount} from "../lib/stripe-test-account-diagnostic.js";
 
 // Safe Launch defaults to OFF. TEST and LIVE use separate credentials and storage.
 // Preserve the exact signed bytes (Vercel and local server).
@@ -29,6 +30,19 @@ export default async function handler(req,res){
       const result=await processWebhook(raw,signature,webhookMode);return res.status(200).json(result);
     }
 
+    // Temporary, read-only account identity probe. It is restricted to the
+    // existing support-admin allowlist and this exact TEST Preview branch.
+    if(req.method==="POST"&&String(req.query?.action||"")==="test_stripe_account_diagnostic"){
+      let diagnosticUser;
+      try{diagnosticUser=await requireUser(req)}
+      catch{return res.status(401).json({success:false,error_code:"AUTH_REQUIRED"})}
+      if(!isStripeTestDiagnosticAdmin(diagnosticUser))
+        return res.status(403).json({success:false,error_code:"ADMIN_REQUIRED"});
+      if(!stripeTestAccountDiagnosticAvailable())
+        return res.status(403).json({success:false,error_code:"TEST_DIAGNOSTIC_ENVIRONMENT_BLOCKED"});
+      const result=await inspectStripeTestAccount();
+      return res.status(result.success?200:502).json(result);
+    }
     const user=await requireUser(req),beta=await betaAccessForUserAsync(user);
     if(req.method==="GET"){
       const entitlement=await entitlementForUser(user,{beta});
