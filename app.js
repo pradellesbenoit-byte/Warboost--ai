@@ -11,6 +11,7 @@ import {gearRepairPreviewCopy} from "./lib/gear-repair-preview-copy.js";
 import {createSaveDiagnostic,safeSaveDiagnostic,newSaveCorrelation,publicSaveError} from "./lib/cloud-save-diagnostic.js";
 import {normalizeResetGeneration,resetGenerationDecision,resetGenerationRequestMatches,quarantineOwnedAccountCaches,preserveForeignCacheBeforeReplace} from "./lib/reset-generation.js";
 import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
+import {createAndMountStripeTestElement,normalizeStripeSetupDiagnostic,stripeSetupRequestFailure} from "./lib/stripe-test-element-ui.js";
 import {buildPlayerScanOptions,normalizePlayerScanType,scanSquadId} from "./lib/player-scan-types.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation,heroDisplayName} from "./lib/heroes.js";
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
@@ -5118,6 +5119,24 @@ function proTestStatus(key,warning=false){
   box.className=warning?"notice warn":"notice";
   box.textContent=t(key);box.classList.remove("hidden");
 }
+const PRO_TEST_SETUP_STAGE_KEYS={
+  validation:"pro_test_stage_validation",price_product:"pro_test_stage_price_product",
+  database:"pro_test_stage_database",customer:"pro_test_stage_customer",
+  setup_intent:"pro_test_stage_setup_intent",setup_intent_verify:"pro_test_stage_setup_intent_verify",
+  setup_intent_ready:"pro_test_stage_setup_intent_ready",
+  stripe_js:"pro_test_stage_stripe_js",elements_create:"pro_test_stage_elements_create",
+  elements_mount:"pro_test_stage_elements_mount",request:"pro_test_stage_request"
+};
+function safeProTestSetupDiagnostic(value,fallbackStage="request"){
+  const data=normalizeStripeSetupDiagnostic(value,fallbackStage),status=data.http_status===null?
+    t("pro_test_setup_no_http"):String(data.http_status);
+  return t("pro_test_setup_diagnostic",{http:status,code:data.code,stage:t(PRO_TEST_SETUP_STAGE_KEYS[data.stage]),ms:data.elapsed_ms});
+}
+function reportProTestSetupFailure(error,fallbackStage){
+  const detail=safeProTestSetupDiagnostic(error?.safeDiagnostic,fallbackStage);
+  const message=error?.safeMessage||t("pro_test_setup_error");
+  proTestStatusText(`${message} ${detail}`,true);
+}
 function clearProTestPaymentUi(){
   try{proTestElements?.getElement?.("payment")?.unmount?.()}catch{}
   proTestStripe=null;proTestElements=null;proTestSetupIntentId="";proTestSetupSecret="";
@@ -5125,7 +5144,8 @@ function clearProTestPaymentUi(){
   const flow=$("#proTestPaymentFlow");flow?.classList.add("hidden");
   const host=$("#proTestPaymentElement");if(host){host.replaceChildren();host.classList.remove("hidden")}
   $("#proTestFlowStatus")?.classList.add("hidden");
-  $("#proTestSetupConfirmBtn")?.classList.remove("hidden");
+  const setupBtn=$("#proTestSetupConfirmBtn");
+  if(setupBtn){setupBtn.classList.remove("hidden");setupBtn.disabled=false;setupBtn.textContent=t("pro_test_save_card")}
   $("#proTestPayBtn")?.classList.add("hidden");$("#proTestCancelBtn")?.classList.add("hidden");
 }
 async function loadStripeJsForTest(){
@@ -5138,9 +5158,10 @@ async function loadStripeJsForTest(){
   }
   await new Promise((resolve,reject)=>{
     if(typeof window.Stripe==="function")return resolve();
-    const timeout=setTimeout(()=>reject(new Error(t("pro_test_element_unavailable"))),12000);
-    script.addEventListener("load",()=>{clearTimeout(timeout);typeof window.Stripe==="function"?resolve():reject(new Error(t("pro_test_element_unavailable")))},{once:true});
-    script.addEventListener("error",()=>{clearTimeout(timeout);reject(new Error(t("pro_test_element_unavailable")))},{once:true});
+    const fail=()=>reject(Object.assign(new Error(t("pro_test_element_unavailable")),{code:"STRIPE_JS_LOAD_FAILED",diagnosticStage:"stripe_js"}));
+    const timeout=setTimeout(fail,12000);
+    script.addEventListener("load",()=>{clearTimeout(timeout);typeof window.Stripe==="function"?resolve():fail()},{once:true});
+    script.addEventListener("error",()=>{clearTimeout(timeout);fail()},{once:true});
   });
 }
 function proTestConsentFields(){
@@ -5152,12 +5173,30 @@ async function proTestApi(action,extra={}){
     clearProTestPaymentUi();
     throw Object.assign(new Error(t("pro_test_checkout_error")),{code:"TEST_ACCOUNT_CHANGED"});
   }
-  const {response,json}=await fetchJsonBounded("/api/pro",{method:"POST",
-    headers:authHeaders({"content-type":"application/json"}),
-    body:JSON.stringify({action,...proTestConsentFields(),...extra})},20000);
-  if(!response.ok)throw Object.assign(new Error(json?.message||proTestCheckoutError(json?.error||json?.code,json?.message)),{code:json?.error||json?.code||"",serverResponse:true});
+  const startedAt=Date.now();
+  let response,json;
+  try{
+    ({response,json}=await fetchJsonBounded("/api/pro",{method:"POST",
+      headers:authHeaders({"content-type":"application/json"}),
+      body:JSON.stringify({action,...proTestConsentFields(),...extra})},20000));
+  }catch(error){
+    const diagnostic=stripeSetupRequestFailure(error,Date.now()-startedAt);
+    throw Object.assign(new Error(t("pro_test_checkout_network_error")),{code:diagnostic.code,
+      safeMessage:t("pro_test_checkout_network_error"),safeDiagnostic:diagnostic});
+  }
+  const serverDiagnostic=json?.diagnostic&&typeof json.diagnostic==="object"?json.diagnostic:{};
+  const diagnostic={...serverDiagnostic,http_status:response.status,
+    elapsed_ms:Number.isFinite(serverDiagnostic.elapsed_ms)?serverDiagnostic.elapsed_ms:Date.now()-startedAt};
+  if(!response.ok)throw Object.assign(new Error(proTestCheckoutError(json?.error||json?.code,json?.message)),{
+    code:/^[A-Z][A-Z0-9_]{1,63}$/.test(String(json?.error||json?.code||""))?String(json.error||json.code):"SETUP_FAILED",
+    safeMessage:proTestCheckoutError(json?.error||json?.code,json?.message),
+    safeDiagnostic:{...diagnostic,code:/^[A-Z][A-Z0-9_]{1,63}$/.test(String(json?.error||json?.code||""))?String(json.error||json.code):"SETUP_FAILED"},
+    serverResponse:true});
   if(json?.mode!=="test"||json?.test!==true||json?.live!==false)
-    throw Object.assign(new Error(t("pro_test_checkout_error")),{serverResponse:true});
+    throw Object.assign(new Error(t("pro_test_checkout_error")),{safeMessage:t("pro_test_checkout_error"),
+      safeDiagnostic:{...diagnostic,stage:"setup_intent_verify",code:"UNEXPECTED_TEST_RESPONSE"},serverResponse:true});
+  json.diagnostic=normalizeStripeSetupDiagnostic({...diagnostic,
+    stage:serverDiagnostic.stage,code:"SETUP_RESPONSE_OK"},"setup_intent_verify");
   return json;
 }
 async function beginProTestSetup(country){
@@ -5165,12 +5204,23 @@ async function beginProTestSetup(country){
   clearProTestPaymentUi();proTestOwnerId=String(cloudSession?.user?.id||"");
   if(!proTestOwnerId)throw new Error(t("pro_test_checkout_error"));
   flow?.classList.remove("hidden");
+  setupBtn?.classList.add("hidden");
   proTestStatus("pro_test_setup_starting");
+  const startedAt=Date.now();
+  let setupHttpStatus=null;
+  const progressTimer=setInterval(()=>{
+    const seconds=Math.max(0,Math.floor((Date.now()-startedAt)/1000));
+    proTestStatusText(`${t("pro_test_setup_progress",{stage:t(PRO_TEST_SETUP_STAGE_KEYS.request),seconds})} ${safeProTestSetupDiagnostic({
+      stage:"request",code:"REQUEST_PENDING",http_status:null,elapsed_ms:Date.now()-startedAt
+    },"request")}`);
+  },1000);
+  let clientStage="validation";
   try{
     const result=await proTestApi("test_setup_intent",{billing_country:country});
+    setupHttpStatus=result.diagnostic?.http_status??null;
     if(!/^pk_test_[A-Za-z0-9]+$/.test(String(result.publishable_key||""))||
       typeof result.setup_intent_id!=="string"||!/^seti_[A-Za-z0-9_]+$/.test(result.setup_intent_id))
-      throw new Error(t("pro_test_checkout_error"));
+      throw Object.assign(new Error(t("pro_test_checkout_error")),{code:"INVALID_SETUP_RESPONSE",diagnosticStage:"setup_intent_verify"});
     proTestSetupIntentId=result.setup_intent_id;
     if(result.state==="payment_pending"){
       if(host)host.replaceChildren();
@@ -5178,6 +5228,7 @@ async function beginProTestSetup(country){
       host?.classList.add("hidden");
       proTestStatus("pro_test_setup_ready");
       if(setupBtn)setupBtn.textContent=t("pro_test_prepare_invoice");
+      setupBtn?.classList.remove("hidden");
       return;
     }
     if(result.state==="setup_succeeded"){
@@ -5185,22 +5236,41 @@ async function beginProTestSetup(country){
       if(host){host.replaceChildren();host.classList.add("hidden")}
       proTestStatus("pro_test_setup_ready");
       if(setupBtn)setupBtn.textContent=t("pro_test_prepare_invoice");
+      setupBtn?.classList.remove("hidden");
       return;
     }
     if(typeof result.setup_client_secret!=="string"||!result.setup_client_secret.startsWith(`${result.setup_intent_id}_secret_`))
-      throw new Error(t("pro_test_checkout_error"));
+      throw Object.assign(new Error(t("pro_test_checkout_error")),{code:"INVALID_SETUP_RESPONSE",diagnosticStage:"setup_intent_verify"});
     proTestSetupSecret=result.setup_client_secret;
     proTestSetupAlreadySucceeded=result.state==="setup_succeeded";
-    await loadStripeJsForTest();
-    proTestStripe=window.Stripe(result.publishable_key);
-    proTestElements=proTestStripe.elements({clientSecret:proTestSetupSecret,locale:lang==="fr"?"fr":"auto"});
-    const payment=proTestElements.create("payment",{layout:"tabs",fields:{billingDetails:{address:"auto"}}});
-    payment.mount(host);
-    if(result.state==="setup_succeeded")proTestStatus("pro_test_setup_ready");
-    if(setupBtn)setupBtn.textContent=result.state==="setup_succeeded"?t("pro_test_prepare_invoice"):t("pro_test_save_card");
+    if(setupBtn){setupBtn.disabled=true;setupBtn.textContent=t("pro_test_save_card")}
+    const mounted=await createAndMountStripeTestElement({
+      loadStripe:async()=>{await loadStripeJsForTest();return window.Stripe},
+      publishableKey:result.publishable_key,clientSecret:proTestSetupSecret,
+      locale:lang==="fr"?"fr":"auto",host,
+      onStage:stage=>{
+        clientStage=stage;
+        proTestStatusText(`${t("pro_test_element_loading")} ${safeProTestSetupDiagnostic({
+          stage,code:"STEP_IN_PROGRESS",http_status:setupHttpStatus,elapsed_ms:Date.now()-startedAt
+        },stage)}`);
+      },
+      onReady:()=>{
+        proTestStatus("pro_test_element_ready");
+        if(setupBtn){setupBtn.textContent=t("pro_test_save_card");setupBtn.disabled=false;setupBtn.classList.remove("hidden")}
+      }
+    });
+    proTestStripe=mounted.stripe;proTestElements=mounted.elements;
+    clearInterval(progressTimer);
   }catch(error){
-    proTestStatus(error.message===t("pro_test_element_unavailable")?"pro_test_element_unavailable":"pro_test_setup_error",true);
-    if(error?.serverResponse)proTestStatusText(error.message,true);
+    clearInterval(progressTimer);
+    const stage=error?.diagnosticStage||clientStage;
+    const code=/^[A-Z][A-Z0-9_]{1,63}$/.test(String(error?.diagnosticCode||error?.code||""))?String(error.diagnosticCode||error.code):"SETUP_FAILED";
+    const safeMessage=error?.safeMessage||(error?.message===t("pro_test_element_unavailable")?t("pro_test_element_unavailable"):t("pro_test_setup_error"));
+    reportProTestSetupFailure({safeMessage,safeDiagnostic:error?.safeDiagnostic||{
+      stage,code,http_status:setupHttpStatus,elapsed_ms:Date.now()-startedAt}},stage);
+    if(setupBtn){setupBtn.disabled=false;setupBtn.classList.add("hidden")}
+  }finally{
+    clearInterval(progressTimer);
   }
 }
 function proTestStatusText(message,warning=false){

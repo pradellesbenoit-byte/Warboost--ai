@@ -20,6 +20,15 @@ async function postJsonBody(req){
 export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store, max-age=0");
   const commerce=commercialConfig();
+  const requestStartedAt=Date.now();
+  let requestAction="",requestStage="validation";
+  const setupStages=new Set(["validation","price_product","database","customer","setup_intent","setup_intent_verify"]);
+  const setupDiagnostic=stage=>({stage,elapsed_ms:Math.max(0,Math.min(120000,Date.now()-requestStartedAt))});
+  const testFlowError=(status,error,message,stage=requestStage)=>{
+    const payload={ok:false,error,message};
+    if(requestAction==="test_setup_intent")payload.diagnostic=setupDiagnostic(setupStages.has(stage)?stage:"validation");
+    return res.status(status).json(payload);
+  };
   try{
     // TEST and LIVE webhooks are explicitly selected and independently verified.
     if(req.method==="POST"&&String(req.query?.action||"")==="webhook"){
@@ -77,24 +86,28 @@ export default async function handler(req,res){
 
     if(req.method==="POST"){
       const body=await postJsonBody(req),action=String(body?.action||"").toLowerCase();
+      requestAction=action;
       if(["test_setup_intent","prepare_test_subscription","cancel_test_pending"].includes(action)){
+        requestStage="validation";
         if(commerce.mode!=="test"||!commerce.test_payments_enabled)
-          return res.status(403).json({ok:false,error:"TEST_PAYMENT_FLOW_DISABLED",
-            message:"Le parcours de paiement fractionné est réservé à Stripe TEST configuré. Aucun paiement réel n’est possible ici."});
+          return testFlowError(403,"TEST_PAYMENT_FLOW_DISABLED",
+            "Le parcours de paiement fractionné est réservé à Stripe TEST configuré. Aucun paiement réel n’est possible ici.");
+        requestStage="database";
         const entitlement=await entitlementForUser(user,{beta});
         if(!entitlement.schema_ready)
-          return res.status(503).json({ok:false,error:"COMMERCIAL_SCHEMA_MISSING",
-            message:"La base de facturation TEST n’est pas prête. Aucun abonnement n’a été créé."});
+          return testFlowError(503,"COMMERCIAL_SCHEMA_MISSING",
+            "La base de facturation TEST n’est pas prête. Aucun abonnement n’a été créé.","database");
         if(action==="cancel_test_pending"){
           return res.status(200).json({ok:true,...await cancelTestPendingSubscription(user)});
         }
+        requestStage="validation";
         if(body?.confirm_test_only!==true||body?.test_subscription_consent!==true||
           body?.test_subscription_consent_version!==commerce.test_subscription_consent_version)
-          return res.status(428).json({ok:false,error:"TEST_SUBSCRIPTION_CONSENT_REQUIRED",
-            message:"Confirmez explicitement l’abonnement mensuel de test avant de continuer."});
+          return testFlowError(428,"TEST_SUBSCRIPTION_CONSENT_REQUIRED",
+            "Confirmez explicitement l’abonnement mensuel de test avant de continuer.");
         if(!commerce.test_payment_element_enabled)
-          return res.status(503).json({ok:false,error:"TEST_PAYMENT_ELEMENT_NOT_READY",
-            message:"Le formulaire de paiement TEST ou le précontrôle fiscal n’est pas configuré. Aucun abonnement n’a été créé."});
+          return testFlowError(503,"TEST_PAYMENT_ELEMENT_NOT_READY",
+            "Le formulaire de paiement TEST ou le précontrôle fiscal n’est pas configuré. Aucun abonnement n’a été créé.");
         if(action==="test_setup_intent")
           return res.status(200).json({ok:true,...await createTestPaymentSetup(user,{billingCountry:body.billing_country,consent:body})});
         return res.status(200).json({ok:true,...await prepareTestSubscriptionPayment(user,{
@@ -147,6 +160,15 @@ export default async function handler(req,res){
     }
     return res.status(405).json({error:"method_not_allowed"});
   }catch(e){
+    if(requestAction==="test_setup_intent"){
+      const safeCode=/^[A-Z][A-Z0-9_]{1,63}$/.test(String(e?.code||""))?String(e.code):"TEST_SETUP_FAILED";
+      const stage=setupStages.has(e?.diagnosticStage)?e.diagnosticStage:requestStage;
+      const status=Number.isInteger(e?.status)&&e.status>=400&&e.status<=599?e.status:500;
+      return res.status(status).json({ok:false,error:safeCode,
+        message:"La préparation du moyen de paiement TEST a échoué. Aucun paiement n’a été confirmé.",
+        diagnostic:{stage,elapsed_ms:Number.isFinite(e?.diagnosticElapsedMs)?
+          Math.max(0,Math.min(120000,e.diagnosticElapsedMs)):setupDiagnostic(stage).elapsed_ms}});
+    }
     return res.status(e?.status||500).json({error:e?.code||"pro_error",message:e?.message||"WarBoost PRO error",requirements:e?.requirements||undefined});
   }
 }

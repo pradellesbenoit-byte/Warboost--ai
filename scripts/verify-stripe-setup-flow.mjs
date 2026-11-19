@@ -61,6 +61,8 @@ try{
     const beforeWrites=stripeWrites().length;
     const noConsent=await post(userA,{action:"test_setup_intent",billing_country:"FR"});
     assert.equal(noConsent.status,428);assert.equal(noConsent.data.error,"TEST_SUBSCRIPTION_CONSENT_REQUIRED");
+    assert.equal(noConsent.data.diagnostic.stage,"validation");
+    assert.equal(noConsent.data.diagnostic.elapsed_ms>=0,true);
     const country=await start(userA,"US");
     assert.equal(country.status,403);assert.equal(country.data.error,"BILLING_COUNTRY_NOT_APPROVED");
     const oldTax=process.env.WARBOOST_TEST_AUTOMATIC_TAX_ENABLED;
@@ -95,12 +97,19 @@ try{
     fixture.failSetupOnce=true;
     const beforeSubscriptions=fixture.subscriptions.size,beforePayments=fixture.paymentIntents.size;
     const failed=await start(userA);
-    assert.notEqual(failed.status,200);
+    assert.equal(failed.status,502);
+    assert.equal(failed.data.error,"PAYMENT_PROVIDER_ERROR");
+    assert.equal(failed.data.diagnostic.stage,"setup_intent");
+    assert.equal(Number.isFinite(failed.data.diagnostic.elapsed_ms),true);
+    assert.doesNotMatch(JSON.stringify(failed.data),/SIMULATED_SETUP_FAILURE|secret_fixture|sk_test_fixture/);
     assert.equal(fixture.subscriptions.size,beforeSubscriptions);assert.equal(fixture.paymentIntents.size,beforePayments);
     assert.equal((await attempt(userA)).state,"creating");
     await fixture.pg.query("update warboost_test_payment_attempts set lease_until=now()-interval '1 second' where user_id=$1",[userA]);
     const result=await start(userA);
     assert.equal(result.status,200);assert.equal(result.data.state,"setup_required");
+    assert.equal(result.data.diagnostic.stage,"setup_intent_ready");
+    assert.equal(Number.isFinite(result.data.diagnostic.elapsed_ms),true);
+    assert.deepEqual(Object.keys(result.data.diagnostic).sort(),["elapsed_ms","stage"]);
     assert.equal(fixture.subscriptions.size,beforeSubscriptions);assert.equal(fixture.paymentIntents.size,beforePayments);
     userASetup=result.data.setup_intent_id;
     assert.equal(fixture.setupIntents.size,1);
@@ -203,6 +212,18 @@ try{
     assert.equal(canceled.status,200);assert.equal(canceled.data.state,"canceled");
     assert.equal(created[0].status,"canceled");assert.equal((await entitlementForUser(user(userFree))).active,false);
     noNewSucceededPayments(succeededBefore);
+  });
+
+  await check("Setup diagnostics never expose provider bodies or weaken TEST, admin, country, or tax gates",async()=>{
+    const api=fs.readFileSync("api/pro.js","utf8"),flow=fs.readFileSync("lib/stripe-test-payment-flow.js","utf8");
+    assert.match(api,/const user=await requireUser\(req\),beta=await betaAccessForUserAsync\(user\)/);
+    assert.match(api,/commerce\.mode!=="test"\|\|!commerce\.test_payments_enabled/);
+    assert.match(api,/confirm_test_only!==true\|\|body\?\.test_subscription_consent!==true/);
+    assert.match(api,/isStripeTestDiagnosticAdmin\(diagnosticUser\)/);
+    assert.match(flow,/assertBillingCountryAllowed\(country,"test"\)/);
+    assert.match(flow,/assertTestTaxCountryReady\(country\)/);
+    assert.match(flow,/diagnosticStage=stage/);
+    assert.doesNotMatch(api,/Stripe TEST setup error:\s*\$\{e\.message/);
   });
 
   console.log(`Stripe SetupIntent targeted cases passed: ${passed}`);
