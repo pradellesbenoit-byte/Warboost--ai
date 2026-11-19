@@ -4960,31 +4960,49 @@ function ensureStripeTestAccountDiagnosticUi(){
 async function runStripeTestAccountDiagnostic(){
   const button=$("#stripeTestAccountDiagnosticBtn"),status=$("#stripeTestAccountDiagnosticStatus");
   if(!button||!status||stripeTestAccountDiagnosticBusy)return;
-  if(!cloudSession?.access_token||proState.mode!=="test"||proState.stripe_test_account_diagnostic_enabled!==true){
+  if(!cloudSession?.access_token||proState.stripe_test_account_diagnostic_visible!==true){
     status.className="notice warn";status.textContent=t("stripe_test_diagnostic_unavailable");status.classList.remove("hidden");return;
   }
   stripeTestAccountDiagnosticBusy=true;button.disabled=true;button.setAttribute("aria-busy","true");
   status.className="notice";status.textContent=t("stripe_test_diagnostic_checking");status.classList.remove("hidden");
+  const clientCheckedAt=new Date().toISOString();
   try{
     const {response,json}=await fetchJsonBounded("/api/pro?action=test_stripe_account_diagnostic",{
-      method:"POST",headers:authHeaders({"content-type":"application/json"}),body:"{}"
+      method:"POST",cache:"no-store",
+      headers:authHeaders({"content-type":"application/json","Cache-Control":"no-cache","Pragma":"no-cache"}),
+      body:"{}"
     },10000);
+    const checkedAt=typeof json?.diagnostic?.checked_at==="string"&&Number.isFinite(Date.parse(json.diagnostic.checked_at))
+      ?new Date(json.diagnostic.checked_at).toLocaleString():new Date(clientCheckedAt).toLocaleString();
+    const httpStatus=t("stripe_test_diagnostic_http",{status:String(response.status),time:checkedAt});
+    const diagnostic=json?.diagnostic&&typeof json.diagnostic==="object"?json.diagnostic:null;
+    const credentialKind=["test_secret","test_restricted","absent","not_test"].includes(diagnostic?.credential?.kind)
+      ?diagnostic.credential.kind:"unknown";
+    const context=diagnostic?t("stripe_test_diagnostic_context",{
+      environment:diagnostic.runtime_environment==="preview"?"Preview":diagnostic.runtime_environment==="production"?"production":"autre",
+      branch:diagnostic.branch_matches_target===true?"conforme":"différente",
+      mode:diagnostic.commercial_mode_is_test===true?"TEST":"non TEST",
+      credential:t(`stripe_test_diagnostic_key_${credentialKind}`),
+      scope:t("stripe_test_diagnostic_scope_unknown"),
+      commit:/^[a-f0-9]{40}$/i.test(String(diagnostic.deployment_commit||""))?diagnostic.deployment_commit:"inconnu"
+    }):"";
     if(!response.ok||json?.success!==true){
       const code=String(json?.error_code||"");
       const safeCode=/^[A-Z0-9_]{1,80}$/.test(code)?code:`HTTP_${response.status}`;
-      status.className="notice warn";status.textContent=t("stripe_test_diagnostic_error",{code:safeCode});return;
+      status.className="notice warn";status.textContent=[httpStatus,context,t("stripe_test_diagnostic_error",{code:safeCode})].filter(Boolean).join(" · ");return;
     }
     const account=String(json.account_id||"");
     if(!/^acct_[A-Za-z0-9]+$/.test(account)){
-      status.className="notice warn";status.textContent=t("stripe_test_diagnostic_error",{code:"INVALID_RESPONSE"});return;
+      status.className="notice warn";status.textContent=[httpStatus,context,t("stripe_test_diagnostic_error",{code:"INVALID_RESPONSE"})].filter(Boolean).join(" · ");return;
     }
     const matches=account===EXPECTED_WARBOOST_TEST_STRIPE_ACCOUNT;
     status.className=matches?"notice":"notice warn";
-    status.textContent=t(matches?"stripe_test_diagnostic_match":"stripe_test_diagnostic_mismatch",{
+    status.textContent=[httpStatus,context,t(matches?"stripe_test_diagnostic_match":"stripe_test_diagnostic_mismatch",{
       account,expected:EXPECTED_WARBOOST_TEST_STRIPE_ACCOUNT
-    });
+    })].filter(Boolean).join(" · ");
   }catch{
-    status.className="notice warn";status.textContent=t("stripe_test_diagnostic_error",{code:"NETWORK_OR_TIMEOUT"});
+    const time=new Date().toLocaleString();
+    status.className="notice warn";status.textContent=[t("stripe_test_diagnostic_http",{status:t("stripe_test_diagnostic_no_http"),time}),t("stripe_test_diagnostic_error",{code:"NETWORK_OR_TIMEOUT"})].join(" · ");
   }finally{
     stripeTestAccountDiagnosticBusy=false;button.disabled=false;button.removeAttribute("aria-busy");
   }
@@ -5065,7 +5083,7 @@ function renderPro(){
    const live=proState.mode==="live",testEnabled=Boolean(proState.test_payments_enabled),testCheckoutEnabled=proState.mode==="test"&&Boolean(proState.test_payment_element_enabled)&&testEnabled,liveEnabled=Boolean(proState.live_payments_enabled);
   if(portalBtn){portalBtn.classList.toggle("hidden",!proState.can_manage_billing||safeLaunchBetaMode()||Boolean(proState.subscription));portalBtn.disabled=live?!proState.live_provider_ready:!testEnabled;portalBtn.textContent=live?t("pro_live_cancel"):"Portail client · TEST"}
   const logged=Boolean(cloudSession?.user),beta=safeLaunchBetaMode(),included=Boolean(beta&&logged&&proState.active);
-  const diagnosticUi=ensureStripeTestAccountDiagnosticUi(),diagnosticButton=$("#stripeTestAccountDiagnosticBtn"),diagnosticAllowed=logged&&proState.mode==="test"&&proState.stripe_test_account_diagnostic_enabled===true;
+  const diagnosticUi=ensureStripeTestAccountDiagnosticUi(),diagnosticButton=$("#stripeTestAccountDiagnosticBtn"),diagnosticAllowed=logged&&proState.stripe_test_account_diagnostic_visible===true;
   if(diagnosticButton)diagnosticButton.textContent=t("stripe_test_diagnostic_button");
   diagnosticUi?.classList.toggle("hidden",!diagnosticAllowed);
   if(!diagnosticAllowed){const diagnosticStatus=$("#stripeTestAccountDiagnosticStatus");if(diagnosticStatus){diagnosticStatus.textContent="";diagnosticStatus.classList.add("hidden")}}
@@ -5091,7 +5109,7 @@ function renderPro(){
    btn.disabled=manage?(live?!proState.live_provider_ready:!testEnabled):(live?!liveEnabled:!testCheckoutEnabled);
     renderProTestAvailability(testCheckoutBlocked);
 }
-async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok)proState={...j,active:Boolean(j.active),beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),test_payments_enabled:Boolean(j.test_payments_enabled),live_payments_enabled:Boolean(j.live_payments_enabled),stripe_test_account_diagnostic_enabled:j.stripe_test_account_diagnostic_enabled===true,entitlement:j.entitlement||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,commercial_preview:true,subscription:null}}renderPro();const result=new URLSearchParams(location.search).get("billing");if(result==="test-success")proMessage(proState.active?"Droit PRO confirmé par le serveur. Aucun paiement réel.":"Retour Checkout TEST reçu. Activation en attente du webhook Stripe ; ce retour seul ne donne aucun droit.");if(result==="live-success")proMessage(proState.active?"Droit PRO confirmé par le serveur après webhook signé.":"Retour Checkout reçu. L’accès reste en attente du webhook signé; le retour navigateur seul ne donne aucun droit.")}
+async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,stripe_test_account_diagnostic_visible:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok)proState={...j,active:Boolean(j.active),beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),test_payments_enabled:Boolean(j.test_payments_enabled),live_payments_enabled:Boolean(j.live_payments_enabled),stripe_test_account_diagnostic_enabled:j.stripe_test_account_diagnostic_enabled===true,stripe_test_account_diagnostic_visible:j.stripe_test_account_diagnostic_visible===true,entitlement:j.entitlement||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,stripe_test_account_diagnostic_visible:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,stripe_test_account_diagnostic_visible:false,commercial_preview:true,subscription:null}}renderPro();const result=new URLSearchParams(location.search).get("billing");if(result==="test-success")proMessage(proState.active?"Droit PRO confirmé par le serveur. Aucun paiement réel.":"Retour Checkout TEST reçu. Activation en attente du webhook Stripe ; ce retour seul ne donne aucun droit.");if(result==="live-success")proMessage(proState.active?"Droit PRO confirmé par le serveur après webhook signé.":"Retour Checkout reçu. L’accès reste en attente du webhook signé; le retour navigateur seul ne donne aucun droit.")}
 function requirePro(){if(safeLaunchBetaMode()){if(!requireBetaAccess()||!requireBetaConsent())return false;return true}if(proState.active)return true;openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"center"}),160);proMessage(cloudSession?.user?t("pro_required"):t("connect_pro"));return false}
 let proActionBusy=false,proTestSetupAlreadySucceeded=false,proTestOwnerId="";
 let proTestStripe=null,proTestElements=null,proTestSetupIntentId="",proTestSetupSecret="",proTestPaymentSecret="",proTestPaymentMethodId="";

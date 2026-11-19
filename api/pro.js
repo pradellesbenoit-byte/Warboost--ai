@@ -4,7 +4,7 @@ import {entitlementForUser} from "../lib/pro-access.js";
 import {billingRow} from "../lib/billing-store.js";
 import {commercialConfig,commercialStatusForUser,createCheckoutForUser,createPortalForUser,processWebhook,readRawBody,paymentWebhookSignature} from "../lib/commercial-pro.js";
 import {createTestPaymentSetup,prepareTestSubscriptionPayment,cancelTestPendingSubscription} from "../lib/stripe-test-payment-flow.js";
-import {isStripeTestDiagnosticAdmin,stripeTestAccountDiagnosticAvailable,stripeTestAccountDiagnosticEnabledFor,inspectStripeTestAccount} from "../lib/stripe-test-account-diagnostic.js";
+import {isStripeTestDiagnosticAdmin,stripeTestAccountDiagnosticAvailable,stripeTestAccountDiagnosticEnabledFor,stripeTestAccountDiagnosticVisibleFor,inspectStripeTestAccount} from "../lib/stripe-test-account-diagnostic.js";
 
 // Safe Launch defaults to OFF. TEST and LIVE use separate credentials and storage.
 // Preserve the exact signed bytes (Vercel and local server).
@@ -38,10 +38,10 @@ export default async function handler(req,res){
       catch{return res.status(401).json({success:false,error_code:"AUTH_REQUIRED"})}
       if(!isStripeTestDiagnosticAdmin(diagnosticUser))
         return res.status(403).json({success:false,error_code:"ADMIN_REQUIRED"});
-      if(!stripeTestAccountDiagnosticAvailable())
+      if(process.env.VERCEL_ENV!=="preview")
         return res.status(403).json({success:false,error_code:"TEST_DIAGNOSTIC_ENVIRONMENT_BLOCKED"});
       const result=await inspectStripeTestAccount();
-      return res.status(result.success?200:502).json(result);
+      return res.status(result.success?200:result.error_code==="TEST_DIAGNOSTIC_ENVIRONMENT_BLOCKED"?403:502).json(result);
     }
     const user=await requireUser(req),beta=await betaAccessForUserAsync(user);
     if(req.method==="GET"){
@@ -70,6 +70,7 @@ export default async function handler(req,res){
          pro_included:entitlement.source==="beta",entitlement,subscription:entitlement.subscription,
          can_manage_billing:Boolean(account?.stripe_customer_id||account?.stripe_live_customer_id),
          stripe_test_account_diagnostic_enabled:stripeTestAccountDiagnosticEnabledFor(user),
+         stripe_test_account_diagnostic_visible:stripeTestAccountDiagnosticVisibleFor(user),
          commercial_preview:commerce.mode!=="test",mode:commerce.mode,activation_requirements:commerce.activation_requirements
       });
     }
