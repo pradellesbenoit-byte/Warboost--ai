@@ -23,7 +23,7 @@ export default async function handler(req,res){
   const commerce=commercialConfig();
   const requestStartedAt=Date.now();
   let requestAction="",requestStage="validation",requestAuthenticated=false;
-  const setupStages=new Set(["validation","price_product","database","customer","setup_intent","setup_intent_verify"]);
+  const setupStages=new Set(["validation","price_product","database","customer","setup_intent","setup_intent_verify","subscription_reconcile"]);
   const setupDiagnostic=stage=>({stage,elapsed_ms:Math.max(0,Math.min(120000,Date.now()-requestStartedAt))});
   const testFlowError=(status,error,message,stage=requestStage)=>{
     const payload={ok:false,error,message};

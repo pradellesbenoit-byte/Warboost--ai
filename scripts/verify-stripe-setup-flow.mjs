@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {billingFixture,userA,userB,userFree} from "./billing-test-fixture.mjs";
+import {billingFixture,userA,userB,userBeta,userCountry,userFree} from "./billing-test-fixture.mjs";
 import {processWebhook} from "../lib/commercial-pro.js";
 import {entitlementForUser} from "../lib/pro-access.js";
 import proHandler from "../api/pro.js";
@@ -17,6 +17,8 @@ const signedConsent={confirm_test_only:true,test_subscription_consent:true,
 const stripeCalls=()=>fixture.calls.filter(call=>call.host==="api.stripe.com");
 const stripeCallsFor=path=>stripeCalls().filter(call=>call.path===`/v1/${path}`);
 const stripeWrites=()=>stripeCalls().filter(call=>["POST","DELETE"].includes(call.opts?.method));
+const noLiveStripeCalls=()=>assert.ok(stripeCalls().every(call=>
+  !/^Bearer (?:sk|rk)_live_/.test(String(call.opts?.headers?.authorization||""))));
 const user=id=>({id,email:`${id.slice(-1)}@example.test`});
 async function post(id,body){
   let result;
@@ -46,6 +48,7 @@ try{
       (user_id,attempt_id,state,billing_country,consent_version,expires_at)
       values($1,gen_random_uuid(),'canceled','FR','fixture-v1',now()+interval '1 hour')`,[userA]);
     await fixture.pg.exec(fs.readFileSync("supabase/migration_v2_5_35_test_setup_intents.sql","utf8"));
+    await fixture.pg.exec(fs.readFileSync("supabase/migration_v2_5_36_test_payment_retry_recovery.sql","utf8"));
     const row=(await fixture.pg.query("select state from warboost_test_payment_attempts where user_id=$1",[userA])).rows[0];
     assert.equal(row.state,"canceled");
     const rls=(await fixture.pg.query(`select relrowsecurity from pg_class where oid='public.warboost_test_payment_attempts'::regclass`)).rows[0];
@@ -134,6 +137,100 @@ try{
     const tampered=await prepare(userA,userASetup,"US");
     assert.equal(tampered.status,403);assert.equal(tampered.data.error,"TEST_BILLING_COUNTRY_MISMATCH");
     assert.equal(fixture.subscriptions.size,before);assert.equal(fixture.paymentIntents.size,0);
+  });
+
+  await check("Expired subscription lease reconciles the same customer, SetupIntent, country and existing invoice without duplicate creation",async()=>{
+    const setup=await start(userB);
+    assert.equal(setup.status,200);
+    fixture.completeSetup(setup.data.setup_intent_id,{country:"FR"});
+    const prepared=await prepare(userB,setup.data.setup_intent_id,"FR");
+    assert.equal(prepared.status,200);
+    const originalSubscription=fixture.subscriptions.get(prepared.data.subscription_id);
+    const beforeSubscriptionCount=fixture.subscriptions.size;
+    const beforeStripeWrites=stripeWrites().length;
+    await fixture.pg.query(`update warboost_test_payment_attempts
+      set state='subscription_creating',lease_until=now()+interval '60 seconds' where user_id=$1`,[userB]);
+    const busy=await start(userB);
+    assert.equal(busy.status,409);assert.equal(busy.data.error,"TEST_PAYMENT_BUSY");
+    assert.equal(fixture.subscriptions.size,beforeSubscriptionCount);
+    assert.equal(stripeWrites().length,beforeStripeWrites);
+
+    await fixture.pg.query(`update warboost_test_payment_attempts
+      set lease_until=now()-interval '1 second' where user_id=$1`,[userB]);
+    const oldApproved=process.env.WARBOOST_TEST_APPROVED_BILLING_COUNTRIES;
+    const oldTaxReady=process.env.WARBOOST_TEST_TAX_READY_COUNTRIES;
+    process.env.WARBOOST_TEST_APPROVED_BILLING_COUNTRIES="FR,DE";
+    process.env.WARBOOST_TEST_TAX_READY_COUNTRIES="FR,DE";
+    const wrongCountry=await start(userB,"DE");
+    process.env.WARBOOST_TEST_APPROVED_BILLING_COUNTRIES=oldApproved;
+    process.env.WARBOOST_TEST_TAX_READY_COUNTRIES=oldTaxReady;
+    assert.equal(wrongCountry.status,409);assert.equal(wrongCountry.data.error,"TEST_PAYMENT_RESTART_REQUIRED");
+    const wrongConsent=await start(userB,"FR",{test_subscription_consent_version:"stale-consent"});
+    assert.equal(wrongConsent.status,428);assert.equal(wrongConsent.data.error,"TEST_SUBSCRIPTION_CONSENT_REQUIRED");
+
+    const [retryA,retryB]=await Promise.all([start(userB),start(userB)]);
+    for(const recovered of [retryA,retryB]){
+      assert.equal(recovered.status,200);assert.equal(recovered.data.state,"payment_pending");
+      assert.equal(recovered.data.setup_intent_id,setup.data.setup_intent_id);
+    }
+    assert.equal((await attempt(userB)).state,"subscription_creating",
+      "setup reconciliation must not rewrite or reset the in-flight database row");
+    assert.equal((await fixture.pg.query(
+      "select lease_until<now() as expired from warboost_test_payment_attempts where user_id=$1",[userB]
+    )).rows[0].expired,true,
+      "setup reconciliation must not steal the stale subscription retry lease");
+    assert.equal(fixture.subscriptions.size,beforeSubscriptionCount);
+    assert.equal(stripeWrites().length,beforeStripeWrites);
+
+    const resumed=await prepare(userB,setup.data.setup_intent_id,"FR");
+    assert.equal(resumed.status,200);assert.equal(resumed.data.state,"payment_confirmation_required");
+    assert.equal(resumed.data.subscription_id,originalSubscription.id);
+    assert.equal(fixture.subscriptions.size,beforeSubscriptionCount,"retry must reuse, not duplicate, the existing subscription");
+    assert.equal(stripeCalls().filter(call=>call.path==="/v1/subscriptions"&&call.opts?.method==="POST").length,1);
+    assert.notEqual(fixture.paymentIntents.get(resumed.data.payment_intent_id).status,"succeeded");
+    noLiveStripeCalls();noSucceededPayment();
+  });
+
+  await check("Expired attempt with no Stripe subscription resumes SetupIntent then creates only one incomplete TEST subscription",async()=>{
+    const beforeSubscriptionCount=fixture.subscriptions.size;
+    const setup=await start(userCountry);
+    assert.equal(setup.status,200);
+    fixture.completeSetup(setup.data.setup_intent_id,{country:"FR"});
+    fixture.failSubscriptionBeforeCreationOnce=true;
+    const failed=await prepare(userCountry,setup.data.setup_intent_id,"FR");
+    assert.equal(failed.status,502);assert.equal(failed.data.error,"PAYMENT_PROVIDER_ERROR");
+    assert.equal((await attempt(userCountry)).state,"subscription_creating");
+    assert.equal(fixture.subscriptions.size,beforeSubscriptionCount);
+    await fixture.pg.query(`update warboost_test_payment_attempts
+      set lease_until=now()-interval '1 second' where user_id=$1`,[userCountry]);
+    const beforeStripeWrites=stripeWrites().length;
+    const resumedSetup=await start(userCountry);
+    assert.equal(resumedSetup.status,200);assert.equal(resumedSetup.data.state,"setup_succeeded");
+    assert.equal(resumedSetup.data.setup_intent_id,setup.data.setup_intent_id);
+    assert.equal(stripeWrites().length,beforeStripeWrites,"setup recovery must use only Stripe reads");
+    const retry=await prepare(userCountry,setup.data.setup_intent_id,"FR");
+    assert.equal(retry.status,200);assert.equal(retry.data.state,"payment_confirmation_required");
+    assert.equal(fixture.subscriptions.size,beforeSubscriptionCount+1);
+    assert.equal(fixture.subscriptions.get(retry.data.subscription_id).status,"incomplete");
+    assert.notEqual(fixture.paymentIntents.get(retry.data.payment_intent_id).status,"succeeded");
+    noLiveStripeCalls();noSucceededPayment();
+  });
+
+  await check("Stripe lookup errors during stale recovery fail closed without creating a subscription",async()=>{
+    const beforeSubscriptionCount=fixture.subscriptions.size;
+    const setup=await start(userBeta);
+    assert.equal(setup.status,200);
+    fixture.completeSetup(setup.data.setup_intent_id,{country:"FR"});
+    await fixture.pg.query(`update warboost_test_payment_attempts set state='subscription_creating',
+      lease_until=now()-interval '1 second' where user_id=$1`,[userBeta]);
+    fixture.failSubscriptionLookupOnce=true;
+    const beforeStripeWrites=stripeWrites().length;
+    const result=await start(userBeta);
+    assert.equal(result.status,502);assert.equal(result.data.error,"PAYMENT_PROVIDER_ERROR");
+    assert.equal(result.data.diagnostic.stage,"subscription_reconcile");
+    assert.equal(fixture.subscriptions.size,beforeSubscriptionCount);
+    assert.equal(stripeWrites().length,beforeStripeWrites);
+    noLiveStripeCalls();noSucceededPayment();
   });
 
   await check("Unresolved Stripe tax calculation cancels the incomplete subscription before payment confirmation",async()=>{

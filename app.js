@@ -5124,7 +5124,7 @@ const PRO_TEST_SETUP_STAGE_KEYS={
   validation:"pro_test_stage_validation",price_product:"pro_test_stage_price_product",
   database:"pro_test_stage_database",customer:"pro_test_stage_customer",
   setup_intent:"pro_test_stage_setup_intent",setup_intent_verify:"pro_test_stage_setup_intent_verify",
-  setup_intent_ready:"pro_test_stage_setup_intent_ready",
+  setup_intent_ready:"pro_test_stage_setup_intent_ready",subscription_reconcile:"pro_test_stage_subscription_reconcile",
   stripe_js:"pro_test_stage_stripe_js",elements_create:"pro_test_stage_elements_create",
   elements_mount:"pro_test_stage_elements_mount",request:"pro_test_stage_request"
 };

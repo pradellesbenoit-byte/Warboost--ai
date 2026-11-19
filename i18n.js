@@ -3046,7 +3046,8 @@ Object.assign(EN,{
    pro_test_stage_setup_intent:"SetupIntent",pro_test_stage_setup_intent_verify:"SetupIntent verification",
    pro_test_stage_setup_intent_ready:"SetupIntent ready",pro_test_stage_stripe_js:"Stripe.js",
    pro_test_stage_elements_create:"form creation",pro_test_stage_elements_mount:"form mounting",
-   pro_test_stage_request:"server request",pro_test_stage_payment_method:"payment method",
+   pro_test_stage_request:"server request",pro_test_stage_subscription_reconcile:"subscription recovery",
+   pro_test_stage_payment_method:"payment method",
    pro_test_stage_subscription:"subscription",pro_test_stage_invoice_tax:"invoice/tax"
 });
 Object.assign(FR,{
@@ -3120,7 +3121,8 @@ Object.assign(FR,{
    pro_test_stage_setup_intent:"SetupIntent",pro_test_stage_setup_intent_verify:"vérification SetupIntent",
    pro_test_stage_setup_intent_ready:"SetupIntent prêt",pro_test_stage_stripe_js:"Stripe.js",
    pro_test_stage_elements_create:"création du formulaire",pro_test_stage_elements_mount:"montage du formulaire",
-   pro_test_stage_request:"requête serveur",pro_test_stage_payment_method:"moyen de paiement",
+   pro_test_stage_request:"requête serveur",pro_test_stage_subscription_reconcile:"réconciliation de la tentative",
+   pro_test_stage_payment_method:"moyen de paiement",
    pro_test_stage_subscription:"abonnement",pro_test_stage_invoice_tax:"facture/taxes"
 });
 for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
@@ -3154,6 +3156,7 @@ for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
    pro_test_stage_setup_intent_ready:FR.pro_test_stage_setup_intent_ready,pro_test_stage_stripe_js:FR.pro_test_stage_stripe_js,
    pro_test_stage_elements_create:FR.pro_test_stage_elements_create,pro_test_stage_elements_mount:FR.pro_test_stage_elements_mount,
    pro_test_stage_request:FR.pro_test_stage_request,pro_test_stage_payment_method:FR.pro_test_stage_payment_method,
+   pro_test_stage_subscription_reconcile:FR.pro_test_stage_subscription_reconcile,
    pro_test_stage_subscription:FR.pro_test_stage_subscription,pro_test_stage_invoice_tax:FR.pro_test_stage_invoice_tax
 }:{
   pro_live_consent:EN.pro_live_consent,pro_live_country:EN.pro_live_country,
@@ -3186,5 +3189,6 @@ for(const [code,pack] of Object.entries(packs))Object.assign(pack,code==="fr"?{
    pro_test_stage_setup_intent_ready:EN.pro_test_stage_setup_intent_ready,pro_test_stage_stripe_js:EN.pro_test_stage_stripe_js,
    pro_test_stage_elements_create:EN.pro_test_stage_elements_create,pro_test_stage_elements_mount:EN.pro_test_stage_elements_mount,
    pro_test_stage_request:EN.pro_test_stage_request,pro_test_stage_payment_method:EN.pro_test_stage_payment_method,
+   pro_test_stage_subscription_reconcile:EN.pro_test_stage_subscription_reconcile,
    pro_test_stage_subscription:EN.pro_test_stage_subscription,pro_test_stage_invoice_tax:EN.pro_test_stage_invoice_tax
 });

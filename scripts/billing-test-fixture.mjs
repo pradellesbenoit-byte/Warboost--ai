@@ -21,7 +21,7 @@ export async function billingFixture(){
   for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLive,"live@example.test"],[userCountry,"country@example.test"]])
     await pg.query("insert into auth.users(id,email,created_at) values($1,$2,now()-interval '1 day')",[id,email]);
   await pg.query("insert into wb1_beta_invites(email,status,invited_at,accepted_user_id) values('beta@example.test','accepted',now()-interval '1 day',$1)",[userBeta]);
-  const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql","supabase/migration_v2_5_33_live_billing_preparation.sql","supabase/migration_v2_5_34_account_reset_generation.sql","supabase/migration_v2_5_35_test_setup_intents.sql"];
+  const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql","supabase/migration_v2_5_33_live_billing_preparation.sql","supabase/migration_v2_5_34_account_reset_generation.sql","supabase/migration_v2_5_35_test_setup_intents.sql","supabase/migration_v2_5_36_test_payment_retry_recovery.sql"];
   for(const path of migrations)await pg.exec(fs.readFileSync(path,"utf8"));
   const oldEnv={...process.env},oldFetch=globalThis.fetch;
   Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"test",WARBOOST_APP_URL:"https://beta.warboost.fr",STRIPE_SECRET_KEY:"sk_test_fixture_only",
@@ -32,6 +32,7 @@ export async function billingFixture(){
   const fixture={pg,migrations,calls:[],customers:new Map(),subscriptions:new Map(),sessions:new Map(),
     setupIntents:new Map(),paymentMethods:new Map(),invoices:new Map(),paymentIntents:new Map(),idempotency:new Map(),
     failDb:false,failApplyOnce:false,failCheckoutOnce:false,failSetupOnce:false,failSubscriptionOnce:false,
+    failSubscriptionBeforeCreationOnce:false,failSubscriptionLookupOnce:false,
     priceOverride:{},livePriceOverride:{},productOverride:{},
     providerLive:false,card:"accepted",taxStatus:"complete",invoiceAmount:499,paymentIntentStatus:"requires_payment_method"};
   fixture.price=(mode="test")=>mode==="live"?
@@ -98,6 +99,14 @@ export async function billingFixture(){
     if(path==="setup_intents"&&opts.method==="POST"&&fixture.failSetupOnce){
       fixture.failSetupOnce=false;return json({error:{message:"SIMULATED_SETUP_FAILURE"}},503);
     }
+    if(path==="subscriptions"&&opts.method==="POST"&&fixture.failSubscriptionBeforeCreationOnce){
+      fixture.failSubscriptionBeforeCreationOnce=false;
+      return json({error:{message:"SIMULATED_SUBSCRIPTION_FAILURE_BEFORE_CREATION"}},503);
+    }
+    if(path==="subscriptions"&&opts.method!=="POST"&&fixture.failSubscriptionLookupOnce){
+      fixture.failSubscriptionLookupOnce=false;
+      return json({error:{message:"SIMULATED_SUBSCRIPTION_LOOKUP_FAILURE"}},503);
+    }
     if(path==="prices/price_pro_test")out=fixture.price();
     else if(path==="prices/price_pro_live_fixture")out=fixture.price("live");
     else if(path==="products/prod_pro_test")out={id:"prod_pro_test",object:"product",livemode:false,active:true,...fixture.productOverride};
@@ -133,7 +142,8 @@ export async function billingFixture(){
         amount_due:fixture.invoiceAmount,total:fixture.invoiceAmount,customer,subscription:id,
         automatic_tax:{enabled:params.get("automatic_tax[enabled]")==="true",status:fixture.taxStatus},
         total_tax_amounts:[{amount:0}],payment_intent:pi};
-      out={id,object:"subscription",livemode:false,status:"incomplete",customer,metadata,
+      out={id,object:"subscription",livemode:false,status:"incomplete",customer,
+        default_payment_method:params.get("default_payment_method"),metadata,
         current_period_end:Math.floor(Date.now()/1000)+30*24*60*60,
         items:{data:[{quantity:1,price:fixture.price()}],has_more:false},latest_invoice:invoice,
         automatic_tax:{enabled:params.get("automatic_tax[enabled]")==="true"}};
