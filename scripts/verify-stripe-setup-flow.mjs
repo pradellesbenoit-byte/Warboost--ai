@@ -216,7 +216,8 @@ try{
 
   await check("Setup diagnostics never expose provider bodies or weaken TEST, admin, country, or tax gates",async()=>{
     const api=fs.readFileSync("api/pro.js","utf8"),flow=fs.readFileSync("lib/stripe-test-payment-flow.js","utf8");
-    assert.match(api,/const user=await requireUser\(req\),beta=await betaAccessForUserAsync\(user\)/);
+    assert.match(api,/const user=await requireUser\(req\);requestAuthenticated=true;\s*const beta=await betaAccessForUserAsync\(user\)/);
+    assert.match(api,/requestAction==="prepare_test_subscription"&&commerce\.mode==="test"&&commerce\.test_payments_enabled&&requestAuthenticated/);
     assert.match(api,/commerce\.mode!=="test"\|\|!commerce\.test_payments_enabled/);
     assert.match(api,/confirm_test_only!==true\|\|body\?\.test_subscription_consent!==true/);
     assert.match(api,/isStripeTestDiagnosticAdmin\(diagnosticUser\)/);

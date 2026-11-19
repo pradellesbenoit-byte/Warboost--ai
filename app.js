@@ -12,6 +12,7 @@ import {createSaveDiagnostic,safeSaveDiagnostic,newSaveCorrelation,publicSaveErr
 import {normalizeResetGeneration,resetGenerationDecision,resetGenerationRequestMatches,quarantineOwnedAccountCaches,preserveForeignCacheBeforeReplace} from "./lib/reset-generation.js";
 import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
 import {createAndMountStripeTestElement,normalizeStripeSetupDiagnostic,stripeSetupRequestFailure} from "./lib/stripe-test-element-ui.js";
+import {sanitizeStripeProviderDiagnostic} from "./lib/stripe-provider-diagnostic.js";
 import {buildPlayerScanOptions,normalizePlayerScanType,scanSquadId} from "./lib/player-scan-types.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation,heroDisplayName} from "./lib/heroes.js";
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
@@ -5127,6 +5128,21 @@ const PRO_TEST_SETUP_STAGE_KEYS={
   stripe_js:"pro_test_stage_stripe_js",elements_create:"pro_test_stage_elements_create",
   elements_mount:"pro_test_stage_elements_mount",request:"pro_test_stage_request"
 };
+const PRO_TEST_PROVIDER_STAGE_KEYS={
+  setup_intent:"pro_test_stage_setup_intent",payment_method:"pro_test_stage_payment_method",
+  price:"pro_test_stage_price_product",customer:"pro_test_stage_customer",
+  subscription:"pro_test_stage_subscription",invoice_tax:"pro_test_stage_invoice_tax"
+};
+function stripeProviderDiagnosticText(value){
+  const diagnostic=sanitizeStripeProviderDiagnostic(value);if(!diagnostic)return "";
+  return t("pro_test_provider_diagnostic",{
+    stage:t(PRO_TEST_PROVIDER_STAGE_KEYS[diagnostic.stage]||"pro_test_stage_subscription"),
+    source:diagnostic.source==="transport"?"network":"stripe",
+    http:diagnostic.stripe_http_status===null?t("pro_test_setup_no_http"):String(diagnostic.stripe_http_status),
+    type:diagnostic.stripe_error_type,code:diagnostic.stripe_error_code,
+    request_id:diagnostic.stripe_request_id||"—"
+  });
+}
 function safeProTestSetupDiagnostic(value,fallbackStage="request"){
   const data=normalizeStripeSetupDiagnostic(value,fallbackStage),status=data.http_status===null?
     t("pro_test_setup_no_http"):String(data.http_status);
@@ -5191,6 +5207,8 @@ async function proTestApi(action,extra={}){
     code:/^[A-Z][A-Z0-9_]{1,63}$/.test(String(json?.error||json?.code||""))?String(json.error||json.code):"SETUP_FAILED",
     safeMessage:proTestCheckoutError(json?.error||json?.code,json?.message),
     safeDiagnostic:{...diagnostic,code:/^[A-Z][A-Z0-9_]{1,63}$/.test(String(json?.error||json?.code||""))?String(json.error||json.code):"SETUP_FAILED"},
+    safeStripeProviderDiagnostic:action==="prepare_test_subscription"&&proState.mode==="test"?
+      sanitizeStripeProviderDiagnostic(json?.diagnostic):null,
     serverResponse:true});
   if(json?.mode!=="test"||json?.test!==true||json?.live!==false)
     throw Object.assign(new Error(t("pro_test_checkout_error")),{safeMessage:t("pro_test_checkout_error"),
@@ -5307,7 +5325,8 @@ async function prepareProTestInvoice(){
     if(setupBtn){setupBtn.classList.add("hidden");setupBtn.disabled=false}
     payBtn?.classList.remove("hidden");cancelBtn?.classList.remove("hidden");
   }catch(error){
-    proTestStatusText(error.message||t("pro_test_payment_error"),true);
+    const message=error.message||t("pro_test_payment_error"),diagnostic=stripeProviderDiagnosticText(error.safeStripeProviderDiagnostic);
+    proTestStatusText(diagnostic?`${message} ${diagnostic}`:message,true);
     if(setupBtn)setupBtn.disabled=false;
   }
 }

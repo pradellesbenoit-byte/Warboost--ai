@@ -5,6 +5,7 @@ import {billingRow} from "../lib/billing-store.js";
 import {commercialConfig,commercialStatusForUser,createCheckoutForUser,createPortalForUser,processWebhook,readRawBody,paymentWebhookSignature} from "../lib/commercial-pro.js";
 import {createTestPaymentSetup,prepareTestSubscriptionPayment,cancelTestPendingSubscription} from "../lib/stripe-test-payment-flow.js";
 import {isStripeTestDiagnosticAdmin,stripeTestAccountDiagnosticAvailable,stripeTestAccountDiagnosticEnabledFor,stripeTestAccountDiagnosticVisibleFor,inspectStripeTestAccount} from "../lib/stripe-test-account-diagnostic.js";
+import {stripeProviderFailurePayload} from "../lib/stripe-provider-diagnostic.js";
 
 // Safe Launch defaults to OFF. TEST and LIVE use separate credentials and storage.
 // Preserve the exact signed bytes (Vercel and local server).
@@ -21,7 +22,7 @@ export default async function handler(req,res){
   res.setHeader("Cache-Control","no-store, max-age=0");
   const commerce=commercialConfig();
   const requestStartedAt=Date.now();
-  let requestAction="",requestStage="validation";
+  let requestAction="",requestStage="validation",requestAuthenticated=false;
   const setupStages=new Set(["validation","price_product","database","customer","setup_intent","setup_intent_verify"]);
   const setupDiagnostic=stage=>({stage,elapsed_ms:Math.max(0,Math.min(120000,Date.now()-requestStartedAt))});
   const testFlowError=(status,error,message,stage=requestStage)=>{
@@ -52,7 +53,8 @@ export default async function handler(req,res){
       const result=await inspectStripeTestAccount();
       return res.status(result.success?200:result.error_code==="TEST_DIAGNOSTIC_ENVIRONMENT_BLOCKED"?403:502).json(result);
     }
-    const user=await requireUser(req),beta=await betaAccessForUserAsync(user);
+    const user=await requireUser(req);requestAuthenticated=true;
+    const beta=await betaAccessForUserAsync(user);
     if(req.method==="GET"){
       const entitlement=await entitlementForUser(user,{beta});
         const account=entitlement.schema_ready?await billingRow("warboost_billing_accounts","user_id",user.id):null;
@@ -160,6 +162,15 @@ export default async function handler(req,res){
     }
     return res.status(405).json({error:"method_not_allowed"});
   }catch(e){
+    if(requestAction==="prepare_test_subscription"&&commerce.mode==="test"&&commerce.test_payments_enabled&&requestAuthenticated){
+      const providerFailure=stripeProviderFailurePayload(e,{
+        mode:commerce.mode,action:requestAction,authenticated:requestAuthenticated
+      });
+      if(providerFailure)return res.status(e?.status||502).json({
+        ok:false,error:e?.code||"PAYMENT_PROVIDER_ERROR",
+        message:e?.message||"Stripe TEST a refusé la demande.",...providerFailure
+      });
+    }
     if(requestAction==="test_setup_intent"){
       const safeCode=/^[A-Z][A-Z0-9_]{1,63}$/.test(String(e?.code||""))?String(e.code):"TEST_SETUP_FAILED";
       const stage=setupStages.has(e?.diagnosticStage)?e.diagnosticStage:requestStage;
