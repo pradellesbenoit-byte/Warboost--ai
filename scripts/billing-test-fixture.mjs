@@ -8,6 +8,8 @@ export const userBeta="10000000-0000-4000-8000-000000000003";
 export const userFree="10000000-0000-4000-8000-000000000004";
 export const userLive="10000000-0000-4000-8000-000000000005";
 export const userCountry="10000000-0000-4000-8000-000000000007";
+export const userRecovery="10000000-0000-4000-8000-000000000008";
+export const userAmbiguous="10000000-0000-4000-8000-000000000009";
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json"}});
 export async function billingFixture(){
   const pg=new PGlite();
@@ -18,10 +20,10 @@ export async function billingFixture(){
     create table public.wb1_snapshots(id bigint generated always as identity primary key,player_id text not null,state jsonb not null,source text not null default 'warboost',captured_at timestamptz not null default now());
     create table public.wb1_beta_invites(id uuid primary key default gen_random_uuid(),email text unique,status text,
       invited_at timestamptz default now(),accepted_user_id text,expires_at timestamptz,accepted_at timestamptz,updated_at timestamptz);`);
-  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLive,"live@example.test"],[userCountry,"country@example.test"]])
+  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLive,"live@example.test"],[userCountry,"country@example.test"],[userRecovery,"recovery@example.test"],[userAmbiguous,"ambiguous@example.test"]])
     await pg.query("insert into auth.users(id,email,created_at) values($1,$2,now()-interval '1 day')",[id,email]);
   await pg.query("insert into wb1_beta_invites(email,status,invited_at,accepted_user_id) values('beta@example.test','accepted',now()-interval '1 day',$1)",[userBeta]);
-  const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql","supabase/migration_v2_5_33_live_billing_preparation.sql","supabase/migration_v2_5_34_account_reset_generation.sql","supabase/migration_v2_5_35_test_setup_intents.sql","supabase/migration_v2_5_36_test_payment_retry_recovery.sql"];
+  const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql","supabase/migration_v2_5_33_live_billing_preparation.sql","supabase/migration_v2_5_34_account_reset_generation.sql","supabase/migration_v2_5_35_test_setup_intents.sql","supabase/migration_v2_5_36_test_payment_retry_recovery.sql","supabase/migration_v2_5_37_test_payment_expired_recovery.sql"];
   for(const path of migrations)await pg.exec(fs.readFileSync(path,"utf8"));
   const oldEnv={...process.env},oldFetch=globalThis.fetch;
   Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"test",WARBOOST_APP_URL:"https://beta.warboost.fr",STRIPE_SECRET_KEY:"sk_test_fixture_only",
