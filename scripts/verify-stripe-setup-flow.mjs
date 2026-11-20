@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {billingFixture,userA,userB,userBeta,userCountry,userFree,userRecovery,userAmbiguous} from "./billing-test-fixture.mjs";
+import {billingFixture,userA,userB,userBeta,userCountry,userFree,userRecovery,userAmbiguous,userCachedCreateError} from "./billing-test-fixture.mjs";
 import {processWebhook} from "../lib/commercial-pro.js";
 import {entitlementForUser} from "../lib/pro-access.js";
 import proHandler from "../api/pro.js";
@@ -53,12 +53,15 @@ try{
     await fixture.pg.exec(fs.readFileSync("supabase/migration_v2_5_36_test_payment_retry_recovery.sql","utf8"));
     await fixture.pg.exec(fs.readFileSync("supabase/migration_v2_5_37_test_payment_expired_recovery.sql","utf8"));
     await fixture.pg.exec(fs.readFileSync("supabase/migration_v2_5_37_test_payment_expired_recovery.sql","utf8"));
+    await fixture.pg.exec(fs.readFileSync("supabase/migration_v2_5_38_test_subscription_idempotency_recovery.sql","utf8"));
+    await fixture.pg.exec(fs.readFileSync("supabase/migration_v2_5_38_test_subscription_idempotency_recovery.sql","utf8"));
     const row=(await fixture.pg.query("select state from warboost_test_payment_attempts where user_id=$1",[userA])).rows[0];
     assert.equal(row.state,"canceled");
     const columns=(await fixture.pg.query(`select column_name from information_schema.columns
       where table_schema='public' and table_name='warboost_test_payment_attempts'
-        and column_name='recovery_token'`)).rows;
-    assert.equal(columns.length,1,"recovery migration must be safely rerunnable");
+        and column_name in ('recovery_token','subscription_create_key_version',
+          'subscription_create_failure_version','subscription_create_failure_at')`)).rows;
+    assert.equal(columns.length,4,"recovery columns must be safely rerunnable");
     const rls=(await fixture.pg.query(`select relrowsecurity from pg_class where oid='public.warboost_test_payment_attempts'::regclass`)).rows[0];
     assert.equal(rls.relrowsecurity,true);
     const privileges=(await fixture.pg.query(`select
@@ -67,9 +70,20 @@ try{
       has_table_privilege('service_role','public.warboost_test_payment_attempts','select') as service_read,
       has_function_privilege('anon','public.warboost_finish_test_subscription_recovery(uuid,uuid,uuid,text,text,text,text,text)','execute') as anon_recover,
       has_function_privilege('authenticated','public.warboost_finish_test_subscription_recovery(uuid,uuid,uuid,text,text,text,text,text)','execute') as user_recover,
-      has_function_privilege('service_role','public.warboost_finish_test_subscription_recovery(uuid,uuid,uuid,text,text,text,text,text)','execute') as service_recover`)).rows[0];
+      has_function_privilege('anon','public.warboost_finish_test_subscription_recovery_v2(uuid,uuid,uuid,integer,text,text,text,text,text)','execute') as anon_recover_v2,
+      has_function_privilege('authenticated','public.warboost_finish_test_subscription_recovery_v2(uuid,uuid,uuid,integer,text,text,text,text,text)','execute') as user_recover_v2,
+      has_function_privilege('anon','public.warboost_claim_test_subscription_v2(uuid,uuid,text)','execute') as anon_claim_v2,
+      has_function_privilege('authenticated','public.warboost_record_test_subscription_create_failure_v2(uuid,uuid,uuid,integer,integer,text)','execute') as user_failure_v2,
+      has_function_privilege('service_role','public.warboost_finish_test_subscription_recovery_v2(uuid,uuid,uuid,integer,text,text,text,text,text)','execute') as service_recover,
+      has_function_privilege('service_role','public.warboost_record_test_subscription_v2(uuid,uuid,text,text,uuid,integer)','execute') as service_record_v2,
+      has_function_privilege('service_role','public.warboost_finish_test_subscription_v2(uuid,uuid,text,text,uuid,integer)','execute') as service_finish_v2`)).rows[0];
     assert.equal(privileges.anon_read,false);assert.equal(privileges.user_insert,false);assert.equal(privileges.service_read,true);
-    assert.equal(privileges.anon_recover,false);assert.equal(privileges.user_recover,false);assert.equal(privileges.service_recover,true);
+    assert.equal(privileges.anon_recover,false);assert.equal(privileges.user_recover,false);
+    assert.equal(privileges.anon_recover_v2,false);assert.equal(privileges.user_recover_v2,false);
+    assert.equal(privileges.service_recover,true);
+    assert.equal(privileges.anon_claim_v2,false);assert.equal(privileges.user_failure_v2,false);
+    assert.equal(privileges.service_record_v2,true);
+    assert.equal(privileges.service_finish_v2,true);
   });
 
   await check("Missing consent, disallowed country, or unconfigured tax are rejected before Stripe writes",async()=>{
@@ -321,6 +335,119 @@ try{
     assert.equal(replay.status,200);assert.equal(replay.data.subscription_id,recovered.data.subscription_id);
     assert.equal(stripeCalls().filter(call=>call.path==="/v1/subscriptions"&&call.opts?.method==="POST").length,subscriptionPostsBefore+2,
       "idempotent replay must not issue another subscription POST");
+    noLiveStripeCalls();noSucceededPayment();
+  });
+
+  await check("Cached Stripe 400 rotates the idempotency key only after cooldown and complete paginated reconciliation",async()=>{
+    const beforeSubscriptions=fixture.subscriptions.size;
+    const beforeInvoices=fixture.invoices.size;
+    const beforePaymentIntents=fixture.paymentIntents.size;
+    const subscriptionPostsBefore=stripeCalls().filter(call=>call.path==="/v1/subscriptions"&&call.opts?.method==="POST").length;
+    const originalPriceOverride={...fixture.priceOverride};
+    const setup=await start(userCachedCreateError);
+    assert.equal(setup.status,200);
+    fixture.completeSetup(setup.data.setup_intent_id,{country:"FR"});
+    fixture.failSubscriptionInvalidRequestOnce=true;
+    const failed=await prepare(userCachedCreateError,setup.data.setup_intent_id,"FR");
+    assert.equal(failed.status,502);
+    assert.equal(failed.data.error,"PAYMENT_PROVIDER_ERROR");
+    assert.equal(failed.data.diagnostic.stripe_http_status,400);
+    assert.equal(failed.data.diagnostic.stripe_error_type,"invalid_request_error");
+    assert.equal((await attempt(userCachedCreateError)).subscription_create_key_version,1);
+    assert.equal((await attempt(userCachedCreateError)).subscription_create_failure_version,1);
+    assert.equal(fixture.subscriptions.size,beforeSubscriptions);
+    const current=await attempt(userCachedCreateError);
+    const legacyKey=`wb-test-subscription-${current.attempt_id}`;
+    assert.equal(fixture.subscriptionErrorCache.has(legacyKey),true,
+      "the simulated provider caches the first 400 for the legacy key");
+    const firstSubscriptionPost=stripeCalls().filter(call=>call.path==="/v1/subscriptions"&&call.opts?.method==="POST").at(-1);
+    assert.equal(stripeCalls().filter(call=>call.path==="/v1/subscriptions"&&call.opts?.method==="POST").length,
+      subscriptionPostsBefore+1);
+    assert.equal(firstSubscriptionPost.opts.headers["Idempotency-Key"],legacyKey,
+      "key version 1 must remain compatible with the key already cached by Stripe");
+
+    fixture.priceOverride={tax_behavior:"inclusive"};
+    const writesBeforeCooldown=stripeWrites().length;
+    const coolingDown=await prepare(userCachedCreateError,setup.data.setup_intent_id,"FR");
+    assert.equal(coolingDown.status,409);assert.equal(coolingDown.data.error,"TEST_PAYMENT_BUSY");
+    assert.equal(stripeWrites().length,writesBeforeCooldown,
+      "a click during the five-minute cooldown cannot issue another Stripe write");
+    assert.equal((await attempt(userCachedCreateError)).subscription_create_key_version,1);
+
+    const timestamp=Math.floor(Date.now()/1000)-3600;
+    const customerId=current.stripe_customer_id;
+    for(let index=1;index<=2;index++){
+      const oldSubscriptionId=`sub_test_old_${index}`;
+      fixture.subscriptions.set(oldSubscriptionId,{id:oldSubscriptionId,object:"subscription",
+        livemode:false,status:"canceled",customer:customerId,metadata:{unrelated_fixture:"true"}});
+      const oldInvoiceId=`in_test_old_${index}`;
+      fixture.invoices.set(oldInvoiceId,{id:oldInvoiceId,object:"invoice",livemode:false,status:"void",
+        currency:"eur",amount_due:499,total:499,customer:customerId,subscription:oldSubscriptionId,
+        created:timestamp,metadata:{}});
+      const oldIntentId=`pi_test_old_${index}`;
+      fixture.paymentIntents.set(oldIntentId,{id:oldIntentId,object:"payment_intent",livemode:false,
+        status:"canceled",amount:499,currency:"eur",customer:customerId,
+        payment_method:"pm_old_fixture",invoice:oldInvoiceId,created:timestamp,metadata:{}});
+    }
+    const subscriptionsBeforeRecovery=fixture.subscriptions.size;
+    fixture.paginationPageSize=1;
+    const setExpiredCooldown=async()=>fixture.pg.query(`update warboost_test_payment_attempts
+      set lease_until=now()-interval '6 minutes',subscription_create_failure_at=now()-interval '6 minutes'
+      where user_id=$1`,[userCachedCreateError]);
+
+    await setExpiredCooldown();
+    fixture.failInvoiceLookupOnce=true;
+    const invoiceOutage=await prepare(userCachedCreateError,setup.data.setup_intent_id,"FR");
+    assert.equal(invoiceOutage.status,502);
+    assert.equal((await attempt(userCachedCreateError)).subscription_create_key_version,1);
+    assert.equal((await attempt(userCachedCreateError)).state,"subscription_creating");
+    assert.equal(fixture.subscriptions.size,subscriptionsBeforeRecovery);
+
+    await setExpiredCooldown();
+    fixture.failPaymentIntentLookupOnce=true;
+    const intentOutage=await prepare(userCachedCreateError,setup.data.setup_intent_id,"FR");
+    assert.equal(intentOutage.status,502);
+    assert.equal((await attempt(userCachedCreateError)).subscription_create_key_version,1);
+    assert.equal(fixture.subscriptions.size,subscriptionsBeforeRecovery);
+
+    await setExpiredCooldown();
+    const beforeWrites=stripeWrites().length;
+    const [retryA,retryB]=await Promise.all([
+      prepare(userCachedCreateError,setup.data.setup_intent_id,"FR"),
+      prepare(userCachedCreateError,setup.data.setup_intent_id,"FR")
+    ]);
+    const successful=[retryA,retryB].filter(result=>
+      result.status===200&&result.data.state==="payment_confirmation_required");
+    assert.equal(successful.length,1,"only one concurrent request may create the recovered subscription");
+    assert.ok([retryA,retryB].every(result=>
+      result.status===200&&result.data.state==="payment_confirmation_required"||
+      result.status===409&&result.data.error==="TEST_PAYMENT_BUSY"));
+    const after=await attempt(userCachedCreateError);
+    assert.equal(after.attempt_id,current.attempt_id,"recovery must preserve the attempt id");
+    assert.equal(after.subscription_create_key_version,2,"only verified absence after the failure rotates the key");
+    assert.equal(after.subscription_create_failure_version,null);
+    assert.equal(after.state,"payment_pending");
+    assert.equal(fixture.subscriptions.size,subscriptionsBeforeRecovery+1);
+    assert.equal(fixture.paymentIntents.size,beforePaymentIntents+3);
+    assert.equal(fixture.invoices.size,beforeInvoices+3);
+    const subscriptionPosts=stripeCalls().filter(call=>call.path==="/v1/subscriptions"&&call.opts?.method==="POST");
+    assert.equal(subscriptionPosts.length,subscriptionPostsBefore+2,"one cached 400 and one successful new-key create");
+    const keys=subscriptionPosts.slice(-2).map(call=>call.opts.headers["Idempotency-Key"]);
+    assert.deepEqual(keys,[legacyKey,`${legacyKey}-v2`]);
+    assert.equal(stripeCalls().filter(call=>call.path==="/v1/subscriptions"&&call.opts?.method!=="POST").length>=6,true,
+      "subscription reconciliation must follow pagination");
+    assert.equal(stripeCalls().filter(call=>call.path==="/v1/invoices"&&call.opts?.method!=="POST").length>=4,true,
+      "invoice reconciliation must follow pagination");
+    assert.equal(stripeCalls().filter(call=>call.path==="/v1/payment_intents"&&call.opts?.method!=="POST").length>=4,true,
+      "PaymentIntent reconciliation must follow pagination");
+    assert.equal(stripeWrites().length,beforeWrites+1,"recovery must perform exactly one provider write");
+    const replay=await prepare(userCachedCreateError,setup.data.setup_intent_id,"FR");
+    assert.equal(replay.status,200);
+    assert.equal(replay.data.subscription_id,successful[0].data.subscription_id);
+    assert.equal(stripeCalls().filter(call=>call.path==="/v1/subscriptions"&&call.opts?.method==="POST").length,subscriptionPostsBefore+2,
+      "replay must reuse the persisted subscription without another create");
+    fixture.priceOverride=originalPriceOverride;
+    fixture.paginationPageSize=100;
     noLiveStripeCalls();noSucceededPayment();
   });
 

@@ -10,6 +10,7 @@ export const userLive="10000000-0000-4000-8000-000000000005";
 export const userCountry="10000000-0000-4000-8000-000000000007";
 export const userRecovery="10000000-0000-4000-8000-000000000008";
 export const userAmbiguous="10000000-0000-4000-8000-000000000009";
+export const userCachedCreateError="10000000-0000-4000-8000-000000000010";
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json"}});
 export async function billingFixture(){
   const pg=new PGlite();
@@ -20,10 +21,10 @@ export async function billingFixture(){
     create table public.wb1_snapshots(id bigint generated always as identity primary key,player_id text not null,state jsonb not null,source text not null default 'warboost',captured_at timestamptz not null default now());
     create table public.wb1_beta_invites(id uuid primary key default gen_random_uuid(),email text unique,status text,
       invited_at timestamptz default now(),accepted_user_id text,expires_at timestamptz,accepted_at timestamptz,updated_at timestamptz);`);
-  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLive,"live@example.test"],[userCountry,"country@example.test"],[userRecovery,"recovery@example.test"],[userAmbiguous,"ambiguous@example.test"]])
+  for(const [id,email] of [[userA,"a@example.test"],[userB,"b@example.test"],[userBeta,"beta@example.test"],[userFree,"free@example.test"],[userLive,"live@example.test"],[userCountry,"country@example.test"],[userRecovery,"recovery@example.test"],[userAmbiguous,"ambiguous@example.test"],[userCachedCreateError,"cached-create-error@example.test"]])
     await pg.query("insert into auth.users(id,email,created_at) values($1,$2,now()-interval '1 day')",[id,email]);
   await pg.query("insert into wb1_beta_invites(email,status,invited_at,accepted_user_id) values('beta@example.test','accepted',now()-interval '1 day',$1)",[userBeta]);
-  const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql","supabase/migration_v2_5_33_live_billing_preparation.sql","supabase/migration_v2_5_34_account_reset_generation.sql","supabase/migration_v2_5_35_test_setup_intents.sql","supabase/migration_v2_5_36_test_payment_retry_recovery.sql","supabase/migration_v2_5_37_test_payment_expired_recovery.sql"];
+  const migrations=["supabase/migration_v2_5_28_hf8_commercial_readiness.sql","supabase/migration_v2_5_32_stripe_test_01.sql","supabase/migration_v2_5_32_stripe_test_02_beta_cohort.sql","supabase/migration_v2_5_33_live_billing_preparation.sql","supabase/migration_v2_5_34_account_reset_generation.sql","supabase/migration_v2_5_35_test_setup_intents.sql","supabase/migration_v2_5_36_test_payment_retry_recovery.sql","supabase/migration_v2_5_37_test_payment_expired_recovery.sql","supabase/migration_v2_5_38_test_subscription_idempotency_recovery.sql"];
   for(const path of migrations)await pg.exec(fs.readFileSync(path,"utf8"));
   const oldEnv={...process.env},oldFetch=globalThis.fetch;
   Object.assign(process.env,{WARBOOST_COMMERCIAL_MODE:"test",WARBOOST_APP_URL:"https://beta.warboost.fr",STRIPE_SECRET_KEY:"sk_test_fixture_only",
@@ -33,8 +34,10 @@ export async function billingFixture(){
     SUPABASE_URL:"https://fixture.invalid",SUPABASE_ANON_KEY:"anon-fixture",SUPABASE_SERVICE_ROLE_KEY:"service-fixture",WARBOOST_BETA_EMAILS:"",WARBOOST_SUPPORT_ADMINS:""});
   const fixture={pg,migrations,calls:[],customers:new Map(),subscriptions:new Map(),sessions:new Map(),
     setupIntents:new Map(),paymentMethods:new Map(),invoices:new Map(),paymentIntents:new Map(),idempotency:new Map(),
+    subscriptionErrorCache:new Map(),paginationPageSize:100,
     failDb:false,failApplyOnce:false,failCheckoutOnce:false,failSetupOnce:false,failSubscriptionOnce:false,
     failSubscriptionBeforeCreationOnce:false,failSubscriptionLookupOnce:false,
+    failSubscriptionInvalidRequestOnce:false,failInvoiceLookupOnce:false,failPaymentIntentLookupOnce:false,
     priceOverride:{},livePriceOverride:{},productOverride:{},
     providerLive:false,card:"accepted",taxStatus:"complete",invoiceAmount:499,paymentIntentStatus:"requires_payment_method"};
   fixture.price=(mode="test")=>mode==="live"?
@@ -97,7 +100,17 @@ export async function billingFixture(){
     const path=u.pathname.replace("/v1/",""),params=new URLSearchParams(opts.body||"");
     const key=opts.headers?.["Idempotency-Key"];
     if(key&&fixture.idempotency.has(key))return json(fixture.idempotency.get(key));
+    if(key&&fixture.subscriptionErrorCache.has(key))return json(fixture.subscriptionErrorCache.get(key),400);
     let out;
+    const pageList=items=>{
+      const requested=Number(u.searchParams.get("limit")||100);
+      const size=Math.max(1,Math.min(requested,fixture.paginationPageSize));
+      const cursor=u.searchParams.get("starting_after");
+      const cursorIndex=cursor?items.findIndex(item=>item.id===cursor):-1;
+      const start=cursor?cursorIndex+1:0;
+      const data=items.slice(start,start+size);
+      return {object:"list",has_more:start+data.length<items.length,data};
+    };
     if(path==="setup_intents"&&opts.method==="POST"&&fixture.failSetupOnce){
       fixture.failSetupOnce=false;return json({error:{message:"SIMULATED_SETUP_FAILURE"}},503);
     }
@@ -105,9 +118,24 @@ export async function billingFixture(){
       fixture.failSubscriptionBeforeCreationOnce=false;
       return json({error:{message:"SIMULATED_SUBSCRIPTION_FAILURE_BEFORE_CREATION"}},503);
     }
+    if(path==="subscriptions"&&opts.method==="POST"&&fixture.failSubscriptionInvalidRequestOnce){
+      fixture.failSubscriptionInvalidRequestOnce=false;
+      const cached={error:{type:"invalid_request_error",code:"parameter_unknown",
+        message:"SIMULATED_CACHED_400 stale tax_behavior unspecified secret_fixture must not escape"}};
+      if(key)fixture.subscriptionErrorCache.set(key,cached);
+      return json(cached,400);
+    }
     if(path==="subscriptions"&&opts.method!=="POST"&&fixture.failSubscriptionLookupOnce){
       fixture.failSubscriptionLookupOnce=false;
       return json({error:{message:"SIMULATED_SUBSCRIPTION_LOOKUP_FAILURE"}},503);
+    }
+    if(path==="invoices"&&fixture.failInvoiceLookupOnce){
+      fixture.failInvoiceLookupOnce=false;
+      return json({error:{message:"SIMULATED_INVOICE_LOOKUP_FAILURE"}},503);
+    }
+    if(path==="payment_intents"&&fixture.failPaymentIntentLookupOnce){
+      fixture.failPaymentIntentLookupOnce=false;
+      return json({error:{message:"SIMULATED_PAYMENT_INTENT_LOOKUP_FAILURE"}},503);
     }
     if(path==="prices/price_pro_test")out=fixture.price();
     else if(path==="prices/price_pro_live_fixture")out=fixture.price("live");
@@ -139,11 +167,14 @@ export async function billingFixture(){
         billing_country:params.get("metadata[billing_country]")||""};
       const pi={id:piId,object:"payment_intent",livemode:false,status:fixture.paymentIntentStatus,
         amount:fixture.invoiceAmount,currency:"eur",client_secret:`${piId}_secret_fixture`,
-        payment_method:params.get("default_payment_method")};
+        payment_method:params.get("default_payment_method"),customer,created:Math.floor(Date.now()/1000)};
       const invoice={id:invoiceId,object:"invoice",livemode:false,status:"open",currency:"eur",
         amount_due:fixture.invoiceAmount,total:fixture.invoiceAmount,customer,subscription:id,
         automatic_tax:{enabled:params.get("automatic_tax[enabled]")==="true",status:fixture.taxStatus},
-        total_tax_amounts:[{amount:0}],payment_intent:pi};
+        total_tax_amounts:[{amount:0}],payment_intent:pi,created:Math.floor(Date.now()/1000),
+        metadata:{warboost_user_id:metadata.warboost_user_id,
+          warboost_setup_attempt_id:metadata.warboost_setup_attempt_id}};
+      pi.invoice=invoiceId;
       out={id,object:"subscription",livemode:false,status:"incomplete",customer,
         default_payment_method:params.get("default_payment_method"),metadata,
         current_period_end:Math.floor(Date.now()/1000)+30*24*60*60,
@@ -151,7 +182,11 @@ export async function billingFixture(){
         automatic_tax:{enabled:params.get("automatic_tax[enabled]")==="true"}};
       fixture.paymentIntents.set(piId,pi);fixture.invoices.set(invoiceId,invoice);fixture.subscriptions.set(id,out);
     }else if(path==="subscriptions"&&opts.method!=="POST"){
-      out={object:"list",has_more:false,data:[...fixture.subscriptions.values()].filter(s=>s.customer===u.searchParams.get("customer"))};
+      out=pageList([...fixture.subscriptions.values()].filter(s=>s.customer===u.searchParams.get("customer")));
+    }else if(path==="invoices"){
+      out=pageList([...fixture.invoices.values()].filter(invoice=>invoice.customer===u.searchParams.get("customer")));
+    }else if(path==="payment_intents"){
+      out=pageList([...fixture.paymentIntents.values()].filter(intent=>intent.customer===u.searchParams.get("customer")));
     }else if(path.startsWith("subscriptions/")&&opts.method==="DELETE"){
       const sub=fixture.subscriptions.get(path.split("/")[1]);
       if(sub){sub.status="canceled";out={...sub,status:"canceled"}}
