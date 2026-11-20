@@ -12,6 +12,7 @@ import {createSaveDiagnostic,safeSaveDiagnostic,newSaveCorrelation,publicSaveErr
 import {normalizeResetGeneration,resetGenerationDecision,resetGenerationRequestMatches,quarantineOwnedAccountCaches,preserveForeignCacheBeforeReplace} from "./lib/reset-generation.js";
 import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
 import {createAndMountStripeTestElement,normalizeStripeSetupDiagnostic,stripeSetupRequestFailure} from "./lib/stripe-test-element-ui.js";
+import {createStripeTestPaymentConfirmation} from "./lib/stripe-test-payment-confirmation.js";
 import {sanitizeStripeProviderDiagnostic} from "./lib/stripe-provider-diagnostic.js";
 import {buildPlayerScanOptions,normalizePlayerScanType,scanSquadId} from "./lib/player-scan-types.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation,heroDisplayName} from "./lib/heroes.js";
@@ -5071,6 +5072,7 @@ function renderCommercialPreview(){const box=$("#proCommercialPreview"),price=$(
 function renderPro(){
   const pill=$("#proPill"),btn=$("#proActionBtn"),title=$("#proTitle"),price=$("#proPrice"),section=$("#proSection");
   if(!pill||!btn)return;
+  syncProTestPaymentConfirmButton();
   if(isNativeWarBoost){
      $("#stripeTestAccountDiagnostic")?.classList.add("hidden");
      renderProTestAvailability(false);
@@ -5115,6 +5117,8 @@ async function refreshPro(){if(!cloudSession?.access_token){proState={active:fal
 function requirePro(){if(safeLaunchBetaMode()){if(!requireBetaAccess()||!requireBetaConsent())return false;return true}if(proState.active)return true;openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"center"}),160);proMessage(cloudSession?.user?t("pro_required"):t("connect_pro"));return false}
 let proActionBusy=false,proTestSetupAlreadySucceeded=false,proTestOwnerId="";
 let proTestStripe=null,proTestElements=null,proTestSetupIntentId="",proTestSetupSecret="",proTestPaymentSecret="",proTestPaymentMethodId="";
+let proTestPublishableKey="",proTestPaymentIntentId="",proTestBillingCountry="",proTestInvoicePrepared=false,proTestMissingStateReported=false;
+const proTestPaymentConfirmation=createStripeTestPaymentConfirmation({onState:handleProTestConfirmState});
 function proTestStatus(key,warning=false){
   const box=$("#proTestFlowStatus");if(!box)return;
   box.className=warning?"notice warn":"notice";
@@ -5156,13 +5160,18 @@ function reportProTestSetupFailure(error,fallbackStage){
 function clearProTestPaymentUi(){
   try{proTestElements?.getElement?.("payment")?.unmount?.()}catch{}
   proTestStripe=null;proTestElements=null;proTestSetupIntentId="";proTestSetupSecret="";
-  proTestPaymentSecret="";proTestPaymentMethodId="";proTestSetupAlreadySucceeded=false;proTestOwnerId="";
+  proTestPaymentSecret="";proTestPaymentMethodId="";proTestPaymentIntentId="";
+  proTestPublishableKey="";proTestBillingCountry="";proTestInvoicePrepared=false;
+  proTestMissingStateReported=false;proTestSetupAlreadySucceeded=false;proTestOwnerId="";
   const flow=$("#proTestPaymentFlow");flow?.classList.add("hidden");
   const host=$("#proTestPaymentElement");if(host){host.replaceChildren();host.classList.remove("hidden")}
   $("#proTestFlowStatus")?.classList.add("hidden");
   const setupBtn=$("#proTestSetupConfirmBtn");
   if(setupBtn){setupBtn.classList.remove("hidden");setupBtn.disabled=false;setupBtn.textContent=t("pro_test_save_card")}
-  $("#proTestPayBtn")?.classList.add("hidden");$("#proTestCancelBtn")?.classList.add("hidden");
+  const payBtn=$("#proTestPayBtn");
+  if(payBtn){payBtn.classList.add("hidden");payBtn.disabled=true;payBtn.textContent=t("pro_test_confirm_payment")}
+  const cancelBtn=$("#proTestCancelBtn");
+  if(cancelBtn){cancelBtn.classList.add("hidden");cancelBtn.disabled=false}
 }
 async function loadStripeJsForTest(){
   if(typeof window.Stripe==="function")return;
@@ -5219,7 +5228,7 @@ async function proTestApi(action,extra={}){
 }
 async function beginProTestSetup(country){
   const flow=$("#proTestPaymentFlow"),host=$("#proTestPaymentElement"),setupBtn=$("#proTestSetupConfirmBtn");
-  clearProTestPaymentUi();proTestOwnerId=String(cloudSession?.user?.id||"");
+  clearProTestPaymentUi();proTestOwnerId=String(cloudSession?.user?.id||"");proTestBillingCountry=String(country||"").trim().toUpperCase();
   if(!proTestOwnerId)throw new Error(t("pro_test_checkout_error"));
   flow?.classList.remove("hidden");
   setupBtn?.classList.add("hidden");
@@ -5239,6 +5248,7 @@ async function beginProTestSetup(country){
     if(!/^pk_test_[A-Za-z0-9]+$/.test(String(result.publishable_key||""))||
       typeof result.setup_intent_id!=="string"||!/^seti_[A-Za-z0-9_]+$/.test(result.setup_intent_id))
       throw Object.assign(new Error(t("pro_test_checkout_error")),{code:"INVALID_SETUP_RESPONSE",diagnosticStage:"setup_intent_verify"});
+    proTestPublishableKey=result.publishable_key;
     proTestSetupIntentId=result.setup_intent_id;
     if(result.state==="payment_pending"){
       if(host)host.replaceChildren();
@@ -5295,9 +5305,155 @@ function proTestStatusText(message,warning=false){
   const box=$("#proTestFlowStatus");if(!box)return;box.className=warning?"notice warn":"notice";
   box.textContent=String(message||t("pro_test_checkout_error"));box.classList.remove("hidden");
 }
+function proTestPaymentConfirmationInput(){
+  return {
+    ownerId:proTestOwnerId,currentUserId:String(cloudSession?.user?.id||""),
+    paymentIntentId:proTestPaymentIntentId,clientSecret:proTestPaymentSecret,
+    paymentMethodId:proTestPaymentMethodId,
+    stripeAvailable:Boolean(proTestStripe?.confirmCardPayment||/^pk_test_[A-Za-z0-9]+$/.test(String(proTestPublishableKey||""))),
+    prepareStripe:ensureProTestStripeClient,
+    confirm:async markRequestStarted=>{
+      if(!proTestStripe?.confirmCardPayment)throw new Error("Stripe TEST client unavailable");
+      markRequestStarted();
+      return proTestStripe.confirmCardPayment(proTestPaymentSecret,{payment_method:proTestPaymentMethodId,
+        return_url:`${location.origin}/?billing=test-payment-return`});
+    }
+  };
+}
+async function ensureProTestStripeClient(){
+  if(typeof proTestStripe?.confirmCardPayment==="function")return;
+  if(!/^pk_test_[A-Za-z0-9]+$/.test(String(proTestPublishableKey||"")))
+    throw new Error("Stripe TEST client is not available");
+  await loadStripeJsForTest();
+  if(typeof window.Stripe!=="function")throw new Error("Stripe TEST client is not available");
+  const client=window.Stripe(proTestPublishableKey);
+  if(typeof client?.confirmCardPayment!=="function")throw new Error("Stripe TEST client is not available");
+  proTestStripe=client;
+}
+function syncProTestPaymentConfirmButton(){
+  const payBtn=$("#proTestPayBtn"),cancelBtn=$("#proTestCancelBtn"),setupBtn=$("#proTestSetupConfirmBtn");
+  if(!payBtn)return;
+  const snapshot=proTestPaymentConfirmation.snapshot();
+  if(!proTestInvoicePrepared){
+    payBtn.classList.add("hidden");payBtn.disabled=true;
+    return;
+  }
+  if(snapshot.pending){
+    payBtn.classList.remove("hidden");payBtn.disabled=true;payBtn.textContent=t("pro_test_payment_processing");
+    if(cancelBtn)cancelBtn.disabled=true;
+    return;
+  }
+  if(snapshot.confirmed){
+    payBtn.classList.add("hidden");payBtn.disabled=true;cancelBtn?.classList.add("hidden");
+    return;
+  }
+  const ownerMatches=Boolean(proTestOwnerId)&&proTestOwnerId===String(cloudSession?.user?.id||"");
+  if(!ownerMatches){
+    payBtn.classList.add("hidden");payBtn.disabled=true;cancelBtn?.classList.add("hidden");
+    if(snapshot.pending)proTestStatusText(t("pro_test_payment_account_changed"),true);
+    else{clearProTestPaymentUi();proMessage(t("pro_test_payment_account_changed"),true)}
+    return;
+  }
+  if(snapshot.uncertain){
+    payBtn.classList.add("hidden");payBtn.disabled=true;cancelBtn?.classList.add("hidden");
+    if(ownerMatches&&proTestSetupIntentId){
+      proTestSetupAlreadySucceeded=true;proTestSetupSecret="";
+      if(setupBtn){setupBtn.textContent=t("pro_test_verify_payment_state");setupBtn.disabled=false;setupBtn.classList.remove("hidden")}
+    }
+    return;
+  }
+  if(!proTestPaymentConfirmation.canConfirm(proTestPaymentConfirmationInput())){
+    payBtn.classList.add("hidden");payBtn.disabled=true;
+    cancelBtn?.classList.add("hidden");
+    if(ownerMatches&&proTestSetupIntentId){
+      proTestSetupAlreadySucceeded=true;proTestSetupSecret="";
+      if(setupBtn){setupBtn.textContent=t("pro_test_verify_payment_state");setupBtn.disabled=false;setupBtn.classList.remove("hidden")}
+    }
+    if(!proTestMissingStateReported){
+      proTestMissingStateReported=true;
+      proTestStatusText(ownerMatches?t("pro_test_payment_state_missing"):t("pro_test_payment_account_changed"),true);
+    }
+    return;
+  }
+  proTestMissingStateReported=false;
+  payBtn.classList.remove("hidden");payBtn.disabled=false;payBtn.textContent=t("pro_test_confirm_payment");
+  cancelBtn?.classList.remove("hidden");
+  if(cancelBtn)cancelBtn.disabled=false;
+  if(setupBtn)setupBtn.classList.add("hidden");
+}
+function handleProTestConfirmState(state){
+  const payBtn=$("#proTestPayBtn"),cancelBtn=$("#proTestCancelBtn"),setupBtn=$("#proTestSetupConfirmBtn");
+  if(state==="preparing_stripe"){
+    if(payBtn){payBtn.disabled=true;payBtn.textContent=t("pro_test_payment_processing")}
+    if(cancelBtn)cancelBtn.disabled=true;
+    setupBtn?.classList.add("hidden");
+    proTestStatusText(t("pro_test_payment_processing"));
+    return;
+  }
+  if(state==="confirming"){
+    if(payBtn){payBtn.disabled=true;payBtn.textContent=t("pro_test_payment_processing")}
+    if(cancelBtn)cancelBtn.disabled=true;
+    setupBtn?.classList.add("hidden");
+    proTestStatusText(t("pro_test_payment_confirming"));
+    return;
+  }
+  if(state==="timeout"){
+    if(payBtn)payBtn.disabled=true;
+    if(cancelBtn)cancelBtn.disabled=true;
+    proTestStatusText(t("pro_test_payment_timeout"),true);
+    return;
+  }
+  if(state==="succeeded"){
+    payBtn?.classList.add("hidden");if(payBtn)payBtn.disabled=true;
+    cancelBtn?.classList.add("hidden");
+    proTestStatus("pro_test_payment_pending_webhook");
+    return;
+  }
+  if(state==="retryable_error"){
+    proTestStatusText(t("pro_test_payment_retryable"),true);
+    return;
+  }
+  if(state==="stripe_unavailable"){
+    proTestStatusText(t("pro_test_payment_stripe_unavailable"),true);
+    return;
+  }
+  if(state==="outcome_unknown"){
+    payBtn?.classList.add("hidden");if(payBtn)payBtn.disabled=true;
+    cancelBtn?.classList.add("hidden");
+    if(proTestOwnerId&&proTestOwnerId===String(cloudSession?.user?.id||"")&&proTestSetupIntentId){
+      proTestSetupAlreadySucceeded=true;proTestSetupSecret="";
+      if(setupBtn){setupBtn.textContent=t("pro_test_verify_payment_state");setupBtn.disabled=false;setupBtn.classList.remove("hidden")}
+    }
+    proTestStatusText(t("pro_test_payment_uncertain"),true);
+    return;
+  }
+  if(state==="missing_state"){
+    syncProTestPaymentConfirmButton();
+    return;
+  }
+  if(state==="account_changed"){
+    payBtn?.classList.add("hidden");if(payBtn)payBtn.disabled=true;
+    cancelBtn?.classList.add("hidden");
+    clearProTestPaymentUi();proMessage(t("pro_test_payment_account_changed"),true);
+    return;
+  }
+  if(state==="already_in_progress"){
+    proTestStatusText(t("pro_test_payment_still_processing"),true);
+    return;
+  }
+  if(state==="already_confirmed"){
+    payBtn?.classList.add("hidden");cancelBtn?.classList.add("hidden");
+    proTestStatus("pro_test_payment_pending_webhook");
+    return;
+  }
+  if(state==="settled")syncProTestPaymentConfirmButton();
+}
 async function prepareProTestInvoice(){
   const setupBtn=$("#proTestSetupConfirmBtn"),payBtn=$("#proTestPayBtn"),cancelBtn=$("#proTestCancelBtn");
-  if(!proTestSetupIntentId)throw new Error(t("pro_test_checkout_error"));
+  if(!proTestSetupIntentId){
+    proTestStatusText(t("pro_test_payment_state_missing"),true);
+    return;
+  }
   if(proTestOwnerId!==String(cloudSession?.user?.id||"")){
     clearProTestPaymentUi();proTestStatus("pro_test_checkout_error",true);return;
   }
@@ -5310,20 +5466,27 @@ async function prepareProTestInvoice(){
       if(setupResult.error)throw new Error(setupResult.error.message||t("pro_test_setup_error"));
       if(setupResult.setupIntent?.id!==proTestSetupIntentId||setupResult.setupIntent?.status!=="succeeded")
         throw new Error(t("pro_test_setup_error"));
-      proTestSetupSecret="";
+      proTestSetupSecret="";proTestSetupAlreadySucceeded=true;
     }
     proTestStatus("pro_test_payment_preparing");
     const country=String($("#proLiveBillingCountry")?.value||"").trim().toUpperCase();
     const result=await proTestApi("prepare_test_subscription",{setup_intent_id:proTestSetupIntentId,billing_country:country});
     if(result.state!=="payment_confirmation_required"||result.amount_due!==499||result.currency!=="eur"||
+      typeof result.payment_intent_id!=="string"||!/^pi_[A-Za-z0-9_]+$/.test(result.payment_intent_id)||
       typeof result.payment_client_secret!=="string"||!result.payment_client_secret.startsWith(`${result.payment_intent_id}_secret_`)||
       typeof result.payment_method_id!=="string"||!/^pm_[A-Za-z0-9_]+$/.test(result.payment_method_id))
       throw new Error(t("pro_test_tax_unresolved"));
+    if(!proTestPaymentConfirmation.acceptVerifiedPreparation()){
+      throw new Error(t("pro_test_payment_busy"));
+    }
+    proTestPaymentIntentId=result.payment_intent_id;
     proTestPaymentSecret=result.payment_client_secret;proTestPaymentMethodId=result.payment_method_id;
+    proTestInvoicePrepared=true;proTestMissingStateReported=false;
     $("#proTestPaymentElement")?.classList.add("hidden");
     proTestStatus("pro_test_payment_waiting");
     if(setupBtn){setupBtn.classList.add("hidden");setupBtn.disabled=false}
-    payBtn?.classList.remove("hidden");cancelBtn?.classList.remove("hidden");
+    cancelBtn?.classList.remove("hidden");
+    syncProTestPaymentConfirmButton();
   }catch(error){
     const message=error.message||t("pro_test_payment_error"),diagnostic=stripeProviderDiagnosticText(error.safeStripeProviderDiagnostic);
     proTestStatusText(diagnostic?`${message} ${diagnostic}`:message,true);
@@ -5334,25 +5497,31 @@ async function confirmProTestPayment(){
   if(!proTestOwnerId||proTestOwnerId!==String(cloudSession?.user?.id||"")){
     clearProTestPaymentUi();proMessage(t("pro_test_checkout_error"),true);return;
   }
-  const payBtn=$("#proTestPayBtn");if(!proTestStripe||!proTestPaymentSecret||!proTestPaymentMethodId)return;
-  if(payBtn){payBtn.disabled=true;payBtn.textContent="…"}
-  try{
-    const result=await proTestStripe.confirmCardPayment(proTestPaymentSecret,{payment_method:proTestPaymentMethodId,
-      return_url:`${location.origin}/?billing=test-payment-return`});
-    if(result.error)throw new Error(result.error.message||t("pro_test_payment_error"));
-    if(result.paymentIntent?.status!=="succeeded")throw new Error(t("pro_test_payment_error"));
+  if(!proTestInvoicePrepared){
+    proTestStatusText(t("pro_test_payment_state_missing"),true);
+    syncProTestPaymentConfirmButton();return;
+  }
+  const result=await proTestPaymentConfirmation.run(proTestPaymentConfirmationInput());
+  if(result.state==="succeeded"){
     await refreshPro();
-    proTestStatus("pro_test_payment_pending_webhook");
-  }catch(error){proTestStatusText(error.message||t("pro_test_payment_error"),true)}
-  finally{if(payBtn){payBtn.disabled=false;payBtn.textContent=t("pro_test_confirm_payment")}}
+    proTestStatus(proState.active?"pro_test_payment_entitlement_confirmed":"pro_test_payment_pending_webhook");
+  }
 }
 async function cancelProTestPending(){
+  const confirmationState=proTestPaymentConfirmation.snapshot();
+  if(confirmationState.pending){
+    proTestStatusText(t("pro_test_payment_still_processing"),true);return;
+  }
+  if(confirmationState.confirmed||confirmationState.uncertain){
+    proTestStatusText(t("pro_test_payment_uncertain"),true);return;
+  }
   const btn=$("#proTestCancelBtn");if(btn)btn.disabled=true;
   try{
     await proTestApi("cancel_test_pending");
     proTestStatus("pro_test_cancelled");
-    proTestPaymentSecret="";proTestPaymentMethodId="";
-    $("#proTestPayBtn")?.classList.add("hidden");btn?.classList.add("hidden");
+    proTestInvoicePrepared=false;proTestPaymentSecret="";proTestPaymentMethodId="";proTestPaymentIntentId="";
+    const payBtn=$("#proTestPayBtn");if(payBtn){payBtn.classList.add("hidden");payBtn.disabled=true}
+    btn?.classList.add("hidden");syncProTestPaymentConfirmButton();
   }catch(error){proTestStatusText(error.message||t("pro_test_payment_error"),true)}
   finally{if(btn)btn.disabled=false}
 }

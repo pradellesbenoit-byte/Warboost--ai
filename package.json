@@ -51,7 +51,7 @@
     "test:account-deletion": "node --check lib/account-deletion-handler.js && node --check lib/account-deletion.js && node --check lib/account-deletion-ui.js && node --check delete-account-page.js && node scripts/verify-account-deletion.mjs && node scripts/verify-security-migrations.mjs",
     "test:billing": "node --check lib/billing-store.js && node --check lib/stripe-test.js && node --check lib/pro-access.js && node --check lib/commercial-pro.js && node scripts/verify-stripe-test.mjs",
     "test:stripe-setup-flow": "node --check lib/stripe-test-payment-flow.js && node --check scripts/verify-stripe-setup-flow.mjs && node scripts/verify-stripe-setup-flow.mjs",
-    "test:stripe-setup-ui": "node --check lib/stripe-test-element-ui.js && node --check scripts/verify-stripe-test-element-ui.mjs && node scripts/verify-stripe-test-element-ui.mjs",
+    "test:stripe-setup-ui": "node --check lib/stripe-test-element-ui.js && node --check lib/stripe-test-payment-confirmation.js && node --check scripts/verify-stripe-test-element-ui.mjs && node scripts/verify-stripe-test-element-ui.mjs",
     "test:stripe-provider-diagnostic": "node --check lib/stripe-provider-diagnostic.js && node --check scripts/verify-stripe-provider-diagnostic.mjs && node scripts/verify-stripe-provider-diagnostic.mjs",
     "test:reset-generation": "node --check lib/reset-generation.js && node --check scripts/verify-reset-generation.mjs && node scripts/verify-reset-generation.mjs",
     "test:beta-activation": "node --check lib/beta-invitation-store.js && node --check lib/beta-activation-ui.js && node --check lib/beta-invitation-copy.js && node scripts/verify-beta-activation-atomic.mjs",
