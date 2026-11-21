@@ -75,7 +75,7 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
         base=mergeNewest(base,cloudState);
         const squadResult=reconcileCloudSquads(current,cloudState,base);
         if(squadResult.conflicts.length){
-          return res.status(409).json({error:"squad_freshness_ambiguous",message:"La composition de cette escouade doit être confirmée avant "synchronisation.",state:safeConflictState(cloudState),updated_at:saved.updated_at,roster_confirmation:rosterConfirmation()});
+          return res.status(409).json({error:"squad_freshness_ambiguous",message:"La composition de cette escouade doit être confirmée avant synchronisation.",state:safeConflictState(cloudState),updated_at:saved.updated_at,roster_confirmation:rosterConfirmation()});
         }
         base=squadResult.state;
         if(requestedRosterSync){
