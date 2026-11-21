@@ -893,7 +893,8 @@ function accountSyncMessage(){
   const localKey={clear:"account_sync_local_clear",cloud_read_verified:"account_sync_check_ok",
     squad_conflict:"account_sync_squad_conflict",version_conflict:"account_sync_version_conflict"}[view.localKind]||keys[view.localKind]||"account_sync_unconfirmed";
   const localText=t("account_sync_local_label")+": "+t(localKey);
-  const checkText=t("account_sync_check_label")+": "+(view.checkKind?t(checkKeys[view.checkKind]||"account_sync_unconfirmed"):t("account_sync_check_none"));
+  const checkDate=view.checkAt?` (${format(view.checkAt)})`:"";
+  const checkText=t("account_sync_check_label")+": "+(view.checkKind?t(checkKeys[view.checkKind]||"account_sync_unconfirmed")+checkDate:t("account_sync_check_none"));
   const attemptDate=view.attemptAt?new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"short"}).format(new Date(view.attemptAt)):"";
   const failedAttempt=view.saveKind&&view.saveKind!=="verified"?
     " · "+t("account_sync_attempt_label")+": "+t(keys[view.saveKind]||"account_sync_unconfirmed")+(attemptDate?" ("+attemptDate+")":""):"";
@@ -1014,9 +1015,26 @@ function renderAccountSquadReviewDiagnostic(){
   const owner=String(cloudSession?.user?.id||"");
   const visible=Boolean(anchor&&owner&&String(state.player_id||"")===owner&&runtimeAccessState().phase==="ready");
   if(!visible){existing?.remove();renderSquadComparisonControls();return;}
+  const view=currentAccountSyncView();
+  const checkKeys={verified:"account_sync_check_ok",auth:"account_sync_auth",forbidden:"account_sync_forbidden",
+    conflict:"account_sync_conflict",network:"account_sync_network",timeout:"account_sync_timeout",
+    server:"account_sync_server",unknown:"account_sync_unknown",unconfirmed:"account_sync_unconfirmed"};
+  const syncKeys={pending:"account_sync_pending",unknown:"account_sync_unknown",verified:"account_sync_verified",
+    auth:"account_sync_auth",forbidden:"account_sync_forbidden",conflict:"account_sync_conflict",
+    network:"account_sync_network",timeout:"account_sync_timeout",server:"account_sync_server",
+    unconfirmed:"account_sync_unconfirmed",database_permissions:"account_sync_database_permissions",
+    database_schema:"account_sync_database_schema",database_sql:"account_sync_database_sql"};
+  const format=value=>new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"medium"}).format(new Date(value));
+  const readCheckText=view.checkKind
+    ?`${t(checkKeys[view.checkKind]||"account_sync_unconfirmed")}${view.checkAt?` (${format(view.checkAt)})`:""}`
+    :t("account_sync_check_none");
+  const syncStatusText=t(syncKeys[view.kind]||"account_sync_unconfirmed");
+  const lastWriteText=view.lastConfirmedAt
+    ?format(view.lastConfirmedAt)
+    :t("account_sync_confirmed_none");
   const panel=existing||document.createElement("details");
   panel.id="accountSquadReviewDiagnostic";panel.className="notice squadReviewDiagnostic";
-  panel.innerHTML=accountSquadReviewHtml(squadReviewStatus(state),t)+'<div id="squadCompareControls"></div>';
+  panel.innerHTML=accountSquadReviewHtml(squadReviewStatus(state),t,{readCheckText,syncStatusText,lastWriteText})+'<div id="squadCompareControls"></div>';
   if(!existing)anchor.insertAdjacentElement("afterend",panel);
   renderSquadComparisonControls();
 }

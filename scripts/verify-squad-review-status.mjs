@@ -138,7 +138,9 @@ const start=app.indexOf("function renderAccountSquadReviewDiagnostic(");
 const end=app.indexOf("\nasync function checkAccountCloudStatus",start);
 const elements=new Map(),anchor={insertAdjacentElement(_position,node){elements.set(node.id,node)}};
 const context=vm.createContext({state:{player_id:"owner",squads:[confirmed(2,{composition_conflict:marker})]},
-  cloudSession:{user:{id:"owner"}},runtimeAccessState:()=>({phase:"ready"}),t,squadReviewStatus,accountSquadReviewHtml,
+  cloudSession:{user:{id:"owner"}},runtimeAccessState:()=>({phase:"ready"}),locale:"fr-FR",
+  currentAccountSyncView:()=>({checkKind:null,checkAt:null,kind:"unknown",lastConfirmedAt:null}),
+  t,squadReviewStatus,accountSquadReviewHtml,
   $:id=>id==="#betaAccessStatus"?anchor:elements.get(id.slice(1)),
   renderSquadComparisonControls:()=>{},
   document:{createElement:()=>({open:false,remove(){elements.delete(this.id)}})}});
@@ -151,6 +153,31 @@ test("actual account render is side-effect-free, owner-gated and keeps its discl
   assert.equal(JSON.stringify(context.state),before);
   context.cloudSession={user:{id:"another-owner"}};context.renderAccountSquadReviewDiagnostic();
   assert.equal(elements.has("accountSquadReviewDiagnostic"),false);
+});
+test("read-only success with no markers stays distinct from current sync and historical write",()=>{
+  context.cloudSession={user:{id:"owner"}};
+  context.state={player_id:"owner",squads:[confirmed(1),confirmed(2),confirmed(3),confirmed(4)]};
+  context.currentAccountSyncView=()=>({checkKind:"verified",checkAt:at,kind:"unknown",lastConfirmedAt:at});
+  const before=JSON.stringify(context.state);
+  context.renderAccountSquadReviewDiagnostic();
+  const html=elements.get("accountSquadReviewDiagnostic").innerHTML;
+  assert.match(html,/Aucun marqueur local\/cloud enregistré/);
+  assert.match(html,/Vérification réussie — aucune sauvegarde effectuée/);
+  assert.match(html,/La synchronisation de cette session n’est pas encore vérifiée/);
+  assert.match(html,/Dernière sauvegarde cloud confirmée/);
+  const generalCloudStatus=html.match(/<div class="squadReviewCloudState" role="status">([\s\S]*?)<\/div>/)?.[1]||"";
+  assert.ok(generalCloudStatus,"general cloud status is rendered separately");
+  assert.doesNotMatch(generalCloudStatus,/État cloud actuel non vérifié/);
+  assert.match(html,/<section><b>Escouade 1<\/b>[\s\S]*?État cloud actuel non vérifié/);
+  assert.equal(JSON.stringify(context.state),before,"rendering does not create a marker, save, or sync proof");
+  context.currentAccountSyncView=()=>({checkKind:"network",checkAt:at,kind:"unknown",lastConfirmedAt:at});
+  context.renderAccountSquadReviewDiagnostic();
+  const failedHtml=elements.get("accountSquadReviewDiagnostic").innerHTML;
+  assert.match(failedHtml,/Vérification cloud impossible|réseau|connexion/i);
+  assert.doesNotMatch(failedHtml,/Vérification réussie — aucune sauvegarde effectuée/);
+  context.currentAccountSyncView=()=>({checkKind:null,checkAt:null,kind:"unknown",lastConfirmedAt:null});
+  context.renderAccountSquadReviewDiagnostic();
+  assert.match(elements.get("accountSquadReviewDiagnostic").innerHTML,/Aucun contrôle cloud actuel/);
 });
 test("signed-out or access-not-ready account cannot show diagnostic metadata",()=>{
   context.cloudSession=null;context.renderAccountSquadReviewDiagnostic();assert.equal(elements.size,0);
