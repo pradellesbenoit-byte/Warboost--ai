@@ -14,6 +14,7 @@ import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
 import {createAndMountStripeTestElement,normalizeStripeSetupDiagnostic,stripeSetupRequestFailure} from "./lib/stripe-test-element-ui.js";
 import {createStripeTestPaymentConfirmation} from "./lib/stripe-test-payment-confirmation.js";
 import {sanitizeStripeProviderDiagnostic} from "./lib/stripe-provider-diagnostic.js";
+import {stripeTestReturnMessageKey} from "./lib/stripe-test-return.js";
 import {buildPlayerScanOptions,normalizePlayerScanType,scanSquadId} from "./lib/player-scan-types.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation,heroDisplayName} from "./lib/heroes.js";
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
@@ -5131,7 +5132,48 @@ function renderPro(){
    btn.disabled=manage?(live?!proState.live_provider_ready:!testEnabled):(live?!liveEnabled:!testCheckoutEnabled);
     renderProTestAvailability(testCheckoutBlocked);
 }
-async function refreshPro(){if(!cloudSession?.access_token){proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,stripe_test_account_diagnostic_visible:false,commercial_preview:true,subscription:null};renderPro();return}try{const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000),j=await r.json().catch(()=>({}));if(r.ok)proState={...j,active:Boolean(j.active),beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),test_payments_enabled:Boolean(j.test_payments_enabled),live_payments_enabled:Boolean(j.live_payments_enabled),stripe_test_account_diagnostic_enabled:j.stripe_test_account_diagnostic_enabled===true,stripe_test_account_diagnostic_visible:j.stripe_test_account_diagnostic_visible===true,entitlement:j.entitlement||null};else proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,stripe_test_account_diagnostic_visible:false,commercial_preview:true,subscription:null}}catch{proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,stripe_test_account_diagnostic_visible:false,commercial_preview:true,subscription:null}}renderPro();const result=new URLSearchParams(location.search).get("billing");if(result==="test-success")proMessage(proState.active?"Droit PRO confirmé par le serveur. Aucun paiement réel.":"Retour Checkout TEST reçu. Activation en attente du webhook Stripe ; ce retour seul ne donne aucun droit.");if(result==="live-success")proMessage(proState.active?"Droit PRO confirmé par le serveur après webhook signé.":"Retour Checkout reçu. L’accès reste en attente du webhook signé; le retour navigateur seul ne donne aucun droit.")}
+async function refreshPro(){
+  if(!cloudSession?.access_token){
+    proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,
+      test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,
+      stripe_test_account_diagnostic_visible:false,commercial_preview:true,subscription:null,entitlement:null};
+    renderPro();return;
+  }
+  let serverReadOk=false;
+  try{
+    const r=await fetchSessionCritical("/api/pro",{cache:"no-store",headers:authHeaders()},8000);
+    const j=await r.json().catch(()=>({}));
+    if(r.ok){
+      proState={...j,active:Boolean(j.active),beta:j.beta!==false,payments_enabled:Boolean(j.payments_enabled),
+        test_payments_enabled:Boolean(j.test_payments_enabled),live_payments_enabled:Boolean(j.live_payments_enabled),
+        stripe_test_account_diagnostic_enabled:j.stripe_test_account_diagnostic_enabled===true,
+        stripe_test_account_diagnostic_visible:j.stripe_test_account_diagnostic_visible===true,
+        entitlement:j.entitlement||null};
+      serverReadOk=j.ok===true&&Boolean(j.entitlement)&&typeof j.entitlement.active==="boolean";
+    }else{
+      proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,
+        test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,
+        stripe_test_account_diagnostic_visible:false,commercial_preview:true,subscription:null,entitlement:null};
+    }
+  }catch{
+    proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,
+      test_payments_enabled:false,live_payments_enabled:false,stripe_test_account_diagnostic_enabled:false,
+      stripe_test_account_diagnostic_visible:false,commercial_preview:true,subscription:null,entitlement:null};
+  }
+  renderPro();
+  const returnUrl=new URL(location.href),result=returnUrl.searchParams.get("billing");
+  const returnMessage=stripeTestReturnMessageKey(result,{serverReadOk,serverEntitlement:proState.entitlement});
+  if(returnMessage){
+    proMessage(t(returnMessage),returnMessage==="pro_test_payment_entitlement_confirmed");
+    returnUrl.searchParams.delete("billing");
+    try{history.replaceState(history.state,"",`${returnUrl.pathname}${returnUrl.search}${returnUrl.hash}`)}catch{}
+    return;
+  }
+  if(result==="test-success")
+    proMessage(proState.active?"Droit PRO confirmé par le serveur. Aucun paiement réel.":"Retour Checkout TEST reçu. Activation en attente du webhook Stripe ; ce retour seul ne donne aucun droit.");
+  if(result==="live-success")
+    proMessage(proState.active?"Droit PRO confirmé par le serveur après webhook signé.":"Retour Checkout reçu. L’accès reste en attente du webhook signé; le retour navigateur seul ne donne aucun droit.");
+}
 function requirePro(){if(safeLaunchBetaMode()){if(!requireBetaAccess()||!requireBetaConsent())return false;return true}if(proState.active)return true;openDrawer("account");setTimeout(()=>$("#proSection")?.scrollIntoView({behavior:"smooth",block:"center"}),160);proMessage(cloudSession?.user?t("pro_required"):t("connect_pro"));return false}
 let proActionBusy=false,proTestSetupAlreadySucceeded=false,proTestOwnerId="";
 let proTestStripe=null,proTestElements=null,proTestSetupIntentId="",proTestSetupSecret="",proTestPaymentSecret="",proTestPaymentMethodId="";
