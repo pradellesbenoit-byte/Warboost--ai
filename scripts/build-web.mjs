@@ -4,7 +4,7 @@ import {posix} from "node:path";
 // Publish original browser sources, never the native HTML transformations.
 // API routes remain at repository root for Vercel's serverless discovery.
 const out="web-dist";
-const pages=["index.html","offline.html","privacy.html","security.html","legal.html","delete-account.html","reset-password.html","support-admin.html"];
+const pages=["index.html","offline.html","privacy.html","security.html","legal.html","cgv.html","delete-account.html","reset-password.html","support-admin.html"];
 const roots=["app.js","publisher-ui.js","i18n.js","sw.js","delete-account-page.js","reset-password.js","support-admin.js"];
 function isUnpublishedDraft(html){
   const draft=/\bBROUILLON\s+NON\s+(?:VALID[ÉE]|PUBLI[ÉE])(?:\s|<|$)/i.test(html);

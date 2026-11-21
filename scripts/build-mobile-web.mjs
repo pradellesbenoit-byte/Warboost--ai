@@ -6,7 +6,7 @@ if(!/^[a-f0-9]{12}$/.test(sourceCommit))throw new Error("Invalid source commit f
 const out="mobile-dist";
 await rm(out,{recursive:true,force:true});await mkdir(out,{recursive:true});
 // Explicit public inputs: never copy api/, server modules, SQL, secrets or repository metadata.
-const pages=["index.html","privacy.html","security.html","legal.html","delete-account.html","offline.html","reset-password.html"];
+const pages=["index.html","privacy.html","security.html","legal.html","cgv.html","delete-account.html","offline.html","reset-password.html"];
 const scripts=["app.js","i18n.js","delete-account-page.js","reset-password.js"];
 for(const file of await readdir("."))if(file.endsWith(".css")||scripts.includes(file)||file==="manifest.webmanifest")await cp(file,`${out}/${file}`);
 await cp("assets",`${out}/assets`,{recursive:true});

@@ -15,13 +15,32 @@ function isUnpublishedDraft(html){
     /name\s*=\s*["']robots["']/i.test(tag)&&/content\s*=\s*["'][^"']*\bnoindex\b[^"']*["']/i.test(tag));
   return draft&&noindex;
 }
-for(const file of ["index.html","offline.html","privacy.html","security.html","legal.html","delete-account.html","reset-password.html","support-admin.html"]){
+for(const file of ["index.html","offline.html","privacy.html","security.html","legal.html","cgv.html","delete-account.html","reset-password.html","support-admin.html"]){
   const source=await read(file,"utf8");
   if(isUnpublishedDraft(source)){
     await assert.rejects(access(`web-dist/${file}`),{code:"ENOENT"},`${file} marked unpublished must not be in web output`);
     continue;
   }
   assert.equal(await read(`web-dist/${file}`),source,`${file} must remain unchanged in web output`);
+}
+const cgv=await read("web-dist/cgv.html");
+const privacy=await read("web-dist/privacy.html");
+const legal=await read("web-dist/legal.html");
+assert.match(cgv,/Conditions générales de vente/);
+assert.match(cgv,/SIREN\s*:\s*108855875/);
+assert.match(cgv,/SIRET\s*:\s*10885587500010/);
+assert.match(cgv,/À VALIDER AVANT LIVE/);
+assert.match(legal,/href="\/cgv\.html"/);
+assert.match(await read("web-dist/index.html"),/href="\/cgv\.html"/);
+assert.match(await read("web-dist/index.html"),/href="\/privacy\.html"/);
+assert.match(privacy,/href="\/cgv\.html"/);
+assert.match(privacy,/Responsable du traitement/);
+assert.match(privacy,/Bases légales provisoires/);
+assert.match(privacy,/transferts/i);
+for(const file of ["web-dist/legal.html","web-dist/privacy.html","web-dist/cgv.html"]){
+  const content=await read(file);
+  const emails=[...content.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)].map(match=>match[0].toLowerCase());
+  assert.ok(emails.every(email=>email==="support@warboost.fr"),`${file} must not publish a personal email`);
 }
 assert.doesNotMatch(await read("web-dist/index.html"),/class="warboost-native"|warboost-source-commit|\/native\.css/);
 for(const name of ["api","server.mjs","supabase","scripts","docs","package.json",".git",".env","mobile","native.css"]){

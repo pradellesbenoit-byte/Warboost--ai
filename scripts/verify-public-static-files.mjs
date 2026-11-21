@@ -42,6 +42,7 @@ for(const key of forbidden){
 }
 check(publicRequestKey("/%zz").status===400,"malformed encoding");
 check(publicRequestKey("/security?x=1").key==="/security.html","extensionless public route");
+check(publicRequestKey("/cgv").key==="/cgv.html","CGV extensionless public route");
 const port=await new Promise(resolve=>{const s=http.createServer();s.listen(0,"127.0.0.1",()=>{const p=s.address().port;s.close(()=>resolve(p));});});
 const proc=spawn(process.execPath,["server.mjs"],{env:{...process.env,PORT:String(port)},stdio:["ignore","pipe","pipe"]});
 let logs="";
@@ -62,7 +63,7 @@ function request(url,method="GET",headers={}){
 try{
   await ready;
   for(const url of forbidden){const res=await request(url);check([400,403,404].includes(res.status),`${url}: ${res.status}`);}
-  for(const url of ["/","/security","/privacy.html","/delete-account.html","/app.js","/lib/analysis-indicator.js","/manifest.webmanifest"]){
+  for(const url of ["/","/security","/privacy.html","/legal.html","/cgv.html","/cgv","/delete-account.html","/app.js","/lib/analysis-indicator.js","/manifest.webmanifest"]){
     const res=await request(url);check(res.status===200&&res.data.length>0,`${url} remains public`);
     check(res.headers["x-content-type-options"]==="nosniff","headers retained");
   }
