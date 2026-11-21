@@ -104,6 +104,54 @@ try{
     assert.equal(stripeCalls().length,before);assert.equal(fixture.sessions.size,sessions);
     assert.equal((await entitlementForUser(user(userBeta))).source,"beta","the independent free beta grant is preserved");
   });
+  await test("Active TEST subscription takes display priority while preserving the independent beta grant",async()=>{
+    const betaBefore=await entitlementForUser(user(userBeta));
+    assert.equal(betaBefore.source,"beta");
+    const grantBefore=(await fixture.pg.query(
+      "select grant_type,revoked_at,starts_at,expires_at from warboost_pro_grants where user_id=$1",[userBeta]
+    )).rows[0];
+    assert.equal(grantBefore.grant_type,"beta");
+    const stripeCallsBefore=fixture.calls.filter(x=>x.host==="api.stripe.com").length;
+    const sessionCountBefore=fixture.sessions.size;
+    await fixture.pg.query(`insert into warboost_subscriptions
+      (user_id,stripe_customer_id,stripe_subscription_id,stripe_price_id,stripe_product_id,
+       plan,status,cancel_at_period_end,current_period_end,livemode)
+      values($1,'cus_beta_fixture','sub_beta_fixture','price_pro_test','prod_pro_test',
+       'pro','active',false,now()+interval '30 days',false)`,[userBeta]);
+
+    const paid=await entitlementForUser(user(userBeta));
+    assert.equal(paid.source,"stripe");
+    assert.equal(paid.tier,"PRO_PAID");
+    assert.equal(paid.active,true);
+    assert.equal(paid.billing_test,true);
+    assert.equal(paid.subscription.status,"active");
+    const apiPaid=await call(proHandler,userBeta);
+    assert.equal(apiPaid.code,200);
+    assert.equal(apiPaid.data.beta,false);
+    assert.equal(apiPaid.data.pro_included,false);
+    assert.equal(apiPaid.data.status,"active");
+    assert.equal(apiPaid.data.entitlement.source,"stripe");
+    assert.equal(apiPaid.data.subscription.status,"active");
+    const grantAfter=(await fixture.pg.query(
+      "select grant_type,revoked_at,starts_at,expires_at from warboost_pro_grants where user_id=$1",[userBeta]
+    )).rows[0];
+    assert.deepEqual(grantAfter,grantBefore,"the existing beta grant remains unchanged");
+    assert.equal(fixture.calls.filter(x=>x.host==="api.stripe.com").length,stripeCallsBefore,
+      "entitlement refresh does not call Stripe or create a subscription");
+    assert.equal(fixture.sessions.size,sessionCountBefore);
+
+    await fixture.pg.query("delete from warboost_subscriptions where user_id=$1",[userBeta]);
+    const betaOnly=await entitlementForUser(user(userBeta));
+    assert.equal(betaOnly.source,"beta");
+    assert.equal(betaOnly.tier,"BETA_FREE");
+    assert.equal(betaOnly.active,true);
+    const apiBeta=await call(proHandler,userBeta);
+    assert.equal(apiBeta.code,200);
+    assert.equal(apiBeta.data.beta,true);
+    assert.equal(apiBeta.data.pro_included,true);
+    assert.equal(apiBeta.data.status,"beta");
+    assert.equal(apiBeta.data.entitlement.source,"beta");
+  });
   await test("Payment Element TEST button uses the two-stage guarded route and retires hosted checkout",async()=>{
     const app=fs.readFileSync("app.js","utf8"),markup=fs.readFileSync("index.html","utf8"),api=fs.readFileSync("api/pro.js","utf8");
     assert.match(app,/proTestApi\("test_setup_intent"/);
