@@ -4,6 +4,7 @@ import {
   createAndMountStripeTestElement,normalizeStripeSetupDiagnostic
 } from "../lib/stripe-test-element-ui.js";
 import {createStripeTestPaymentConfirmation} from "../lib/stripe-test-payment-confirmation.js";
+import {translator} from "../i18n.js";
 
 let passed=0;
 const check=async(name,fn)=>{await fn();passed++;console.log(`STRIPE ELEMENT UI ✓ ${name}`)};
@@ -111,6 +112,24 @@ await check("application uses ready-gated UI and retains server-side TEST safegu
     "pro_test_payment_stripe_unavailable","pro_test_verify_payment_state"])
     assert.match(i18n,new RegExp(`${key}:`));
   assert.doesNotMatch(app,/console\.(?:log|error)\([^)]*(?:clientSecret|setup_client_secret|secretKey)/i);
+});
+
+await check("TEST commercial preview note is localized and retains the tax and renewal disclosures",async()=>{
+  const app=fs.readFileSync("app.js","utf8");
+  const fr=translator("fr")("pro_test_preview_note");
+  const en=translator("en")("pro_test_preview_note");
+  const de=translator("de")("pro_test_preview_note");
+  assert.match(app,/proState\.mode==="test"\?t\("pro_test_preview_note"\)/);
+  assert.notEqual(fr,en);
+  assert.equal(de,en,"languages without a dedicated copy fall back to English instead of French");
+  assert.match(fr,/Stripe TEST/);
+  assert.match(fr,/4,99/);
+  assert.match(fr,/renouvellement automatique/);
+  assert.match(fr,/résiliation à l’échéance via le portail client/);
+  assert.match(fr,/TVA, factures et CGV/);
+  assert.match(en,/Stripe TEST/);
+  assert.match(en,/automatic renewal/);
+  assert.match(en,/VAT, invoices and Terms/);
 });
 
 const paymentInput=(overrides={})=>({

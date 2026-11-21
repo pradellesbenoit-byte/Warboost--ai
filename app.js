@@ -5087,7 +5087,7 @@ function renderProTestAvailability(blocked){
   status.classList.remove("hidden");
   button?.setAttribute("aria-describedby","proTestAvailability");
 }
-function renderCommercialPreview(){const box=$("#proCommercialPreview"),price=$("#commercialPreviewPrice"),note=$("#commercialPreviewNote");if(!box)return;if(isNativeWarBoost){box.classList.add("hidden");return}box.classList.remove("hidden");if(price)price.textContent=formatProPrice(proState.plan||{amount:499,currency:"eur"});if(note)note.textContent=proState.mode==="test"?"STRIPE TEST uniquement — aucun paiement réel. Abonnement mensuel, renouvellement automatique, résiliation en fin de période dans le portail client. TVA, factures et CGV à finaliser avant toute vente réelle.":proState.mode==="live"?t("pro_live_note"):t("commercial_preview_note")}
+function renderCommercialPreview(){const box=$("#proCommercialPreview"),price=$("#commercialPreviewPrice"),note=$("#commercialPreviewNote");if(!box)return;if(isNativeWarBoost){box.classList.add("hidden");return}box.classList.remove("hidden");if(price)price.textContent=formatProPrice(proState.plan||{amount:499,currency:"eur"});if(note)note.textContent=proState.mode==="test"?t("pro_test_preview_note"):proState.mode==="live"?t("pro_live_note"):t("commercial_preview_note")}
 function renderPro(){
   const pill=$("#proPill"),btn=$("#proActionBtn"),title=$("#proTitle"),price=$("#proPrice"),section=$("#proSection");
   if(!pill||!btn)return;
