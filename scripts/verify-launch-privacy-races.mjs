@@ -21,6 +21,7 @@ function setup(){
   const ctx={state,cloudSession:{user:{id:"fixture-a"},access_token:"synthetic"},cloudRevision:"revision-a",
     cloud:{auth:{signOut:()=>pending.promise}},proState:{active:true},betaState:{allowed:true},
     $:selector=>node(selector),t:key=>key,
+     clearProTestPaymentUi(){},
     rememberAccountState:(id,value)=>remembered.push({id,state:JSON.parse(JSON.stringify(value))}),
     clearSignedOutAuthUi(){},renderAuth(){},renderBeta(){},
     render(){ctx.maskHomePrivateMeta();ctx.maskPlayerPrivateSummary();ctx.maskAlliancePrivateSummary()}};

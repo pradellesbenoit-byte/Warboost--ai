@@ -1456,10 +1456,3 @@ if (scope === "alliance") {
 }
 
 export {buildPlayerAnalysis,buildShopAdvice,buildAllianceAdvice,buildVsAdvice,buildSeasonAdvice,buildSevenDayPlan,buildCrossDomain,itemCategory,currencyKey,scoreVisibleOffer};
-
-  if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
-  if(scope==="season")return res.status(200).json({ok:true,...buildSeasonAdvice(s,loc)});
-  return res.status(400).json({error:"unknown_scope"});
-}
-
-export {buildPlayerAnalysis,buildShopAdvice,buildAllianceAdvice,buildVsAdvice,buildSeasonAdvice,buildSevenDayPlan,buildCrossDomain,itemCategory,currencyKey,scoreVisibleOffer};
