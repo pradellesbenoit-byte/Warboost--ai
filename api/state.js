@@ -44,6 +44,23 @@ async function canonicalizeAllianceState(input,playerId,{allowWrites=true}={}){
   let state=normalizeState({...input,player_id:playerId});
   if(!configured())return {state,changed:false,status:"service_unavailable"};
   const ctx=await getAllianceRoster(playerId,{serverId:state.player?.server_id,allianceTag:state.alliance?.tag}).catch(()=>null);
+
+  if (ctx?.access_denied) {
+    state.alliance = {
+      ...state.alliance,
+      members: [],
+      canonical_roster: [],
+      former_members: [],
+      roster_review: []
+    };
+
+    return {
+      state,
+      changed: true,
+      status: "access_denied"
+    };
+  }
+
   if(!ctx?.alliance)return {state,changed:false,status:"no_alliance"};
   let canonical=Array.isArray(ctx.roster)?ctx.roster:[];
   if(!canonical.length&&Array.isArray(ctx.alliance.roster)){
