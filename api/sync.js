@@ -18,6 +18,24 @@ import {mergePlayerAvailabilityIntoRoster,mergeEventAvailabilities,mergeAvailabi
 import {resolveCanonicalIdentity,canonicalMembershipNeedsRepair} from "../lib/canonical-alliance-access.js";
 import {resetGenerationRequestMatches} from "../lib/reset-generation.js";
 void mergeCloudRosterPreservingManual; // backward-compatibility safeguard remains exported and audited
+
+function safeConflictState(state) {
+  if (!state) return null;
+
+  return {
+    ...state,
+    alliance: state.alliance
+      ? {
+          ...state.alliance,
+          members: [],
+          canonical_roster: [],
+          former_members: [],
+          roster_review: []
+        }
+      : state.alliance
+  };
+}
+
 function accessToken(req){return String(req.headers?.authorization||"").replace(/^Bearer\s+/i,"").trim()}
 export default async function handler(req,res){res.setHeader("Cache-Control","no-store");if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
   let rosterPersisted=false,rosterWriteAttempted=false;
@@ -51,13 +69,13 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
       const baseUpdatedAt=req.body?.base_updated_at===null?null:String(req.body?.base_updated_at||"").trim()||null;
       const cloudState=saved?.state?normalizeState({...saved.state,player_id:playerId}):null;
       if(saved?.updated_at&&baseUpdatedAt!==String(saved.updated_at)){
-        return res.status(409).json({error:"profile_write_conflict",message:"Le profil a été modifié sur un autre appareil.",state:cloudState,updated_at:saved.updated_at,roster_confirmation:rosterConfirmation()});
+        return res.status(409).json({error:"profile_write_conflict",message:"Le profil a été modifié sur un autre appareil.",state:safeConflictState(cloudState),updated_at:saved.updated_at,roster_confirmation:rosterConfirmation()});
       }
       if(cloudState){
         base=mergeNewest(base,cloudState);
         const squadResult=reconcileCloudSquads(current,cloudState,base);
         if(squadResult.conflicts.length){
-          return res.status(409).json({error:"squad_freshness_ambiguous",message:"La composition de cette escouade doit être confirmée avant synchronisation.",state:cloudState,updated_at:saved.updated_at,roster_confirmation:rosterConfirmation()});
+          return res.status(409).json({error:"squad_freshness_ambiguous",message:"La composition de cette escouade doit être confirmée avant "synchronisation.",state:safeConflictState(cloudState),updated_at:saved.updated_at,roster_confirmation:rosterConfirmation()});
         }
         base=squadResult.state;
         if(requestedRosterSync){
