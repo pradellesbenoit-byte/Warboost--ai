@@ -71,6 +71,26 @@ export default async function handler(req,res){res.setHeader("Cache-Control","no
     if(configured()||userMode){
       if(configured()&&(allianceBeta.allowed||allianceBeta.account_access_allowed)){
         let ctx=await getAllianceRoster(playerId,{serverId:merged.player?.server_id,allianceTag:merged.alliance?.tag}).catch(error=>{if(requestedRosterSync)throw error;return null});
+
+if (ctx?.access_denied) {
+  if (requestedRosterSync) {
+    return res.status(403).json({
+      ok: false,
+      error: "alliance_access_denied",
+      roster_confirmation: rosterConfirmation()
+    });
+  }
+
+  ctx = null;
+  merged.alliance = {
+    ...merged.alliance,
+    members: [],
+    canonical_roster: [],
+    former_members: [],
+    roster_review: []
+  };
+}
+
         if(requestedRosterSync&&!ctx?.alliance)throw Object.assign(new Error("Canonical alliance unavailable"),{status:409,code:"roster_context_unavailable"});
         if(requestedRosterSync&&Object.hasOwn(req.body||{},"base_roster_updated_at")){
           const expected=req.body.base_roster_updated_at||null,actual=ctx?.alliance?.roster_updated_at||null;
