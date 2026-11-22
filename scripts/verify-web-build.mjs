@@ -25,14 +25,18 @@ for(const file of ["index.html","offline.html","privacy.html","security.html","l
 }
 const cgv=await read("web-dist/cgv.html");
 const privacy=await read("web-dist/privacy.html");
-const legal=await read("web-dist/legal.html");
+const legal=await read("web-dist/legal.html");     const index=await read("web-dist/index.html");
 assert.match(cgv,/Conditions générales de vente/);
 assert.match(cgv,/SIREN\s*:\s*108855875/);
 assert.match(cgv,/SIRET\s*:\s*10885587500010/);
 assert.match(cgv,/À VALIDER AVANT LIVE/);
 assert.match(legal,/href="\/cgv\.html"/);
-assert.match(await read("web-dist/index.html"),/href="\/cgv\.html"/);
-assert.match(await read("web-dist/index.html"),/href="\/privacy\.html"/);
+
+assert.match(index,/href="\/cgv\.html"/);
+assert.match(index,/href="\/privacy\.html"/);
+const publicLegalLinks=index.match(/<div class="safeLinks">([\s\S]*?)<\/div>/)?.[1]||"";
+assert.match(publicLegalLinks,/href="\/cgv\.html"/,"CGV must be reachable from public legal links before login");
+
 assert.match(privacy,/href="\/cgv\.html"/);
 assert.match(privacy,/Responsable du traitement/);
 assert.match(privacy,/Bases légales provisoires/);
