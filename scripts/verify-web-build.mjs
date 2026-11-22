@@ -26,11 +26,26 @@ for(const file of ["index.html","offline.html","privacy.html","security.html","l
 const cgv=await read("web-dist/cgv.html");
 const privacy=await read("web-dist/privacy.html");
 const legal=await read("web-dist/legal.html");     const index=await read("web-dist/index.html");
+const trustPagesCss=await read("web-dist/trust-pages.css");
 assert.match(cgv,/Conditions générales de vente/);
 assert.match(cgv,/SIREN\s*:\s*108855875/);
 assert.match(cgv,/SIRET\s*:\s*10885587500010/);
 assert.match(cgv,/À VALIDER AVANT LIVE/);
 assert.match(legal,/href="\/cgv\.html"/);
+assert.match(legal,/href="\/trust-pages\.css"/);
+
+for (const file of [
+  "web-dist/legal.html",
+  "web-dist/cgv.html",
+  "web-dist/privacy.html"
+]) {
+  const page = await read(file);
+  assert.match(page, /<nav[^>]*aria-label=/i);
+}
+
+assert.match(trustPagesCss, /nav\[aria-label\]\s*\{[\s\S]*?flex-wrap:\s*wrap/i);
+assert.match(trustPagesCss, /nav\[aria-label\]\s+a\s*\{[\s\S]*?min-height:\s*44px/i);
+assert.match(trustPagesCss, /@media\s*\(max-width:\s*520px\)/i);
 
 assert.match(index,/href="\/cgv\.html"/);
 assert.match(index,/href="\/privacy\.html"/);
