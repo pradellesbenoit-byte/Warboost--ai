@@ -7,7 +7,7 @@ import {readFile} from "node:fs/promises";
 const git=(...args)=>execFileSync("git",["--no-optional-locks",...args],{encoding:"utf8"});
 const branch=git("branch","--show-current").trim();
 const protectedBranchBases=new Map([
-  ["public-beta-safe-launch","origin/public-beta-safe-launch"],
+  ["warboost-free-account-preview-20261117","origin/warboost-free-account-preview-20261117"],["public-beta-safe-launch","origin/public-beta-safe-launch"],
   ["warboost-roster-fix-20261112","origin/warboost-roster-fix-20261112"]
 ]);
 const baseRef=protectedBranchBases.get(branch);
@@ -16,13 +16,25 @@ const base=git("rev-parse",baseRef).trim();
 git("merge-base","--is-ancestor",base,"HEAD");
 const commits=git("rev-list",`${base}..HEAD`).trim().split(/\s+/).filter(Boolean);
 const forbidden=/^(?:attached_assets\/|\.local\/private-(?:git-backups|scan-captures)\/|generated-artifacts\/)/;
+const stagedPaths=git("diff","--cached","--name-only","--diff-filter=AM").trim().split("\n").filter(Boolean);
+const worktreePaths=git("diff","--name-only","--diff-filter=AM").trim().split("\n").filter(Boolean);
+assert.ok(![...stagedPaths,...worktreePaths].some(path=>forbidden.test(path)),"private/generated asset must not be staged or modified for publication");
+
 for(const commit of commits){
   const paths=git("diff-tree","--no-commit-id","--name-only","--diff-filter=AM","-r",commit).trim().split("\n").filter(Boolean);
   assert.ok(!paths.some(path=>forbidden.test(path)),`private/generated asset introduced by ${commit}`);
 }
+const blobIds=new Set(git("rev-list","--objects","HEAD",`^${base}`).trim().split("\n").filter(Boolean).map(entry=>entry.split(" ")[0]));
+for(const entry of git("ls-files","-s").trim().split("\n").filter(Boolean)){
+  const [metadata,path]=entry.split("\t",2);
+  const [mode,oid]=metadata.split(/\s+/);
+  if(stagedPaths.includes(path)&&["100644","100755"].includes(mode))blobIds.add(oid);
+}
+
 let blobs=0,pngs=0;
-for(const entry of git("rev-list","--objects","HEAD",`^${base}`).trim().split("\n").filter(Boolean)){
-  const oid=entry.split(" ")[0];
+
+for(const oid of blobIds){
+
   if(git("cat-file","-t",oid).trim()!=="blob")continue;
   blobs++;
   const bytes=execFileSync("git",["--no-optional-locks","cat-file","blob",oid],{maxBuffer:32*1024*1024});
@@ -36,6 +48,19 @@ for(const entry of git("rev-list","--objects","HEAD",`^${base}`).trim().split("\
     offset+=length+12;
   }
 }
+for(const file of worktreePaths){
+  const bytes=await readFile(file);
+  assert.ok(!bytes.subarray(0,16).toString().startsWith("# v2 git bundle"),`private recovery bundle must not be modified for publication`);
+  assert.ok(!bytes.subarray(0,16).toString().startsWith("# v3 git bundle"),`private recovery bundle must not be modified for publication`);
+  if(!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))continue;
+  pngs++;
+  for(let offset=8;offset+12<=bytes.length;){
+    const length=bytes.readUInt32BE(offset),type=bytes.toString("ascii",offset+4,offset+8);
+    assert.ok(!["eXIf","tEXt","iTXt","zTXt"].includes(type),`image metadata in working-tree file ${file}`);
+    offset+=length+12;
+  }
+}
+
 for(const file of [".gitignore",".replitignore"]){
   const contents=await readFile(file,"utf8");
   for(const path of ["/attached_assets/","/.local/private-git-backups/","/.local/private-scan-captures/","/generated-artifacts/"])
