@@ -87,6 +87,7 @@ import {mergeFreshRecord,stampConfirmedRecord} from "./lib/field-freshness.js";
 import {playerAdviceInputSignature} from "./lib/player-advice-signature.js";
 import {renderKnowledgeGuidance} from "./lib/knowledge-guidance-ui.js";
 import {knowledgeCopy} from "./lib/knowledge-copy.js";
+import {captureOpenSquadIds,restoreOpenSquadIds} from "./lib/squad-open-state.js";
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const APP_VERSION="2.5.32";
@@ -2279,7 +2280,7 @@ function performSquadSwap(fromId,toId){
   }catch{if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("squad_swap_failed")}}
 }
 function renderSquads(){
-  const box=$("#squadList");if(!box)return;box.innerHTML="";
+  const box=$("#squadList");if(!box)return;const openSquadIds=captureOpenSquadIds(box);box.innerHTML="";
   const review=squadReviewStatus(state);
   state.squads.forEach((sq,i)=>{
     const id=i+1,shell=document.createElement("div");shell.className="squadShell";shell.dataset.squadId=String(id);
@@ -2311,6 +2312,7 @@ function renderSquads(){
       btn.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();shell.querySelector(".squadSwapMenu")?.classList.add("hidden");performSquadSwap(id,Number(btn.dataset.squadSwapTarget))});
     });
   });
+  restoreOpenSquadIds(box,openSquadIds);
 }
 
 function fmtWeaponPower(v){
@@ -2485,9 +2487,10 @@ function renderProPriority(analysis){
     button.disabled=true;
     const finish=analysisIndicator.begin("advice:knowledge",{targets:event.currentTarget});
     try{
-      const {response,json}=await fetchJsonBounded("/api/advice?action=knowledge_refresh",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:"{}"},25000);
-      if(!response.ok||!json?.ok)throw Error("knowledge_unavailable");
-      await runPlayerAdvice(false);
+      const refreshed=await runPlayerAdvice(false,{refreshKnowledge:true});
+      const nextStatus=$("#knowledgeAdvicePanel [data-knowledge-status]");
+      const statusKey={checked:"refreshComplete",unavailable:"refreshFailed",cooldown:"refreshCooldown"}[refreshed]||"refreshFailed";
+      if(nextStatus)nextStatus.textContent=knowledgeCopy(lang)[statusKey];
     }catch{if(status)status.textContent=knowledgeCopy(lang).unavailable}
     finally{finish();button.disabled=false}
   });
@@ -4284,11 +4287,11 @@ $("#collapseAllSquadsBtn")?.addEventListener("click",e=>{e.preventDefault();docu
 $("#squadCaptureHelpBtn")?.addEventListener("click",()=>openSquadCaptureHelp(false));
 $("#squadCaptureAckBtn")?.addEventListener("click",closeSquadCaptureHelp);
 
-async function requestAdvice(scope,stateForRequest=state){
+async function requestAdvice(scope,stateForRequest=state,{refreshKnowledge=false}={}){
   if(scope==="vs"){state.vs.week=currentVsWeek();state.vs.day=currentVsDay()}
   const finishAnalysis=beginActiveLoadingOperation(`advice:${scope}`);
   try{
-    const {response:r,json:j}=await fetchJsonBounded("/api/advice",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({scope,state:stateForRequest,locale:lang,squad_id:scope==="player"?(stateForRequest.diagnostic_squad_id||1):undefined})},25000);
+    const {response:r,json:j}=await fetchJsonBounded("/api/advice",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({scope,state:stateForRequest,locale:lang,squad_id:scope==="player"?(stateForRequest.diagnostic_squad_id||1):undefined,refresh_knowledge:refreshKnowledge===true})},25000);
     if(r.ok)return j;
   }catch{}
   finally{finishAnalysis()}
@@ -4326,12 +4329,12 @@ function refreshPlayerAdviceIfChanged({autoRefresh=true}={}){
   }
   return false;
 }
-async function runPlayerAdvice(scrollShop=false){
-  if(!requirePro())return;
+async function runPlayerAdvice(scrollShop=false,{refreshKnowledge=false}={}){
+  if(!requirePro())return false;
   const ready=playerOnboardingStatus(),note=$("#playerSyncInfo");
   if(!ready.mainReady){
     if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("onboarding_need_squad")}
-    renderPlayerOnboarding();$("#playerOnboarding")?.scrollIntoView({behavior:"smooth",block:"center"});return;
+    renderPlayerOnboarding();$("#playerOnboarding")?.scrollIntoView({behavior:"smooth",block:"center"});return false;
   }
   const buttons=[$("#playerAdviceBtn"),$("#shopAdviceBtn")].filter(Boolean),panel=$("#proPriorityPanel"),labels=buttons.map(button=>{if(button.dataset.playerAdviceIdleText===undefined)button.dataset.playerAdviceIdleText=button.textContent;return button.dataset.playerAdviceIdleText});
   const generation=++playerAdviceGeneration,requestState=typeof structuredClone==="function"?structuredClone(state):JSON.parse(JSON.stringify(state)),signature=playerAdviceInputSignature(requestState);
@@ -4340,18 +4343,19 @@ async function runPlayerAdvice(scrollShop=false){
   if(note){note.classList.remove("hidden");note.textContent=t("pro_analyzing")}
   if(panel)panel.classList.add("hidden");
   try{
-    const response=await requestAdvice("player",requestState);
-    if(generation!==playerAdviceGeneration)return;
+    const response=await requestAdvice("player",requestState,{refreshKnowledge});
+    if(generation!==playerAdviceGeneration)return false;
     if(signature!==playerAdviceInputSignature(state)){
       playerAdvicePendingSignature="";
       invalidatePlayerAdvice({autoRefresh:true});
-      return;
+      return false;
     }
     if(response?.analysis){
       playerAdviceRenderedSignature=signature;
       renderProPriority(response.analysis);
       if(scrollShop)setTimeout(()=>$("#proShopList")?.scrollIntoView({behavior:"smooth",block:"start"}),120);
     }else if(note)note.textContent=response?.advice||t("player_sync_note");
+    return refreshKnowledge?response?.analysis?.knowledge_refresh_status||"failed":Boolean(response?.analysis);
   }finally{
     if(generation===playerAdviceGeneration){
       playerAdvicePendingSignature="";

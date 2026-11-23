@@ -1382,10 +1382,16 @@ export default async function handler(req,res){
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
     analysis.technology_advice=buildTechnologyAdvice(s,{mainType:analysis.composition?.main_type||null});
     analysis.global_diagnostic=buildGlobalDiagnostic(s,analysis,loc);
-    try{analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,await loadKnowledge(),req.body?.squad_id)}
-    catch{analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,{},req.body?.squad_id)}
+    try{
+      const knowledge=await loadKnowledge({refresh:req.body?.refresh_knowledge===true});
+      analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,knowledge,req.body?.squad_id,{locale:loc});
+      if(req.body?.refresh_knowledge===true)analysis.knowledge_refresh_status=knowledge.refresh_status||"unavailable";
+    }catch{
+      analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,{},req.body?.squad_id,{locale:loc});
+      if(req.body?.refresh_knowledge===true)analysis.knowledge_refresh_status="unavailable";
+    }
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
-    return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
+    return res.status(200).json(playerAdviceResponse(analysis));
   }
   if(scope==="alliance"){if(!configured())return res.status(503).json({ok:false,error:"database_not_configured"});const declaredRole=normalizeAllianceRole(s?.player?.role);if(!["R4","R5"].includes(declaredRole))return res.status(403).json({ok:false,error:"manager_role_required",advice:loc.startsWith("fr")?"Plan de guerre réservé aux joueurs qui déclarent être R5/R4 dans Last War.":"War plan is reserved for players who declare R5/R4 in Last War."});const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:`warboost-alliance-ai-v${ENGINE_VERSION}`,access_basis:"player_declared_last_war_rank",declared_role:declaredRole,...a});}
   if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
@@ -1393,4 +1399,7 @@ export default async function handler(req,res){
   return res.status(400).json({error:"unknown_scope"});
 }
 
+export function playerAdviceResponse(analysis){
+  return {ok:true,engine:analysis.engine,advice:analysis.summary,analysis};
+}
 export {buildPlayerAnalysis,buildShopAdvice,buildAllianceAdvice,buildVsAdvice,buildSeasonAdvice,buildSevenDayPlan,buildCrossDomain,itemCategory,currencyKey,scoreVisibleOffer};

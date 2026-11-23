@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {scopedDiagnosticState,buildKnowledgeGuidance,applicableOfficialFacts} from "../lib/knowledge-guidance.js";
-import {refreshKnowledgeSnapshot,approvedSource,robotsAllowed,visibleText,discoverPublicNotices} from "../api/_knowledge.js";
+import {readFileSync} from "node:fs";
+import {scopedDiagnosticState,buildKnowledgeGuidance,applicableOfficialFacts,staleOfficialFacts} from "../lib/knowledge-guidance.js";
+import {refreshKnowledgeSnapshot,loadKnowledge,approvedSource,robotsAllowed,visibleText,discoverPublicNotices} from "../api/_knowledge.js";
 import {renderKnowledgeGuidance} from "../lib/knowledge-guidance-ui.js";
 import {knowledgeCopy,KNOWLEDGE_LOCALES} from "../lib/knowledge-copy.js";
 import {playerAdviceInputSignature} from "../lib/player-advice-signature.js";
 import {resolveDiagnosticState,buildGlobalDiagnostic} from "../lib/player-global-diagnostic.js";
-import adviceHandler,{buildPlayerAnalysis} from "../api/advice.js";
+import adviceHandler,{buildPlayerAnalysis,playerAdviceResponse} from "../api/advice.js";
 
 let checks=0;
 function test(name,fn){fn();checks++;console.log("PASS",name)}
@@ -98,6 +99,43 @@ test("dated approved official fact applies and recomputes recommendations",()=>{
   assert.equal(changed.recommendations.find(row=>row.topic==="gear").confidence,"medium");
   assert.equal(noNews.recommendations.find(row=>row.topic==="gear").confidence,"medium");
   assert.equal(changed.purchase_recommended,false);assert.equal(changed.seven_day_plan.length,7);
+});
+test("stale official facts are excluded and counted rather than presented as current",()=>{
+  const stale={...fact,verified_at:"2026-09-01T00:00:00Z"};
+  const staleSnapshot={...snapshot,facts:[stale]};
+  assert.equal(applicableOfficialFacts(staleSnapshot,{heroes:lineups[0]},now).length,0);
+  assert.equal(staleOfficialFacts(staleSnapshot,{heroes:lineups[0]},now).length,1);
+  const guide=buildKnowledgeGuidance(state,staleSnapshot,1,{now});
+  assert.equal(guide.stale_official_fact_count,1);
+  assert.equal(guide.applicable_facts.length,0);
+  assert.ok(renderKnowledgeGuidance(guide,{locale:"en"}).includes(knowledgeCopy("en").staleRulesExcluded.replace("{count}","1")));
+});
+test("old player scan evidence is visibly stale and remains non-purchasing",()=>{
+  const staleState=structuredClone(state),staleAt="2026-10-01T10:00:00Z";
+  staleState.squads[0].last_confirmed_scan_at=staleAt;
+  for(const hero of staleState.squads[0].heroes){
+    hero.updated_at=staleAt;
+    hero.field_updated_at=Object.fromEntries(Object.keys(hero.field_updated_at||{}).map(key=>[key,staleAt]));
+  }
+  const guide=buildKnowledgeGuidance(staleState,{},1,{now,locale:"fr"});
+  assert.equal(guide.data_freshness.status,"stale");
+  assert.equal(guide.data_freshness.blocks_paid,true);
+  assert.equal(guide.purchase_recommended,false);
+  assert.ok(renderKnowledgeGuidance(guide,{locale:"fr"}).includes(guide.data_freshness.label));
+});
+test("article discoveries retain source kind, observation date, and cannot become advice facts",()=>{
+  const community={id:"community",url:"https://lastwar.wiki/season7",kind:"community",status:"verified",verified_at:at};
+  const discovery={title:"Season 7 community claim",url:community.url,source_id:community.id,observed_at:at,
+    published_at:null,review_status:"requires_article_review",author_verified:false};
+  const guide=buildKnowledgeGuidance(state,{sources:[community],facts:[],discoveries:[discovery]},1,{now,locale:"en"});
+  assert.equal(guide.discoveries[0].source_kind,"community");
+  assert.equal(guide.discoveries[0].observed_at,at);
+  assert.equal(guide.discoveries[0].used_as_rule,false);
+  const copy=knowledgeCopy("en"),html=renderKnowledgeGuidance(guide,{locale:"en"});
+  assert.ok(html.includes(copy.unreviewedLead));
+  assert.ok(html.includes(copy.communitySource));
+  assert.ok(html.includes(copy.observed));
+  assert.ok(!html.includes(copy.official));
 });
 for(const [name,patch] of [
   ["community source",{sources:[{...source,kind:"community"}]}],

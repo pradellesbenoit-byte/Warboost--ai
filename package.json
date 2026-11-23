@@ -8,6 +8,7 @@
     "test:safe-review-lot": "node --import ./scripts/fixtures/block-external-network.mjs --test scripts/verify-safe-review-lot.mjs",
     "knowledge:refresh": "node scripts/refresh-last-war-knowledge.mjs",
     "test:knowledge-guidance": "node scripts/verify-knowledge-guidance.mjs",
+    "test:squad-open-state": "node --check lib/squad-open-state.js && node scripts/verify-squad-open-state.mjs",
     "build": "npm run build:web",
     "build:web": "node scripts/build-web.mjs",
     "build:mobile": "node scripts/build-mobile-web.mjs",

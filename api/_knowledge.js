@@ -5,7 +5,16 @@ const path=new URL("../assets/last-war-knowledge.json",import.meta.url);
 const official=new Set(["wiki.lastwar.com","lastwar.com","www.lastwar.com"]);
 const community=new Set(["lastwar.wiki","lastwarvault.com"]);
 export const KNOWLEDGE_REFRESH_MS=24*60*60*1000;
+export const KNOWLEDGE_RETRY_MS=6*60*60*1000;
 let cached=null,inFlight=null,lastAttempt=0,diskRevision=null;
+export function knowledgeRefreshCooldownMs(snapshot={},now=Date.now()){
+  const recentOfficialRead=(snapshot.sources||[]).some(source=>{
+    const verifiedAt=Date.parse(source.verified_at||"");
+    return source.kind==="official"&&source.status==="verified"&&Number.isFinite(verifiedAt)&&
+      verifiedAt<=now&&now-verifiedAt<KNOWLEDGE_REFRESH_MS;
+  });
+  return recentOfficialRead?KNOWLEDGE_REFRESH_MS:KNOWLEDGE_RETRY_MS;
+}
 export function approvedSource(source){
   try{
     const url=new URL(source.url);
@@ -113,7 +122,7 @@ export async function refreshKnowledgeSnapshot(snapshot,{fetchImpl=fetch,now=new
   return {...snapshot,sources,facts,discoveries:[...discoveries.values()].slice(-100),revision,last_attempt_at:now,
     verified_at:checks.some(row=>row.status==="verified")?now:snapshot.verified_at||null};
 }
-export async function loadKnowledge({refresh=false}={}){
+export async function loadKnowledge({refresh=false,fetchImpl=fetch,now=Date.now()}={}){
   if(inFlight)return inFlight;
   const disk=JSON.parse(await readFile(path,"utf8"));
   const {revision,...content}=disk;
@@ -121,8 +130,16 @@ export async function loadKnowledge({refresh=false}={}){
   if(!cached||diskRevision!==fingerprint){
     cached={...disk,revision:fingerprint};diskRevision=fingerprint;lastAttempt=Date.parse(disk.last_attempt_at||"")||0;
   }
-  if(!refresh||Date.now()-lastAttempt<KNOWLEDGE_REFRESH_MS)return cached;
-  lastAttempt=Date.now();
-  inFlight=refreshKnowledgeSnapshot(cached).then(result=>(cached=result)).finally(()=>{inFlight=null});
+  if(!refresh)return cached;
+  const nowMs=now instanceof Date?now.getTime():Number(now);
+  const attemptAt=Number.isFinite(nowMs)?nowMs:Date.now();
+  if(attemptAt-lastAttempt<knowledgeRefreshCooldownMs(cached,attemptAt))
+    return {...cached,refresh_status:"cooldown"};
+  lastAttempt=attemptAt;
+  inFlight=refreshKnowledgeSnapshot(cached,{fetchImpl,now:new Date(attemptAt).toISOString()}).then(result=>{
+    cached=result;
+    const checkedOfficial=(result.sources||[]).some(source=>source.kind==="official"&&source.status==="verified");
+    return {...result,refresh_status:checkedOfficial?"checked":"unavailable"};
+  }).finally(()=>{inFlight=null});
   return inFlight;
 }
