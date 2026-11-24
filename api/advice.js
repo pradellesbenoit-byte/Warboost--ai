@@ -233,8 +233,11 @@ Object.assign(AWAKENING_TEXT,{
 function awakeningText(locale){return AWAKENING_TEXT[shopLocaleKey(locale)]||AWAKENING_TEXT.en}
 function dataConfidence(squads,drone){
   let score=0,max=0;
-  squads.forEach((s,i)=>{if(i===3&&!squadConfigured(s))return;max+=20;if(s?.needs_rescan===true){score+=Math.min(5,heroDetailCoverage(s)/100*5);return}if(squadConfigured(s))score+=5;if(num(s?.power)!==null)score+=5;const c=heroDetailCoverage(s);score+=c/100*10});
-  max+=20;if(num(drone?.level)!==null)score+=10;if(num(drone?.power_m)!==null)score+=10;
+  // Unscanned secondary squads are optional and must not lower diagnostic confidence.
+  squads.forEach(s=>{if(!squadConfigured(s))return;max+=20;if(s?.needs_rescan===true){score+=Math.min(5,heroDetailCoverage(s)/100*5);return}score+=5;if(num(s?.power)!==null)score+=5;score+=heroDetailCoverage(s)/100*10});
+  // Drone data improves advice when present but is not required to analyse one squad.
+  const droneLevel=num(drone?.level),dronePower=num(drone?.power_m);
+  if(droneLevel!==null||dronePower!==null){max+=20;if(droneLevel!==null)score+=10;if(dronePower!==null)score+=10}
   return max?Math.max(0,Math.min(100,Math.round(score/max*100))):0;
 }
 function priority(kind,title,reason,action,buyFree,buyPaid,severity,target){return {kind,title,reason,action,buy_free:buyFree,buy_paid:buyPaid,severity:Math.round(severity),target}}
@@ -497,7 +500,11 @@ function buildPlayerAnalysis(state,locale){
     }
     const dLevel=num(state?.drone?.level),dPower=num(state?.drone?.power_m);if(dLevel!==null||dPower!==null){const impact=dLevel===null?62:dLevel<100?84:dLevel<150?75:dLevel<200?66:58;candidates.push(candidate("drone",p.titles.drone,p.drone(dLevel,dPower!==null?fmt(dPower,loc):null),p.actionDrone,p.freeDrone,p.paidDrone,"Drone",impact,1.15,state,lang,{source_updated_at:state?.drone?.updated_at||null}));}
   }
-  const missing=squads.map((s,i)=>i<3&&(!squadConfigured(s)||s?.needs_rescan===true)?squadName(s,i,lang):null).filter(Boolean);if(missing.length)candidates.push(candidate("scan",p.titles.scan,p.scanMissing(missing.join(", ")),p.actionScan,p.freeNone,p.paidNone,missing.join(", "),70,.3,state,lang));
+  // Only the selected squad's confirmed gaps matter. Never require secondary scans.
+  // Avoid a second scan card if missing hero/weapon details were already reported.
+  if(main.s?.needs_rescan===true&&!candidates.some(item=>item.kind==="scan")){
+    candidates.push(candidate("scan",p.titles.scan,p.needHeroes(mainName),p.actionScan,p.freeNone,p.paidNone,mainName,70,.3,state,lang));
+  }
   const formationBonus=formationBonusPct(enhancedHeroes),mainType=mainSquadType(enhancedHeroes);
   const adaptiveContext=buildAdaptiveContext(state,{mainType,formationBonusPct:formationBonus,locale:loc});
   const techContext=mainType?adaptiveContext:{...adaptiveContext,technology:{...adaptiveContext.technology,values:(adaptiveContext.technology?.values||[]).filter(item=>item.key!=="type_mastery_pct")}};
@@ -511,7 +518,7 @@ function buildPlayerAnalysis(state,locale){
   unique.forEach((x,i)=>{x.rank=i+1;if(x.kind==="exclusive"){x.comparison_note=rankAwareExclusiveWhy(exclusiveComparison,x,lang);x.action=rankedExclusiveAction(x.rank,canonicalHeroName(x.hero||x.target),canonicalHeroName(exclusiveLeader),lang)}});
   const comparison=squads.map((s,i)=>{const power=num(s.power),configuredHere=squadConfigured(s),needsRescan=s?.needs_rescan===true,optional=i===3&&!configuredHere,isMain=i===main.i,ratio=mainPower&&power!==null?power/mainPower:null,dataQ=Math.round((configuredHere?20:0)+(power!==null?20:0)+heroDetailCoverage(s)*.6),detected=(s?.heroes||[]).filter(heroConfigured).length,complete=detected>=5;let status=optional?optionalSquadStatus(lang):p.squadStatusMissing;if(configuredHere&&!needsRescan)status=isMain?p.squadStatusMain:(ratio!==null&&ratio>=.75?p.squadStatusReady:p.squadStatusLow);if(needsRescan)status=p.squadStatusMissing;return {id:i+1,name:squadName(s,i,lang),power,power_label:power!==null?fmt(power,loc):"—",status,data_quality:Math.max(0,Math.min(needsRescan?45:100,dataQ)),gap_to_main:mainPower&&power!==null?Math.max(0,Math.round((mainPower-power)*100)/100):null,optional,needs_rescan:needsRescan,heroes_detected:detected,composition_complete:complete&&!needsRescan};});
   const mainHeroesDetected=heroes.length,compositionComplete=mainHeroesDetected>=5;
-  let conf=dataConfidence(squads,state?.drone||{});if(coverage<60)conf=Math.min(conf,82);if(!compositionComplete)conf=Math.min(conf,72);if(weaponList.length)conf=Math.min(96,conf+3);conf=Math.round(conf*.85+adaptiveContext.confidence*.15);
+  let conf=dataConfidence([main.s],state?.drone||{});if(coverage<60)conf=Math.min(conf,82);if(!compositionComplete)conf=Math.min(conf,72);if(weaponList.length)conf=Math.min(96,conf+3);conf=Math.round(conf*.85+adaptiveContext.confidence*.15);
   const top=unique[0];
   const metaTopicForKind=k=>k==="exclusive"?"exclusive":k==="gear"?"gear":k==="drone"?"drone":null;
   const metaTopics=[...new Set(unique.map(x=>metaTopicForKind(x?.kind)).filter(Boolean))];
