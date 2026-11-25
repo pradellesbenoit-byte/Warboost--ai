@@ -2,7 +2,9 @@ import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
 import {loadKnowledge} from "./_knowledge.js";
 import {scopedDiagnosticState,buildKnowledgeGuidance} from "../lib/knowledge-guidance.js";
 import {requireProductUser} from "../lib/pro-access.js";
-import {configured} from "../lib/supabase.js";
+import {configured,getProfile,getAllianceMembership,getAllianceRoster} from "../lib/supabase.js";
+import {canonicalAllianceAuthorization} from "../lib/alliance-authorization.js";
+import {normalizeLastWarNickname,normalizeServerId,normalizeAllianceTag} from "../lib/alliance-identity.js";
 import { metaAdjustment, metaContext, metaShopAdjustment } from '../lib/meta-intel.js';
 import {canonicalHeroName,heroType} from '../lib/heroes.js';
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from '../lib/alliance-activity.js';
@@ -410,7 +412,7 @@ function selectSmartTop3(candidates,lang){
   // No explanatory card is allowed to call itself "best" independently of the actual ranking.
   const out=[],seen=new Set();
   for(const x of sorted){
-    const key=`${x.kind}:${x.target}`;
+    const key=x.kind==="scan"?"scan":`${x.kind}:${x.target}`;
     if(seen.has(key))continue;
     seen.add(key);out.push(x);
     if(out.length>=3)break;
@@ -469,6 +471,7 @@ function buildPlayerAnalysis(state,locale){
   const progressionByHero=name=>heroProgressionByName(state,name);
   const weaponByHero=name=>heroWeaponByName(state,name);
   const heroUpdatedAt=name=>heroMemoryUpdatedAt(state,name,main.s.updated_at);
+  const fieldUpdatedAt=(hero,key)=>hero?.field_updated_at?.[key]||hero?.updated_at||main.s.updated_at||null;
   // V2.4.9: Diagnostic PRO consumes the V2.4.7 hero-keyed memory registry.
   // Squad slots provide identity/current visible data; hero_profiles, hero_progression and exclusive_weapons
   // restore only the SAME hero's known fields. Nothing is ever inherited from a previous slot occupant.
@@ -476,28 +479,34 @@ function buildPlayerAnalysis(state,locale){
   const heroes=enhancedHeroes.map((h,i)=>({h,i})).filter(x=>heroConfigured(x.h));
   const coverage=heroDetailCoverage({...main.s,heroes:enhancedHeroes});
   const candidates=[];
-  if(heroes.length<3||coverage<30){candidates.push(candidate("scan",p.titles.scan,p.needHeroes(mainName),p.actionScan,p.freeNone,p.paidNone,mainName,99,.55,state,lang));}
+  if(heroes.length<5||coverage<60){candidates.push(candidate("scan",p.titles.scan,p.needHeroes(mainName),p.actionScan,p.freeNone,p.paidNone,mainName,99,.55,state,lang,{missing_field:"selected_squad_data",source_updated_at:main.s.updated_at||null}));}
   else{
     const squadType=squadTypeFromHeroes(heroes),formationBonus=formationBonusPct(enhancedHeroes),measuredHybrid=state?.season?.measured_hybrid_synergy===true,awTx=awakeningText(locale);
     const levels=heroes.map(x=>num(x.h.level)).filter(x=>x!==null), levelTarget=levels.length?Math.max(...levels):null;
     const gears=heroes.map(({h})=>gearMetric(h.gear)).filter(x=>x!==null), gearTarget=gears.length?Math.max(...gears):null;
     for(const {h,i} of heroes){
       const hn=heroName(h,i,lang),baseImportance=heroImportance(h,heroes,squadType),offType=Boolean(squadType&&heroType(hn)&&heroType(hn)!==squadType),importance=baseImportance*((offType&&!measuredHybrid)?0.90:1),awReady=awakeningReadiness(h,weaponList,state?.season||{}),awEligible=seasonIsActive(state?.season||{})&&Number(state?.season?.number)===6&&Boolean(S6_AWAKENING_HEROES[canonicalHeroName(hn)]);
-      const lv=num(h.level);if(lv!==null&&levelTarget!==null&&levelTarget-lv>=3){const gap=levelTarget-lv,impact=Math.min(92,(67+gap*2.2)*importance),cost=.72+gap/18;candidates.push(candidate("level",p.titles.level,p.level(hn,gap,levelTarget),p.actionLevel(hn),p.freeLevel,p.paidLevel,hn,impact,cost,state,lang,{hero:hn,current:lv,current_label:`Lv.${lv}`,next_target:`Lv.${levelTarget}`,source_updated_at:main.s.updated_at||null}));}
-      const st=num(h.stars);if(st!==null&&st<5){const gap=Math.max(.1,Math.round((5-st)*10)/10),gate=awEligible?8:0,impact=Math.min(99,(82+gap*5+gate)*importance),cost=.9+gap*.42,reason=p.stars(hn,gap)+(awEligible?` ${awTx.gateStars(hn)}`:"");candidates.push(candidate("stars",p.titles.stars,reason,p.actionStars(hn),p.freeHero,p.paidHero,hn,impact,cost,state,lang,{hero:hn,current:st,current_label:`${st}★`,next_target:`${Math.min(5,Math.ceil((st+.1)*2)/2)}★`,awakening_gate:awEligible,source_updated_at:main.s.updated_at||null}));}
-      const ex=metric(h.exclusive),exTarget=nextKnownExBreakpoint(ex);if(ex!==null&&exTarget!==null){const raw=exPriorityScore(hn,squadType,ex,exTarget),gap=exTarget-ex,gate=awEligible&&ex<20&&exTarget===20?11:0,impact=Math.min(99,(64+raw*.28+gate)*importance),cost=.75+gap/12,reason=exReason(locale,hn,ex,exTarget)+(gate?` ${awTx.gateEx(hn)}`:"");candidates.push(candidate("exclusive",p.titles.exclusive,reason,p.actionExclusive(hn),p.freeExclusive,p.paidExclusive,hn,impact,cost,state,lang,{hero:hn,current:ex,current_label:`EX${ex}`,next_target:`EX${exTarget}`,breakpoint:exTarget,awakening_gate:gate>0,source_updated_at:heroUpdatedAt(hn)}));}
+      const lv=num(h.level);if(lv!==null&&levelTarget!==null&&levelTarget-lv>=3){const gap=levelTarget-lv,impact=Math.min(92,(67+gap*2.2)*importance),cost=.72+gap/18;candidates.push(candidate("level",p.titles.level,p.level(hn,gap,levelTarget),p.actionLevel(hn),p.freeLevel,p.paidLevel,hn,impact,cost,state,lang,{hero:hn,current:lv,current_label:`Lv.${lv}`,next_target:`Lv.${levelTarget}`,source_updated_at:fieldUpdatedAt(h,"level")}));}
+      const st=num(h.stars);if(st!==null&&st<5){const gap=Math.max(.1,Math.round((5-st)*10)/10),gate=awEligible?8:0,impact=Math.min(99,(82+gap*5+gate)*importance),cost=.9+gap*.42,reason=p.stars(hn,gap)+(awEligible?` ${awTx.gateStars(hn)}`:"");candidates.push(candidate("stars",p.titles.stars,reason,p.actionStars(hn),p.freeHero,p.paidHero,hn,impact,cost,state,lang,{hero:hn,current:st,current_label:`${st}★`,next_target:`${Math.min(5,Math.ceil((st+.1)*2)/2)}★`,awakening_gate:awEligible,source_updated_at:fieldUpdatedAt(h,"stars")}));}
+      const ex=metric(h.exclusive),exTarget=nextKnownExBreakpoint(ex);if(ex!==null&&exTarget!==null){const raw=exPriorityScore(hn,squadType,ex,exTarget),gap=exTarget-ex,gate=awEligible&&ex<20&&exTarget===20?11:0,impact=Math.min(99,(64+raw*.28+gate)*importance),cost=.75+gap/12,reason=exReason(locale,hn,ex,exTarget)+(gate?` ${awTx.gateEx(hn)}`:"");candidates.push(candidate("exclusive",p.titles.exclusive,reason,p.actionExclusive(hn),p.freeExclusive,p.paidExclusive,hn,impact,cost,state,lang,{hero:hn,current:ex,current_label:`EX${ex}`,next_target:`EX${exTarget}`,breakpoint:exTarget,awakening_gate:gate>0,source_updated_at:fieldUpdatedAt(h,"exclusive")||heroUpdatedAt(hn)}));}
       if(awEligible&&st!==null&&st>=5&&ex!==null&&ex>=20){const awScore=awakeningDecisionScore({hero:h,weapons:weaponList,season:state?.season||{},mainType:squadType,formationBonus,importance}),shards=awReady?.awakening?.named_shards,reason=(shards===null?awTx.unknown(hn):shards>=50||awReady?.unlock_confirmed?awTx.ready(hn):awTx.shards(hn,shards))+` ${formationBonus>=20?awTx.mono(formationBonus):(!measuredHybrid&&formationBonus<20?awTx.hybrid:"")}`,cost=awReady?.unlock_confirmed?.82:shards===null?1.20:shards>=50?1.0:1.35;candidates.push(candidate("awakening",awTx.title,reason,awTx.action(hn),awTx.free,awTx.paid,hn,Math.max(58,awScore||58),cost,state,lang,{hero:hn,current:awReady?.awakening?.stars,current_label:awReady?.unlock_confirmed?(awReady?.awakening?.stars!==null?`Awakening ${awReady.awakening.stars}★`:awTx.title):"Awakening locked/unknown",next_target:awReady?.unlock_confirmed?"Next Awakening step":"Awakening unlock",named_shards:shards,fragment_cost_known:shards!==null,source_updated_at:latestIso(progressionByHero(hn)?.updated_at,weaponByHero(hn)?.updated_at,main.s.updated_at)}));}
-      const gr=gearMetric(h.gear);if(gr!==null&&gearTarget!==null&&gearTarget-gr>=3){const gap=gearTarget-gr,impact=Math.min(94,(65+gap*1.7)*importance),cost=.68+gap/16;candidates.push(candidate("gear",p.titles.gear,p.gear(hn,Math.round(gap*10)/10,gearTarget),p.actionGear(hn),p.freeGear,p.paidGear,hn,impact,cost,state,lang,{hero:hn,current:gr,current_label:`Nv.${gr}`,next_target:`Nv.${gearTarget}`,source_updated_at:main.s.updated_at||null}));}
+      const gr=gearMetric(h.gear);if(gr!==null&&gearTarget!==null&&gearTarget-gr>=3){const gap=gearTarget-gr,impact=Math.min(94,(65+gap*1.7)*importance),cost=.68+gap/16;candidates.push(candidate("gear",p.titles.gear,p.gear(hn,Math.round(gap*10)/10,gearTarget),p.actionGear(hn),p.freeGear,p.paidGear,hn,impact,cost,state,lang,{hero:hn,current:gr,current_label:`Nv.${gr}`,next_target:`Nv.${gearTarget}`,source_updated_at:fieldUpdatedAt(h,"gear")}));}
     }
     const exUnknown=heroes.map(({h,i})=>({h,i,name:heroName(h,i,lang)})).filter(x=>metric(x.h.exclusive)===null).map(x=>x.name);
     const reliableHeroCandidates=candidates.filter(x=>["level","stars","exclusive","awakening","gear"].includes(x.kind)).length;
-    if(exUnknown.length&&reliableHeroCandidates<3){
+    if(exUnknown.length&&reliableHeroCandidates<3&&!candidates.some(x=>x.kind==="scan")){
       const gapText=missingExclusiveDataText(lang,mainName,exUnknown);
       candidates.push(candidate("scan",gapText.title,gapText.reason,gapText.action,p.freeNone,p.paidNone,gapText.target,94,.22,state,lang,{missing_field:"exclusive",missing_heroes:exUnknown,source_updated_at:main.s.updated_at||null}));
     }
     const dLevel=num(state?.drone?.level),dPower=num(state?.drone?.power_m);if(dLevel!==null||dPower!==null){const impact=dLevel===null?62:dLevel<100?84:dLevel<150?75:dLevel<200?66:58;candidates.push(candidate("drone",p.titles.drone,p.drone(dLevel,dPower!==null?fmt(dPower,loc):null),p.actionDrone,p.freeDrone,p.paidDrone,"Drone",impact,1.15,state,lang,{source_updated_at:state?.drone?.updated_at||null}));}
   }
-  const missing=squads.map((s,i)=>i<3&&(!squadConfigured(s)||s?.needs_rescan===true)?squadName(s,i,lang):null).filter(Boolean);if(missing.length)candidates.push(candidate("scan",p.titles.scan,p.scanMissing(missing.join(", ")),p.actionScan,p.freeNone,p.paidNone,missing.join(", "),70,.3,state,lang));
+  const selectedEvidenceStale=heroes.some(({h})=>["level","stars","exclusive","gear"].some(key=>{
+    const value=key==="gear"?cleanName(h?.gear):key==="exclusive"?metric(h?.exclusive):num(h?.[key]);
+    return value!==null&&value!==""&&freshnessInfo(fieldUpdatedAt(h,key),"player",lang).blocks_paid;
+  }));
+  if((main.s.needs_rescan===true||selectedEvidenceStale)&&!candidates.some(x=>x.kind==="scan")){
+    candidates.push(candidate("scan",p.titles.scan,p.needHeroes(mainName),p.actionScan,p.freeNone,p.paidNone,mainName,96,.35,state,lang,{missing_field:selectedEvidenceStale?"selected_squad_stale":"selected_squad_review",source_updated_at:main.s.updated_at||null}));
+  }
   const formationBonus=formationBonusPct(enhancedHeroes),mainType=mainSquadType(enhancedHeroes);
   const adaptiveContext=buildAdaptiveContext(state,{mainType,formationBonusPct:formationBonus,locale:loc});
   const techContext=mainType?adaptiveContext:{...adaptiveContext,technology:{...adaptiveContext.technology,values:(adaptiveContext.technology?.values||[]).filter(item=>item.key!=="type_mastery_pct")}};
@@ -921,9 +930,57 @@ function scoreVisibleOffer(o,needs,state){const rawStore=o?.store_type||o?.store
   if(store==="campaign"&&cat==="exclusive"&&!campaignExclusiveTargets.length)score=0;
   if(cat==="legacy_mobilization_coupon"||cat==="event_ammo"&&isCashCurrency(currency))score=0;
   score=Math.max(0,Math.min(100,Math.round(score)));
-  return {score,cat,factors,budget:{currency,price,balance,reserve,diamond},opaque_container:opaqueGuard.opaque,opaque_score_cap:opaqueGuard.cap,situational_resource:situationalGuard.situational,situational_context_confirmed:situationalGuard.contextual,situational_score_cap:situationalGuard.cap};
+  return {score,cat,factors,budget:{currency,price,balance,reserve,diamond,wallet_currency:shop?.currency||null,wallet_matches:walletMatches},opaque_container:opaqueGuard.opaque,opaque_score_cap:opaqueGuard.cap,situational_resource:situationalGuard.situational,situational_context_confirmed:situationalGuard.contextual,situational_score_cap:situationalGuard.cap};
 }
 function verdict(score,p){return score>=85?{key:"buy_now",label:p.buy}:score>=55?{key:"consider",label:p.consider}:{key:"skip",label:p.skip};}
+function offerQuantityKnown(offer){
+  for(const key of ["quantity","item_quantity","items_count","bundle_quantity","contents_count"]){
+    const value=num(offer?.[key]);if(value!==null&&value>=0)return true;
+  }
+  return offer?.contents_verified===true||offer?.content_verified===true||
+    (Array.isArray(offer?.contents)&&offer.contents.length>0);
+}
+function offerStockState(offer){
+  if(offer?.sold===true||offer?.available===false||offer?.availability==="sold_out"||offer?.stock_status==="sold_out")return "unavailable";
+  if(offer?.available===true||["available","in_stock","limited"].includes(String(offer?.availability||offer?.stock_status||"").toLowerCase()))return "available";
+  for(const key of ["stock_remaining","available_stock","remaining_stock","stock"]){
+    const value=num(offer?.[key]);if(value!==null)return value>0?"available":"unavailable";
+  }
+  return "unknown";
+}
+function observedOfferDecision(offer,{source,fresh,budget,paidGuard,score,locale}){
+  const verify=shopAlignmentText(locale).verify,fr=localePack(locale)==="fr";
+  if(offerStockState(offer)==="unavailable")return {key:"skip",label:shopText(locale).skip,reason:fr?"Offre épuisée ou indisponible dans les données de cette capture.":"Offer is sold out or marked unavailable in this capture."};
+  if(fresh?.status!=="fresh")return {key:"refresh",label:refreshBeforePaidText(locale),reason:fresh?.label||""};
+  if(paidGuard?.real_money&&!paidGuard.strong_recommendation_allowed)return {key:"verify_paid",label:verify,reason:paidGuard.label};
+  const missing=[];
+  if(num(offer?._price??offer?.price)===null)missing.push(fr?"prix":"price");
+  if(!cleanName(offer?._currency||offer?.currency)||offer?._currency_normalized===true||
+    num(offer?._currency_confidence)!==null&&num(offer?._currency_confidence)<.65)missing.push(fr?"monnaie":"currency");
+  if(!offerQuantityKnown(offer))missing.push(fr?"quantité ou contenu":"quantity or contents");
+  if(offerStockState(offer)==="unknown")missing.push(fr?"stock/limite":"stock/limit");
+  const type=purchaseType(offer?._currency||offer?.currency||budget?.currency);
+  if(type!=="real_money"){
+    if(num(budget?.balance)===null)missing.push(fr?"solde de la monnaie":"currency balance");
+    else if(budget?.wallet_matches!==true)missing.push(fr?"correspondance du solde et de la monnaie":"wallet/currency match");
+  }
+  if(missing.length)return {key:"unknown",label:verify,reason:fr?
+    `Informations manquantes pour évaluer l’achat : ${[...new Set(missing)].join(", ")}. Vérifie l’offre dans le jeu avant de dépenser.`:
+    `Missing purchase evidence: ${[...new Set(missing)].join(", ")}. Check the offer in game before spending.`};
+  if(type!=="real_money"&&Number(budget.balance)<Number(budget.price)){
+    return {key:"skip",label:shopText(locale).skip,reason:fr?"Le solde confirmé ne couvre pas le prix affiché; conserve cette monnaie pour une offre prioritaire.":"The confirmed balance does not cover the displayed price; save this currency for a higher-priority offer."};
+  }
+  if(type!=="real_money"&&budget.diamond&&Number(budget.balance)-Number(budget.price)<budget.reserve){
+    return {key:"consider",label:shopText(locale).consider,reason:fr?"Attends ou économise : cet achat ferait passer le solde sous la réserve de référence, qui reste à vérifier en jeu.":"Wait or save: this purchase would cross the dated reserve, which still must be checked in game."};
+  }
+  // A relevance score is not proof of value. Without a reviewed cost/gain
+  // comparison, keep even a well-matched offer at "consider", never "buy now".
+  if(offer?.cost_gain_verified!==true)return {key:"consider",label:shopText(locale).consider,reason:fr?
+    "Offre alignée sur un besoin confirmé, mais le rapport coût/gain n’est pas vérifié : compare les alternatives gratuites et décide dans le jeu.":
+    "Offer matches a confirmed need, but cost/gain is not verified: compare free alternatives and decide in game."};
+  const result=verdict(score,shopText(locale));
+  return {key:result.key,label:result.label,reason:""};
+}
 function offerReason(cat,needs,p,locale="en",targetOverride=null){const exTarget=targetOverride!==null?targetOverride:needs.exTargets.slice(0,2).map(exTargetLabel).filter(Boolean).join(" / "),starTarget=needs.starTargets.slice(0,2).map(x=>x.name).join(" / ");if(cat==="blueprint"||cat==="gear_material")return p.reasonBlueprint;if(cat==="exclusive")return exTarget?p.reasonExclusive(exTarget):p.reasonVisible;if(cat==="hero"||cat==="hero_recruit")return p.reasonHero(starTarget);if(cat==="drone")return p.reasonDrone;if(cat==="stamina")return p.reasonStamina;if(["speed","speed_build","speed_research","speed_train","speed_heal"].includes(cat))return p.reasonSpeed;if(cat==="shield")return p.reasonShield;if(["crystal_pass","crystal_shop_pass","crystal_boss","battle_pass","alliance_star_party","super_monthly_pass"].includes(cat))return shopRuleGuidance(locale);if(["resource","cosmetic","diamond_topup","gold_brick","event_pack"].includes(cat))return p.reasonResource;return p.reasonVisible;}
 const CURRENCY_LABELS={
   fr:{diamonds:"diamants",alliance_coins:"jetons Alliance",honor_medals:"médailles d’Honneur",campaign_points:"points Campagne",season_tokens:"jetons Saison",cosmetic_tokens:"jetons Cosmétiques",coupons:"coupons"},
@@ -976,7 +1033,7 @@ function observedShopOffers(shop={}){
     const store=canonicalShopStore(snap?.store_type||"")||cleanName(snap?.store_type)||"Last War Shop",fresh=freshnessInfo(snap?.updated_at||null,"shop","fr");
     for(const o of Array.isArray(snap?.offers)?snap.offers:[]){
       const cur=normalizeObservedCurrency({...o,_store_type:store,_currency:o?.currency||snap?.currency||""}),price=num(o?.price),priceConfidence=num(o?.price_confidence),currencyConfidence=num(o?.currency_confidence);
-      rows.push({...o,_store_type:store,_currency:cur.currency,_currency_original:o?.currency||snap?.currency||"",_currency_normalized:cur.normalized,_currency_expected:cur.expected,_currency_balance:snap?.currency_balance??null,_updated_at:snap?.updated_at||null,_freshness_status:fresh.status,_price:price,_price_confidence:priceConfidence,_currency_confidence:currencyConfidence});
+      rows.push({...o,_store_type:store,_currency:cur.currency,_currency_original:o?.currency||snap?.currency||"",_currency_normalized:cur.normalized,_currency_expected:cur.expected,_currency_balance:snap?.currency_balance??null,_wallet_currency:snap?.currency||null,_updated_at:snap?.updated_at||null,_freshness_status:fresh.status,_price:price,_price_confidence:priceConfidence,_currency_confidence:currencyConfidence});
     }
   }
   const groups=new Map();
@@ -1040,7 +1097,7 @@ function referenceCatalogRecommendations(state,locale,needs){
 }
 
 function referenceObservedPriceLabel(offer,store,locale){
-  const live=priceLabel({...offer,currency:offer?._currency||offer?.currency},locale);
+  const live=priceLabel({...offer,currency:offer?._currency_original||offer?._currency||offer?.currency},locale);
   if(num(offer?.price)!==null)return live;
   const ref=findShopReference(offer?.item_name,store),sameStore=ref&&canonicalShopStore(ref.store)===canonicalShopStore(store);
   if(!ref||!sameStore||Number(ref.match_score)<96||num(ref.price)===null)return live;
@@ -1061,11 +1118,9 @@ function buildShopAdvice(state,locale,analysis){
     recommendations=liveObserved.map(o=>{
       const offerStore=o._store_type||store,cat=itemCategory(o?.item_name,o?.category,offerStore),availability_label=officialCatalog?safe.officialAvailability:safe.visibleAvailability,fresh=freshnessInfo(o?._updated_at||null,"shop",locale);
       if(cat==="other"){return {item:cleanName(o?.item_name)||"—",store:offerStore,score:null,score_label:safe.unanalysed,reason:safe.unknownReason,target:"",verdict:safe.unanalysed,verdict_key:"unknown",price_label:referenceObservedPriceLabel(o,offerStore,locale),source:officialCatalog?"official":"scan",category:cat,availability_label,data_freshness:fresh,_sort:-1};}
-      const offerState={...stateCtx,shop:{...shop,currency:o._currency||o.currency||"",currency_balance:o._currency_balance??null}},scored=scoreVisibleOffer({...o,currency:o._currency||o.currency,store_type:offerStore},needs,offerState),{score,factors,budget}=scored,v=verdict(score,p),campaignExTargets=storeKind(offerStore)==="campaign"?campaignExclusiveUpgradeTargets(needs):needs.exTargets,target=cat==="exclusive"?campaignExTargets.slice(0,3).map(exTargetLabel).filter(Boolean).join(" / "):cat==="hero"?needs.starTargets.slice(0,3).map(x=>x.name).join(" / "):cat==="drone"?safe.droneTarget(needs.droneLevel):["blueprint","gear_material"].includes(cat)?shopGearTargetLabel(needs,locale):"",ref=findShopReference(o?.item_name,offerStore),source=officialCatalog?"official":"scan",currentPriceVerified=Boolean(num(o?._price??o?.price)!==null&&(source==="official"||(fresh.status==="fresh"&&(num(o?._price_confidence)===null||num(o?._price_confidence)>=.8)))),currentContentsVerified=Boolean(source==="official"||o?.contents_verified===true||o?.content_verified===true),costGainVerified=Boolean(o?.cost_gain_verified===true),paidGuard=paidPurchaseGuard({source,currency:budget?.currency||o?._currency||o?.currency,price:budget?.price,current_price_verified:currentPriceVerified,current_contents_verified:currentContentsVerified,cost_gain_verified:costGainVerified},locale),reason=[offerReason(cat,needs,p,locale,target),shopTargetReason(cat,target,locale),...factors,ref?referenceMatchText(locale,ref.match_score):"",fresh.label,paidGuard.label].filter(Boolean).join(" ");
-      let verdictKey=v.key,verdictLabel=v.label;
-      if(fresh.blocks_paid&&paidGuard.real_money){verdictKey="refresh";verdictLabel=refreshBeforePaidText(locale);}
-      else if(paidGuard.real_money&&!paidGuard.strong_recommendation_allowed){verdictKey="verify_paid";verdictLabel=shopAlignmentText(locale).verify;}
-      return {item:cleanName(o?.item_name)||"—",store:offerStore,score,score_label:a.score(score),reason,target,verdict:verdictLabel,verdict_key:verdictKey,price_label:referenceObservedPriceLabel(o,offerStore,locale),source,category:cat,currency:budget?.currency||o?._currency||o?.currency||"",budget,paid_guard:paidGuard,current_price_verified:currentPriceVerified,current_contents_verified:currentContentsVerified,cost_gain_verified:costGainVerified,availability_label,data_freshness:fresh,opaque_container:scored.opaque_container,opaque_score_cap:scored.opaque_score_cap,situational_resource:scored.situational_resource,situational_context_confirmed:scored.situational_context_confirmed,situational_score_cap:scored.situational_score_cap,_sort:score};
+      const offerState={...stateCtx,shop:{...shop,currency:o._wallet_currency||shop.currency||"",currency_balance:o._currency_balance??null}},scored=scoreVisibleOffer({...o,currency:o._currency||o.currency,store_type:offerStore},needs,offerState),{score,factors,budget}=scored,v=verdict(score,p),campaignExTargets=storeKind(offerStore)==="campaign"?campaignExclusiveUpgradeTargets(needs):needs.exTargets,target=cat==="exclusive"?campaignExTargets.slice(0,3).map(exTargetLabel).filter(Boolean).join(" / "):cat==="hero"?needs.starTargets.slice(0,3).map(x=>x.name).join(" / "):cat==="drone"?safe.droneTarget(needs.droneLevel):["blueprint","gear_material"].includes(cat)?shopGearTargetLabel(needs,locale):"",ref=findShopReference(o?.item_name,offerStore),source=officialCatalog?"official":"scan",currentPriceVerified=Boolean(num(o?._price??o?.price)!==null&&(source==="official"||(fresh.status==="fresh"&&(num(o?._price_confidence)===null||num(o?._price_confidence)>=.8)))),currentContentsVerified=Boolean(source==="official"||o?.contents_verified===true||o?.content_verified===true),costGainVerified=Boolean(o?.cost_gain_verified===true),paidGuard=paidPurchaseGuard({source,currency:budget?.currency||o?._currency||o?.currency,price:budget?.price,current_price_verified:currentPriceVerified,current_contents_verified:currentContentsVerified,cost_gain_verified:costGainVerified},locale),reason=[offerReason(cat,needs,p,locale,target),shopTargetReason(cat,target,locale),...factors,ref?referenceMatchText(locale,ref.match_score):"",fresh.label,paidGuard.label].filter(Boolean).join(" ");
+       const decision=observedOfferDecision(o,{source,fresh,budget,paidGuard,score,locale});
+        return {item:cleanName(o?.item_name)||"—",store:offerStore,score,score_label:a.score(score),reason:[reason,decision.reason].filter(Boolean).join(" "),target,verdict:decision.label,verdict_key:decision.key,price_label:referenceObservedPriceLabel(o,offerStore,locale),source,category:cat,currency:o?._currency_original||budget?.currency||o?._currency||o?.currency||"",budget,paid_guard:paidGuard,current_price_verified:currentPriceVerified,current_contents_verified:currentContentsVerified,cost_gain_verified:costGainVerified,availability_label,data_freshness:fresh,opaque_container:scored.opaque_container,opaque_score_cap:scored.opaque_score_cap,situational_resource:scored.situational_resource,situational_context_confirmed:scored.situational_context_confirmed,situational_score_cap:scored.situational_score_cap,_sort:score};
     }).sort((x,y)=>(y._sort??-1)-(x._sort??-1)).slice(0,12).map((x,i)=>{const {_sort,...rest}=x;return {...rest,rank:i+1}});
     const quality=Math.min(30,liveObserved.length)+Math.min(20,new Set(liveObserved.map(o=>o._store_type)).size*4);
     confidence=Math.max(confidence,Math.round(profileConfidence*.66+(68+quality)*.34));confidence=Math.min(officialCatalog?98:92,confidence);
@@ -1110,6 +1165,62 @@ const ALLIANCE_AI={
  zh:{empty:"先邀请成员并同步进度，再生成可靠计划。",line:(a,r,i,u=0)=>`已确认活跃 ${a} · 需要更新 ${r} · ${i===0&&(r+u)>0?"未评估不活跃状态":`可能不活跃 ${i}`}。`,refresh:"数据过旧，无法进行可靠战术分配；请先更新名单。",core:n=>`已确认活跃核心：${n}。`,action:"R5/R4负责决策，R3作为行动干部，R2负责联络/支援，R1作为基础。移除成员前务必先联系。"},
  ar:{empty:"ادعُ الأعضاء وزامن تقدمهم قبل إنشاء خطة موثوقة.",line:(a,r,i,u=0)=>`${a} نشط مؤكد · ${r} يحتاج تحديث · ${i===0&&(r+u)>0?"لم يتم تقييم عدم النشاط":`${i} غير نشط على الأرجح`}.`,refresh:"البيانات قديمة جداً لتوزيعات تكتيكية موثوقة؛ حدّث القائمة أولاً.",core:n=>`النواة النشطة المؤكدة: ${n}.`,action:"R5/R4 يقودان القرار، R3 قادة عمليات، R2 دعم/ربط وR1 قاعدة التحالف. تواصل دائماً قبل الاستبعاد."}
 };
+function currentAllianceEventPlans(state,nowMs=Date.now()){
+  const alliance=state?.alliance||{},members=Array.isArray(alliance.members)?alliance.members:[],raw=[
+    ...(Array.isArray(alliance.event_availability)?alliance.event_availability:[]),
+    ...members.flatMap(member=>Array.isArray(member?.event_availability)?member.event_availability:[])
+  ],today=new Date(nowMs).toISOString().slice(0,10),out=[];
+  for(const type of ["desert_storm","canyon_storm","vs"]){
+    const eventRows=raw.filter(row=>String(row?.event_type||row?.event||"").toLowerCase().replace(/[\s-]+/g,"_")===type);
+    const usable=eventRows.filter(row=>{
+      const stamp=Date.parse(row?.updated_at||row?.confirmed_at||"");
+      if(!Number.isFinite(stamp)||stamp>nowMs+300000||nowMs-stamp>14*86400000)return false;
+      if(!row?.source||row.source==="legacy")return false;
+      const instance=String(row?.event_instance||row?.event_date||"current");
+      if(instance==="current")return true;
+      const date=String(row?.event_date||instance).slice(0,10);
+      return /^\d{4}-\d{2}-\d{2}$/.test(date)&&date>=today;
+    });
+    if(!usable.length)continue;
+    const latest=usable.slice().sort((a,b)=>(Date.parse(b.updated_at||b.confirmed_at)||0)-(Date.parse(a.updated_at||a.confirmed_at)||0))[0];
+    const instance=String(latest?.event_instance||latest?.event_date||"current");
+    const eventState=type==="vs"?state?.vs||{}:type==="season"?state?.season||{}:
+      alliance?.events?.[type]||alliance?.[type]||{};
+    if(type==="vs"){
+      const vsStamp=Date.parse(eventState.updated_at||"");
+      if(!Number.isInteger(Number(eventState.day))||Number(eventState.day)<1||Number(eventState.day)>6||
+        !Number.isFinite(vsStamp)||vsStamp>nowMs+300000||nowMs-vsStamp>24*3600000)continue;
+    }
+    if(type==="season"&&eventState.lifecycle!=="active")continue;
+    const saved=alliance?.event_plans?.[type]||{};
+    const plan=eventStrategyFromState(state,type,{event_instance:instance,nowMs,
+      context:{...eventState,previous_participants:saved.assignments||[],attendance_basis:"explicit_availability"}});
+    out.push({type,instance,plan});
+  }
+  return out;
+}
+function allianceEventAdviceLines(plans,locale){
+  const fr=localePack(locale)==="fr";
+  return plans.map(({type,plan})=>{
+    const label=type==="desert_storm"?"Desert Storm":type==="canyon_storm"?"Canyon Storm":type.toUpperCase();
+    const grouped=new Map();
+    for(const assignment of plan.assignments||[]){
+      const role=assignment.covers_role||"flexible",list=grouped.get(role)||[];
+      list.push(cleanName(assignment.name));grouped.set(role,list);
+    }
+    const groups=[...grouped].map(([role,names])=>`${role}: ${names.filter(Boolean).join(", ")}`).filter(Boolean);
+    const substitutes=(plan.substitute_assignments||[]).map(row=>cleanName(row.name)).filter(Boolean);
+    const count=(plan.confirmation||[]).length;
+    const lead=fr?`${label} · ${plan.participants?.length||0} disponibilités explicites retenues pour une proposition, ${substitutes.length} remplaçants explicitement déclarés, ${count} à confirmer.`:
+      `${label} · ${plan.participants?.length||0} explicit availability records used for a draft, ${substitutes.length} explicitly declared substitutes, ${count} to confirm.`;
+    const groupsLine=groups.length?(fr?` Répartition suggérée, à valider par un R4/R5 : ${groups.join(" · ")}.`:`Suggested groups, to be approved by R4/R5: ${groups.join(" · ")}.`):
+      (fr?" Aucune affectation d’événement sans disponibilité explicite récente.":" No event assignment without recent explicit availability.");
+    const reserveLine=substitutes.length?(fr?` Réserve déclarée : ${substitutes.join(", ")}.`:`Declared reserve: ${substitutes.join(", ")}.`):"";
+    const caution=fr?" Une inscription seule n’est pas une présence confirmée; les règles visibles dans le jeu priment. Aucune donnée n’est modifiée.":
+      " Registration alone is not confirmed attendance; current in-game rules take precedence. No data is changed.";
+    return `${lead}${groupsLine}${reserveLine}${caution}`;
+  });
+}
 function buildAllianceAdvice(state,locale){
   const lang=localePack(locale),pack=ALLIANCE_AI[lang]||ALLIANCE_AI.en,members=Array.isArray(state?.alliance?.members)?state.alliance.members:[];
   if(!members.length)return {advice:pack.empty,confidence:20,activity:{active:0,refresh:0,inactive:0,unknown:0},roles:{R5:0,R4:0,R3:0,R2:0,R1:0},immediate_actions:[],plan_b:[]};
@@ -1136,8 +1247,15 @@ function buildAllianceAdvice(state,locale){
   if(active.length>0&&active.length<5)planB.push({rank:planB.length+1,kind:"defensive",action_key:"alliance_plan_b_defensive",count:active.length});
   if(!planB.length)planB.push({rank:1,kind:"stable",action_key:"alliance_plan_b_stable",count:active.length});
   const inactivityEvaluated=!((counts.inactive||0)===0&&((counts.refresh||0)>0));
-  const advice=[pack.line(counts.active,counts.refresh,counts.inactive,counts.unknown),allianceRoleLine(summary.roleCounts,lang),needsRefresh?pack.refresh:"",core.length?pack.core(core.join(" / ")):"",!needsRefresh?pack.action:""].filter(Boolean).join("\n");
-  return {advice,confidence:summary.confidence,activity:counts,inactivity_evaluated:inactivityEvaluated,roles:summary.roleCounts,core,reliability:needsRefresh?"refresh_required":"usable",immediate_actions:immediate,plan_b:planB,policy:"No member is removed by this advice; uncertain activity stays marked for refresh."};
+  const eventLines=allianceEventAdviceLines(currentAllianceEventPlans(state),locale);
+  const genericGroupCaution=lang==="fr"?
+    "Les groupes généraux ci-dessus ne prouvent ni inscription ni présence à un événement.":
+    "The general groups above do not prove event registration or attendance.";
+  const eventFallback=lang==="fr"?
+    "Avant Desert Storm, Canyon ou VS : confirme l’événement, les disponibilités et les remplaçants; les statuts inconnus restent à vérifier.":
+    "Before Desert Storm, Canyon, or VS: confirm the event, availability, and substitutes; unknown statuses remain unverified.";
+  const advice=[pack.line(counts.active,counts.refresh,counts.inactive,counts.unknown),allianceRoleLine(summary.roleCounts,lang),needsRefresh?pack.refresh:"",core.length?pack.core(core.join(" / ")):"",!needsRefresh?pack.action:"",genericGroupCaution,...(eventLines.length?eventLines:[eventFallback])].filter(Boolean).join("\n");
+  return {advice,confidence:summary.confidence,activity:counts,inactivity_evaluated:inactivityEvaluated,roles:summary.roleCounts,core,reliability:needsRefresh?"refresh_required":"usable",immediate_actions:immediate,plan_b:planB,policy:"No member is removed or changed by this advice; uncertain activity stays marked for refresh. Event suggestions use recent explicit availability only; registration is not attendance, and all assignments require human approval."};
 }
 
 const CONTEXT_AI={
@@ -1332,14 +1450,15 @@ function buildSeasonAdvice(state,locale){
 }
 function buildSevenDayPlan(state,analysis){
   const priorities=Array.isArray(analysis?.priorities)?analysis.priorities:[],top=priorities[0]||null,second=priorities[1]||null;
-  const confidence=Number(analysis?.confidence)||0,needsData=confidence<60||analysis?.composition?.complete===false||analysis?.data_freshness?.blocks_paid===true;
+  const needsData=!analysis?.focus_squad||priorities.some(row=>row?.kind==="scan")||
+    analysis?.composition?.complete===false||analysis?.data_freshness?.blocks_paid===true;
   const topKind=top?.kind||"scan",topTarget=top?.target||top?.hero||null,secondKind=second?.kind||null,secondTarget=second?.target||second?.hero||null;
   const day=(n,mode,action_key,kind=null,target=null,rule_key="hold_unrelated")=>({day:n,mode,action_key,kind,target,rule_key,no_exact_quantity:true});
   const plan=[];
   plan.push(needsData?day(1,"scan","refresh_data","scan",null,"verify_before_spend"):day(1,"focus","top_priority",topKind,topTarget,"hold_unrelated"));
   plan.push(day(2,"checkpoint","checkpoint_top",topKind,topTarget,"verify_progress"));
   plan.push(second?day(3,"focus","secondary_priority",secondKind,secondTarget,"hold_unrelated"):day(3,"hold","protect_resources",null,null,"hold_unrelated"));
-  plan.push(day(4,"scan","measure_progress","scan",null,"verify_progress"));
+  plan.push(day(4,"checkpoint","measure_progress",null,null,"verify_progress"));
   // Day 5 and Day 6 are account-wide decisions. Do not pin them to the top hero unless a concrete hero action is actually being prescribed.
   plan.push(day(5,"shop","shop_resources",null,null,"buy_only_if_aligned"));
   plan.push(day(6,"timing","vs_season_timing",null,null,"score_only_when_active"));
@@ -1354,9 +1473,65 @@ function buildCrossDomain(state,locale,player){
   const spendDecision=!top?"insufficient_data":staleVs||top?.data_freshness?.blocks_paid||tw?.status==="refresh_before_spend"?"refresh_before_spend":tw?.status==="spend_now"||tw?.status==="now"?"spend_now":tw?.status==="hold_if_vs_priority"?"hold_for_vs":tw?.status==="check_payback"?"validate_payback":"marginal_value_driven";
   return {player_top:top?{kind:top.kind,target:top.target||null,title:top.title,reason:top.reason,resource_family:top.resource_family||resourceFamily(top.kind),timing_window:tw}:null,vs:{confidence:vs.confidence,day:vs.day??null,prep_day:Boolean(vs.prep_day),top:vs.priorities?.[0]?.text||vs.advice},season:{confidence:season.confidence,day:season.day||null,total_days:season.total_days||null,top:season.priorities?.[0]?.text||season.advice},conflict,spend_decision:spendDecision,rule:"Use the highest contextual marginal value; defer scarce spending when VS/Season timing or another detected bottleneck has materially better value."};
 }
-export default async function handler(req,res){
+const allianceAdviceAuthServices={configured,getProfile,getAllianceMembership,getAllianceRoster};
+function denyAllianceAdvice(status,error){return {ok:false,status,error}}
+function sameMembershipRead(first,second,userId){
+  if(!first||!second)return false;
+  return String(first.player_id||"")===String(userId)&&
+    String(first.alliance_id||"")===String(second.alliance_id||"")&&
+    normalizeAllianceRole(first.role)===normalizeAllianceRole(second.role)&&
+    Boolean(first.updated_at)&&String(first.updated_at)===String(second.updated_at)&&
+    (!second.player_id||String(second.player_id)===String(userId));
+}
+function exactCanonicalAdviceIdentity(row,identity,userId){
+  return String(row?.player_id||"")===String(userId)&&
+    row?.warboost_linked===true&&
+    ["lastwar_nickname_server_alliance","legacy_private_link_preserved"].includes(String(row?.identity_basis||""))&&
+    normalizeLastWarNickname(row?.name,identity.alliance_tag)===normalizeLastWarNickname(identity.name,identity.alliance_tag)&&
+    normalizeServerId(row?.server_id)===identity.server_id&&
+    normalizeAllianceTag(row?.alliance_tag)===identity.alliance_tag;
+}
+export async function resolveAuthorizedAllianceAdviceContext(userId,services=allianceAdviceAuthServices){
+  const authenticatedId=String(userId||"").trim();
+  if(!authenticatedId)return denyAllianceAdvice(401,"auth_required");
+  try{
+    if(typeof services?.configured!=="function"||!services.configured())return denyAllianceAdvice(503,"alliance_authorization_unavailable");
+    const profile=await services.getProfile(authenticatedId);
+    const player=profile?.state?.player||{},profileAlliance=profile?.state?.alliance||{};
+    const identity={name:String(player.name||"").trim(),server_id:normalizeServerId(player.server_id),alliance_tag:normalizeAllianceTag(profileAlliance.tag)};
+    if(!identity.name||!identity.server_id||!identity.alliance_tag)return denyAllianceAdvice(409,"alliance_identity_incomplete");
+    const [membership,context]=await Promise.all([
+      services.getAllianceMembership(authenticatedId),
+      services.getAllianceRoster(authenticatedId,{serverId:identity.server_id,allianceTag:identity.alliance_tag})
+    ]);
+    if(!membership)return denyAllianceAdvice(403,"alliance_membership_required");
+    if(!context?.alliance)return denyAllianceAdvice(409,"alliance_context_unavailable");
+    if(!sameMembershipRead(membership,context.membership,authenticatedId))return denyAllianceAdvice(409,"alliance_membership_conflict");
+    const alliance=context.alliance,allianceId=String(alliance.id||"");
+    if(!allianceId||String(membership.alliance_id||"")!==allianceId)return denyAllianceAdvice(409,"alliance_scope_conflict");
+    if(normalizeServerId(alliance.server_id)!==identity.server_id||normalizeAllianceTag(alliance.tag)!==identity.alliance_tag)return denyAllianceAdvice(409,"alliance_identity_conflict");
+    const roster=Array.isArray(alliance.roster)?alliance.roster:(Array.isArray(context.roster)?context.roster:null);
+    if(!roster)return denyAllianceAdvice(409,"alliance_roster_unavailable");
+    const authorization=canonicalAllianceAuthorization({playerId:authenticatedId,membership,alliance,roster,identity});
+    const linked=roster.filter(row=>String(row?.player_id||"")===authenticatedId);
+    if(linked.length!==1)return denyAllianceAdvice(409,linked.length?"alliance_identity_ambiguous":"alliance_identity_unlinked");
+    const self=linked[0];
+    if(!exactCanonicalAdviceIdentity(self,identity,authenticatedId))return denyAllianceAdvice(409,"alliance_identity_conflict");
+    const canonicalRole=normalizeAllianceRole(self.role),membershipRole=normalizeAllianceRole(membership.role);
+    const isCanonicalOwner=String(alliance.owner_player_id||"")===authenticatedId;
+    if(!["R4","R5"].includes(canonicalRole)||membershipRole!==canonicalRole)return denyAllianceAdvice(403,"alliance_manager_role_required");
+    if(!authorization.allowed||(!isCanonicalOwner&&!["R4","R5"].includes(authorization.effective_role)))return denyAllianceAdvice(403,"alliance_manager_role_required");
+    if(authorization.owner!==isCanonicalOwner)return denyAllianceAdvice(409,"alliance_authority_conflict");
+    return {ok:true,identity,alliance,roster,authorization};
+  }catch{
+    // Do not forward database errors, query text, or roster data to the caller.
+    return denyAllianceAdvice(503,"alliance_authorization_unavailable");
+  }
+}
+export function createAdviceHandler({authenticate=requireProductUser,allianceServices=allianceAdviceAuthServices}={}){
+return async function handler(req,res){
   if(req.method!=="POST")return res.status(405).json({error:"method_not_allowed"});
-  let betaUser=null;try{({user:betaUser}=await requireProductUser(req,{consent:true,pro:true}));}catch(e){return res.status(e?.status||500).json({ok:false,error:e?.code||"beta_access_failed",message:e?.message||"Access failed"});}
+  let betaUser=null;try{({user:betaUser}=await authenticate(req,{consent:true,pro:true}));}catch(e){return res.status(e?.status||500).json({ok:false,error:e?.code||"beta_access_failed",message:e?.message||"Access failed"});}
   if(req.query?.action==="event_research"){
     res.setHeader("Cache-Control","no-store");
     try{const research=await researchForAllianceManager(betaUser,req.body?.event_type);
@@ -1387,10 +1562,24 @@ export default async function handler(req,res){
     analysis.engine=`warboost-ai-core-v${ENGINE_VERSION}`;
     return res.status(200).json({ok:true,engine:analysis.engine,advice:analysis.summary,analysis});
   }
-  if(scope==="alliance"){if(!configured())return res.status(503).json({ok:false,error:"database_not_configured"});const declaredRole=normalizeAllianceRole(s?.player?.role);if(!["R4","R5"].includes(declaredRole))return res.status(403).json({ok:false,error:"manager_role_required",advice:loc.startsWith("fr")?"Plan de guerre réservé aux joueurs qui déclarent être R5/R4 dans Last War.":"War plan is reserved for players who declare R5/R4 in Last War."});const a=buildAllianceAdvice(s,loc);return res.status(200).json({ok:true,engine:`warboost-alliance-ai-v${ENGINE_VERSION}`,access_basis:"player_declared_last_war_rank",declared_role:declaredRole,...a});}
+  if(scope==="alliance"){
+    const authorized=await resolveAuthorizedAllianceAdviceContext(betaUser?.id,allianceServices);
+    if(!authorized.ok)return res.status(authorized.status).json({ok:false,error:authorized.error});
+    const cloudAlliance=authorized.alliance;
+    const canonicalState={
+      ...s,
+      player:{...(s?.player||{}),role:authorized.authorization.effective_role},
+      alliance:{...(s?.alliance||{}),id:cloudAlliance.id,tag:cloudAlliance.tag,name:cloudAlliance.name,server_id:cloudAlliance.server_id,members:authorized.roster}
+    };
+    const advice=buildAllianceAdvice(canonicalState,loc);
+    return res.status(200).json({ok:true,engine:`warboost-alliance-ai-v${ENGINE_VERSION}`,access_basis:"canonical_cloud_alliance_membership",declared_role:authorized.authorization.effective_role,...advice});
+  }
   if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
   if(scope==="season")return res.status(200).json({ok:true,...buildSeasonAdvice(s,loc)});
   return res.status(400).json({error:"unknown_scope"});
 }
+}
+
+export default createAdviceHandler();
 
 export {buildPlayerAnalysis,buildShopAdvice,buildAllianceAdvice,buildVsAdvice,buildSeasonAdvice,buildSevenDayPlan,buildCrossDomain,itemCategory,currencyKey,scoreVisibleOffer};

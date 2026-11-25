@@ -45,7 +45,7 @@ assert.equal(partialReport.squad1.main_type,"tank","main type comes only from co
 assert.ok(!partialReport.squad1.heroes.some(hero=>["DVA","Lucius"].includes(hero.name)));
 
 const staleUnknown={day:4,week:40,our_score:null,their_score:null,time_remaining_seconds:0,updated_at:"2026-09-27T10:00:00.000Z"};
-const now=new Date("2026-09-28T10:00:00.000Z");
+const now=new Date();
 const staleDecision=vsDecisionEngine(staleUnknown,{now});
 assert.equal(staleDecision.stale,true,"an old timestamp is stale even when both scores are unknown");
 assert.equal(staleDecision.known,false);
@@ -133,7 +133,7 @@ function campaignOfferState(exclusiveLevel){
   const state=coachState();
   delete state.exclusive_weapons;
   state.squads[0].heroes.forEach(hero=>{hero.exclusive=exclusiveLevel});
-  state.shop={store_type:"Campaign Store",currency:"campaign_points",currency_balance:10000,updated_at:new Date().toISOString(),offers:[{item_name:"Universal Exclusive Weapon Shards",category:"exclusive",price:100,currency:"campaign_points"}]};
+  state.shop={store_type:"Campaign Store",currency:"campaign_points",currency_balance:10000,updated_at:new Date().toISOString(),offers:[{item_name:"Universal Exclusive Weapon Shards",category:"exclusive",price:100,currency:"campaign_points",quantity:50,stock_remaining:100,cost_gain_verified:true}]};
   return state;
 }
 const campaignUnknown=campaignOfferState(0);
