@@ -129,6 +129,7 @@ const BACKUP_KEY="warboost_last_good_state", ACCOUNT_STATE_PREFIX="warboost_acco
 const BETA_CONSENT_KEY="warboost_beta_consent_2026_09_05_safe_launch_v2", BETA_CONSENT_VERSION="2026-09-05-safe-launch-v2", PENDING_JOIN_CODE_KEY="warboost_pending_join_code";
 const LEGACY_LANGUAGE_KEYS=["wb17_language","wb171_language","warboost_language"];
 const LEGACY_DATA_KEYS=["wb12_account","wb11_account","wb10_profile","wb10_alliance","wb10_simple","wb10_roster","wb19_imported_players"];
+let syncButtonFeedbackState=null;
 
 function uid(){return crypto.randomUUID?.()||`wb-${Date.now()}-${Math.random().toString(16).slice(2)}`}
 let volatileClientId="";
@@ -3532,6 +3533,7 @@ function renderAdvice(){
  function renderAccountFields(){const p=state.player,ctx=state.player_context||{},reveal=betaPrivateDataVisible(),canonical=canonicalSelfRosterMember(),displayName=canonical?.name||p.name||"";if(!$("#fName"))return;const ids=["fName","fServer","fHq","fAlliance","fRole","fObjective","fAccountAge","fServerProfile"];if(!reveal){$("#fName").value="";$("#fServer").value="";$("#fHq").value="";$("#fAlliance").value="";$("#fRole").value="";if($("#fObjective"))$("#fObjective").value="auto";if($("#fAccountAge"))$("#fAccountAge").value="";if($("#fServerProfile"))$("#fServerProfile").value="auto"}else{$("#fName").value=displayName;$("#fServer").value=p.server_id||"";$("#fHq").value=p.hq_level||"";$("#fAlliance").value=state.alliance.tag||"";$("#fRole").value=p.role||"R1";if($("#fObjective"))$("#fObjective").value=ctx.objective||"auto";if($("#fAccountAge"))$("#fAccountAge").value=ctx.account_age_days??"";if($("#fServerProfile"))$("#fServerProfile").value=ctx.server_profile||"auto"}ids.forEach(id=>{const el=$("#"+id);if(el)el.disabled=!reveal});if($("#fName"))$("#fName").readOnly=Boolean(reveal&&canonical);if($("#saveProfileBtn"))$("#saveProfileBtn").disabled=!reveal;renderVoiceSettings()}
 function renderProvider(){
   const sync=state?.sync||{},sources=sync.sources||{},pill=$("#providerPill"),box=$("#providerStatus"),access=runtimeAccessState(),reveal=access.privateVisible;
+  renderSyncButtonFeedback();
   if(pill){pill.textContent=t("safe_external_disabled");pill.className="pill"}
   const publicState=$("#publicSourceState"),scanState=$("#scanSourceState"),allianceState=$("#allianceCloudState");
   if(publicState)publicState.textContent=t("safe_external_disabled");
@@ -3588,25 +3590,85 @@ $("#saveProfileBtn").addEventListener("click",async()=>{
   try{const saved=await pushServerState({userRequested:true});if(!saved?.ok){show(t("profile_saved_pending"),true);return}const joined=await joinPendingAlliance();if(joined)await pushServerState();show(t("profile_saved_cloud"),false);setTimeout(closeDrawers,650)}catch{show(t("profile_saved_pending"),true)}finally{if(btn){btn.disabled=false;btn.textContent=t("save")}}
 });
 
+function syncButtonFeedbackMessage(kind){
+  if(kind==="success")return t("account_sync_verified");
+  if(kind==="syncing")return t("syncing");
+  if(kind==="pending")return `${t("account_sync_pending")} ${t("account_sync_unconfirmed")}`;
+  if(kind==="roster_pending"){
+    const copy=rosterSyncCopy(lang);
+    return [copy.pending,copy.refresh].filter(Boolean).join(" ");
+  }
+  if(kind==="conflict")return t("account_sync_conflict");
+  if(kind==="auth")return t("beta_signin_required");
+  if(kind==="consent")return t("beta_consent_required");
+  if(kind==="forbidden")return t("account_sync_forbidden");
+  if(kind==="account_mismatch")return String(lang||"").toLowerCase().startsWith("fr")
+    ?"Compte différent : reconnecte-toi au compte associé à ce profil."
+    :"Different account: sign in to the account linked to this profile.";
+  if(kind==="network")return t("account_sync_network");
+  if(kind==="timeout")return t("account_sync_timeout");
+  if(kind==="server")return t("account_sync_server");
+  return t("account_sync_unconfirmed");
+}
+function renderSyncButtonFeedback(){
+  const currentOwner=String(cloudSession?.user?.id||"");
+  let feedback=syncButtonFeedbackState;
+  if(feedback?.ownerId&&feedback.ownerId!==currentOwner)feedback={kind:"account_mismatch",ownerId:currentOwner};
+  const message=feedback?syncButtonFeedbackMessage(feedback.kind):"";
+  for(const id of ["syncPlayerFeedback","syncAllFeedback"]){
+    const box=$("#"+id);if(!box)continue;
+    box.className=`notice syncButtonFeedback${feedback&&feedback.kind!=="success"&&feedback.kind!=="syncing"?" warn":""}${feedback?"":" hidden"}`;
+    box.textContent=message;
+  }
+}
+function setSyncButtonFeedback(kind){
+  syncButtonFeedbackState={kind,ownerId:String(cloudSession?.user?.id||"")};
+  renderSyncButtonFeedback();
+}
+function syncButtonFailureKind({status=null,code="",error=null}={}){
+  const value=String(code||error?.code||error?.message||"").toLowerCase();
+  if(["profile_owner_mismatch","account_owner_mismatch","account_changed","profile_owner"].some(part=>value.includes(part)))return "account_mismatch";
+  if(status===409||["profile_write_conflict","squad_freshness_ambiguous","alliance_write_conflict","roster_context_changed"].some(part=>value.includes(part)))return "conflict";
+  if(status===401||["auth_required","auth_invalid","auth_expired","roster_cloud_required"].some(part=>value.includes(part)))return "auth";
+  if(status===428||value.includes("consent"))return "consent";
+  if(status===403||["beta_invite_required","roster_beta_required","access_denied"].some(part=>value.includes(part)))return "forbidden";
+  if(error?.name==="TimeoutError"||error?.name==="AbortError"||value.includes("timeout"))return "timeout";
+  if(error?.name==="TypeError"||navigator.onLine===false||value.includes("network"))return "network";
+  if(Number(status)>=500)return "server";
+  return "unconfirmed";
+}
+function syncReplyConfirmsCloudWrite(response,body,owner,baseRevision){
+  const updatedAt=Date.parse(body?.updated_at),baseAt=Date.parse(baseRevision||"");
+  return Boolean(response?.ok===true&&body?.ok===true&&owner&&
+    String(body?.state?.player_id||"")===String(owner)&&Number.isFinite(updatedAt)&&
+    (!Number.isFinite(baseAt)||updatedAt>baseAt));
+}
 async function syncAll(){
-  if(!requireBetaAccess()||!requireBetaConsent())return;
-  if(rosterImportInFlight)return;
+  if(!cloudSession?.access_token||!cloudSession?.user?.id){
+    setSyncButtonFeedback("auth");requireBetaAccess();return;
+  }
+  if(!requireBetaAccess()){setSyncButtonFeedback("forbidden");return}
+  if(!requireBetaConsent()){setSyncButtonFeedback("consent");return}
+  if(rosterImportInFlight){setSyncButtonFeedback("roster_pending");return}
   const rosterPending=state.alliance?.roster_sync_status==="pending";
   const requestOwner=String(cloudSession?.user?.id||"");
   const btns=[$("#syncAllBtn"),$("#syncPlayerBtn")].filter(Boolean);
   btns.forEach(b=>{b.disabled=true;b.textContent=t("syncing")});
+  setSyncButtonFeedback("syncing");
   const finishLoading=analysisIndicator.begin("sync",{targets:btns});
   try{
     if(!rosterPending&&!hasMeaningfulCore(state)&&cloudSession?.access_token){
       const recovered=await reconcileAuthenticatedRuntime("manual-sync",{force:true});
       if(!recovered?.ok||!hasMeaningfulCore(state)){
+        setSyncButtonFeedback("pending");
         const note=$("#playerSyncInfo");
         if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=t("offline_keep")}
         scheduleCloudPullRetry();return;
       }
     }
     const userId=requestOwner,syncRevision=localStateRevision;
-    if(!userId||String(state.player_id||"")!==userId)return;
+    if(!userId){setSyncButtonFeedback("auth");return}
+    if(String(state.player_id||"")!==userId){setSyncButtonFeedback("account_mismatch");return}
     if(rosterPending){
       const rosterAtRequest=rosterStateFingerprint(state);
       const reply=await persistRosterCandidate(state);
@@ -3615,10 +3677,12 @@ async function syncAll(){
       saveState({cloudSave:false});render();
       $("#playerSyncInfo").textContent=state.alliance.roster_sync_status==="pending"?
         rosterSyncCopy(lang).pending:t("safe_sync_done");
+      setSyncButtonFeedback(rosterReplyConfirmed(reply)&&state.alliance.roster_sync_status!=="pending"&&!rosterChangedDuringSync?"success":"roster_pending");
       return; // A roster retry never submits or marks the personal profile as saved.
     }
+    const baseRevision=cloudRevision;
     const {response:r,json:j}=await fetchJsonBounded("/api/sync",{method:"POST",headers:authHeaders({"content-type":"application/json"}),body:JSON.stringify({operation:"player_sync",state,locale:lang,base_updated_at:cloudRevision,base_roster_updated_at:state.alliance?.roster_updated_at||null})},20000);
-    if(String(cloudSession?.user?.id||"")!==userId)return;
+    if(String(cloudSession?.user?.id||"")!==userId){setSyncButtonFeedback("account_mismatch");return}
     if(j?.state?.player_id&&String(j.state.player_id)!==userId)throw new Error("profile_owner_mismatch");
     if(rosterPending&&(!r.ok||!rosterReplyConfirmed(j)))throw Object.assign(new Error("roster_sync_failed"),
       safeRosterDiagnostic({code:!r.ok?j?.error:"roster_sync_unconfirmed"},r,j));
@@ -3632,6 +3696,7 @@ async function syncAll(){
       const pending=changedDuringSync||squadResult.localNewer.length>0||squadResult.conflicts.length>0;
       state.sync={...state.sync,status:pending?"waiting":"ok",provider:j.provider||state.sync.provider||"warboost-local",provider_kind:j.provider_kind||state.sync.provider_kind||"local",capabilities:j.capabilities||state.sync.capabilities||[],last_sync:j.synced_at||new Date().toISOString(),last_error:squadResult.conflicts.length?"squad_freshness_ambiguous":null,pending_cloud_save:Boolean(pending),sources:{...state.sync.sources,...j.sources}};
       saveState();$("#playerSyncInfo").textContent=t(pending?"offline_keep":"safe_sync_done");
+      setSyncButtonFeedback(pending?"pending":syncReplyConfirmsCloudWrite(r,j,userId,baseRevision)?"success":"pending");
     }else if(r.status===409&&(j?.error==="profile_write_conflict"||j?.error==="squad_freshness_ambiguous")){
       const remote=j?.state?hydrateCloudState(j.state,initialState(),userId):null;
       if(remote){
@@ -3640,10 +3705,14 @@ async function syncAll(){
         state=adoptCanonicalPendingAccounts(state,remote,{available:false});
       }
       cloudRevision=j?.updated_at||null;state.sync.last_error=j.error;state.sync.status="waiting";state.sync.pending_cloud_save=true;saveState();scheduleCloudRetry(250);
+      setSyncButtonFeedback("conflict");
     }else{
       state.sync.last_error=j.message||j.error||t("hybrid_no_public");state.sync.status="waiting";saveState();
+      setSyncButtonFeedback(syncButtonFailureKind({status:r?.status,code:j?.error}));
     }
    }catch(error){
+     const errorKind=syncButtonFailureKind({status:error?.http_status,code:error?.code,error});
+     setSyncButtonFeedback(errorKind);
      if(requestOwner&&requestOwner===String(cloudSession?.user?.id||"")&&String(state?.player_id||"")===requestOwner){
        if(rosterPending){
          const diagnostic=recordRosterDiagnostic(safeRosterDiagnostic(error)),copy=rosterSyncCopy(lang);
@@ -3651,10 +3720,13 @@ async function syncAll(){
          state.sync.last_error=diagnostic.code;state.sync.status="waiting";
          const saved=saveState({cloudSave:false}),note=$("#playerSyncInfo");
          if(note){note.className="notice warn";note.classList.remove("hidden");note.textContent=[saved?copy.pending:copy.storage,state.alliance.roster_sync_error,copy.partial,copy.refresh].join(" ");renderRosterSyncDiagnostic(note)}
+         setSyncButtonFeedback(syncButtonFailureKind({status:diagnostic.http_status,code:diagnostic.code,error}));
+         if(state.alliance.roster_sync_status==="pending"&&errorKind==="unconfirmed")setSyncButtonFeedback("roster_pending");
        }else{state.sync.last_error=t("offline_keep");state.sync.status="offline";saveState()}
      }
   }finally{
     finishLoading();btns.forEach((b,i)=>{b.disabled=false;b.textContent=i===0?t("public_refresh"):t("public_button")});
+    renderSyncButtonFeedback();
   }
 }
 $("#syncAllBtn").addEventListener("click",syncAll);$("#syncPlayerBtn").addEventListener("click",syncAll);
