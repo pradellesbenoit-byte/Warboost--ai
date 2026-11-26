@@ -306,7 +306,7 @@ await test("actual UI click disables immediately, starts one inline loader and r
   context=vm.createContext({squadCompareLoading:null,squadComparison:controller,
     gearRepairPreview:{close(){}},renderGearRepairControls(){},
     $:id=>nodes.get(id.slice(1)),document:{createElement:element},locale:"fr",t:translator("fr"),
-    squadComparisonHtml,analysisIndicator:{},beginLoadingButton:(_indicator,button,options)=>{
+    squadComparisonHtml,squadConflictResolutionHtml:()=>"",analysisIndicator:{},beginLoadingButton:(_indicator,button,options)=>{
       loads++;button.textContent=options.label();return ()=>{finishes++;button.textContent=options.idleLabel()};
     }});
   vm.runInContext(source,context);context.renderSquadComparisonControls();

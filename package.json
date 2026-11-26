@@ -19,6 +19,7 @@
     "test:account-sync-feedback": "node scripts/verify-account-sync-feedback.mjs",
     "test:account-sync-receipts": "node scripts/verify-account-sync-receipts.mjs",
     "test:squad-review-status": "node scripts/verify-squad-review-status.mjs",
+    "test:squad-review-resolution": "node --test scripts/verify-review-resolution.mjs scripts/verify-review-endpoint.mjs scripts/verify-review-ui.mjs",
     "test:squad-comparison": "node scripts/verify-squad-comparison.mjs",
     "test:squad-comparison-partial": "node scripts/verify-squad-comparison-partial.mjs",
     "test:squad-comparison-gear": "node scripts/verify-squad-comparison-gear.mjs",

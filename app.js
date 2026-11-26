@@ -877,6 +877,7 @@ function renderAccountSaveDiagnostic(){
   panel.querySelector("pre").textContent=visible?JSON.stringify(diagnostic,null,2):"";
 }
 let squadCompareLoading=null;
+let squadReviewPending=false,squadReviewMessage="";
 let gearRepairLoading=null;
 const squadReadContext=()=>({session:cloudSession?.user?sessionApplyKey(cloudSession):"",
   owner:String(cloudSession?.user?.id||""),revision:cloudRevision,local:state,
@@ -945,6 +946,55 @@ function renderGearRepairControls(){
   // Keep keyboard focus after checkbox repaint; only safe numeric IDs are generated.
   if(focusKey&&/^[1-4]:[1-5]$/.test(focusId))result.querySelector(`[data-gear-repair-${focusKey}="${focusId}"]`)?.focus();
 }
+
+function squadReviewEscape(value){return esc(String(value??""));}
+function squadReviewLabel(field){
+  const cat=field.category==="weapons"?"arme exclusive":"puissance";
+  return `${cat} du héros ${field.slot}`;
+}
+function squadReviewCurrentValue(row,field){
+  const source=field.category==="weapons"?row?.categories?.weapons?.[field.slot-1]:
+    row?.categories?.power?.heroes?.[field.slot-1];
+  if(source?.kind!=="value")return "non disponible";
+  return typeof source.value==="object"?JSON.stringify(source.value).slice(0,160):String(source.value);
+}
+function squadReviewTotalPower(row){
+  const total=row?.categories?.power?.total;
+  if(total?.kind!=="value"||!Number.isFinite(Number(total.value)))return "non disponible";
+  return `${new Intl.NumberFormat(locale,{maximumFractionDigits:2}).format(Number(total.value))} M`;
+}
+function squadReviewComposition(row,french){
+  return (row?.categories?.composition||[]).map((value,index)=>
+    `${french?"Héros":"Hero"} ${index+1}: ${value?.kind==="value"?squadReviewEscape(value.value):"—"}`).join(" · ");
+}
+function squadConflictResolutionHtml(view){
+  if(view.kind!=="result"||!view.cloudRevision||!view.cloudProjection?.rows||!view.localProjection?.rows)return "";
+  const french=lang.startsWith("fr"),parts=[];
+  for(const row of view.rows||[]){
+    if(row.id<1||row.id>3||!row.marker||row.counts?.different!==0||row.counts?.unknown!==0)continue;
+    if((row.issues||[]).some(i=>i.reason!=="field_confirmation_missing"))continue;
+    const fields=(row.fields||[]).filter(f=>f.state==="same"&&f.confirmed!==true);
+    if(fields.some(f=>!(["power","weapons"].includes(f.category)&&Number.isInteger(f.slot))))continue;
+    const local=view.localProjection.rows[row.id-1],cloud=view.cloudProjection.rows[row.id-1];
+    const localHeroes=squadReviewComposition(local,french),cloudHeroes=squadReviewComposition(cloud,french);
+    const list=fields.map(f=>`<li>${squadReviewEscape(squadReviewLabel(f))}: ${french?"local":"local"} <strong>${squadReviewEscape(squadReviewCurrentValue(local,f))}</strong> · ${french?"cloud":"cloud"} <strong>${squadReviewEscape(squadReviewCurrentValue(cloud,f))}</strong>
+      — ${french?"valeurs identiques; preuve actuelle non confirmée":"values match; current field proof is unconfirmed"}</li>`).join("");
+    parts.push(`<section class="notice" data-squad-review-section="${row.id}">
+      <strong>${french?"Réexaminer l'ancien conflit":"Review old conflict"} — ${french?"Escouade":"Squad"} ${row.id}</strong>
+      <p>${french?"Comparaison authentifiée relue le":"Authenticated comparison read"} ${squadReviewEscape(new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"medium"}).format(new Date(view.at)))} · ${french?"révision cloud":"cloud revision"} ${squadReviewEscape(new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"medium"}).format(new Date(view.cloudRevision)))}.</p>
+      <p>${french?"Puissance totale locale":"Local total power"}: ${squadReviewEscape(squadReviewTotalPower(local))} · ${french?"cloud":"cloud"}: ${squadReviewEscape(squadReviewTotalPower(cloud))}</p>
+      <p>${french?"Composition locale":"Local composition"}: ${localHeroes}<br>${french?"Composition cloud":"Cloud composition"}: ${cloudHeroes}</p>
+      <p>${french?"La comparaison ne trouve aucune différence. Vérifie les champs ci-dessous avant de confirmer manuellement. Aucune preuve de scan ne sera créée.":"Comparison found no differences. Inspect the fields before manual confirmation. No scan proof will be created."}</p>
+      <ul>${list||`<li>${french?"Aucune preuve de champ ne sera ajoutée. Cette confirmation peut uniquement retirer l'ancien marqueur après vérification.":"No field proof will be added. This confirmation can only remove the old marker after review."}</li>`}</ul>
+      <label><input type="checkbox" data-squad-review-ack="${row.id}" ${squadReviewPending?"disabled":""}>
+        ${french?"Je confirme avoir vérifié ces informations et souhaite retirer uniquement l'ancien marqueur de cette escouade.":"I checked these fields and want to remove only this squad's old conflict marker."}</label>
+      <button type="button" class="btn" data-squad-review-submit="${row.id}" disabled>
+        ${french?"Confirmer cette escouade":"Confirm this squad"}</button>
+    </section>`);
+  }
+  return parts.length?`<div class="squadReviewResolution">${parts.join("")}
+    <p role="status" aria-live="polite">${squadReviewEscape(squadReviewMessage)}</p></div>`:"";
+}
 function renderSquadComparisonControls(){
   const container=$("#squadCompareControls"),view=squadComparison.view();
   if(squadCompareLoading&&(!container||squadCompareLoading.button!==$("#squadCompareBtn")||view.kind!=="busy")){
@@ -957,6 +1007,20 @@ function renderSquadComparisonControls(){
     button.addEventListener("click",()=>{gearRepairPreview.close();return squadComparison.run();});
     const result=document.createElement("div");result.id="squadCompareResult";
     result.setAttribute("role","status");result.setAttribute("aria-live","polite");
+    result.addEventListener("change",event=>{
+      const cb=event.target.closest("[data-squad-review-ack]");
+      if(!cb)return;
+      const pane=cb.closest("[data-squad-review-section]");
+      const submit=pane?.querySelector("[data-squad-review-submit]");
+      if(submit)submit.disabled=!cb.checked||squadReviewPending;
+    });
+    result.addEventListener("click",event=>{
+      const btn=event.target.closest("[data-squad-review-submit]");
+      if(!btn||btn.disabled)return;
+      const id=Number(btn.dataset.squadReviewSubmit),pane=btn.closest("[data-squad-review-section]");
+      if(!pane?.querySelector("[data-squad-review-ack]")?.checked)return;
+      submitSquadConflictResolution(id);
+    });
     container.append(button,result);
   }
   button.disabled=view.kind==="busy";
@@ -965,7 +1029,8 @@ function renderSquadComparisonControls(){
       kind:"sync:compare",label:()=>t("squad_compare_busy"),idleLabel:()=>t("squad_compare_button")})};
   }else if(view.kind!=="busy")button.textContent=t("squad_compare_button");
   $("#squadCompareResult").innerHTML=squadComparisonHtml(view,t,value=>
-    new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"medium"}).format(new Date(value)));
+    new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"medium"}).format(new Date(value)))+
+    squadConflictResolutionHtml(view);
   renderGearRepairControls();
 }
 function renderAccountSquadReviewDiagnostic(){
@@ -1000,6 +1065,46 @@ async function checkAccountCloudStatus(){
   }catch(error){
     recordAccountSyncResult({kind:accountSyncErrorKind({code:error?.code||error?.name,online:navigator.onLine})},requestKey,operation);
   }finally{accountSyncCheckBusy=false;finish();renderBeta();}
+}
+async function submitSquadConflictResolution(id){
+  const view=squadComparison.view(),ctx=squadReadContext();
+  if(squadReviewPending||view.kind!=="result"||!ctx.allowed||String(ctx.owner)!==String(state.player_id))return;
+  const row=view.rows?.[id-1],localSquad=state.squads?.[id-1];
+  if(!row||!row.marker||!localSquad||!view.cloudRevision)return;
+  const reviewed=(row.fields||[]).filter(f=>f.state==="same"&&f.confirmed!==true)
+    .map(f=>({category:f.category,slot:f.slot}));
+  const guard=JSON.stringify({owner:ctx.owner,squad:localSquad,revision:view.cloudRevision,session:ctx.session});
+  squadReviewPending=true;squadReviewMessage="";renderSquadComparisonControls();
+  try{
+    const response=await fetchSessionCritical("/api/state?action=squad_review_resolve",{
+      method:"POST",cache:"no-store",redirect:"error",headers:authHeaders({"content-type":"application/json"}),
+      body:JSON.stringify({squad_id:id,expected_revision:view.cloudRevision,local_squad:localSquad,
+        reviewed_fields:reviewed,acknowledgement:"I_REVIEWED_MY_SQUAD_FIELDS"})},14000);
+    const json=await response.json().catch(()=>({}));
+    if(!response.ok||json?.ok!==true||
+       (json?.write_confirmed!==true&&json?.cloud_verified!==true)||json?.squad_id!==id||
+       !json.squad||!Number.isFinite(Date.parse(json.updated_at)))
+      throw new Error(response.status===409?"Les données cloud ont évolué. Relance la comparaison.":
+        "Sauvegarde non confirmée : aucune donnée locale n'a été remplacée.");
+    const live=squadReadContext();
+    if(!live.allowed||JSON.stringify({owner:live.owner,squad:state.squads?.[id-1],revision:view.cloudRevision,session:live.session})!==guard){
+      squadReviewMessage="Le cloud a répondu, mais tes données locales ont changé : relance la comparaison.";return;
+    }
+    state.squads[id-1]=json.squad;
+    cloudRevision=json.updated_at;
+    const otherConflicts=state.squads.some(s=>s?.composition_conflict?.reason==="squad_freshness_ambiguous");
+    state.sync={...state.sync,last_error:otherConflicts?"squad_freshness_ambiguous":null,
+      status:otherConflicts||cloudDirty?"waiting":"ok",pending_cloud_save:Boolean(otherConflicts||cloudDirty)};
+    safeLocalSet(STORE_KEY,JSON.stringify(state));
+    rememberLastGoodState(state,"squad-review-confirmed");
+    rememberAccountState(live.owner,state);
+    squadReviewMessage=json.write_confirmed===true?
+      `Escouade ${id} enregistrée et confirmée par le cloud. Autres escouades conservées.`:
+      `Escouade ${id} déjà concordante dans le cloud : ancien marqueur local nettoyé, sans écriture cloud.`;
+    render();
+    await squadComparison.run();
+  }catch(error){squadReviewMessage=String(error?.message||"Comparaison à refaire avant confirmation.");}
+  finally{squadReviewPending=false;renderSquadComparisonControls();}
 }
 function requireBetaAccess(){if(identityOnboardingController?.isRequired()){identityOnboardingController.sync();return false}if(betaAccessAllowed())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);return false}
 function requireBetaConsent(){if(betaConsentAccepted())return true;openDrawer("account");setTimeout(()=>$("#betaAccessSection")?.scrollIntoView({behavior:"smooth",block:"center"}),120);const el=$("#betaAccessStatus");if(el){el.className="notice warn";el.textContent=t("beta_consent_required")}return false}
