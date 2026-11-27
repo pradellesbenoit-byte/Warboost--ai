@@ -2501,8 +2501,55 @@ function renderTechnologyAdvicePanel(advice){
   const typeUnknown=["pvp","pve","power","vs","season"].includes(objective)&&!advice.context?.main_type
     ?`<p class="techAdviceNotice">${esc(t("technology_advice_main_type_unknown"))}</p>`:"";
   const sources=(advice.sources||[]).map(source=>`<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ");
-  panel.innerHTML=`<div class="techAdviceTitle"><h3>${esc(t("technology_advice_title"))}</h3><span class="pill">${esc(objectiveLabel)}</span></div><p class="techAdviceIntro">${esc(t("technology_advice_intro"))}</p>${notice?`<p class="techAdviceNotice">${esc(notice)}</p>`:""}${primary?`<h4>${esc(t("technology_advice_priority"))}</h4>${primary}`:""}${next?`<h4>${esc(t("technology_advice_next"))}</h4><div class="techAdviceGrid">${next}</div>`:""}${preserve}${typeUnknown}${locked}<p class="techAdviceDisclaimer">${esc(t("technology_advice_rank_note"))}</p><div class="techAdviceSources"><b>${esc(t("technology_advice_source"))}</b><br>${sources}</div>`;
+  const s7=advice.season7_guidance;
+  const s7Tech=s7?.status==="active_confirmed"
+    ?(["fr","en"].includes(s7.copy_locale)?s7.domains?.find(row=>row.id==="combat_plans")?.guidance:t("technology_advice_rank_note"))
+    :s7?.refresh_required?t("season_unknown_note"):"";
+  const s7Notice=s7Tech?`<p class="techAdviceNotice">${esc(s7Tech)}</p>`:"";
+  panel.innerHTML=`<div class="techAdviceTitle"><h3>${esc(t("technology_advice_title"))}</h3><span class="pill">${esc(objectiveLabel)}</span></div><p class="techAdviceIntro">${esc(t("technology_advice_intro"))}</p>${notice?`<p class="techAdviceNotice">${esc(notice)}</p>`:""}${primary?`<h4>${esc(t("technology_advice_priority"))}</h4>${primary}`:""}${next?`<h4>${esc(t("technology_advice_next"))}</h4><div class="techAdviceGrid">${next}</div>`:""}${preserve}${typeUnknown}${locked}${s7Notice}<p class="techAdviceDisclaimer">${esc(t("technology_advice_rank_note"))}</p><div class="techAdviceSources"><b>${esc(t("technology_advice_source"))}</b><br>${sources}</div>`;
   panel.classList.remove("hidden");
+}
+
+function renderSeason7Guidance(guidance){
+  if(!guidance||guidance.status==="not_s7")return "";
+  const fr=String(lang||"").toLowerCase().startsWith("fr");
+  const localizedKnowledge=knowledgeCopy(lang);
+  const title=guidance.season_number===7
+    ?`${t("season")} 7 · ${localizedKnowledge.sources}`
+    :`${localizedKnowledge.data} · ${localizedKnowledge.sources}`;
+  const confirmed=localizedKnowledge.official;
+  const estimated=localizedKnowledge.hypothesis;
+  const unknown=localizedKnowledge.missing;
+  const statusText=domain=>domain.reference_status==="confirmed_official_reference"?confirmed:
+    domain.reference_status==="community_estimate"?estimated:unknown;
+  const domains=(guidance.domains||[]).map(domain=>{
+    const playerStatus=domain.status==="account_value_recorded"
+      ?(fr?"INCONNU · valeur enregistrée, non vérifiée en jeu":String(lang||"").toLowerCase().startsWith("en")?"UNKNOWN · saved value, not verified in game":unknown)
+      :domain.status==="leader_context_confirmed"
+        ?(fr?"R4/R5 confirmé · calendrier à vérifier":String(lang||"").toLowerCase().startsWith("en")?"R4/R5 context · verify the schedule":unknown)
+        :domain.status==="fresh_observed_shop"
+          ?(fr?"Offre observée · valider le besoin":String(lang||"").toLowerCase().startsWith("en")?"Offer observed · confirm account need":unknown)
+          :unknown;
+    const domainLabel=fr?({
+      curse_resistance:"Résistance à la malédiction · Curse Research Lab / Blessing Fountain",
+      combat_plans:"Combat Lab · plans et Power Cells",
+      alliance:"Alliance · villes, temples et compétences",
+      resources:"Mithril · Gold Dust · Sacred Water",
+      profession:"Profession et compétences",
+      seasonal_shop:"Boutique saisonnière"
+    }[domain.id]||domain.title):domain.title;
+    const sourceRows=(domain.source_ids||[]).map(id=>(guidance.sources||[]).find(source=>source.id===id)).filter(Boolean);
+    const links=sourceRows.map(source=>`<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ");
+    const guidanceText=fr||String(lang||"").toLowerCase().startsWith("en")?domain.guidance:localizedKnowledge.condition;
+    return `<li><strong>${esc(domainLabel)}</strong> · ${esc(statusText(domain))} · ${esc(playerStatus)}<p>${esc(guidanceText)}</p>${links?`<small>${links}</small>`:""}</li>`;
+  }).join("");
+  const sourceList=(guidance.sources||[]).filter(source=>source.kind==="official")
+    .map(source=>`<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ");
+  const english=String(lang||"").toLowerCase().startsWith("en");
+  const summaryText=fr||english?guidance.summary:localizedKnowledge.condition;
+  const policyText=fr?"Les références officielles décrivent les systèmes; les tables communautaires restent estimatives et les données du compte ne valent pas vérification en jeu.":
+    english?guidance.evidence_policy:localizedKnowledge.condition;
+  return `<details class="season7Knowledge"><summary>${esc(title)}</summary><p>${esc(summaryText||"")}</p>${domains?`<ul>${domains}</ul>`:""}${sourceList?`<p>${esc(localizedKnowledge.sources)}: ${sourceList}</p>`:""}<p class="muted">${esc(policyText)}</p></details>`;
 }
 
 function renderHqProgressionReference(reference){
@@ -2549,7 +2596,7 @@ function renderProPriority(analysis){
   if(analysis.knowledge_guidance){
   let knowledgePanel=$("#knowledgeAdvicePanel");
   if(!knowledgePanel){knowledgePanel=document.createElement("section");knowledgePanel.id="knowledgeAdvicePanel";(panel.querySelector("#proDiagnosticDisclosure .proDisclosureContent")||panel).append(knowledgePanel)}
-  knowledgePanel.innerHTML=renderKnowledgeGuidance(analysis.knowledge_guidance,{locale:lang,squadLabel:id=>`${t("squad")} ${id}`,allowSquad4:proFeatureAllowed()});
+  knowledgePanel.innerHTML=renderKnowledgeGuidance(analysis.knowledge_guidance,{locale:lang,squadLabel:id=>`${t("squad")} ${id}`,allowSquad4:proFeatureAllowed()})+renderSeason7Guidance(analysis.season7_guidance);
   knowledgePanel.querySelector("[data-diagnostic-squad]")?.addEventListener("change",event=>{
     const id=Number(event.target.value);if(!requirePro()||!Number.isInteger(id)||id<1||id>4){event.target.value=String(analysis.knowledge_guidance?.squad_id||1);return}
     const previous=state.diagnostic_squad_id;
@@ -2580,7 +2627,7 @@ function renderProPriority(analysis){
     diagnosticShop.classList.toggle("hidden",!diagnosticShop.innerHTML);
   }
   diagnosticDisclosures.restore(panel);
-  renderTechnologyAdvicePanel(analysis.global_diagnostic?null:analysis.technology_advice||buildTechnologyAdvice(state,{mainType:analysis.composition?.main_type||null}));
+  renderTechnologyAdvicePanel(analysis.global_diagnostic?null:analysis.technology_advice||buildTechnologyAdvice(state,{mainType:analysis.composition?.main_type||null,locale:lang}));
   renderHqProgressionReference(analysis.hq_progression_reference);
   if(note)note.classList.add("hidden");panel.classList.remove("hidden");
   if(analysis.global_diagnostic){

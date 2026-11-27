@@ -22,6 +22,7 @@ import {mergeFreshRecord} from "../lib/field-freshness.js";
 import {resolveDiagnosticState,buildGlobalDiagnostic} from "../lib/player-global-diagnostic.js";
 import {eventStrategyFromState} from "../lib/event-strategy.js";
 import {researchForAllianceManager} from "../lib/event-research-api.js";
+import {buildSeason7Guidance} from "../lib/season7-guidance.js";
 const ENGINE_VERSION="2.5.28";
 function num(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function latestIso(...values){const valid=values.filter(Boolean).map(v=>({v,t:Date.parse(v)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>b.t-a.t);return valid[0]?.v||null}
@@ -462,9 +463,10 @@ function avoidNowText(lang,mainName,topKinds){
 
 function buildPlayerAnalysis(state,locale){
   const lang=localePack(locale),p=T[lang],loc=String(locale||"en-GB");
+  const season7Guidance=buildSeason7Guidance(state,locale);
   const squads=Array.from({length:4},(_,i)=>state?.squads?.[i]||{id:i+1,heroes:[]});
   const configured=squads.map((s,i)=>({s,i})).filter(x=>squadConfigured(x.s));
-  if(!configured.length)return {summary:p.noSquad,confidence:0,confidence_label:p.confidence(0),priorities:[],squads:squads.map((s,i)=>({id:i+1,name:squadName(s,i,lang),power:null,status:i===3?optionalSquadStatus(lang):p.squadStatusMissing,data_quality:0,gap_to_main:null,optional:i===3})),focus_squad:null};
+  if(!configured.length)return {summary:p.noSquad,confidence:0,confidence_label:p.confidence(0),priorities:[],squads:squads.map((s,i)=>({id:i+1,name:squadName(s,i,lang),power:null,status:i===3?optionalSquadStatus(lang):p.squadStatusMissing,data_quality:0,gap_to_main:null,optional:i===3})),focus_squad:null,season7_guidance:season7Guidance};
   const selected=selectPrimarySquad({squads});
   const main=selected||configured[0],mainPower=num(main.s.power),mainName=squadName(main.s,main.i,lang);
   const strongestConfigured=[...configured].filter(x=>num(x.s.power)!==null).sort((a,b)=>num(b.s.power)-num(a.s.power))[0]||main;
@@ -547,12 +549,12 @@ function buildPlayerAnalysis(state,locale){
   const decisionFreshness=top?.data_freshness||freshnessInfo(main.s.updated_at||null,"player",lang);
   conf=Math.max(0,Math.min(96,conf-(decisionFreshness?.confidence_penalty||0)));
   const incompleteNote=!compositionComplete?(lang==="fr"?` Composition incomplète : ${mainHeroesDetected}/5 héros détectés, les recommandations restent prudentes.`:` Incomplete composition: ${mainHeroesDetected}/5 heroes detected; recommendations remain cautious.`):"";
-  const summary=(top?p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",top.reason):p.main(mainName,mainPower!==null?fmt(mainPower,loc):"—"))+incompleteNote+` ${droneDataNote(state,lang)}`;
+  const summary=(top?p.mainDetail(mainName,mainPower!==null?fmt(mainPower,loc):"—",top.reason):p.main(mainName,mainPower!==null?fmt(mainPower,loc):"—"))+incompleteNote+` ${droneDataNote(state,lang)}${season7Guidance.status==="active_confirmed"&&["fr","en"].includes(season7Guidance.copy_locale)?` ${season7Guidance.summary}`:""}`;
   const bottleneck=top?{kind:top.kind,target:top.target||null,hero:top.hero||null,next_target:top.next_target||null,resource_family:top.resource_family||resourceFamily(top.kind),severity:top.severity,impact_score:top.impact_score,roi_score:top.roi_score,marginal_value_score:top.marginal_value_score,certainty:top.certainty,condition_key:top.condition_key,timing_window:top.timing_window||null,data_freshness:top.data_freshness||null}:null;
   const decisionTrace=scoredCandidates.slice(0,6).map(x=>({kind:x.kind,target:x.target||null,hero:x.hero||null,next_target:x.next_target||null,breakpoint:x.breakpoint||null,severity:x.severity,impact_score:x.impact_score,roi_score:x.roi_score,marginal_value_score:x.marginal_value_score,context_adjustment:x.context_adjustment,certainty:x.certainty,condition_key:x.condition_key,calculated_at:x.calculated_at,relative_cost:x.relative_cost,resource_family:x.resource_family,timing_adjustment:x.timing_adjustment,timing_window:x.timing_window,evidence_ids:x.evidence_ids||[],data_freshness:x.data_freshness||null}));
   const resourcePlan=unique.map((x,i)=>({rank:i+1,resource_family:x.resource_family,target:x.target||null,spend_timing:x.timing_window?.status||"neutral",best_vs_day:x.timing_window?.best_day??null,relative_cost:x.relative_cost,marginal_value_score:x.marginal_value_score,certainty:x.certainty,condition_key:x.condition_key}));
   const activeS6=seasonIsActive(state?.season||{})&&Number(state?.season?.number)===6,reshapeValues=activeS6?enhancedHeroes.map(h=>heroReshapeDecisionValue({hero:h,weapons:weaponList,season:state?.season||{},mainType,formationBonus,importance:heroImportance(h,heroes,mainType)})).filter(Boolean).sort((a,b)=>b.decision_value_index-a.decision_value_index):[],tech=activeS6?season6TechPriorities(state?.technology||{},{mainType,offense:/pvp|offen|siege|attack/i.test(String(state?.season?.focus||"")),defense:/defen|garrison|protect/i.test(String(state?.season?.focus||""))}):{known:false,priorities:[]},swap=activeS6?awakeningSwapAssessment({swap:state?.season?.awakening_swap||{},heroes:[...enhancedHeroes,...(state?.hero_progression||[]).map(x=>({name:x.hero_name,stars:x.stars,exclusive:x.exclusive,awakening:x.awakening}))],weapons:weaponList}):null;
-  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,bottleneck,resource_plan:resourcePlan,decision_trace:decisionTrace,squads:comparison,focus_squad:main.i+1,primary_squad_policy:selected?.selection||"fallback",strongest_squad:{id:strongestConfigured.i+1,power:num(strongestConfigured.s.power),is_focus:strongestConfigured.i===main.i},candidates_evaluated:scoredCandidates.length,adaptive_context:adaptiveContext,generated_at:adaptiveContext.generated_at,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,main_type:mainType,formation_bonus_pct:formationBonus,measured_hybrid_synergy:state?.season?.measured_hybrid_synergy===true,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},season6_awakening:{active:activeS6,eligible_heroes:Object.keys(S6_AWAKENING_HEROES),hero_value_model:reshapeValues,exact_power_projection:false,model:"relative-decision-value-only",tech_priorities:tech,awakening_swap:swap},all_hero_value_model:allHeroDecisionValues(state,main.i),exclusive_comparison:exclusiveComparison,avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"personalized adaptive global bottleneck arbitration: rankings are recalculated from this player’s selected main squad and never inherited from another player; Squad 1 is the player-selected main squad when configured; complete player context + all heroes + Awakening/Reshape relative value + EX breakpoints + formation synergy + gear + technology + Drone + explicit/inferred objective + account/server context + conditional VS/Season timing + dated multi-source evidence + certainty tiers",cost_policy:"No exact shard/material quantity or post-Awakening combat power is invented without a validated visible/official source; relative decision values are used otherwise.",meta_intelligence:metaInfo,data_freshness:decisionFreshness,engine:`warboost-ai-smart-v${ENGINE_VERSION}`};
+  return {summary,confidence:conf,confidence_label:p.confidence(conf),priorities:unique,bottleneck,resource_plan:resourcePlan,decision_trace:decisionTrace,squads:comparison,focus_squad:main.i+1,primary_squad_policy:selected?.selection||"fallback",strongest_squad:{id:strongestConfigured.i+1,power:num(strongestConfigured.s.power),is_focus:strongestConfigured.i===main.i},candidates_evaluated:scoredCandidates.length,adaptive_context:adaptiveContext,generated_at:adaptiveContext.generated_at,composition:{heroes_detected:mainHeroesDetected,expected_heroes:5,complete:compositionComplete,main_type:mainType,formation_bonus_pct:formationBonus,measured_hybrid_synergy:state?.season?.measured_hybrid_synergy===true,label:compositionComplete?(lang==="fr"?"Composition confirmée":"Composition confirmed"):(lang==="fr"?`Composition partielle ${mainHeroesDetected}/5`:`Partial composition ${mainHeroesDetected}/5`)},season6_awakening:{active:activeS6,eligible_heroes:Object.keys(S6_AWAKENING_HEROES),hero_value_model:reshapeValues,exact_power_projection:false,model:"relative-decision-value-only",tech_priorities:tech,awakening_swap:swap},season7_guidance:season7Guidance,all_hero_value_model:allHeroDecisionValues(state,main.i),exclusive_comparison:exclusiveComparison,avoid_now:avoidNowText(lang,mainName,unique.map(x=>x.kind)),decision_model:"personalized adaptive global bottleneck arbitration: rankings are recalculated from this player’s selected main squad and never inherited from another player; Squad 1 is the player-selected main squad when configured; complete player context + all heroes + Awakening/Reshape relative value + EX breakpoints + formation synergy + gear + technology + Drone + explicit/inferred objective + account/server context + conditional VS/Season timing + dated multi-source evidence + certainty tiers",cost_policy:"No exact shard/material quantity or post-Awakening combat power is invented without a validated visible/official source; relative decision values are used otherwise.",meta_intelligence:metaInfo,data_freshness:decisionFreshness,engine:`warboost-ai-smart-v${ENGINE_VERSION}`};
 }
 
 // ===== V1.4 · Last War Shop Advisor =====
@@ -1154,6 +1156,11 @@ function buildShopAdvice(state,locale,analysis){
   else if(liveObserved.length){summary=observedSummary(locale,new Set(liveObserved.map(o=>o._store_type)).size,liveObserved.length,observed.raw_count);catalogStatus="partial";catalogLabel=safe.partialLabel;}
   else {summary=referenceSummary(locale,referenceStats);catalogStatus="reference";catalogLabel=referenceLabel(locale);}
   summary+=budgetSummary;
+  const season7Guidance=buildSeason7Guidance(state,locale);
+  if(season7Guidance.status==="active_confirmed"&&["fr","en"].includes(season7Guidance.copy_locale)){
+    const shopGuidance=season7Guidance.domains.find(row=>row.id==="seasonal_shop");
+    if(shopGuidance)summary+=` ${shopGuidance.guidance}`;
+  }
   return {summary,confidence:dataConfidence,confidence_label:shopEvidenceText(locale).data(dataConfidence),data_confidence:dataConfidence,source_evidence_confidence:sourceEvidenceConfidence,profile_confidence:profileConfidence,ranking_confidence:rankingConfidence,scan_based:scanBased,catalog_status:catalogStatus,catalog_complete:officialCatalog,catalog_label:catalogLabel,store_type:store,updated_at:shop?.updated_at||null,data_freshness:catalogFreshness,recommendations,recommendation_groups:recommendationGroups,knowledge_date:SHOP_REFERENCE_DATE,reference_catalog:referenceStats,observed_shop_count:new Set(liveObserved.map(o=>o._store_type)).size,observed_offer_count:liveObserved.length,raw_observed_offer_count:observed.raw_count,unique_observed_offer_count:liveObserved.length,sold_observed_offer_count:observed.sold_count,deduped_offer_count:observed.deduped_count,price_conflict_count:observed.price_conflict_count,meta_intelligence:metaContext(state),method:officialCatalog?"official-shop-catalog + separated-relevance-evidence-availability + diagnostic-pro-single-source-of-truth + paid-purchase-evidence-guard + historical-paid-reference-quarantine + payment-channel-separation + opaque-container-guard + situational-utility-guard + adaptive-account-rules + dated-vip-reference + VS/season-context":liveObserved.length?"multi-shop-visible-scan + separated-relevance-evidence-availability + item-deduplication + store-currency-integrity + sold-offer-exclusion + ambiguous-price-suppression + dated-reference-matching + diagnostic-pro-single-source-of-truth + paid-purchase-evidence-guard + historical-paid-reference-quarantine + payment-channel-separation + opaque-container-guard + situational-utility-guard + adaptive-account-rules + dated-vip-reference + VS/season-context":"dated-user-screenshot-reference + separated-relevance-evidence-availability + diagnostic-pro-single-source-of-truth + paid-purchase-evidence-guard + historical-paid-reference-quarantine + payment-channel-separation + opaque-container-guard + situational-utility-guard + adaptive-account-rules + availability-unverified",diagnostic_alignment:alignment,budget:{currency:currency||null,balance,reserve_diamonds:VIP30_REFERENCE_POLICY.diamonds,reserve_days:VIP30_REFERENCE_POLICY.days,reserve_basis:VIP30_REFERENCE_POLICY.evidence_kind,reserve_checked_at:VIP30_REFERENCE_POLICY.checked_at,reserve_live_verified:VIP30_REFERENCE_POLICY.live_verified,reserve_requires_in_game_check:VIP30_REFERENCE_POLICY.requires_in_game_check},needs:{exclusive_urgency:Math.round(needs.exclusiveUrgency*100),stars_urgency:Math.round(needs.starsUrgency*100),gear_urgency:Math.round(needs.gearUrgency*100),drone_urgency:Math.round(needs.droneUrgency*100)},limitations:officialCatalog?[]:["Relevance score is not a certainty score","Reference catalogue is dated and does not prove current availability","Exact reference prices are dated and must be checked in game","Fresh scans are accumulated across multiple shops for live ranking","Duplicate rows from the same item/shop are merged","Store currency is normalized only when the shop has a deterministic currency","Sold items are excluded and ambiguous numeric prices are suppressed","Unknown item types receive no purchase recommendation","Opaque chests cannot outrank known direct progression solely on rarity","Situational utilities require matching VS/Season/event context before they can outrank direct progression","Paid offers require fresh account/shop data","Real-money offers never receive a strong buy recommendation unless current price, current contents and cost/gain are explicitly verified","Shop exclusive targets inherit the current Diagnostic PRO exclusive ranking","Reference real-money prices are labelled as dated observations, never as current prices","Historical real-money references are quarantined outside current paid-offer rankings until a fresh scan or official source confirms availability"],sources:[officialCatalog?"Official Last War read-only catalogue":"User-provided Last War shop scans",`WarBoost screenshot reference catalogue ${SHOP_REFERENCE_DATE}`,"Public community cross-check for VIP30 reference (checked 2026-08-30)","WarBoost saved account state"]};
 }
 
@@ -1233,7 +1240,7 @@ function allianceEventAdviceLines(plans,locale){
     return `${lead}${groupsLine}${reserveLine}${caution}`;
   });
 }
-function buildAllianceAdvice(state,locale){
+function buildAllianceAdvice(state,locale,{canonicalRoleVerified=false}={}){
   const lang=localePack(locale),pack=ALLIANCE_AI[lang]||ALLIANCE_AI.en,members=Array.isArray(state?.alliance?.members)?state.alliance.members:[];
   if(!members.length)return {advice:pack.empty,confidence:20,activity:{active:0,refresh:0,inactive:0,unknown:0},roles:{R5:0,R4:0,R3:0,R2:0,R1:0},immediate_actions:[],plan_b:[]};
   const summary=summarizeAllianceActivity(members),counts=summary.counts;
@@ -1266,8 +1273,10 @@ function buildAllianceAdvice(state,locale){
   const eventFallback=lang==="fr"?
     "Avant Desert Storm, Canyon ou VS : confirme l’événement, les disponibilités et les remplaçants; les statuts inconnus restent à vérifier.":
     "Before Desert Storm, Canyon, or VS: confirm the event, availability, and substitutes; unknown statuses remain unverified.";
-  const advice=[pack.line(counts.active,counts.refresh,counts.inactive,counts.unknown),allianceRoleLine(summary.roleCounts,lang),needsRefresh?pack.refresh:"",core.length?pack.core(core.join(" / ")):"",!needsRefresh?pack.action:"",genericGroupCaution,...(eventLines.length?eventLines:[eventFallback])].filter(Boolean).join("\n");
-  return {advice,confidence:summary.confidence,activity:counts,inactivity_evaluated:inactivityEvaluated,roles:summary.roleCounts,core,reliability:needsRefresh?"refresh_required":"usable",immediate_actions:immediate,plan_b:planB,policy:"No member is removed or changed by this advice; uncertain activity stays marked for refresh. Event suggestions use recent explicit availability only; registration is not attendance, and all assignments require human approval."};
+  const season7Guidance=buildSeason7Guidance(state,locale,Date.now(),{canonicalRoleVerified}),leaderSeasonNote=season7Guidance.status==="active_confirmed"&&["R4","R5"].includes(normalizeAllianceRole(state?.player?.role))
+    ?season7Guidance.domains.find(row=>row.id==="alliance")?.guidance:"";
+  const advice=[pack.line(counts.active,counts.refresh,counts.inactive,counts.unknown),allianceRoleLine(summary.roleCounts,lang),needsRefresh?pack.refresh:"",core.length?pack.core(core.join(" / ")):"",!needsRefresh?pack.action:"",genericGroupCaution,...(eventLines.length?eventLines:[eventFallback]),leaderSeasonNote].filter(Boolean).join("\n");
+  return {advice,confidence:summary.confidence,activity:counts,inactivity_evaluated:inactivityEvaluated,roles:summary.roleCounts,core,reliability:needsRefresh?"refresh_required":"usable",immediate_actions:immediate,plan_b:planB,season7_guidance:season7Guidance,policy:"No member is removed or changed by this advice; uncertain activity stays marked for refresh. Event suggestions use recent explicit availability only; registration is not attendance, and all assignments require human approval."};
 }
 
 const CONTEXT_AI={
@@ -1439,6 +1448,10 @@ function buildSeasonAdviceCore(state,locale){
     const text=staleSeasonRefreshText(localePack(locale),identity),confidence=24;
     return {advice:text,confidence,priorities:[{rank:1,kind:"refresh",text}],day:null,total_days:null,progress_pct:null,progress_applicable:false,profession:null,last_known_profession:lastKnownSeason.profession,last_known_season:lastKnownSeason,resistance:null,lifecycle:"unknown",season_active:false,season6_awakening:null,data_quality:"low",data_freshness:freshness,engine:`warboost-season-ai-v${ENGINE_VERSION}`};
   }
+  if(Number(s.number)===7&&buildSeason7Guidance(state,locale).status!=="active_confirmed"){
+    const text=pack.confirm_state,confidence=24;
+    return {advice:text,confidence,priorities:[{rank:1,kind:"refresh",text}],day:null,total_days:null,progress_pct:null,progress_applicable:false,profession:null,last_known_profession:s.profession||null,last_known_season:{name:s.name||null,number:7,profession:s.profession||null},resistance:null,lifecycle:"unknown",season_active:false,season6_awakening:null,data_quality:"low",data_freshness:freshness,engine:`warboost-season-ai-v${ENGINE_VERSION}`};
+  }
   const s6ctx=season6AwakeningContext(state,locale,player),priorities=[];
   if(s6ctx?.target)priorities.push({rank:1,kind:"awakening",text:`${s6ctx.title} · ${s6ctx.target}: ${s6ctx.text}`});
   const late=day!==null&&total!==null&&total>0&&day/total>=.8;if(late)priorities.push({rank:priorities.length+1,kind:"late",text:pack.late});
@@ -1458,10 +1471,16 @@ function buildVsAdvice(state,locale,opts={}){
 }
 function buildSeasonAdvice(state,locale){
   const advice=buildSeasonAdviceCore(state,locale);
-  return {...advice,event_strategy:eventStrategyFromState(state,"season",{context:{...state?.season,lifecycle:advice.lifecycle}})};
+  const season7Guidance=buildSeason7Guidance(state,locale);
+  const s7Text=season7Guidance.status==="active_confirmed"&&["fr","en"].includes(season7Guidance.copy_locale)
+    ?`${season7Guidance.summary} ${season7Guidance.domains.map(row=>row.guidance).join(" ")}`
+    :season7Guidance.refresh_required&&["fr","en"].includes(season7Guidance.copy_locale)?season7Guidance.summary:"";
+  return {...advice,advice:[advice.advice,s7Text].filter(Boolean).join(" "),season7_guidance:season7Guidance,
+    event_strategy:eventStrategyFromState(state,"season",{context:{...state?.season,lifecycle:advice.lifecycle}})};
 }
 function buildSevenDayPlan(state,analysis){
   const priorities=Array.isArray(analysis?.priorities)?analysis.priorities:[],top=priorities[0]||null,second=priorities[1]||null;
+  const season7Guidance=analysis?.season7_guidance||buildSeason7Guidance(state,"en");
   const needsData=!analysis?.focus_squad||priorities.some(row=>row?.kind==="scan")||
     analysis?.composition?.complete===false||analysis?.data_freshness?.blocks_paid===true;
   const topKind=top?.kind||"scan",topTarget=top?.target||top?.hero||null,secondKind=second?.kind||null,secondTarget=second?.target||second?.hero||null;
@@ -1473,9 +1492,10 @@ function buildSevenDayPlan(state,analysis){
   plan.push(day(4,"checkpoint","measure_progress",null,null,"verify_progress"));
   // Day 5 and Day 6 are account-wide decisions. Do not pin them to the top hero unless a concrete hero action is actually being prescribed.
   plan.push(day(5,"shop","shop_resources",null,null,"buy_only_if_aligned"));
-  plan.push(day(6,"timing","vs_season_timing",null,null,"score_only_when_active"));
+  plan.push(day(6,"timing","vs_season_timing",season7Guidance.status==="active_confirmed"?"season":null,season7Guidance.status==="active_confirmed"?"S7":null,
+    season7Guidance.status==="active_confirmed"?"verify_s7_screen_before_spend":"score_only_when_active"));
   plan.push(day(7,"review","weekly_review",null,null,"recalculate_after_new_data"));
-  return {days:plan,top_kind:topKind,top_target:topTarget,generated_at:new Date().toISOString(),policy:"relative-priority-only",exact_quantities:false,rule:"Never invent exact shard/material quantities; spend only against confirmed account data and active timing."};
+  return {days:plan,top_kind:topKind,top_target:topTarget,generated_at:new Date().toISOString(),season7_guidance:season7Guidance,policy:"relative-priority-only",exact_quantities:false,rule:"Never invent exact shard/material quantities; spend only against confirmed account data and active timing."};
 }
 
 function buildCrossDomain(state,locale,player){
@@ -1567,7 +1587,7 @@ return async function handler(req,res){
      analysis.last_war_rules=lastWarRuleContext();
     analysis.seven_day_plan=buildSevenDayPlan(s,analysis);
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
-    analysis.technology_advice=buildTechnologyAdvice(s,{mainType:analysis.composition?.main_type||null});
+    analysis.technology_advice=buildTechnologyAdvice(s,{mainType:analysis.composition?.main_type||null,locale:loc});
     analysis.hq_progression_reference=buildHqProgressionIntel(s);
     analysis.global_diagnostic=buildGlobalDiagnostic(s,analysis,loc);
     try{analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,await loadKnowledge(),req.body?.squad_id)}
@@ -1584,7 +1604,7 @@ return async function handler(req,res){
       player:{...(s?.player||{}),role:authorized.authorization.effective_role},
       alliance:{...(s?.alliance||{}),id:cloudAlliance.id,tag:cloudAlliance.tag,name:cloudAlliance.name,server_id:cloudAlliance.server_id,members:authorized.roster}
     };
-    const advice=buildAllianceAdvice(canonicalState,loc);
+    const advice=buildAllianceAdvice(canonicalState,loc,{canonicalRoleVerified:true});
     return res.status(200).json({ok:true,engine:`warboost-alliance-ai-v${ENGINE_VERSION}`,access_basis:"canonical_cloud_alliance_membership",declared_role:authorized.authorization.effective_role,...advice});
   }
   if(scope==="vs")return res.status(200).json({ok:true,...buildVsAdvice(s,loc)});
