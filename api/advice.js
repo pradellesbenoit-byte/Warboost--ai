@@ -1,5 +1,6 @@
 import {buildHqProgressionIntel} from "../lib/hq-progression-reference.js";
 import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
+import {roleAwareGearAdvice} from "../lib/ai-advice-reliability.js";
 import {loadKnowledge} from "./_knowledge.js";
 import {scopedDiagnosticState,buildKnowledgeGuidance} from "../lib/knowledge-guidance.js";
 import {requireProductUser} from "../lib/pro-access.js";
@@ -491,7 +492,17 @@ function buildPlayerAnalysis(state,locale){
       const st=num(h.stars);if(st!==null&&st<5){const gap=Math.max(.1,Math.round((5-st)*10)/10),gate=awEligible?8:0,impact=Math.min(99,(82+gap*5+gate)*importance),cost=.9+gap*.42,reason=p.stars(hn,gap)+(awEligible?` ${awTx.gateStars(hn)}`:"");candidates.push(candidate("stars",p.titles.stars,reason,p.actionStars(hn),p.freeHero,p.paidHero,hn,impact,cost,state,lang,{hero:hn,current:st,current_label:`${st}★`,next_target:`${Math.min(5,Math.ceil((st+.1)*2)/2)}★`,awakening_gate:awEligible,source_updated_at:fieldUpdatedAt(h,"stars")}));}
       const ex=metric(h.exclusive),exTarget=nextKnownExBreakpoint(ex);if(ex!==null&&exTarget!==null){const raw=exPriorityScore(hn,squadType,ex,exTarget),gap=exTarget-ex,gate=awEligible&&ex<20&&exTarget===20?11:0,impact=Math.min(99,(64+raw*.28+gate)*importance),cost=.75+gap/12,reason=exReason(locale,hn,ex,exTarget)+(gate?` ${awTx.gateEx(hn)}`:"");candidates.push(candidate("exclusive",p.titles.exclusive,reason,p.actionExclusive(hn),p.freeExclusive,p.paidExclusive,hn,impact,cost,state,lang,{hero:hn,current:ex,current_label:`EX${ex}`,next_target:`EX${exTarget}`,breakpoint:exTarget,awakening_gate:gate>0,source_updated_at:fieldUpdatedAt(h,"exclusive")||heroUpdatedAt(hn)}));}
       if(awEligible&&st!==null&&st>=5&&ex!==null&&ex>=20){const awScore=awakeningDecisionScore({hero:h,weapons:weaponList,season:state?.season||{},mainType:squadType,formationBonus,importance}),shards=awReady?.awakening?.named_shards,reason=(shards===null?awTx.unknown(hn):shards>=50||awReady?.unlock_confirmed?awTx.ready(hn):awTx.shards(hn,shards))+` ${formationBonus>=20?awTx.mono(formationBonus):(!measuredHybrid&&formationBonus<20?awTx.hybrid:"")}`,cost=awReady?.unlock_confirmed?.82:shards===null?1.20:shards>=50?1.0:1.35;candidates.push(candidate("awakening",awTx.title,reason,awTx.action(hn),awTx.free,awTx.paid,hn,Math.max(58,awScore||58),cost,state,lang,{hero:hn,current:awReady?.awakening?.stars,current_label:awReady?.unlock_confirmed?(awReady?.awakening?.stars!==null?`Awakening ${awReady.awakening.stars}★`:awTx.title):"Awakening locked/unknown",next_target:awReady?.unlock_confirmed?"Next Awakening step":"Awakening unlock",named_shards:shards,fragment_cost_known:shards!==null,source_updated_at:latestIso(progressionByHero(hn)?.updated_at,weaponByHero(hn)?.updated_at,main.s.updated_at)}));}
-      const gr=gearMetric(h.gear);if(gr!==null&&gearTarget!==null&&gearTarget-gr>=3){const gap=gearTarget-gr,impact=Math.min(94,(65+gap*1.7)*importance),cost=.68+gap/16;candidates.push(candidate("gear",p.titles.gear,p.gear(hn,Math.round(gap*10)/10,gearTarget),p.actionGear(hn),p.freeGear,p.paidGear,hn,impact,cost,state,lang,{hero:hn,current:gr,current_label:`Nv.${gr}`,next_target:`Nv.${gearTarget}`,source_updated_at:fieldUpdatedAt(h,"gear")}));}
+      const gr=gearMetric(h.gear);if(gr!==null&&gearTarget!==null&&gearTarget-gr>=3){
+        const gap=gearTarget-gr,roleGear=roleAwareGearAdvice(h,lang);
+        // A relative numeric gap is not an exact item-level ROI or proof that every gear should be equal.
+        // Role-dependent next action remains conditional on the equipment screen and real resource cost.
+        const impact=Math.min(94,(65+gap*1.7)*importance)*(roleGear.role?1:0.9),cost=.68+gap/16;
+        candidates.push(candidate("gear",p.titles.gear,`${p.gear(hn,Math.round(gap*10)/10,gearTarget)} ${roleGear.reason}`,
+          roleGear.action,p.freeGear,p.paidGear,hn,impact,cost,state,lang,
+          {hero:hn,current:gr,current_label:`Nv.${gr}`,next_target:`Nv.${gearTarget}`,
+           combat_role:roleGear.role,role_focus:roleGear.focus,gain_confirmed:false,cost_confirmed:false,
+           source_updated_at:fieldUpdatedAt(h,"gear")}));
+      }
     }
     const exUnknown=heroes.map(({h,i})=>({h,i,name:heroName(h,i,lang)})).filter(x=>metric(x.h.exclusive)===null).map(x=>x.name);
     const reliableHeroCandidates=candidates.filter(x=>["level","stars","exclusive","awakening","gear"].includes(x.kind)).length;
@@ -511,7 +522,7 @@ function buildPlayerAnalysis(state,locale){
   const formationBonus=formationBonusPct(enhancedHeroes),mainType=mainSquadType(enhancedHeroes);
   const adaptiveContext=buildAdaptiveContext(state,{mainType,formationBonusPct:formationBonus,locale:loc});
   const techContext=mainType?adaptiveContext:{...adaptiveContext,technology:{...adaptiveContext.technology,values:(adaptiveContext.technology?.values||[]).filter(item=>item.key!=="type_mastery_pct")}};
-  const techOpp=technologyOpportunity(state,techContext);if(techOpp){const tt=technologyRecText(lang);candidates.push(candidate("technology",tt.title,tt.reason(techOpp.label,Math.round(techOpp.pct)),tt.action(techOpp.label),tt.free,tt.paid,techOpp.label,techOpp.impact,techOpp.cost,state,lang,{current:techOpp.pct,current_label:`${Math.round(techOpp.pct)}%`,technology_lane:techOpp.lane,source_updated_at:techOpp.source_updated_at}));}
+  const techOpp=technologyOpportunity(state,techContext);if(techOpp){const tt=technologyRecText(lang);candidates.push(candidate("technology",tt.title,tt.reason(techOpp.label,Math.round(techOpp.pct)),tt.action(techOpp.label),tt.free,tt.paid,techOpp.label,techOpp.impact,techOpp.cost,state,lang,{current:techOpp.pct,current_label:`${Math.round(techOpp.pct)}%`,technology_lane:techOpp.lane,technology_evidence:"named_reviewed_branch",source_updated_at:techOpp.source_updated_at}));}
   const scoredCandidates=applyAdaptiveScoring(candidates,adaptiveContext);
   scoredCandidates.sort((a,b)=>(b.marginal_value_score??b.severity)-(a.marginal_value_score??a.severity)||b.severity-a.severity||b.roi_score-a.roi_score||b.impact_score-a.impact_score);
   // V2.4.9: adaptive scoring ranks the complete reliable candidate pool; it does not replace the underlying Diagnostic PRO candidate builders.
