@@ -1,3 +1,4 @@
+import {buildHqProgressionIntel} from "../lib/hq-progression-reference.js";
 import {buildTechnologyAdvice} from "../lib/technology-advisor.js";
 import {loadKnowledge} from "./_knowledge.js";
 import {scopedDiagnosticState,buildKnowledgeGuidance} from "../lib/knowledge-guidance.js";
@@ -1556,6 +1557,7 @@ return async function handler(req,res){
     analysis.seven_day_plan=buildSevenDayPlan(s,analysis);
     analysis.cross_context=buildCrossDomain(s,loc,analysis);
     analysis.technology_advice=buildTechnologyAdvice(s,{mainType:analysis.composition?.main_type||null});
+    analysis.hq_progression_reference=buildHqProgressionIntel(s);
     analysis.global_diagnostic=buildGlobalDiagnostic(s,analysis,loc);
     try{analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,await loadKnowledge(),req.body?.squad_id)}
     catch{analysis.knowledge_guidance=buildKnowledgeGuidance(rawState,{},req.body?.squad_id)}

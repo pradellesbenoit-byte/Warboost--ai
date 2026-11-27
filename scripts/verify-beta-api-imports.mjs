@@ -14,6 +14,7 @@ for(const relativePath of serverSharedModules){
 const serviceWorker=await readFile(new URL("../sw.js",import.meta.url),"utf8");
 assert.ok(serviceWorker.includes('"/lib/shop-catalog.js"'),"The unversioned catalogue import should be cached for offline browser use.");
 assert.ok(serviceWorker.includes('"/lib/shop-observations-2026-09-28.js"'),"The unversioned observations import should be cached for offline browser use.");
+assert.ok(serviceWorker.includes('"/lib/hq-progression-reference.js"'),"The QG reference imported by the offline coach should be cached for offline use.");
 
 const [state,health,advice,sync]=await Promise.all([
   import("../api/state.js"),

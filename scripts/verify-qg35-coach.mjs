@@ -9,16 +9,16 @@ const namesByType={
   missile:["Adam","Braz","Elsa","Fiona","Kane"]
 };
 
-function makeState(type="aircraft",{complete=false,levels=[180,180,180,180,120]}={}){
+function makeState(type="aircraft",{complete=false,levels=[175,175,175,175,120]}={}){
   const names=namesByType[type];
   const heroes=names.map((name,index)=>({
-    name,level:levels[index]??180,stars:5,gear:complete?{weapon:2,armor:2}:null,
+    name,level:levels[index]??175,stars:5,gear:complete?{weapon:2,armor:2}:null,
     skills:complete?{one:10,two:10}:null,awakening:complete?{level:1}:null,
     combat_role:index<2?"frontline":"dps"
   }));
   const state={
     version:"2.5.32",
-    player:{name:"Test",hq_level:35},
+    player:{name:"Test",hq_level:35,hq_level_source:"manual_profile",hq_level_confirmed_at:"2026-11-27T12:00:00Z"},
     squads:[{id:1,composition_confirmed_at:"2026-09-25T10:00:00.000Z",confirmed_composition:[...names],heroes}],
     hero_profiles:[],
     exclusive_weapons:complete?names.map((hero_name,index)=>({hero_name,level:index+1,power:1000,updated_at:"2026-09-25T10:00:00.000Z"})):[],
@@ -53,14 +53,18 @@ assert.equal(unknown.eligibility.eligible,false);
 assert.deepEqual(unknown.top_priorities,[]);
 assert.deepEqual(deriveEndgameCoachHomeState(unknown,{privateVisible:true}),{visible:true,state:"unknown",active:false,showProfileScan:true});
 assert.equal(deriveEndgameCoachHomeState(unknown,{privateVisible:false}).visible,false);
+const unconfirmed=createEndgameCoachReport({player:{hq_level:35}});
+assert.equal(unconfirmed.eligibility.status,"unknown","An unconfirmed HQ number must not activate HQ-specific recommendations.");
+assert.equal(unconfirmed.hq_progression.current_hero_cap,null);
+assert.deepEqual(unconfirmed.top_priorities,[]);
 
-const below=createEndgameCoachReport({player:{hq_level:34},exclusive_weapons:[{hero_name:"DVA",level:9}]});
+const below=createEndgameCoachReport({player:{hq_level:34,hq_level_source:"manual_profile",hq_level_confirmed_at:"2026-11-27T12:00:00Z"},exclusive_weapons:[{hero_name:"DVA",level:9}]});
 assert.equal(below.eligibility.status,"below_threshold");
 assert.equal(below.eligibility.eligible,false);
 assert.deepEqual(below.top_priorities,[]);
 assert.deepEqual(deriveEndgameCoachHomeState(below,{privateVisible:true}),{visible:true,state:"locked",active:false,showProfileScan:false});
 
-const threshold=createEndgameCoachReport({player:{hq_level:35}});
+const threshold=createEndgameCoachReport({player:{hq_level:35,hq_level_source:"manual_profile",hq_level_confirmed_at:"2026-11-27T12:00:00Z"}});
 assert.equal(threshold.eligibility.eligible,true);
 assert.equal(threshold.top_priorities.length,3);
 assert.equal(new Set(threshold.top_priorities.map(item=>item.action_key)).size,3);
@@ -109,7 +113,7 @@ assert.equal(completeReport.before_after.metric,"Formation size");
 assert.equal(completeReport.missing_data.length,0);
 assert.ok(completeReport.seven_day_plan.length<7,"A partial priority set must not be padded into a seven-day plan.");
 
-const equalProgression=makeState("aircraft",{complete:true,levels:[180,180,180,180,180]});
+const equalProgression=makeState("aircraft",{complete:true,levels:[175,175,175,175,175]});
 equalProgression.exclusive_weapons=namesByType.aircraft.map(hero_name=>({hero_name,level:5,power:1000}));
 const noActionReport=createEndgameCoachReport(equalProgression);
 assert.deepEqual(noActionReport.top_priorities,[],"Confirmed, even progression must not receive generic filler priorities.");
@@ -117,13 +121,14 @@ assert.equal(noActionReport.bottleneck,null);
 assert.equal(noActionReport.next_capture,null);
 assert.equal(noActionReport.seven_day_plan.length,0);
 
-const modulesOnly=makeState("aircraft",{complete:true,levels:[180,180,180,180,180]});
+const modulesOnly=makeState("aircraft",{complete:true,levels:[175,175,175,175,175]});
 delete modulesOnly.drone.components;
 delete modulesOnly.drone.chips;
 modulesOnly.exclusive_weapons=namesByType.aircraft.map(hero_name=>({hero_name,level:5,power:1000}));
 const modulesOnlyReport=createEndgameCoachReport(modulesOnly);
 assert.ok(modulesOnlyReport.missing_data.some(item=>item.id==="drone_modules"));
 assert.equal(modulesOnlyReport.next_capture,null,"A drone scan must not be recommended when only unsupported module fields are missing.");
+assert.equal(completeReport.hq_progression.current_hero_cap,175,"HQ35 uses the sourced level cap without changing stored hero values.");
 
 const held=makeState("tank",{complete:true});
 held.endgame.rare_resources=[{name:"Crystal",stock:10,usage_known:true,current_use:true,next_use:{cost:100,expected_gain:20,gain_source:"confirmed screen"}}];

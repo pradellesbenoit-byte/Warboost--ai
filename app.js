@@ -2201,7 +2201,14 @@ function renderEndgameCoachDrawer(){
     <strong>${qg35Text("qg35_pro_locked_title")}</strong><p>${qg35Text("qg35_pro_locked_text")}</p>
     <button class="primaryAction qg35ProButton" type="button" data-qg35-pro>${qg35Text("qg35_pro_details_button")}</button>
   </section>`;
-  content.innerHTML=summary+advancedPanel;
+  const hqRef=report.hq_progression;
+  const hqCaption=String(lang||"en").toLowerCase().startsWith("fr")
+    ?{heading:"Référence QG 31–35",cap:"Plafond héros documenté",limit:"QG35 : dernier niveau documenté",costs:"Coûts QG seuls, avant réductions. Vérifier dans Last War",notlive:"Données communautaires, non vérifiées sur le compte",source:"Sources (vérifiées le 27/11/2026)"}
+    :{heading:"HQ 31–35 reference",cap:"Documented hero cap",limit:"HQ35: last documented level",costs:"HQ-only costs before discounts; verify in Last War",notlive:"Community estimates, not verified for this account",source:"Sources (reviewed 2026-11-27)"};
+  const hqPanel=hqRef&&hqRef.status==="at_reference_max"
+    ?`<section class="qg35Intro"><strong>${esc(hqCaption.heading)}</strong><p>${esc(hqCaption.limit)} · ${esc(hqCaption.cap)}: <b>${qg35Value(hqRef.current_hero_cap)}</b></p><p>${esc(hqCaption.notlive)}</p><p>${esc(hqCaption.source)}: ${hqRef.reference_sources.map(url=>`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(new URL(url).hostname)}</a>`).join(" · ")}</p></section>`
+    :"";
+  content.innerHTML=summary+hqPanel+advancedPanel;
 }
 
 // HF8.6.22: each visible surface has its own render boundary. No optional module may
@@ -2498,6 +2505,42 @@ function renderTechnologyAdvicePanel(advice){
   panel.classList.remove("hidden");
 }
 
+function renderHqProgressionReference(reference){
+  const panel=$("#proHqProgressionReference");if(!panel)return;
+  if(!reference){panel.classList.add("hidden");panel.replaceChildren();return}
+  const fr=String(lang||"en").toLowerCase().startsWith("fr");
+  const copy=fr
+    ?{title:"Référence QG 31–35",confirm:"Confirme le niveau de QG dans ton profil avant d’afficher des plafonds ou coûts.",scope:"Coût estimatif du bâtiment QG seul, avant réductions; coûts des prérequis exclus.",community:"Estimations communautaires : les tables peuvent diverger. Vérifie les exigences dans ton jeu.",cap:"Plafond héros documenté",next:"Prochain QG",nextCap:"Plafond héros indiqué",buildings:"Prérequis communautaires à vérifier",costs:"Ressources estimées",food:"Nourriture",iron:"Fer",coin:"Or",oil:"Pétrole",unknown:"Référence disponible uniquement pour les QG 30–35.",beyond:"Au-delà du QG35 : connaissances non validées; aucun plafond ni coût n’est extrapolé.",max:"QG35 est le dernier niveau documenté; aucun coût de QG36 n’est fourni.",research:"Recherche Âge du pétrole observée",locked:"Recherche verrouillée",researchUnknown:"État de la recherche non confirmé",s7:"Aperçu annoncé uniquement (non confirmé sur ton serveur)"}
+    :{title:"HQ 31–35 reference",confirm:"Confirm your HQ level in your profile before viewing caps or costs.",scope:"Estimated HQ building cost only, before discounts; prerequisite-building costs excluded.",community:"Community estimates can differ. Verify requirements in your game.",cap:"Documented hero-level cap",next:"Next HQ",nextCap:"Listed hero cap",buildings:"Community prerequisites to verify",costs:"Estimated resources",food:"Food",iron:"Iron",coin:"Gold",oil:"Oil",unknown:"Reference is available only for HQ30–35.",beyond:"Above HQ35: knowledge is not validated; no cap or cost is extrapolated.",max:"HQ35 is the last documented level; no HQ36 cost is supplied.",research:"Observed Age of Oil research",locked:"Research is locked",researchUnknown:"Research state is not confirmed",s7:"Announced preview only (not verified on your server)"};
+  const fmt=value=>value!==null&&value!==undefined&&value!==""&&Number.isFinite(Number(value))?new Intl.NumberFormat(fr?"fr-FR":"en-GB",{maximumFractionDigits:0}).format(Number(value)):"—";
+  const links=(Array.isArray(reference.reference_sources)?reference.reference_sources:[])
+    .filter(url=>typeof url==="string"&&/^https:\/\/[^/\s]+/i.test(url))
+    .map(url=>`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(new URL(url).hostname)}</a>`).join(" · ");
+  let body="";
+  if(!reference.hq_confirmed)body=`<p>${esc(copy.confirm)}</p>`;
+  else if(reference.status==="beyond_reference")body=`<p>${esc(copy.beyond)}</p>`;
+  else if(reference.status==="before_oil_era")body=`<p>${esc(copy.unknown)}</p>`;
+  else{
+    body=`<p>${esc(copy.cap)} : <b>${fmt(reference.current_hero_cap)}</b></p>`;
+    if(reference.next_hq!==null&&reference.next_hq!==undefined){
+      body+=`<p>${esc(copy.next)} ${esc(String(reference.next_hq))} · ${esc(copy.nextCap)} : <b>${fmt(reference.next_hero_cap)}</b></p>`;
+      const costs=reference.next_hq_costs;
+      if(costs)body+=`<p>${esc(copy.costs)} — ${esc(copy.food)} ${fmt(costs.food)} · ${esc(copy.iron)} ${fmt(costs.iron)} · ${esc(copy.coin)} ${fmt(costs.coin)} · ${esc(copy.oil)} ${fmt(costs.oil)}</p>`;
+      if(reference.next_hq_buildings?.length)body+=`<p><b>${esc(copy.buildings)} :</b> ${reference.next_hq_buildings.map(esc).join(" · ")}</p>`;
+      body+=`<p>${esc(copy.scope)} ${esc(copy.community)}</p>`;
+    }else if(reference.status==="at_reference_max")body+=`<p>${esc(copy.max)}</p>`;
+  }
+  const oil=reference.oil_era||{};
+  const oilText=oil.state==="percent"&&Number.isFinite(Number(oil.percent))
+    ?`${copy.research} : ${fmt(oil.percent)}%`
+    :oil.state==="locked"?`${copy.locked}${oil.prerequisite?` : ${oil.prerequisite}`:""}`
+    :copy.researchUnknown;
+  const season=reference.season7?.status==="announced_not_server_verified"
+    ?`<p>${esc(copy.s7)} : ${esc((reference.season7.heroes||[]).join(", "))}</p>`:"";
+  panel.innerHTML=`<strong>${esc(copy.title)}</strong>${body}<p>${esc(oilText)}</p>${season}${links?`<p>${fr?"Sources":"Sources"} (${esc(reference.reference_reviewed_on||"")}): ${links}</p>`:""}`;
+  panel.classList.remove("hidden");
+}
+
 function renderProPriority(analysis){
   const native=aiUsesNativeCopy(),ui=aiUiText(),panel=$("#proPriorityPanel"),summary=$("#proPrioritySummary"),contextBox=$("#proAdaptiveContext"),list=$("#proPriorityList"),compare=$("#proSquadCompare"),exCompare=$("#proExclusiveCompare"),metaSources=$("#proMetaSources"),confidence=$("#proConfidence"),note=$("#playerSyncInfo"),shopConfidence=$("#shopConfidence"),shopCatalogPill=$("#shopCatalogPill"),avoid=$("#proAvoidList");
   if(!panel||!analysis)return;
@@ -2538,6 +2581,7 @@ function renderProPriority(analysis){
   }
   diagnosticDisclosures.restore(panel);
   renderTechnologyAdvicePanel(analysis.global_diagnostic?null:analysis.technology_advice||buildTechnologyAdvice(state,{mainType:analysis.composition?.main_type||null}));
+  renderHqProgressionReference(analysis.hq_progression_reference);
   if(note)note.classList.add("hidden");panel.classList.remove("hidden");
   if(analysis.global_diagnostic){
     if(summary)summary.textContent=lang.startsWith("fr")?"Tes priorités, à partir de tes données confirmées.":"Your priorities, based on your confirmed data.";
