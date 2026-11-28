@@ -151,6 +151,7 @@
       <div class="stat"><span data-i18n="drone">Drone</span><b id="pDrone">—</b></div>
     </div>
     <button id="playerAvatarRemoveBtn" class="textAction hidden" type="button" data-i18n="profile_avatar_remove">Retirer ma photo</button>
+    <div id="playerAvatarSyncStatus" class="notice hidden" role="status" aria-live="polite"></div>
     <div id="playerAvatarRemovalStatus" class="notice hidden" role="status" aria-live="polite"></div>
     <div id="playerOnboarding" class="section hidden" style="margin-top:10px">
       <div class="sectionTitle"><h3>🧭 <span data-i18n="onboarding_title">Mise en route</span></h3><span class="pill" data-i18n="beta_setup_short">CONFIGURER</span></div>
@@ -321,14 +322,14 @@
           <section id="profileAvatarCropPanel" class="profileAvatarCropPanel hidden" data-i18n-aria="profile_avatar_panel_label" aria-label="Photo du profil">
             <p class="privacyText" data-i18n="profile_avatar_offer">Tu peux recadrer la photo de profil visible sur cette capture. Rien n’est enregistré sans ton choix.</p>
             <p class="privacyText" data-i18n="profile_avatar_capture_hint">Pour ta photo, choisis une nouvelle capture Profil / QG où elle est visible.</p>
-            <p class="privacyText" data-i18n="profile_avatar_instructions">Fais glisser sur la capture pour sélectionner une zone carrée.</p>
+            <p class="privacyText" data-i18n="profile_avatar_instructions">Glisse ton doigt sur la photo pour sélectionner un carré; l’aperçu suit ton geste.</p>
             <canvas id="profileAvatarCropCanvas" class="profileAvatarCropCanvas" data-i18n-aria="profile_avatar_canvas_label" aria-label="Capture du profil à recadrer"></canvas>
             <div class="profileAvatarCropPreviewWrap">
               <span data-i18n="profile_avatar_preview">Aperçu du recadrage</span>
               <img id="profileAvatarCropPreview" class="profileAvatarCropPreview hidden" alt="" />
             </div>
-            <div id="profileAvatarCropStatus" class="privacyText" role="status" aria-live="polite"></div>
-            <button id="profileAvatarUseBtn" class="secondaryBtn wideBtn" type="button" disabled data-i18n="profile_avatar_use">Utiliser cette photo dans WarBoost</button>
+            <div id="profileAvatarCropStatus" class="privacyText profileAvatarCropStatus" role="status" aria-live="polite" aria-atomic="true"></div>
+            <button id="profileAvatarUseBtn" class="secondaryBtn wideBtn profileAvatarUseBtn" type="button" disabled aria-disabled="true" aria-describedby="profileAvatarCropStatus" data-i18n="profile_avatar_use">Utiliser cette photo dans WarBoost</button>
           </section>
           <div class="buttonRow"><button id="discardScanReviewBtn" class="secondaryBtn" type="button" data-i18n="scan_review_discard">Ignorer le résultat</button><button id="confirmScanReviewBtn" class="primaryAction" type="button" data-i18n="scan_review_confirm">Confirmer les valeurs</button></div>
         </section>

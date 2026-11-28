@@ -12,7 +12,7 @@ import {createSaveDiagnostic,safeSaveDiagnostic,newSaveCorrelation,publicSaveErr
 import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
 import {buildPlayerScanOptions,normalizePlayerScanType,scanSquadId} from "./lib/player-scan-types.js";
 import {createProfileAvatarCropper} from "./lib/profile-avatar-cropper.js";
-import {mergeProfileAvatar,normalizeProfileAvatarDataUrl,removeProfileAvatar} from "./lib/profile-avatar.js";
+import {mergeProfileAvatar,normalizeProfileAvatarDataUrl,removeProfileAvatar,validateProfileAvatarSelection} from "./lib/profile-avatar.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation,heroDisplayName} from "./lib/heroes.js";
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
@@ -798,14 +798,12 @@ profileAvatarCropper=createProfileAvatarCropper({root:document,text:key=>t(key),
   onSelectionStart:()=>{pendingProfileAvatar=null},
   onUse:selection=>{
     const draft=pendingScanReview,userId=String(cloudSession?.user?.id||"");
-    if(!draft||draft.type!=="profile"||selection.owner!==draft.owner||selection.revision!==draft.request?.revision||
-      !userId||String(state?.player_id||"")!==userId||selection.owner!==`user:${userId}`||!scanRequestIsCurrent(draft.request)){
-      pendingProfileAvatar=null;return;
-    }
-    const dataUrl=normalizeProfileAvatarDataUrl(selection.dataUrl);
-    if(!dataUrl){pendingProfileAvatar=null;return}
-    pendingProfileAvatar={dataUrl,owner:selection.owner,revision:selection.revision};
-    const status=$("#profileAvatarCropStatus");if(status)status.textContent=t("profile_avatar_ready");
+    let requestIsCurrent=false;
+    try{requestIsCurrent=Boolean(draft?.request&&scanRequestIsCurrent(draft.request))}catch{}
+    const result=validateProfileAvatarSelection({selection,draft,userId,stateOwnerId:state?.player_id,requestIsCurrent});
+    if(!result.ok){pendingProfileAvatar=null;return result}
+    pendingProfileAvatar=result.pending;
+    return {ok:true};
   }});
 const clearPendingProfileAvatarDraft=()=>{pendingProfileAvatar=null;profileAvatarCropper?.clear()};
 $("#scanFile")?.addEventListener("change",clearPendingProfileAvatarDraft,true);
@@ -2248,6 +2246,17 @@ function clearHomePlayerAvatar(){
   if(image){image.removeAttribute("src");image.classList.add("hidden")}
   if(fallback)fallback.classList.remove("hidden");
   if(remove)remove.classList.add("hidden");
+  $("#playerAvatarSyncStatus")?.classList.add("hidden");
+}
+function renderProfileAvatarSyncStatus(){
+  const status=$("#playerAvatarSyncStatus"),userId=String(cloudSession?.user?.id||"");
+  const ownsAvatar=Boolean(userId&&String(state?.player_id||"")===userId&&normalizeProfileAvatarDataUrl(state?.player?.profile_avatar_data_url));
+  if(!status)return;
+  if(!ownsAvatar||!betaPrivateDataVisible()){status.classList.add("hidden");status.textContent="";return}
+  const synced=state?.sync?.status==="ok"&&!state?.sync?.pending_cloud_save&&!cloudDirty;
+  status.className=`notice${synced?"":" warn"}`;
+  status.textContent=t(synced?"profile_avatar_cloud_synced":"profile_avatar_cloud_pending");
+  status.classList.remove("hidden");
 }
 function renderHomePlayerMeta(p){
   const el=$("#playerMeta"),name=$("#playerHomeName");
@@ -2259,6 +2268,7 @@ function renderHomePlayerMeta(p){
   if(image&&data){image.onerror=()=>{if(image.getAttribute("src")===data)clearHomePlayerAvatar()};image.src=data;image.classList.remove("hidden");fallback?.classList.add("hidden")}
   else clearHomePlayerAvatar();
   if(remove)remove.classList.toggle("hidden",!data);
+  renderProfileAvatarSyncStatus();
 }
 function renderHomeAllianceMeta(p,a){
   const el=$("#allianceMeta"),name=$("#allianceHomeName"),icon=$("#allianceHomeIcon");
@@ -4257,11 +4267,15 @@ function confirmScanReview(){
   }
   let reviewed=result.patch;
   const hqConfirmedAt=new Date().toISOString();
+  let profileAvatarConfirmed=false;
   if(draft.type==="profile"&&pendingProfileAvatar&&pendingProfileAvatar.owner===draft.owner&&
     pendingProfileAvatar.revision===draft.request?.revision&&draft.owner===pendingScanOwner()&&
     String(state?.player_id||"")===String(cloudSession?.user?.id||"")){
     const avatar=normalizeProfileAvatarDataUrl(pendingProfileAvatar.dataUrl);
-    if(avatar){reviewed.player={...(reviewed.player||{}),profile_avatar_data_url:avatar,profile_avatar_updated_at:hqConfirmedAt}}
+    if(avatar){
+      reviewed.player={...(reviewed.player||{}),profile_avatar_data_url:avatar,profile_avatar_updated_at:hqConfirmedAt};
+      profileAvatarConfirmed=true;
+    }
   }
   if(draft.type==="profile"&&reviewed.player&&Object.prototype.hasOwnProperty.call(reviewed.player,"hq_level")){
     const hqLevel=normalizePlayerHqLevel(reviewed.player.hq_level);
@@ -4326,6 +4340,7 @@ function confirmScanReview(){
       merged=applied.state;squadPending=applied.pending;
     }
     state=merged;
+    if(profileAvatarConfirmed)state.sync={...state.sync,status:"waiting",last_error:null,pending_cloud_save:true};
     if(sm){
       state.diagnostic_squad_id=squadIndex+1;
       state.squads[squadIndex].last_confirmed_scan_at=now;
@@ -4336,6 +4351,7 @@ function confirmScanReview(){
     updateSquadCaptureHelp($("#scanType")?.value||"profile");
   }catch(error){
     state=previousState;
+    if(profileAvatarConfirmed)render();
     const box=$("#scanReviewError");
     if(box){box.classList.remove("hidden");box.textContent=error?.message==="local_scan_save_failed"
       ?(lang.startsWith("fr")?"Enregistrement local impossible : les valeurs ne sont pas confirmées. Vérifie l’espace disponible et les autorisations de stockage, puis réessaie.":"Local storage failed: values are not confirmed. Check storage permissions and available space, then retry.")
@@ -4345,7 +4361,7 @@ function confirmScanReview(){
   const type=draft.type,squadId=sm?Number(sm[1]):null,names=draft.heroNames||[];
    discardScanReviewDraft();$("#playerSyncInfo")?.classList.remove("hidden");invalidatePlayerAdvice({autoRefresh:true});
   if(squadId)showSquadScanStatus($("#scanStatus"),squadPending);
-  else{const status=$("#scanStatus");if(status){if(pendingPowerPaths.length){status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_power_pending";status.textContent=t("scan_review_power_pending")}else showConfirmedScanStatus(status,"scan_saved")}if(type==="vs")render()}
+  else{const status=$("#scanStatus");if(status){if(pendingPowerPaths.length){status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_power_pending";status.textContent=t("scan_review_power_pending")}else showConfirmedScanStatus(status,"scan_saved");if(profileAvatarConfirmed)status.append(document.createTextNode(` ${t("profile_avatar_saved")}`))}if(type==="vs")render()}
 }
 $("#confirmScanReviewBtn")?.addEventListener("click",confirmScanReview);
 $("#discardScanReviewBtn")?.addEventListener("click",()=>{pendingProfileAvatar=null;profileAvatarCropper?.clear();discardScanReviewDraft();const status=$("#scanStatus");if(status){status.className="notice";status.dataset.scanReviewStatusKey="scan_review_discarded";status.textContent=t("scan_review_discarded")}});
