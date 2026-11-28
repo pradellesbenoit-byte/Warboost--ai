@@ -126,7 +126,6 @@
     <section class="moduleGrid">
       <button class="moduleCard" data-open="player"><span class="moduleMeta" id="playerMeta">—</span><span class="moduleIcon">👤</span><h2 data-i18n="player">Joueur</h2><p data-i18n="player_desc">4 escouades, Drone, progression et priorités.</p></button>
       <button class="moduleCard" data-open="alliance"><span class="moduleMeta" id="allianceMeta">—</span><span class="moduleIcon">🛡️</span><h2 data-i18n="alliance">Alliance</h2><p data-i18n="alliance_desc">Membres, R5/R4 et plans de guerre.</p></button>
-      <button class="moduleCard" data-open="vs"><span class="moduleMeta" id="vsMeta">—</span><span class="moduleIcon">⚔️</span><h2 data-i18n="vs_live_coach">VS Live Coach</h2><p data-i18n="vs_live_desc">Score réel, situation, objectif personnel et décision IA.</p></button>
       <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p id="seasonDesc" data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
       <button id="homeProBtn" class="moduleCard proHomeCard" type="button"><span class="moduleMeta" data-i18n="beta_pro_short">PRO BÊTA</span><span class="moduleIcon">💎</span><h2 data-i18n="pro">WarBoost PRO</h2><p data-i18n="pro_feature1">Priorités IA détaillées pour tes escouades</p></button>
       <button id="qg35CoachCard" class="moduleCard qg35HomeCard hidden" type="button" aria-controls="qg35CoachDrawer">
@@ -265,43 +264,6 @@
   </section>
 
   <div id="alliancePlayerModal" class="alliancePlayerModal hidden" aria-hidden="true"></div>
-
-  <section id="vsDrawer" class="drawer" aria-hidden="true">
-    <div class="drawerHandle"></div><div class="drawerHeader"><h2>⚔️ <span data-i18n="vs_live_coach">VS Live Coach</span></h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>
-    <div id="vsAccessNotice" class="notice warn" style="margin-top:10px"></div>
-    <div class="section vsLiveScoreSection">
-      <div class="sectionTitle"><h3 id="vsWeekTitle">VS</h3><span id="vsDayPill" class="pill">—</span></div>
-      <div class="vsScore"><div class="team"><strong id="vsUs">—</strong><small id="vsUsScore">—</small></div><div class="versus">VS</div><div class="team"><strong id="vsThem">—</strong><small id="vsThemScore">—</small></div></div>
-      <div id="vsScoreUnknown" class="notice warn hidden" data-i18n="vs_score_unknown">Score non synchronisé · scanne l’écran VS pour obtenir la situation réelle.</div>
-      <div id="vsTimeline" class="timeline"></div>
-      <button id="scanVsBtn" class="secondaryBtn wideBtn" type="button">📸 <span data-i18n="vs_scan_now">Scanner le VS maintenant</span></button>
-    </div>
-    <div class="section vsDecisionSection" id="vsDecisionSection">
-      <div class="sectionTitle"><h3>🧠 <span data-i18n="vs_decision_engine">Décision VS</span></h3><span id="vsUrgencyPill" class="pill vsUrgency unknown">—</span></div>
-      <div class="vsDecisionHero"><small data-i18n="vs_recommended_action">Action recommandée</small><strong id="vsDecisionAction">—</strong><p id="vsDecisionReason" class="heroText">—</p></div>
-      <div class="vsDecisionGrid">
-        <div><span>⚡ <span data-i18n="vs_use_now">Utiliser aujourd’hui</span></span><b id="vsDecisionUse">—</b></div>
-        <div><span>🛡️ <span data-i18n="vs_keep_now">À conserver</span></span><b id="vsDecisionKeep">—</b></div>
-        <div><span>⏱️ <span data-i18n="vs_next_scan">Prochain contrôle</span></span><b id="vsDecisionRescan">—</b></div>
-        <div><span>🚨 <span data-i18n="vs_comeback_risk">Risque de remontée</span></span><b id="vsDecisionRisk">—</b></div>
-      </div>
-      <button id="vsPlanBtn" class="secondaryBtn wideBtn" type="button">💎 <span data-i18n="vs_detailed_analysis">Analyse détaillée</span></button>
-      <p id="vsPlanText" class="heroText vsPlanDetail" data-i18n="vs_empty">Scanne le duel puis WarBoost te dit s’il faut pousser, surveiller ou économiser tes ressources.</p>
-    </div>
-    <div class="section" id="vsLiveSection">
-      <div class="sectionTitle"><h3 id="vsLiveSituationTitle" data-i18n="vs_live_situation">Situation live</h3><span id="vsSituationPill" class="pill">—</span></div>
-      <div class="summaryBar four vsLiveStats">
-        <div class="stat"><span data-i18n="vs_theme">Thème</span><b id="vsTheme">—</b></div>
-        <div class="stat"><span data-i18n="vs_remaining">Temps restant</span><b id="vsRemaining">—</b></div>
-        <div class="stat"><span data-i18n="vs_gap">Écart</span><b id="vsGap">—</b></div>
-        <div class="stat"><span data-i18n="vs_urgency">Urgence</span><b id="vsUrgency">—</b></div>
-      </div>
-      <div id="vsShareLine" class="notice hidden"></div>
-      <div id="vsTrendLine" class="notice hidden"></div>
-      <div id="vsFreshness" class="privacyText"></div>
-    </div>
-    <details class="compactDetails participationDetails hidden" id="vsVisibleRankingSection"><summary><span data-i18n="vs_scan_details">Détails du scan</span> · <span id="vsPersonal">—</span></summary><div class="privacyText" data-i18n="vs_ranking_secondary">Le classement est secondaire : WarBoost l’utilise seulement comme contexte, jamais comme raison de gaspiller des ressources.</div><div id="vsVisibleRanking" class="list"></div><div class="privacyText" data-i18n="vs_ranking_guard">Uniquement les lignes visibles sur la capture. Un joueur absent de cette liste n’est jamais considéré comme inactif.</div></details>
-  </section>
 
   <section id="seasonDrawer" class="drawer" aria-hidden="true">
     <div class="drawerHandle"></div><div class="drawerHeader"><h2>🌍 <span data-i18n="season">Saison</span></h2><button class="closeBtn" type="button" data-close data-i18n-aria="close" aria-label="Fermer">×</button></div>

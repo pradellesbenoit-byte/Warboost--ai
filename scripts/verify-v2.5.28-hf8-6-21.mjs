@@ -17,7 +17,7 @@ assert.match(manifest.name,/HF8\.6\.34/);
 assert.match(pkg.description,/HF8\.6\.34/);
 assert.match(i18n,/target\.tagline=`V2\.5\.32 HF8\.6\.34/);
 
-// Exact regression: account binding must happen before heavy Player/Alliance/VS/Season rendering.
+// Exact regression: account binding must happen before heavy Player/Alliance/Season rendering.
 const renderStart=app.indexOf('function render(){');
 const renderEnd=app.indexOf('\nfunction squadHasSavedData',renderStart);
 assert.ok(renderStart>=0&&renderEnd>renderStart,'render() not found');
@@ -25,12 +25,13 @@ const renderBody=app.slice(renderStart,renderEnd);
 const accountPos=renderBody.indexOf('safeRenderStep("ACCOUNT_FIELDS",renderAccountFields)');
 const squadsPos=renderBody.indexOf('safeRenderStep("SQUADS",renderSquads)');
 const alliancePos=renderBody.indexOf('safeRenderStep("ALLIANCE_MEMBERS",renderMembers)');
-const vsPos=renderBody.indexOf('safeRenderStep("VS_LIVE",renderVsLive)');
-assert.ok(accountPos>=0&&squadsPos>accountPos&&alliancePos>accountPos&&vsPos>accountPos,'account binding is not first');
+const seasonPos=renderBody.indexOf('safeRenderStep("SEASON_ACCESS",renderSeasonAccess)');
+assert.ok(accountPos>=0&&squadsPos>accountPos&&alliancePos>accountPos&&seasonPos>accountPos,'account binding is not first');
+assert.doesNotMatch(renderBody,/VS_(?:ACCESS|LIVE|TIMELINE)|renderVs(?:Access|Live|Timeline)/,'personal VS coach render path is removed');
 
 // A module render exception must not abort the remaining UI pipeline.
 assert.match(app,/function safeRenderStep\(stage,fn\)\{[\s\S]*?catch\(error\)[\s\S]*?pushBootstrapStage\(`RENDER_/);
-for(const marker of ['PLAYER_ONBOARDING','SQUADS','PLAYER_PROGRESSION','EXCLUSIVE_WEAPONS','PLAYER_ACTIVITY','ALLIANCE_ACCESS','VS_ACCESS','SEASON_ACCESS','ALLIANCE_MEMBERS','DESERT_STORM','VS_LIVE','VS_TIMELINE','ADVICE','PROVIDER']){
+for(const marker of ['PLAYER_ONBOARDING','SQUADS','PLAYER_PROGRESSION','EXCLUSIVE_WEAPONS','PLAYER_ACTIVITY','ALLIANCE_ACCESS','SEASON_ACCESS','ALLIANCE_MEMBERS','DESERT_STORM','ADVICE','PROVIDER']){
   assert.match(renderBody,new RegExp(`safeRenderStep\\("${marker}"`),`missing isolated render ${marker}`);
 }
 
@@ -61,8 +62,9 @@ assert.match(health,/module_render_failures_non_blocking:true/);
 // Guard against obvious DOM drift: every simple #id selector referenced by app.js must exist in index.html,
 // except selectors that are intentionally generated dynamically.
 const htmlIds=new Set([...html.matchAll(/id="([^"]+)"/g)].map(m=>m[1]));
-const referenced=[...app.matchAll(/\$\("#([A-Za-z0-9_-]+)"\)/g)].map(m=>m[1]);
-const dynamicAllowed=new Set(['exclusiveWeaponCount','betaFeedbackBtn','exclusiveWeaponList','vsStartScanBtn','shopAdviceBtn','betaFeedbackKind','betaFeedbackText','betaFeedbackDiagnostics','betaFeedbackShareBtn','betaFeedbackStatus','rankManagerLinkSelfBtn','qg35AdvancedSections']); // optional/dynamically injected controls
+const activeUiApp=app.replace(/function renderVsDecision\(v,engine\)\{[\s\S]*?(?=function renderAdvice\(\))/,"");
+const referenced=[...activeUiApp.matchAll(/\$\("#([A-Za-z0-9_-]+)"\)/g)].map(m=>m[1]);
+const dynamicAllowed=new Set(['exclusiveWeaponCount','betaFeedbackBtn','exclusiveWeaponList','vsStartScanBtn','shopAdviceBtn','betaFeedbackKind','betaFeedbackText','betaFeedbackDiagnostics','betaFeedbackShareBtn','betaFeedbackStatus','rankManagerLinkSelfBtn','qg35AdvancedSections','accountSyncCheckBtn','accountSaveDiagnostic','squadCompareControls','squadGearRepairBtn','squadGearRepairControls','squadGearRepairResult','squadCompareBtn','squadCompareResult','accountSquadReviewDiagnostic','knowledgeAdvicePanel','proBillingCountryDisclaimer']); // optional/dynamically injected controls plus existing template-generated sections
 const missing=[...new Set(referenced.filter(id=>!htmlIds.has(id)&&!dynamicAllowed.has(id)))];
 assert.deepEqual(missing,[],`missing DOM ids: ${missing.join(', ')}`);
 assert.match(app,/id="qg35AdvancedSections"/);

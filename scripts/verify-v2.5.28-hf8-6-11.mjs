@@ -29,7 +29,9 @@ assert.match(requirePro,/if\(safeLaunchBetaMode\(\)\).*requireBetaAccess\(\).*re
 assert.doesNotMatch(requirePro,/if\(proState\.active\)return true;openDrawer\("account"\).*beta_invite_required/);
 assert.match(pro,/pro_included:entitlement\.source==="beta"/);
 assert.match(pro,/alliance_beta_allowed:beta\.allowed/,"Personal PRO never substitutes for alliance invitation rights");
-assert.match(pro,/payments_enabled:false/);
+assert.match(pro,/commercialConfig\(\)/);
+assert.match(pro,/SAFE_LAUNCH_PAYMENT_DISABLED/);
+assert.match(pro,/createCheckoutForUser/);
 
 // 3) Server-canonical state must come back into the phone after save/pull.
 const push=app.match(/async function pushServerState[\s\S]*?\n\}/)?.[0]||'';
@@ -46,18 +48,23 @@ assert.match(html,/id="allianceAccessNotice"/);
 assert.ok((html.match(/allianceManagerOnly/g)||[]).length>=7,'manager-only alliance sections not fully marked');
 assert.match(app,/function renderAllianceAccess\(\)/);
 assert.match(app,/\["R4","R5"\]\.includes\(role\)/);
-assert.match(advice,/scope==="alliance"[\s\S]*?\["R4","R5"\]\.includes\(declaredRole\)/);
+assert.match(advice,/resolveAuthorizedAllianceAdviceContext/);
+assert.match(advice,/canonicalAllianceAuthorization/);
 assert.match(advice,/scope==="vs"\)return res\.status\(200\)/);
 assert.match(advice,/scope==="season"\)return res\.status\(200\)/);
 
-// 6) VS / Season remain role-independent for invited testers and expose obvious scan paths.
-assert.match(html,/id="vsAccessNotice"/);
-assert.match(html,/id="scanVsBtn"/);
+// 6) Personal VS Coach is removed; the generic VS scan type and Season scan remain.
+assert.doesNotMatch(html,/id="vsDrawer"|id="vsAccessNotice"|id="scanVsBtn"|id="vsPlanBtn"/);
+assert.doesNotMatch(html,/data-open="vs"/);
+assert.match(html,/<option value="vs"/);
 assert.match(html,/id="seasonAccessNotice"/);
 assert.match(html,/id="scanSeasonBtn"/);
-assert.match(app,/openQuickScan\("vs"\)/);
 assert.match(app,/openQuickScan\("season"\)/);
- assert.match(app,/if\(proFeatureAllowed\(\)\)void requestAdvice\("vs"\)\.then\(live=>\{\$\("#vsPlanText"\)\.textContent=structuredAdviceText\("vs",live\)\}\)/);
+const confirmStart=app.indexOf("function confirmScanReview()");
+const confirmEnd=app.indexOf('$("#confirmScanReviewBtn")',confirmStart);
+const scanConfirmation=app.slice(confirmStart,confirmEnd);
+assert.match(scanConfirmation,/if\(type==="vs"\)render\(\)/);
+assert.doesNotMatch(scanConfirmation,/openDrawer\("vs"\)|requestAdvice\("vs"\)/);
 
 // 7) Private modules require both accepted beta access and consent before opening.
 assert.match(app,/\$\$\('\[data-open\]'\).*requireBetaAccess\(\)\|\|!requireBetaConsent\(\)/);

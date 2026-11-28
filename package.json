@@ -73,6 +73,7 @@
     "test:linked-account-pending": "node scripts/verify-linked-account-pending.mjs",
     "test:alliance-ui-targeted": "node scripts/verify-alliance-ui-targeted.mjs",
     "test:alliance-event-workspace": "node scripts/verify-alliance-event-workspace.mjs",
+    "test:vs-coach-removal": "node scripts/verify-vs-coach-removal.mjs",
     "test:tolerant-identity": "node scripts/verify-tolerant-r4-r5-identity.mjs",
     "test:rank-canonical-resolution": "node scripts/verify-rank-canonical-resolution.mjs",
     "test:roster-rank-persistence": "node scripts/verify-roster-rank-persistence.mjs",

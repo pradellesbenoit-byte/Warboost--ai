@@ -6,9 +6,12 @@ import {LANGUAGES,translator} from '../i18n.js';
 const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const app=read('app.js'),html=read('index.html'),scan=read('api/scan.js'),advice=read('api/advice.js'),sw=read('sw.js'),health=read('api/health.js');
-for(const id of ['scanVsBtn','vsScoreUnknown','vsSituationPill','vsTheme','vsRemaining','vsGap','vsPersonal','vsShareLine','vsTrendLine','vsVisibleRankingSection','vsVisibleRanking'])assert.match(html,new RegExp(`id=["']${id}["']`));
+for(const id of ['vsDrawer','scanVsBtn','vsScoreUnknown','vsSituationPill','vsTheme','vsRemaining','vsGap','vsPersonal','vsShareLine','vsTrendLine','vsVisibleRankingSection','vsVisibleRanking'])assert.doesNotMatch(html,new RegExp(`id=["']${id}["']`));
 assert.match(html,/WarBoost V2\.5\.28 HF8\.[234]/);
-assert.match(app,/mergeVsState/);assert.match(app,/scoreKnown/);assert.match(app,/vsSituation/);assert.match(app,/vsTrend/);assert.match(app,/personalVsPosition/);assert.match(app,/scanType[^\n]*value="vs"|value="vs"/);
+assert.doesNotMatch(html,/data-open="vs"/);assert.match(html,/<option value="vs"/);
+assert.match(app,/mergeVsState/);assert.match(app,/vsSnapshotFreshness/);
+assert.doesNotMatch(app,/safeRenderStep\("VS_(?:ACCESS|LIVE|TIMELINE)"|name==="vs"\)safeRenderStep\("VS_OPEN_CORE"/);
+assert.doesNotMatch(app,/openDrawer\("vs"\)|requestAdvice\("vs"\)/);
 assert.match(scan,/time_remaining_text/);assert.match(scan,/our_server_id/);assert.match(scan,/opponent_server_id/);assert.match(scan,/personal_rank/);assert.match(scan,/leaderboard/);assert.match(scan,/score_confirmed=true/);assert.match(scan,/Return visible Alliance Duel data only/);assert.match(scan,/Never infer hidden members, departures, ranks, HQ values or power/);
 assert.match(advice,/warboost-vs-live-ai-v/);assert.match(advice,/vsSituation\(v\)/);assert.match(advice,/personalVsPosition\(v\)/);assert.match(advice,/R5\/R4 should coordinate confirmed contributors|R5\/R4 doivent coordonner les contributeurs confirmés/);
 assert.match(sw,/hf8-(?:2-vs-live-coach|3-vs-decision-engine|4-alliance-lifecycle-reliability|5-vs-freshness-guard)/);assert.match(health,/(?:ui_revision|previous_ui_revision):"hf8\.(?:2-vs-live-coach|3-vs-decision-engine|4-alliance-lifecycle-reliability|5-vs-freshness-guard)"/);
@@ -18,5 +21,5 @@ const pos=personalVsPosition(state);assert.equal(pos.rank,3);assert.equal(pos.ga
 state=mergeVsState(state,{...sample,source:'scan',updated_at:'2026-09-10T18:45:00.000Z',our_score:1500270940,their_score:747494056,time_remaining_seconds:25158});const trend=vsTrend(state);assert.equal(state.snapshots.length,2);assert.equal(trend.elapsed_seconds,1800);assert.equal(trend.our_gain,60000000);assert.equal(trend.their_gain,80000000);assert.equal(trend.momentum,'theirs');
 assert.equal(scoreKnown({our_score:0,their_score:0}),false);assert.equal(scoreKnown({our_score:0,their_score:0,score_confirmed:true}),true);
 for(const item of LANGUAGES.filter(x=>x.code!=='auto')){const t=translator(item.code);for(const key of ['vs_live_coach','vs_score_unknown','vs_scan_now','vs_live_situation','vs_status_strong_lead','vs_ai_decision','vs_ranking_guard'])assert.notEqual(t(key),key,`${item.code} missing ${key}`)}
-const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,12,'serverless API function budget must remain 12');
-console.log('WarBoost V2.5.28 HF8.2 VS Live Coach verification: PASS');
+const apiFiles=fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js'));assert.equal(apiFiles.length,15,'serverless API function count must remain at the current branch baseline');
+console.log('WarBoost VS scan state and shared guidance verification: PASS');

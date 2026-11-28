@@ -2034,11 +2034,6 @@ function renderAllianceAccess(){
     }
   }
 }
-function renderVsAccess(){
-  const notice=$("#vsAccessNotice"),known=scoreKnown(state?.vs||{}),fresh=vsSnapshotFreshness(state?.vs||{},{now:serverNow});if(!notice)return;
-  notice.classList.toggle("hidden",known&&fresh.current);notice.className=`notice${known&&!fresh.current?" warn":""}${known&&fresh.current?" hidden":""}`;
-  notice.textContent=known&&!fresh.current?t("vs_status_stale"):t("vs_start_notice");
-}
 function renderSeasonAccess(){
   const notice=$("#seasonAccessNotice"),life=seasonLifecycle(state?.season||{});if(!notice)return;
   const confirmed=life==="active"||life==="ended"||life==="interseason";
@@ -2215,11 +2210,10 @@ function renderEndgameCoachDrawer(){
 // leave another surface stale simply because one formatting/render step throws.
 function renderHomePlayerMeta(p){const el=$("#playerMeta");if(el)el.textContent=p?.name?(p?.hq_level?`${t("hq")} ${p.hq_level}`:t("connected")):t("to_connect")}
 function renderHomeAllianceMeta(p,a){const el=$("#allianceMeta");if(el)el.textContent=a?.tag?`${a.tag} · ${normalizedRole(p?.role)}`:"—"}
-function renderHomeVsMeta(v){const el=$("#vsMeta");if(!el)return;const sit=vsSituation(v||{}),fresh=vsSnapshotFreshness(v||{},{now:serverNow});el.textContent=scoreKnown(v||{})&&fresh.current&&sit.our_share!==null?`${Math.round(sit.our_share)}%${Number(v?.personal_rank)>0?` · #${Number(v.personal_rank)}`:""}`:scoreKnown(v||{})&&!fresh.current?t("vs_status_stale"):`${t("week")} ${currentVsWeek()}`}
 function renderPlayerCoreSummary(p,d){if($("#pName"))$("#pName").textContent=canonicalPlayerDisplayName()||p?.name||"—";if($("#pHq"))$("#pHq").textContent=p?.hq_level?`${t("hq")} ${p.hq_level}`:t("to_fill");if($("#pPower"))$("#pPower").textContent=Number(p.power_m)>0?fmtPower(p.power_m):t("to_fill");if($("#pDrone"))$("#pDrone").textContent=d?.level?`${t("level")}${d.level}${d.power_m?` · ${fmtPower(d.power_m)}`:""}`:Number(d?.power_m)>0?fmtPower(d.power_m):t("to_fill")}
 function renderAllianceCoreSummary(p,a){if($("#aTag"))$("#aTag").textContent=a?.tag||"—";if($("#aCount"))$("#aCount").textContent=String(a?.members?.length||0);if($("#aRole"))$("#aRole").textContent=a?.role||"R1";const access=allianceCommandAccess(),cloudAlliance=Boolean(a.id||a.invite_code),canShareAllianceInvite=access.allowed&&(!cloudAlliance||access.cloudAvailable);if($("#inviteCode"))$("#inviteCode").textContent=canShareAllianceInvite?(a?.invite_code||"—"):"—";const inviteNote=$("#inviteNote");if(inviteNote)inviteNote.textContent=t("invite_note_scoped",{server:p?.server_id||"—",alliance:a?.tag||"—"});const shareInvite=$("#shareInviteBtn");if(shareInvite)shareInvite.disabled=!canShareAllianceInvite;if($("#rosterFresh"))$("#rosterFresh").textContent=a?.updated_at?updatedLabel(a.updated_at):t("sync_needed")}
 function renderSeasonCoreSummary(s){const seasonLife=seasonLifecycle(s||{}),seasonActive=seasonIsActive(s||{}),pct=activeSeasonProgress(s||{}),baseSeasonName=s?.name||(s?.number?`S${s.number}`:"—"),seasonHistorical=(seasonLife==="ended"||seasonLife==="interseason");renderSeasonAccess();if($("#seasonMeta"))$("#seasonMeta").textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):baseSeasonName;const seasonDesc=$("#seasonDesc");if(seasonDesc)seasonDesc.textContent=seasonLife==="interseason"?`${t("season_ended_short")} · ${t("season_interseason")}`:seasonLife==="ended"?t("season_ended_short"):t("season_desc");if($("#sName"))$("#sName").textContent=seasonHistorical?`${baseSeasonName} · ${t("season_ended_short")}`:baseSeasonName;if($("#sDay"))$("#sDay").textContent=seasonActive?(s?.day||"—"):"—";if($("#sProfession"))$("#sProfession").textContent=s?.profession||"—";const professionLabel=$("#seasonProfessionLabel"),seasonSectionTitle=$("#seasonSectionTitle");if(professionLabel)professionLabel.textContent=seasonHistorical?t("season_last_profession_short"):t("profession");if(seasonSectionTitle)seasonSectionTitle.textContent=seasonHistorical?t("season_state"):t("season_progress");const bar=$("#seasonProgressBar"),label=$("#seasonProgressLabel"),progressWrap=bar?.closest(".progress");if(progressWrap)progressWrap.classList.toggle("hidden",!seasonActive||pct===null);if(bar)bar.style.width=`${pct??0}%`;if(label)label.textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):pct===null?t("season_unknown"):`${pct}%`;const lifeSelect=$("#seasonLifecycleSelect");if(lifeSelect)lifeSelect.value=seasonLife;const lifeStatus=seasonLife==="interseason"?t("season_interseason_note",{name:baseSeasonName,profession:s?.profession||"—"}):seasonLife==="ended"?t("season_ended_note",{name:baseSeasonName,profession:s?.profession||"—"}):seasonLife==="unknown"?t("season_unknown_note"):s?.updated_at?`${t("last_update",{ago:fmtAgo(s.updated_at)})} · ${s?.resistance??"—"}`:t("season_wait");if($("#seasonStatus"))$("#seasonStatus").textContent=lifeStatus}
-function maskHomePrivateMeta(){if($("#playerMeta"))$("#playerMeta").textContent=t("to_connect");if($("#allianceMeta"))$("#allianceMeta").textContent="—";if($("#vsMeta"))$("#vsMeta").textContent="—";if($("#seasonMeta"))$("#seasonMeta").textContent="—"}
+function maskHomePrivateMeta(){if($("#playerMeta"))$("#playerMeta").textContent=t("to_connect");if($("#allianceMeta"))$("#allianceMeta").textContent="—";if($("#seasonMeta"))$("#seasonMeta").textContent="—"}
 function maskPlayerPrivateSummary(){if($("#pName"))$("#pName").textContent="—";if($("#pHq"))$("#pHq").textContent="—";if($("#pPower"))$("#pPower").textContent="—";if($("#pDrone"))$("#pDrone").textContent="—";const squadList=$("#squadList");if(squadList)squadList.innerHTML="";$("#playerOnboarding")?.classList.add("hidden")}
 function maskAlliancePrivateSummary(){if($("#aTag"))$("#aTag").textContent="—";if($("#aCount"))$("#aCount").textContent="0";if($("#aRole"))$("#aRole").textContent="—";if($("#inviteCode"))$("#inviteCode").textContent="—";if($("#shareInviteBtn"))$("#shareInviteBtn").disabled=true}
 function render(){
@@ -2246,10 +2240,6 @@ function render(){
     const activity=$("#activitySummary");if(activity)activity.innerHTML=`<div><b>🟢 0</b><small>${esc(t("activity_active_confirmed"))}</small></div><div><b>⚪ 0</b><small>${esc(t("activity_insufficient_data"))}</small></div><div><b>🔴 0</b><small>${esc(t("activity_inactive_confirmed"))}</small></div>`;
     if($("#activityNote"))$("#activityNote").textContent=betaAccessMessage();
      if($("#activityEventGrid"))$("#activityEventGrid").innerHTML="";if($("#playerActivityStatus"))$("#playerActivityStatus").textContent=betaAccessMessage();if($("#playerActivityPill"))$("#playerActivityPill").textContent="—";$("#playerAvailabilitySection")?.classList.add("hidden");$("#eventAvailabilityManagerSection")?.classList.add("hidden");if($("#allianceIdentitySummary"))$("#allianceIdentitySummary").textContent=betaAccessMessage();if($("#allianceParticipationTable"))$("#allianceParticipationTable").innerHTML="";if($("#unlinkedWarBoostAccounts"))$("#unlinkedWarBoostAccounts").innerHTML="";$("#unlinkedWarBoostDetails")?.classList.add("hidden");
-    $("#vsWeekTitle").textContent=t("vs_week",{week:currentVsWeek()});
-    $("#vsDayPill").textContent=currentVsDay()===0?t("vs_prep_day"):t("day_n",{day:currentVsDay()});
-    $("#vsUs").textContent="—";$("#vsThem").textContent=t("unknown_opponent");$("#vsUsScore").textContent="—";$("#vsThemScore").textContent="—";
-    renderVsTimeline();
     $("#sName").textContent="—";$("#sDay").textContent="—";$("#sProfession").textContent="—";
     if($("#seasonProfessionLabel"))$("#seasonProfessionLabel").textContent=t("profession");
     if($("#seasonSectionTitle"))$("#seasonSectionTitle").textContent=t("season_state");
@@ -2270,7 +2260,6 @@ function render(){
 
   safeRenderStep("HOME_PLAYER",()=>renderHomePlayerMeta(p));
   safeRenderStep("HOME_ALLIANCE",()=>renderHomeAllianceMeta(p,a));
-  safeRenderStep("HOME_VS",()=>renderHomeVsMeta(v));
   safeRenderStep("PLAYER_SUMMARY",()=>renderPlayerCoreSummary(p,d));
   safeRenderStep("QG35_COACH_HOME",renderEndgameCoachHome);
   // HF8.6.22 keeps Account independent and isolates every remaining surface.
@@ -2282,11 +2271,9 @@ function render(){
   safeRenderStep("PLAYER_ACTIVITY",renderPlayerActivity);
   safeRenderStep("PLAYER_AVAILABILITY",renderPlayerAvailability);
   safeRenderStep("ALLIANCE_ACCESS",renderAllianceAccess);
-  safeRenderStep("VS_ACCESS",renderVsAccess);
   safeRenderStep("SEASON_ACCESS",renderSeasonAccess);
    safeRenderStep("ALLIANCE_SUMMARY",()=>renderAllianceCoreSummary(p,a));
    safeRenderStep("ALLIANCE_MEMBERS",renderMembers);safeRenderStep("ALLIANCE_AVAILABILITY",renderAllianceAvailability);safeRenderStep("ALLIANCE_EVENT_WORKSPACE",renderAllianceEventWorkspace);safeRenderStep("DESERT_STORM",renderDesertStormPlanner);safeRenderStep("CANYON",renderCanyonPlanner);
-  safeRenderStep("VS_LIVE",renderVsLive);safeRenderStep("VS_TIMELINE",renderVsTimeline);
 
   safeRenderStep("SEASON_SUMMARY",()=>renderSeasonCoreSummary(s));
   safeRenderStep("ADVICE",renderAdvice);safeRenderStep("PROVIDER",renderProvider);queueCriticalUiRepaint();
@@ -3626,7 +3613,7 @@ function renderAllianceStructured(j){
   if(planB){planB.classList.toggle("hidden",!fallback.length);planB.innerHTML=fallback.length?`<b>🛡️ ${esc(t("plan_b"))}</b>${fallback.map(x=>{const icon=x.kind==="refresh"?"🟠":x.kind==="defensive"?"🛡️":"✅",label=x.kind==="refresh"?t("refresh"):x.kind==="defensive"?t("alliance_group_defense"):t("ready");return `<div class="warPlanAction"><strong>${icon} ${esc(label)} · ${esc(String(x.count??0))}</strong></div>`}).join("")}`:""}
 }
 function renderEventAdviceText(scope,j){
-  const box=$(scope==="vs"?"#vsPlanText":"#seasonAdviceText");if(!box)return;
+  const box=$("#seasonAdviceText");if(!box||scope!=="season")return;
   box.innerHTML=`<div style="white-space:pre-wrap">${esc(structuredAdviceText(scope,j))}</div>${renderEventStrategy(j?.event_strategy,{locale:lang,escapeHtml:esc})}`;
 }
 function structuredAdviceText(scope,j){
@@ -3745,17 +3732,17 @@ function renderProvider(){
   box.textContent=squadConflict?t("hero_confirm_needed"):(sync.pending_cloud_save?t("offline_keep"):(sync.status==="ok"||sync.last_sync?t("safe_sync_done"):t("safe_sync_note")));
 }
 function openDrawer(name){
+  const d=$("#"+name+"Drawer");if(!d)return;
   // Re-render immediately before a user opens any data drawer. Because render() now has complete
   // per-surface boundaries, a failure in one module cannot stop this drawer from refreshing.
-  if(["account","player","alliance","vs","season","qg35Coach"].includes(String(name||"")))safeRenderStep(`DRAWER_REFRESH_${String(name||"").toUpperCase()}`,render);
+  if(["account","player","alliance","season","qg35Coach"].includes(String(name||"")))safeRenderStep(`DRAWER_REFRESH_${String(name||"").toUpperCase()}`,render);
   closeDrawers({preserveReturn:true});
-  $("#backdrop").classList.add("open");const d=$("#"+name+"Drawer");if(d){d.classList.add("open");d.setAttribute("aria-hidden","false")}
+  $("#backdrop").classList.add("open");d.classList.add("open");d.setAttribute("aria-hidden","false");
   analysisIndicator.refresh();
   returnViewController?.remember(name);
   if(name==="account"){safeRenderStep("ACCOUNT_OPEN_FIELDS",renderAccountFields);safeRenderStep("ACCOUNT_OPEN_AUTH",renderAuth);safeRenderStep("ACCOUNT_OPEN_BETA",renderBeta);safeRenderStep("ACCOUNT_OPEN_PRO",renderPro)}
   if(betaPrivateDataVisible()&&name==="player")safeRenderStep("PLAYER_OPEN_CORE",()=>renderPlayerCoreSummary(state.player,state.drone||{}));
   if(betaPrivateDataVisible()&&name==="alliance"){safeRenderStep("ALLIANCE_OPEN_CORE",()=>renderAllianceCoreSummary(state.player,state.alliance));safeRenderStep("ALLIANCE_OPEN_MEMBERS",renderMembers);safeRenderStep("ALLIANCE_OPEN_ACCESS",renderAllianceAccess);safeRenderStep("ALLIANCE_OPEN_DESERT_STORM",renderDesertStormPlanner);safeRenderStep("ALLIANCE_OPEN_CANYON",renderCanyonPlanner);bindAllianceAccordions();resetAllianceAccordions()}
-  if(betaPrivateDataVisible()&&name==="vs")safeRenderStep("VS_OPEN_CORE",renderVsLive);
   if(betaPrivateDataVisible()&&name==="season"){safeRenderStep("SEASON_OPEN_ACCESS",renderSeasonAccess);safeRenderStep("SEASON_OPEN_CORE",()=>renderSeasonCoreSummary(state.season));}
   if(betaPrivateDataVisible()&&name==="qg35Coach")safeRenderStep("QG35_COACH_OPEN",renderEndgameCoachDrawer);
   if(name==="player"||name==="alliance")setTimeout(()=>speakGreeting(name),80)
@@ -3926,7 +3913,7 @@ async function syncAll(){
   }
 }
 $("#syncAllBtn").addEventListener("click",syncAll);$("#syncPlayerBtn").addEventListener("click",syncAll);
-$("#openScanBtn").addEventListener("click",()=>openQuickScan("profile"));$("#scanPlayerBtn").addEventListener("click",()=>openQuickScan(playerOnboardingStatus().next_type||"profile"));$("#playerOnboardingScanBtn")?.addEventListener("click",e=>openQuickScan(e.currentTarget?.dataset?.nextScan||playerOnboardingStatus().next_type||"profile"));$("#quickProfileScanBtn")?.addEventListener("click",()=>openQuickScan("profile"));$("#quickSquadScanBtn")?.addEventListener("click",()=>{const strongest=strongestSquadFromState(state);openQuickScan(`squad${strongest.id||1}`)});$("#quickDroneScanBtn")?.addEventListener("click",()=>openQuickScan("drone"));$("#scanShopBtn")?.addEventListener("click",()=>openQuickScan("shop"));$("#scanVsBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#vsStartScanBtn")?.addEventListener("click",()=>openQuickScan("vs"));$("#scanSeasonBtn")?.addEventListener("click",()=>openQuickScan("season"));
+$("#openScanBtn").addEventListener("click",()=>openQuickScan("profile"));$("#scanPlayerBtn").addEventListener("click",()=>openQuickScan(playerOnboardingStatus().next_type||"profile"));$("#playerOnboardingScanBtn")?.addEventListener("click",e=>openQuickScan(e.currentTarget?.dataset?.nextScan||playerOnboardingStatus().next_type||"profile"));$("#quickProfileScanBtn")?.addEventListener("click",()=>openQuickScan("profile"));$("#quickSquadScanBtn")?.addEventListener("click",()=>{const strongest=strongestSquadFromState(state);openQuickScan(`squad${strongest.id||1}`)});$("#quickDroneScanBtn")?.addEventListener("click",()=>openQuickScan("drone"));$("#scanShopBtn")?.addEventListener("click",()=>openQuickScan("shop"));$("#scanSeasonBtn")?.addEventListener("click",()=>openQuickScan("season"));
 
 function beginActiveLoadingOperation(kind="scan"){
   activeLoadingOperations++;idleLifecycle?.setBusy(true);
@@ -4288,7 +4275,7 @@ function confirmScanReview(){
   const type=draft.type,squadId=sm?Number(sm[1]):null,names=draft.heroNames||[];
    discardScanReviewDraft();$("#playerSyncInfo")?.classList.remove("hidden");invalidatePlayerAdvice({autoRefresh:true});
   if(squadId)showSquadScanStatus($("#scanStatus"),squadPending);
-  else{const status=$("#scanStatus");if(status){if(pendingPowerPaths.length){status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_power_pending";status.textContent=t("scan_review_power_pending")}else showConfirmedScanStatus(status,"scan_saved")}if(type==="vs"){render();openDrawer("vs");if(proFeatureAllowed())void requestAdvice("vs").then(live=>{$("#vsPlanText").textContent=structuredAdviceText("vs",live)})}}
+  else{const status=$("#scanStatus");if(status){if(pendingPowerPaths.length){status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_power_pending";status.textContent=t("scan_review_power_pending")}else showConfirmedScanStatus(status,"scan_saved")}if(type==="vs")render()}
 }
 $("#confirmScanReviewBtn")?.addEventListener("click",confirmScanReview);
 $("#discardScanReviewBtn")?.addEventListener("click",()=>{discardScanReviewDraft();const status=$("#scanStatus");if(status){status.className="notice";status.dataset.scanReviewStatusKey="scan_review_discarded";status.textContent=t("scan_review_discarded")}});
@@ -4658,7 +4645,7 @@ $("#canyonSearch")?.addEventListener("input",e=>{canyonSearchTerm=String(e.targe
   $("#allianceDrawer")?.addEventListener("click",event=>{const button=event.target?.closest?.("#canyonClearBtn");if(!button)return;event.preventDefault();clearCanyonSelection()});
  $("#canyonGenerateBtn")?.addEventListener("click",()=>{const message=$("#canyonStatusMessage");if(!desertStormSelectionAccess().allowed){if(message){message.className="notice warn";message.textContent=managerOnlyMessage();message.classList.remove("hidden")}return}if(!desertStormFeatureAccess())return;const canyon=ensureCanyonState(),members=activeAllianceRosterMembers(),now=new Date().toISOString();canyon.plan=canyonPlanForRoster(canyon,members);canyon.validated_at=null;canyon.validated_by=null;canyon.updated_at=now;state.alliance.updated_at=now;canyonActiveTab="plan";saveState();if(message){message.className="notice";message.textContent=canyon.plan.faction_to_confirm?"Plan générique créé · faction à confirmer.":"Plan Canyon créé · validation R4/R5 requise.";message.classList.remove("hidden")}});
 $("#canyonValidateBtn")?.addEventListener("click",()=>{if(!desertStormSelectionAccess().allowed)return;const canyon=ensureCanyonState();if(!canyon.plan)return;const now=new Date().toISOString();canyon.validated_at=now;canyon.validated_by=String(state.player?.name||state.player_id||"R4/R5");canyon.updated_at=now;state.alliance.updated_at=now;saveState();const message=$("#canyonStatusMessage");if(message){message.className="notice";message.textContent="Plan Canyon validé par un R4/R5.";message.classList.remove("hidden")}});
-$("#vsPlanBtn").addEventListener("click",async()=>{if(!requirePro())return;const j=await requestAdvice("vs");renderEventAdviceText("vs",j)});$("#seasonLifecycleSelect")?.addEventListener("change",()=>{const value=$("#seasonLifecycleSelect").value||"unknown",now=new Date().toISOString();state.season=repairSeasonState({...state.season,lifecycle:value,lifecycle_source:"manual",ended_at:(value==="ended"||value==="interseason")?(state.season.ended_at||now):null,updated_at:now});saveState();$("#seasonAdviceText").textContent=t("season_empty")});
+$("#seasonLifecycleSelect")?.addEventListener("change",()=>{const value=$("#seasonLifecycleSelect").value||"unknown",now=new Date().toISOString();state.season=repairSeasonState({...state.season,lifecycle:value,lifecycle_source:"manual",ended_at:(value==="ended"||value==="interseason")?(state.season.ended_at||now):null,updated_at:now});saveState();$("#seasonAdviceText").textContent=t("season_empty")});
 $("#seasonAdviceBtn").addEventListener("click",async()=>{if(!requirePro())return;const j=await requestAdvice("season");renderEventAdviceText("season",j)});
 document.addEventListener("click",async event=>{
   const button=event.target.closest?.("[data-event-strategy-copy]");if(!button)return;

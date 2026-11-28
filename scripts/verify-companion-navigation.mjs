@@ -8,7 +8,7 @@ const worker = fs.readFileSync("sw.js", "utf8");
 
 // The legacy drawers/accordions remain the live navigation destinations.
 for (const id of [
-  "playerDrawer", "allianceDrawer", "vsDrawer", "seasonDrawer",
+  "playerDrawer", "allianceDrawer", "seasonDrawer",
   "squadList", "memberList", "membersAccordion", "rankManagerAccordion",
   "allianceEventAccordion", "allianceEventCards", "allianceEventDetail",
   "activitySummary", "allianceParticipationTable", "technologyScanHelp",
@@ -16,7 +16,7 @@ for (const id of [
   assert.equal([...html.matchAll(new RegExp(`id="${id}"`, "g"))].length, 1,
     `${id}: legacy destination exists exactly once`);
 }
-for (const destination of ["player", "alliance", "vs", "season"]) {
+for (const destination of ["player", "alliance", "season"]) {
   assert.match(html, new RegExp(`data-open="${destination}"`),
     `${destination}: original home action still exists`);
 }
@@ -32,6 +32,7 @@ assert.ok(start >= 0 && end > start, "actual drawer handler can be exercised");
 const calls = [];
 const elements = new Map();
 const element = id => {
+  if (id === "#vsDrawer") return null;
   if (!elements.has(id)) elements.set(id, {
     classList: { add: name => calls.push(`${id}:${name}`) },
     setAttribute: (key, value) => calls.push(`${id}:${key}=${value}`),
@@ -46,6 +47,7 @@ const context = vm.createContext({
     assert.equal(options.preserveReturn, true);
     calls.push("close");
   },
+  analysisIndicator: { refresh: () => calls.push("indicator") },
   returnViewController: { remember: name => calls.push(`remember:${name}`) },
   betaPrivateDataVisible: () => privateVisible,
   state: { player: {}, drone: {}, alliance: {}, season: {} },
@@ -56,12 +58,12 @@ for (const name of [
   "render", "renderAccountFields", "renderAuth", "renderBeta", "renderPro",
   "renderPlayerCoreSummary", "renderAllianceCoreSummary", "renderMembers",
   "renderAllianceAccess", "renderDesertStormPlanner", "renderCanyonPlanner",
-  "bindAllianceAccordions", "resetAllianceAccordions", "renderVsLive",
+  "bindAllianceAccordions", "resetAllianceAccordions",
   "renderSeasonAccess", "renderSeasonCoreSummary", "renderEndgameCoachDrawer",
 ]) context[name] = () => calls.push(name);
 vm.runInContext(app.slice(start, end), context);
 
-for (const destination of ["player", "alliance", "vs", "season"]) {
+for (const destination of ["player", "alliance", "season"]) {
   calls.length = 0;
   context.openDrawer(destination);
   assert.ok(calls.includes(`#${destination}Drawer:open`));
@@ -77,12 +79,13 @@ for (const name of ["renderMembers", "renderAllianceAccess", "bindAllianceAccord
   assert.ok(calls.includes(name), `${name}: original Alliance handler still runs`);
 context.openDrawer("player");
 assert.ok(calls.includes("renderPlayerCoreSummary"));
+calls.length = 0;
 context.openDrawer("vs");
-assert.ok(calls.includes("renderVsLive"));
+assert.ok(!calls.includes("#backdrop:open"), "removed VS drawer is a safe no-op");
 context.openDrawer("season");
 assert.ok(calls.includes("renderSeasonCoreSummary"));
 context.openDrawer("account");
 for (const name of ["renderAccountFields", "renderAuth", "renderBeta", "renderPro"])
   assert.ok(calls.includes(name), `${name}: account controls remain reachable`);
 
-console.log("PASS legacy drawer navigation: original destinations, real handler, private-access boundary, Alliance accordions, VS/Season/account and fresh PWA assets.");
+console.log("PASS drawer navigation: player/alliance/season/account and safe no-op for removed personal VS drawer.");

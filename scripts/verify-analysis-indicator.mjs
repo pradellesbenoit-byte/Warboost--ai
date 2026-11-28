@@ -52,8 +52,9 @@ indicator.cancel("old");
 const newer=beginLoadingButton(indicator,button,{kind:"new",label:()=>"new"});
 older();assert.equal(button.disabled,true);assert.equal(button.textContent,"new");
 newer();assert.equal(button.attrs["data-wb-analysis-active"],undefined);assert.equal(button.disabled,false);
-for(const kind of ["scan","scan:roster","advice:player","advice:alliance","advice:vs","advice:season","sync"])
+for(const kind of ["scan","scan:roster","advice:player","advice:alliance","advice:season","sync"])
   assert.ok(loadingTargetIds(kind).length,kind);
+assert.deepEqual(loadingTargetIds("advice:vs"),[],"removed personal VS coach has no stale loading targets");
 for(const path of ["/api/state","/api/sync","/api/alliance-role","/api/support","/api/invite","/api/join","/api/pro"])
   assert.ok(requestLoadingTargetIds(path).length,path);
 assert.deepEqual(requestLoadingTargetIds("/api/health?clock=1"),[]);
