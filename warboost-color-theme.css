@@ -1,0 +1,49 @@
+/* WarBoost — thème coloré, exclusivement présentation, 28-11-2026. */
+:root{--bg:#061024;--panel:#10223e;--panel2:#162d4c;--line:#2f5480;--text:#f5f8ff;--muted:#b8c9e5;--cyan:#39ddff;--blue:#4e91ff;--green:#34e8a3;--amber:#ffce5b;--red:#ff647c}
+html,body{background:#061024;background-image:radial-gradient(ellipse at 12% -5%,rgba(32,108,226,.3),transparent 43%),radial-gradient(ellipse at 95% 24%,rgba(126,47,216,.17),transparent 39%),linear-gradient(170deg,#091935,#071124 50%,#050e1e);color:var(--text)}
+.app{width:min(100%,940px)}
+.logo{border-radius:14px;border:1px solid #9269ff;box-shadow:0 5px 21px rgba(96,54,218,.3)}
+.brandText h1{font-size:clamp(21px,3.4vw,29px);font-weight:900;letter-spacing:-.035em;color:#ffe2a0}
+/* Masque uniquement l'ancienne communication marketing sur l'accueil. */
+#betaHeaderBadge,.publisherStrip,.publisherFooter,.publisherVision .visionCopy>.eyebrow,.topbar .brandText>small,.proHomeCard>.moduleMeta[data-i18n="beta_pro_short"]{display:none!important}
+.languageSelect,.avatarBtn{border:1px solid rgba(86,158,241,.54);background:#102340;color:#eef8ff;border-radius:14px}
+.publisherVision{position:relative;isolation:isolate;overflow:hidden;grid-template-columns:minmax(0,1fr) minmax(200px,.7fr);border:1px solid #4e65e8;border-radius:22px;background:radial-gradient(ellipse at 93% 15%,rgba(199,60,224,.34),transparent 45%),radial-gradient(ellipse at 8% 2%,rgba(24,155,255,.4),transparent 54%),linear-gradient(120deg,#092c5e,#222260 65%,#3c1c65);box-shadow:0 14px 32px rgba(0,6,25,.29)}
+.publisherVision::before{content:"W";position:absolute;right:5%;bottom:-55px;color:rgba(255,217,98,.08);font-size:175px;font-weight:900;pointer-events:none}
+.publisherVision .visionCopy,.publisherVision .trustMiniGrid{position:relative;z-index:1}
+.publisherVision h2{color:#fff;font-size:clamp(21px,3.4vw,31px);max-width:34ch}.publisherVision p{color:#e0ebff}
+.trustMiniGrid>div{background:rgba(5,18,42,.56);border-color:rgba(99,207,255,.28)}.trustMiniGrid b{color:#72edff}.trustMiniGrid small{color:#d2e2f5}
+.serverStrip{border-color:rgba(71,150,237,.36);background:rgba(10,31,61,.88)}.serverTime b{color:#5ce7ff}
+.heroCard{border:1px solid #9c6dea;border-radius:21px;background:radial-gradient(circle at 94% 8%,rgba(160,62,231,.24),transparent 48%),linear-gradient(125deg,#132b64,#181c4b 59%,#2c164c)}
+.heroTitle{color:#fff}.heroText{color:#d9e7ff}.eyebrow{color:#b4a0ff}
+.primaryAction{border:1px solid #64e0ff;background:linear-gradient(105deg,#38d9ff,#6d9dff);color:#05172d;border-radius:14px;min-height:46px}
+.moduleGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.moduleCard{--edge:#26c5ff;--start:#0868ba;--end:#0a3470;min-width:0;border:1px solid var(--edge);border-radius:19px;background:radial-gradient(circle at 100% 0%,rgba(255,255,255,.11),transparent 56%),linear-gradient(140deg,var(--start),var(--end));box-shadow:inset 0 1px rgba(255,255,255,.13),0 7px 20px rgba(0,8,34,.26);color:#fff}
+.moduleCard:hover{filter:brightness(1.08);border-color:var(--edge);background:linear-gradient(140deg,var(--start),var(--end))}
+.moduleCard[data-open="player"]{--edge:#1dcfff;--start:#0969c9;--end:#092e76}
+.moduleCard[data-open="alliance"]{--edge:#38f39d;--start:#0a7954;--end:#073e41}
+.moduleCard[data-open="vs"]{--edge:#ff7486;--start:#a41f4d;--end:#571a47}
+.moduleCard[data-open="season"]{--edge:#bb7dff;--start:#7542b9;--end:#33246c}
+.moduleCard.proHomeCard{--edge:#ffd260;--start:#8d521e;--end:#432d2a}
+.moduleCard.qg35HomeCard{--edge:#b9a9ff;--start:#60408f;--end:#26346f}
+.moduleIcon{display:grid;place-items:center;width:42px;height:42px;font-size:24px;border:1px solid var(--edge);border-radius:12px;background:rgba(255,255,255,.09)}
+.moduleCard h2{color:#fff;font-size:16px;margin:12px 0 5px;line-height:1.25}.moduleCard p{color:#e5f0ff;font-size:12px;line-height:1.4}
+.moduleMeta{border:1px solid rgba(226,236,255,.36);background:rgba(5,17,44,.44);color:#eff6ff}
+.safeLaunchGrid{gap:12px}.safeLaunchCard{border-radius:17px;border-color:rgba(74,140,237,.35);background:linear-gradient(135deg,rgba(15,34,66,.95),rgba(10,23,46,.97))}.safeLaunchCard.independentCard{border-top:2px solid #43dda8}.safeLaunchCard.updateCard{border-top:2px solid #aa7af0}.safeLinks a{color:#73e0ff}
+.drawer{--accent:#3dcbff;width:min(100%,780px);max-height:95dvh;border:1px solid rgba(71,132,231,.43);border-top:3px solid var(--accent);background:linear-gradient(160deg,#0e2040,#0a152b 55%,#08101f)}
+#playerDrawer{--accent:#41c7ff}#allianceDrawer{--accent:#38efa2}#vsDrawer{--accent:#ff7082}#seasonDrawer{--accent:#b67eff}#qg35CoachDrawer{--accent:#ffd363}#scanDrawer{--accent:#35e0f3}#accountDrawer{--accent:#ffc464}#supportDrawer{--accent:#75d7ff}
+.drawerHeader{background:rgba(10,25,49,.97);border-bottom:1px solid rgba(94,149,224,.22)}.drawerHeader h2{color:#fff}
+.drawer .section,.drawer .scanReviewPanel{border-color:rgba(80,140,216,.3);background:linear-gradient(130deg,rgba(19,43,78,.92),rgba(9,24,47,.93))}
+.drawer .pill{border-color:rgba(82,178,254,.3);background:rgba(23,65,113,.52);color:#d6ecff}
+.drawer .squad,.drawer .member,.drawer .priorityCard,.drawer .exclusiveCard,.drawer .sourceCard,.drawer .compareRow,.drawer .summaryBar .stat{border-color:rgba(78,143,218,.34);background:linear-gradient(130deg,rgba(18,42,79,.94),rgba(9,22,44,.97))}
+.drawer .notice{border-color:rgba(90,160,224,.34);background:rgba(16,45,77,.73)}.drawer .notice.warn{border-color:#936b34;background:rgba(84,53,18,.5);color:#ffe4ac}
+.drawer input:not([type="checkbox"]):not([type="radio"]),.drawer select,.drawer textarea{border-color:rgba(97,154,230,.46);background:#0d213f;color:#f4f8ff}
+.secondaryBtn,.smallBtn,.closeBtn,.squadSwapBtn{border-color:rgba(90,156,238,.45);background:#142c4c;color:#e8f4ff}
+.dangerBtn{border-color:#b24b66;background:#471a30;color:#ffe6ec}
+.proPriorityPanel,.proSection{border-color:#d7ab58!important;background:linear-gradient(145deg,rgba(75,54,24,.52),rgba(12,29,53,.96))!important}
+.proAction{border-color:#ffe276;background:linear-gradient(90deg,#ffdc69,#ffb942);color:#291708}
+#supportBtn{border:1px solid #67d9ff;background:linear-gradient(90deg,#187bb3,#1b4ba8);color:#fff}
+/* Keep the support action in the footer flow instead of covering cards on touch screens. */
+#supportBtn.supportFab{position:static;display:flex;width:max-content;max-width:100%;margin:18px auto calc(18px + env(safe-area-inset-bottom))}
+@media(max-width:767px){.app{padding-inline:14px}.publisherVision{grid-template-columns:1fr;gap:15px;padding:18px}.publisherVision h2{font-size:clamp(20px,5.4vw,27px)}.moduleGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.moduleCard{display:flex;flex-direction:column;align-items:flex-start;min-height:154px;padding:12px 11px;gap:5px}.moduleIcon{grid-column:auto;grid-row:auto;width:39px;height:39px}.moduleCard h2{grid-column:auto;align-self:auto;order:1;margin:5px 0 0;font-size:clamp(13px,3.65vw,16px);overflow-wrap:anywhere}.moduleCard p{grid-column:auto;align-self:auto;order:2;margin:0;font-size:11px;overflow-wrap:anywhere}.moduleMeta{position:static;inset:auto;order:3;transform:none;margin:4px 0 0;max-width:100%;white-space:normal;overflow-wrap:anywhere}html[dir="rtl"] .moduleCard h2,html[dir="rtl"] .moduleCard p{margin:0}}
+@media(max-width:390px){.topbar{gap:7px}.logo{width:40px;height:40px}.brandText h1{font-size:20px}.languageSelect{max-width:87px;padding-inline:4px}.moduleGrid{gap:7px}.moduleCard{min-height:149px;padding:10px}.moduleIcon{width:35px;height:35px;font-size:22px}}
+@media(prefers-reduced-motion:reduce){.moduleCard,.primaryAction{transition:none!important}}

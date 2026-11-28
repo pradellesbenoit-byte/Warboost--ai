@@ -50,7 +50,8 @@ for(const path of ["/lib/fresh-launch.js","/lib/squad-scan-evidence.js","/lib/sq
 SHELL.push("/analysis-indicator.css?v=scan-inline-w-r2","/lib/analysis-indicator.js","/lib/analysis-copy.js","/lib/locales/completed.js",
   ...["fr","es","it","de","pt","nl","zh","ja","ru","ar","pl","tr","ko","vi","th","id","uk","ro","el","cs","sv"].map(code=>`/lib/locales/${code}.js`));
 SHELL.push("/lib/account-sync-feedback.js","/lib/account-sync-copy.js","/lib/account-cloud-operation-copy.js","/lib/cloud-save-diagnostic.js","/lib/cloud-save-diagnostic-copy.js","/lib/roster-sync-copy.js");
-const ACCOUNT_SYNC_CACHE=CACHE+"-gear-repair-technical-preparation-r10";
+SHELL.push("/warboost-color-theme.css?v=20261128-r2");
+const ACCOUNT_SYNC_CACHE=CACHE+"-gear-repair-technical-preparation-r10-color-theme-20261128-r2";
 SHELL.push("/lib/squad-comparison.js","/lib/squad-comparison-copy.js","/lib/squad-comparison-view.js");
 SHELL.push("/lib/squad-comparison-project.js","/lib/squad-comparison-results.js","/lib/squad-comparison-detail-copy.js",
   "/lib/squad-comparison-gear.js","/lib/squad-comparison-gear-copy.js");
