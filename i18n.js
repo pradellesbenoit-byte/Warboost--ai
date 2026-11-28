@@ -835,6 +835,34 @@ for(const [code,labels] of Object.entries(PROFILE_AVATAR_LABELS))Object.assign(p
 Object.assign(EN,PROFILE_AVATAR_LABELS["en-GB"]);
 Object.assign(EN_GB,PROFILE_AVATAR_LABELS["en-GB"]);
 Object.assign(EN_US,PROFILE_AVATAR_LABELS["en-GB"]);
+const PROFILE_AVATAR_CAPTURE_HINTS={
+  "en-GB":"For your photo, choose a new Profile/HQ screenshot where it is visible.",
+  fr:"Pour ta photo, choisis une nouvelle capture Profil / QG où elle est visible.",
+  es:"Para tu foto, elige una nueva captura de Perfil/CG donde sea visible.",
+  it:"Per la tua foto, scegli una nuova schermata Profilo/QG in cui sia visibile.",
+  de:"Wähle für dein Foto einen neuen Profil/HQ-Screenshot, auf dem es sichtbar ist.",
+  pt:"Para a tua foto, escolhe uma nova captura de Perfil/QG onde ela esteja visível.",
+  nl:"Kies voor je foto een nieuwe Profiel/HQ-schermafbeelding waarop deze zichtbaar is.",
+  zh:"要使用头像，请选择一张能看见它的新个人资料/总部截图。",
+  ja:"写真を使うには、写真が見える新しいプロフィール/HQ画面を選んでください。",
+  ru:"Для фото выберите новый экран Профиль/Штаб, где оно видно.",
+  ar:"لاستخدام صورتك، اختر لقطة جديدة للملف الشخصي/المقر تظهر فيها الصورة.",
+  pl:"Do zdjęcia wybierz nowy zrzut Profil/Kwatera, na którym jest ono widoczne.",
+  tr:"Fotoğrafın için göründüğü yeni bir Profil/Karargâh ekran görüntüsü seç.",
+  ko:"사진을 사용하려면 사진이 보이는 새 프로필/HQ 스크린샷을 선택하세요.",
+  vi:"Để dùng ảnh, hãy chọn ảnh chụp Hồ sơ/Đại bản doanh mới có hiển thị ảnh.",
+  th:"หากต้องการใช้รูป ให้เลือกภาพหน้าจอโปรไฟล์/HQ ใหม่ที่มองเห็นรูปนั้น",
+  id:"Untuk foto, pilih tangkapan layar Profil/Markas baru yang menampilkan fotonya.",
+  uk:"Для фото вибери новий знімок Профіль/Штаб, де його видно.",
+  ro:"Pentru fotografie, alege o captură nouă Profil/Cartier general în care aceasta se vede.",
+  el:"Για τη φωτογραφία, επίλεξε νέο στιγμιότυπο Προφίλ/Αρχηγείου όπου φαίνεται.",
+  cs:"Pro fotku vyber nový snímek Profil/HQ, na kterém je vidět.",
+  sv:"Välj en ny Profil/HQ-skärmbild där fotot syns."
+};
+for(const [code,hint] of Object.entries(PROFILE_AVATAR_CAPTURE_HINTS))if(packs[code])packs[code].profile_avatar_capture_hint=hint;
+Object.assign(EN,{profile_avatar_capture_hint:PROFILE_AVATAR_CAPTURE_HINTS["en-GB"]});
+Object.assign(EN_GB,{profile_avatar_capture_hint:PROFILE_AVATAR_CAPTURE_HINTS["en-GB"]});
+Object.assign(EN_US,{profile_avatar_capture_hint:PROFILE_AVATAR_CAPTURE_HINTS["en-GB"]});
 const PROFILE_AVATAR_ACCESSIBLE_LABELS={
   "en-GB":{profile_avatar_panel_label:"Profile photo crop",profile_avatar_canvas_label:"Profile screenshot crop area",profile_avatar_ready:"Photo selected. Confirm the scan to save it to this account.",profile_avatar_unavailable:"This screenshot cannot be cropped. Your scan can still be confirmed without a photo."},
   fr:{profile_avatar_panel_label:"Recadrage de la photo de profil",profile_avatar_canvas_label:"Zone de recadrage de la capture du profil",profile_avatar_ready:"Photo choisie. Confirme le scan pour l’enregistrer sur ce compte.",profile_avatar_unavailable:"Cette capture ne peut pas être recadrée. Tu peux confirmer le scan sans photo."},

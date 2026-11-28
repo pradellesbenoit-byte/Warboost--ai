@@ -24,7 +24,7 @@
 <link rel="stylesheet" href="/diagnostic-disclosures.css?v=diagnostic-disclosures-r1" />
 <link rel="stylesheet" href="/identity-onboarding.css?v=identity-onboarding-r1" />
   <link rel="stylesheet" href="/visual-polish.css" />
-  <link rel="stylesheet" href="/warboost-color-theme.css?v=20261128-r2" />
+  <link rel="stylesheet" href="/warboost-color-theme.css?v=20261128-r3" />
 </head>
 <body>
   <div id="loadingScreen" class="loadingScreen" role="dialog" tabindex="-1" aria-modal="true" aria-live="polite" aria-label="WarBoost" aria-hidden="false" data-loading-mode="open" data-loading-stage="profile">
@@ -125,7 +125,7 @@
 
     <section class="moduleGrid">
       <button class="moduleCard" data-open="player"><span class="moduleMeta" id="playerMeta">—</span><span class="moduleIcon playerHomeIcon"><span id="playerHomeAvatarFallback" aria-hidden="true">👤</span><img id="playerHomeAvatar" class="playerHomeAvatar hidden" alt="" /></span><h2 data-i18n="player">Joueur</h2><span id="playerHomeName" class="playerHomeName"></span><p data-i18n="player_desc">4 escouades, Drone, progression et priorités.</p></button>
-      <button class="moduleCard" data-open="alliance"><span class="moduleMeta" id="allianceMeta">—</span><span class="moduleIcon">🛡️</span><h2 data-i18n="alliance">Alliance</h2><p data-i18n="alliance_desc">Membres, R5/R4 et plans de guerre.</p></button>
+      <button class="moduleCard" data-open="alliance"><span class="moduleMeta" id="allianceMeta">—</span><span class="moduleIcon allianceHomeIcon" id="allianceHomeIcon" role="img" data-i18n-aria="alliance_needs_confirmation" aria-label="Alliance à confirmer"><span id="allianceHomeName" aria-hidden="true">🛡️</span></span><h2 data-i18n="alliance">Alliance</h2><p data-i18n="alliance_desc">Membres, R5/R4 et plans de guerre.</p></button>
       <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p id="seasonDesc" data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
       <button id="homeProBtn" class="moduleCard proHomeCard" type="button"><span class="moduleMeta" data-i18n="beta_pro_short">PRO BÊTA</span><span class="moduleIcon">💎</span><h2 data-i18n="pro">WarBoost PRO</h2><p data-i18n="pro_feature1">Priorités IA détaillées pour tes escouades</p></button>
       <button id="qg35CoachCard" class="moduleCard qg35HomeCard hidden" type="button" aria-controls="qg35CoachDrawer">
@@ -320,6 +320,7 @@
           <div id="scanReviewRows" class="scanReviewRows"></div>
           <section id="profileAvatarCropPanel" class="profileAvatarCropPanel hidden" data-i18n-aria="profile_avatar_panel_label" aria-label="Photo du profil">
             <p class="privacyText" data-i18n="profile_avatar_offer">Tu peux recadrer la photo de profil visible sur cette capture. Rien n’est enregistré sans ton choix.</p>
+            <p class="privacyText" data-i18n="profile_avatar_capture_hint">Pour ta photo, choisis une nouvelle capture Profil / QG où elle est visible.</p>
             <p class="privacyText" data-i18n="profile_avatar_instructions">Fais glisser sur la capture pour sélectionner une zone carrée.</p>
             <canvas id="profileAvatarCropCanvas" class="profileAvatarCropCanvas" data-i18n-aria="profile_avatar_canvas_label" aria-label="Capture du profil à recadrer"></canvas>
             <div class="profileAvatarCropPreviewWrap">

@@ -125,12 +125,56 @@ check("API requires authenticated consent and keeps snapshots avatar-free",()=>{
 });
 check("home alliance uses only this profile's name, real tag fallback, or confirmation",()=>{
   const render=app.slice(app.indexOf("function renderHomeAllianceMeta("),app.indexOf("function renderPlayerCoreSummary("));
-  assert.match(render,/a\?\.name/);assert.match(render,/a\?\.tag/);assert.match(render,/t\("alliance_needs_confirmation"\)/);
-  assert.match(render,/el\.textContent=/);
+  assert.match(render,/a\?\.name/);assert.match(render,/a\?\.tag/);assert.match(render,/name\.textContent=displayName\|\|"🛡️"/);
+  assert.match(render,/el\.textContent=displayName\?normalizedRole\(p\?\.role\):t\("alliance_needs_confirmation"\)/);
   assert.match(markup,/data-open="alliance"/);
+  assert.match(markup,/id="allianceHomeName"/);
+  assert.match(fs.readFileSync(new URL("../warboost-color-theme.css",import.meta.url),"utf8"),/-webkit-line-clamp:2/);
+});
+check("alliance tile dynamically shows name or tag and preserves rank",()=>{
+  const begin=app.indexOf("function renderHomeAllianceMeta("),end=app.indexOf("\nfunction renderPlayerCoreSummary(",begin);
+  const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{textContent:"",title:"",attrs:{},setAttribute(key,value){this.attrs[key]=value}});return nodes.get(id)};
+  const context=vm.createContext({$:selector=>node(selector),t:key=>key,normalizedRole:role=>String(role||"R1")});
+  vm.runInContext(app.slice(begin,end),context);
+  context.renderHomeAllianceMeta({role:"R4"},{name:"ALL FOR 1",tag:"AF1"});
+  assert.equal(node("#allianceHomeName").textContent,"ALL FOR 1");assert.equal(node("#allianceHomeIcon").title,"ALL FOR 1");
+  assert.equal(node("#allianceMeta").textContent,"R4");
+  context.renderHomeAllianceMeta({role:"R5"},{name:"",tag:"AF1"});
+  assert.equal(node("#allianceHomeName").textContent,"AF1");assert.equal(node("#allianceMeta").textContent,"R5");
+  context.renderHomeAllianceMeta({role:"R4"},{name:"",tag:""});
+  assert.equal(node("#allianceHomeName").textContent,"🛡️");assert.equal(node("#allianceMeta").textContent,"alliance_needs_confirmation");
+});
+check("logout masks the alliance name and restores the neutral icon",()=>{
+  const begin=app.indexOf("function maskHomePrivateMeta("),end=app.indexOf("\nfunction render(){",begin);
+  const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{textContent:"private",title:"private",attrs:{},classList:{add(){},remove(){}},removeAttribute(){},setAttribute(key,value){this.attrs[key]=value}});return nodes.get(id)};
+  const context=vm.createContext({$:selector=>node(selector),t:key=>key,clearHomePlayerAvatar(){}});
+  vm.runInContext(app.slice(begin,end),context);context.maskHomePrivateMeta();
+  assert.equal(node("#allianceHomeName").textContent,"🛡️");
+  assert.equal(node("#allianceHomeIcon").title,"");
+  assert.equal(node("#allianceHomeIcon").attrs["aria-label"],"alliance_needs_confirmation");
+  assert.equal(node("#allianceMeta").textContent,"—");
+});
+check("authenticated owner sees the saved avatar and signout masks private home data",()=>{
+  const begin=app.indexOf("function clearHomePlayerAvatar("),end=app.indexOf("\nfunction renderHomeAllianceMeta(",begin);
+  const nodes=new Map(),node=id=>{
+    if(!nodes.has(id))nodes.set(id,{textContent:"",title:"",src:"",attrs:{},classList:{values:new Set(),add(value){this.values.add(value)},remove(value){this.values.delete(value)},toggle(value,on){on?this.values.add(value):this.values.delete(value)}},removeAttribute(key){delete this.attrs[key];if(key==="src")this.src=""},getAttribute(key){return key==="src"?(this.src||null):this.attrs[key]||null},setAttribute(key,value){this.attrs[key]=value}});
+    return nodes.get(id);
+  };
+  const context=vm.createContext({$:selector=>node(selector),t:key=>key,normalizeProfileAvatarDataUrl,
+    state:{player_id:"account-a"},cloudSession:{user:{id:"account-a"}}});
+  vm.runInContext(app.slice(begin,end),context);
+  context.renderHomePlayerMeta({name:"les gladiateurs81",hq_level:31,profile_avatar_data_url:photo});
+  assert.equal(node("#playerHomeAvatar").src,photo);assert.equal(node("#playerHomeName").textContent,"les gladiateurs81");
+  context.cloudSession={user:{id:"account-b"}};
+  context.renderHomePlayerMeta({name:"les gladiateurs81",profile_avatar_data_url:photo});
+  assert.equal(node("#playerHomeAvatar").src,"");
+  const maskBegin=app.indexOf("function maskHomePrivateMeta("),maskEnd=app.indexOf("\nfunction render(){",maskBegin);
+  vm.runInContext(app.slice(maskBegin,maskEnd),context);context.maskHomePrivateMeta();
+  assert.equal(node("#playerHomeAvatar").src,"");assert.equal(node("#playerHomeName").textContent,"");
+  assert.equal(node("#playerMeta").textContent,"to_connect");
 });
 check("all avatar and alliance labels exist in every supported language",()=>{
-  const keys=["profile_avatar_offer","profile_avatar_instructions","profile_avatar_preview","profile_avatar_use","profile_avatar_remove","profile_avatar_size_error","profile_avatar_panel_label","profile_avatar_canvas_label","profile_avatar_ready","profile_avatar_unavailable","profile_avatar_removal_synced","profile_avatar_removal_pending","alliance_needs_confirmation"];
+  const keys=["profile_avatar_offer","profile_avatar_capture_hint","profile_avatar_instructions","profile_avatar_preview","profile_avatar_use","profile_avatar_remove","profile_avatar_size_error","profile_avatar_panel_label","profile_avatar_canvas_label","profile_avatar_ready","profile_avatar_unavailable","profile_avatar_removal_synced","profile_avatar_removal_pending","alliance_needs_confirmation"];
   const languages=LANGUAGES.filter(([code])=>code!=="auto").map(([code])=>code);
   assert.equal(languages.length,23);
   for(const code of languages){const t=translator(code);for(const key of keys)assert.notEqual(t(key),key,`${code}:${key}`)}
