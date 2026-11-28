@@ -124,7 +124,7 @@
     </section>
 
     <section class="moduleGrid">
-      <button class="moduleCard" data-open="player"><span class="moduleMeta" id="playerMeta">—</span><span class="moduleIcon">👤</span><h2 data-i18n="player">Joueur</h2><p data-i18n="player_desc">4 escouades, Drone, progression et priorités.</p></button>
+      <button class="moduleCard" data-open="player"><span class="moduleMeta" id="playerMeta">—</span><span class="moduleIcon playerHomeIcon"><span id="playerHomeAvatarFallback" aria-hidden="true">👤</span><img id="playerHomeAvatar" class="playerHomeAvatar hidden" alt="" /></span><h2 data-i18n="player">Joueur</h2><span id="playerHomeName" class="playerHomeName"></span><p data-i18n="player_desc">4 escouades, Drone, progression et priorités.</p></button>
       <button class="moduleCard" data-open="alliance"><span class="moduleMeta" id="allianceMeta">—</span><span class="moduleIcon">🛡️</span><h2 data-i18n="alliance">Alliance</h2><p data-i18n="alliance_desc">Membres, R5/R4 et plans de guerre.</p></button>
       <button class="moduleCard" data-open="season"><span class="moduleMeta" id="seasonMeta">—</span><span class="moduleIcon">🌍</span><h2 data-i18n="season">Saison</h2><p id="seasonDesc" data-i18n="season_desc">Saison actuelle, profession et objectifs.</p></button>
       <button id="homeProBtn" class="moduleCard proHomeCard" type="button"><span class="moduleMeta" data-i18n="beta_pro_short">PRO BÊTA</span><span class="moduleIcon">💎</span><h2 data-i18n="pro">WarBoost PRO</h2><p data-i18n="pro_feature1">Priorités IA détaillées pour tes escouades</p></button>
@@ -150,6 +150,8 @@
       <div class="stat"><span data-i18n="power">Puissance</span><b id="pPower">—</b></div>
       <div class="stat"><span data-i18n="drone">Drone</span><b id="pDrone">—</b></div>
     </div>
+    <button id="playerAvatarRemoveBtn" class="textAction hidden" type="button" data-i18n="profile_avatar_remove">Retirer ma photo</button>
+    <div id="playerAvatarRemovalStatus" class="notice hidden" role="status" aria-live="polite"></div>
     <div id="playerOnboarding" class="section hidden" style="margin-top:10px">
       <div class="sectionTitle"><h3>🧭 <span data-i18n="onboarding_title">Mise en route</span></h3><span class="pill" data-i18n="beta_setup_short">CONFIGURER</span></div>
       <p class="heroText" style="margin:0 0 10px" data-i18n="onboarding_intro">Commence par le profil, puis l’escouade principale et le Drone. Les autres scans restent optionnels et peuvent être ajoutés ensuite.</p>
@@ -316,6 +318,17 @@
           <div id="scanReviewError" class="notice warn hidden" role="alert"></div>
           <section id="scanUnlinkedWeapons" class="scanReviewPanel hidden" aria-live="polite"></section>
           <div id="scanReviewRows" class="scanReviewRows"></div>
+          <section id="profileAvatarCropPanel" class="profileAvatarCropPanel hidden" data-i18n-aria="profile_avatar_panel_label" aria-label="Photo du profil">
+            <p class="privacyText" data-i18n="profile_avatar_offer">Tu peux recadrer la photo de profil visible sur cette capture. Rien n’est enregistré sans ton choix.</p>
+            <p class="privacyText" data-i18n="profile_avatar_instructions">Fais glisser sur la capture pour sélectionner une zone carrée.</p>
+            <canvas id="profileAvatarCropCanvas" class="profileAvatarCropCanvas" data-i18n-aria="profile_avatar_canvas_label" aria-label="Capture du profil à recadrer"></canvas>
+            <div class="profileAvatarCropPreviewWrap">
+              <span data-i18n="profile_avatar_preview">Aperçu du recadrage</span>
+              <img id="profileAvatarCropPreview" class="profileAvatarCropPreview hidden" alt="" />
+            </div>
+            <div id="profileAvatarCropStatus" class="privacyText" role="status" aria-live="polite"></div>
+            <button id="profileAvatarUseBtn" class="secondaryBtn wideBtn" type="button" disabled data-i18n="profile_avatar_use">Utiliser cette photo dans WarBoost</button>
+          </section>
           <div class="buttonRow"><button id="discardScanReviewBtn" class="secondaryBtn" type="button" data-i18n="scan_review_discard">Ignorer le résultat</button><button id="confirmScanReviewBtn" class="primaryAction" type="button" data-i18n="scan_review_confirm">Confirmer les valeurs</button></div>
         </section>
         <div id="heroConfirmPanel" class="heroConfirmPanel hidden">

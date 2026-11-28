@@ -11,6 +11,8 @@ import {gearRepairPreviewCopy} from "./lib/gear-repair-preview-copy.js";
 import {createSaveDiagnostic,safeSaveDiagnostic,newSaveCorrelation,publicSaveError} from "./lib/cloud-save-diagnostic.js";
 import {mountAccountDeletion} from "./lib/account-deletion-ui.js";
 import {buildPlayerScanOptions,normalizePlayerScanType,scanSquadId} from "./lib/player-scan-types.js";
+import {createProfileAvatarCropper} from "./lib/profile-avatar-cropper.js";
+import {mergeProfileAvatar,normalizeProfileAvatarDataUrl,removeProfileAvatar} from "./lib/profile-avatar.js";
 import {HERO_CATALOG,canonicalHeroName,canonicalExclusiveWeaponHeroName,isGenericHeroName,heroPresentation,heroDisplayName} from "./lib/heroes.js";
 import {createEndgameCoachReport,deriveEndgameCoachHomeState,hasEndgameCoachProAccess} from "./lib/endgame-coach.js?v=shop-observations-v2-5-32-hf8-6-34-r1";
 import {classifyAllianceMember,summarizeAllianceActivity,normalizeAllianceRole} from "./lib/alliance-activity.js";
@@ -137,7 +139,7 @@ function clientId(){if(volatileClientId)return volatileClientId;try{let id=local
 function safeLocalSet(key,value){try{localStorage.setItem(key,value);return true}catch{return false}}
 function emptyHero(i){return {name:"",level:null,stars:null,power:null,exclusive:null,gear:null,awakening:null}}
 function emptySquad(i){return {id:i,name:`Squad ${i}`,power:null,last_confirmed_power:null,power_sync_status:"confirmed",updated_at:null,needs_rescan:false,composition_changed_at:null,composition_confirmed_at:null,composition_source:null,confirmed_composition:Array.from({length:5},()=>""),composition_conflict:null,heroes:Array.from({length:5},emptyHero)}}
-function initialState(){return {version:APP_VERSION,player_id:clientId(),updated_at:null,player:{name:"",server_id:"",hq_level:null,hq_level_source:null,hq_level_confirmed_at:null,power_m:null,coordinates:null,role:"R1",updated_at:null},player_context:{objective:"auto",account_age_days:null,server_profile:"auto",updated_at:null},activity_events:[],player_availability:[],availability_history:[],exclusive_weapons:[],hero_progression:[],hero_profiles:[],progression_snapshots:[],drone:{level:null,power_m:null,updated_at:null},shop:{store_type:"",currency:"",currency_balance:null,vip_level:null,vip_days_remaining:null,offers:[],snapshots:[],updated_at:null},squads:[1,2,3,4].map(emptySquad),alliance:{id:null,owner_player_id:null,server_id:"",tag:"",name:"",role:"R1",cloud_role_verified:false,management_verified:false,invite_code:"",members:[],roster_review:[],former_members:[],roster_removal_tombstones:[],event_availability:[],availability_history:[],roster_updated_at:null,roster_snapshot_complete_at:null,unlinked_accounts:[],identity_link_status:"unknown",desert_storm:{team:"A",battle_time:"",registered_keys:[],plan:null,availability_reset_at:null,updated_at:null},canyon:normalizeCanyonState({}),updated_at:null},vs:{week:null,day:null,theme:"",our_alliance:"",our_tag:"",our_server_id:"",opponent:"",opponent_tag:"",opponent_server_id:"",our_score:null,their_score:null,our_percent:null,their_percent:null,time_remaining_text:"",time_remaining_seconds:null,personal_name:"",personal_rank:null,personal_score:null,leaderboard:[],score_confirmed:false,snapshots:[],updated_at:null},season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:null,resistance:null,focus:null,lifecycle:"unknown",lifecycle_source:null,ended_at:null,measured_hybrid_synergy:false,awakening_swap:null,updated_at:null},technology:{type_mastery_pct:null,hero_tech_pct:null,siege_to_seize_pct:null,defensive_fortification_pct:null,tactical_weapon_pct:null,updated_at:null},sync:{provider:"warboost-local",provider_kind:"local",access_status:"pending",capabilities:[],status:"local",last_sync:null,last_error:null,auto_ready:true,last_scan:null,official_last_sync:null,public_last_sync:null,sources:{official:false,public:false,scan:false,alliance:false}}}}
+function initialState(){return {version:APP_VERSION,player_id:clientId(),updated_at:null,player:{name:"",server_id:"",hq_level:null,hq_level_source:null,hq_level_confirmed_at:null,power_m:null,coordinates:null,role:"R1",profile_avatar_data_url:null,profile_avatar_updated_at:null,updated_at:null},player_context:{objective:"auto",account_age_days:null,server_profile:"auto",updated_at:null},activity_events:[],player_availability:[],availability_history:[],exclusive_weapons:[],hero_progression:[],hero_profiles:[],progression_snapshots:[],drone:{level:null,power_m:null,updated_at:null},shop:{store_type:"",currency:"",currency_balance:null,vip_level:null,vip_days_remaining:null,offers:[],snapshots:[],updated_at:null},squads:[1,2,3,4].map(emptySquad),alliance:{id:null,owner_player_id:null,server_id:"",tag:"",name:"",role:"R1",cloud_role_verified:false,management_verified:false,invite_code:"",members:[],roster_review:[],former_members:[],roster_removal_tombstones:[],event_availability:[],availability_history:[],roster_updated_at:null,roster_snapshot_complete_at:null,unlinked_accounts:[],identity_link_status:"unknown",desert_storm:{team:"A",battle_time:"",registered_keys:[],plan:null,availability_reset_at:null,updated_at:null},canyon:normalizeCanyonState({}),updated_at:null},vs:{week:null,day:null,theme:"",our_alliance:"",our_tag:"",our_server_id:"",opponent:"",opponent_tag:"",opponent_server_id:"",our_score:null,their_score:null,our_percent:null,their_percent:null,time_remaining_text:"",time_remaining_seconds:null,personal_name:"",personal_rank:null,personal_score:null,leaderboard:[],score_confirmed:false,snapshots:[],updated_at:null},season:{name:"",number:null,day:null,total_days:null,profession:"",progress_pct:null,resistance:null,focus:null,lifecycle:"unknown",lifecycle_source:null,ended_at:null,measured_hybrid_synergy:false,awakening_swap:null,updated_at:null},technology:{type_mastery_pct:null,hero_tech_pct:null,siege_to_seize_pct:null,defensive_fortification_pct:null,tactical_weapon_pct:null,updated_at:null},sync:{provider:"warboost-local",provider_kind:"local",access_status:"pending",capabilities:[],status:"local",last_sync:null,last_error:null,auto_ready:true,last_scan:null,official_last_sync:null,public_last_sync:null,sources:{official:false,public:false,scan:false,alliance:false}}}}
 function canonicalStoredHeroName(v){return canonicalHeroName(v)}
 function canonicalStoredExclusiveHeroName(row={}){return canonicalExclusiveWeaponHeroName(row?.hero_name,row?.weapon_name)}
 function mergeExclusiveWeapons(baseList,incomingList){
@@ -268,6 +270,7 @@ function mergeState(base,incoming){
   const playerFields=Object.keys({...base.player,...incoming.player}).filter(key=>!["field_updated_at","field_source","updated_at","source"].includes(key));
   out.player=mergeFreshRecord(base.player,incoming.player,playerFields,{baseFallbackAt:base.player?.updated_at,incomingFallbackAt:incoming.player?.updated_at||incoming.updated_at,baseSource:"player",incomingSource:"player"});
   out.player.power_m=canonicalPowerMillions(out.player.power_m);
+  Object.assign(out.player,mergeProfileAvatar(base.player,incoming.player));
   out.player_context={...(base.player_context||{}),...(incoming.player_context||{})};
   out.activity_events=mergeActivityEvents(base.activity_events,incoming.activity_events);
   out.player_availability=mergeEventAvailabilities(base.player_availability,incoming.player_availability);
@@ -387,6 +390,7 @@ function safestLoginSeed(userId,currentState){
     if(owner!==id)return safeClone(cached);
     const currentIsNewer=stateTimestamp(current)>=stateTimestamp(cached),chosen=currentIsNewer?current:safeClone(cached);
     chosen.player={...(chosen.player||{}),...mergePlayerHqFields(current.player,cached.player,{sameAccount:true})};
+    Object.assign(chosen.player,mergeProfileAvatar(current.player,cached.player));
     return chosen;
   }
   return cached?safeClone(cached):current;
@@ -608,6 +612,7 @@ let voiceGreetedSections=new Set(),availableVoices=[];
 const openRosterRoles=new Set();
 let pendingHeroSquadId=null,pendingHeroSuggestions=[],pendingHeroScanSlots=[],pendingHeroScannedAt=null,pendingHeroOwner="",pendingExclusiveScan=[],pendingExclusiveScannedAt=null,scanInputRevision=0,scanFileSelectionRevision=0,pendingExclusiveRequest=null;
 let pendingScanReview=null;
+let pendingProfileAvatar=null,profileAvatarCropper=null;
 let pendingScanRestoreInFlight=null,pendingScanRestoreOwner="";
 function pendingScanOwner(session=cloudSession){const userId=String(session?.user?.id||"").trim();return userId?`user:${userId}`:`device:${clientId()}`}
 function discardScanReviewDraft(){if(typeof analysisIndicator!=="undefined")analysisIndicator.cancel("scan");pendingScanReview=null;$("#scanReviewPanel")?.classList.add("hidden");$("#scanUnlinkedWeapons")?.classList.add("hidden");const rows=$("#scanReviewRows");if(rows)rows.replaceChildren();const ack=$("#scanSquadTargetConfirmed");if(ack)ack.checked=false}
@@ -789,6 +794,30 @@ async function saveInlineHeroNames(squadId,container,button=null){
 
 if(!localStorage.getItem(LANG_KEY)){for(const key of LEGACY_LANGUAGE_KEYS){const v=localStorage.getItem(key);if(v){localStorage.setItem(LANG_KEY,v);break}}}
 let languageChoice=localStorage.getItem(LANG_KEY)||"auto",lang=resolveLanguage(languageChoice),locale=localeFor(lang),t=translator(lang);
+profileAvatarCropper=createProfileAvatarCropper({root:document,text:key=>t(key),
+  onSelectionStart:()=>{pendingProfileAvatar=null},
+  onUse:selection=>{
+    const draft=pendingScanReview,userId=String(cloudSession?.user?.id||"");
+    if(!draft||draft.type!=="profile"||selection.owner!==draft.owner||selection.revision!==draft.request?.revision||
+      !userId||String(state?.player_id||"")!==userId||selection.owner!==`user:${userId}`||!scanRequestIsCurrent(draft.request)){
+      pendingProfileAvatar=null;return;
+    }
+    const dataUrl=normalizeProfileAvatarDataUrl(selection.dataUrl);
+    if(!dataUrl){pendingProfileAvatar=null;return}
+    pendingProfileAvatar={dataUrl,owner:selection.owner,revision:selection.revision};
+    const status=$("#profileAvatarCropStatus");if(status)status.textContent=t("profile_avatar_ready");
+  }});
+const clearPendingProfileAvatarDraft=()=>{pendingProfileAvatar=null;profileAvatarCropper?.clear()};
+$("#scanFile")?.addEventListener("change",clearPendingProfileAvatarDraft,true);
+$("#scanType")?.addEventListener("change",clearPendingProfileAvatarDraft,true);
+$("#clearScanCaptureBtn")?.addEventListener("click",clearPendingProfileAvatarDraft,true);
+$("#discardScanReviewBtn")?.addEventListener("click",clearPendingProfileAvatarDraft,true);
+function clearActiveProfileAvatarFromMemory(){
+  clearPendingProfileAvatarDraft();
+  if(state?.player&&Object.hasOwn(state.player,"profile_avatar_data_url"))state.player.profile_avatar_data_url=null;
+  $("#playerAvatarRemovalStatus")?.classList.add("hidden");
+  maskHomePrivateMeta();
+}
 function firstLoadingTarget(ids){return ids.map(id=>$("#"+id)).find(node=>node&&!node.hidden&&!node.classList?.contains("hidden")&&!node.closest?.(".drawer:not(.open), .hidden, [hidden]"))||null}
 function analysisInlineTarget(kind){
   if(kind==="scan:roster"&&$("#allianceDrawer")?.classList.contains("open"))return firstLoadingTarget(["rosterScanStatus"]);
@@ -1429,8 +1458,13 @@ async function applySessionCore(session){
   const previousUserId=String(cloudSession?.user?.id||"");
   const previousPendingOwner=pendingScanOwner(cloudSession);
   const preSessionState=safeClone(state);
+  const nextUserId=String(session?.user?.id||"");
+  if(previousUserId!==nextUserId){
+    if(previousUserId&&String(preSessionState?.player_id||"")===previousUserId&&normalizeProfileAvatarDataUrl(preSessionState?.player?.profile_avatar_data_url))
+      rememberAccountState(previousUserId,preSessionState);
+    clearActiveProfileAvatarFromMemory();
+  }
   cloudSession=session||null;
-  const nextUserId=String(cloudSession?.user?.id||"");
   if(previousUserId!==nextUserId){cloudProfileVerified=false;canonicalRosterReady=false;cloudRevision=null;betaState={...betaState,alliance_beta_allowed:false,beta_code_eligible:false,beta_access_status:"checking"};if($("#betaAccessCode"))$("#betaAccessCode").value="";$("#betaCodeStatus")?.classList.add("hidden");if($("#betaCodeActivateBtn"))$("#betaCodeActivateBtn").disabled=false}
   const nextPendingOwner=pendingScanOwner(cloudSession);
 
@@ -1507,6 +1541,7 @@ async function applySessionCore(session){
       clearTimeout(cloudPullRetryTimer);cloudPullRetryTimer=null;
       proState={active:false,status:"free",configured:false,plan:null,beta:true,payments_enabled:false,commercial_preview:true,subscription:null};
       betaState={release:true,enforced:false,configured:false,allowed:false,access_status:"sign-in-required",consent_version:BETA_CONSENT_VERSION,payments_enabled:false,pro_included:true};
+       clearActiveProfileAvatarFromMemory();
       clearSignedOutAuthUi();
       try{resetPendingScanUi()}catch{}
       void restorePendingScans();
@@ -2208,12 +2243,32 @@ function renderEndgameCoachDrawer(){
 
 // HF8.6.22: each visible surface has its own render boundary. No optional module may
 // leave another surface stale simply because one formatting/render step throws.
-function renderHomePlayerMeta(p){const el=$("#playerMeta");if(el)el.textContent=p?.name?(p?.hq_level?`${t("hq")} ${p.hq_level}`:t("connected")):t("to_connect")}
-function renderHomeAllianceMeta(p,a){const el=$("#allianceMeta");if(el)el.textContent=a?.tag?`${a.tag} · ${normalizedRole(p?.role)}`:"—"}
+function clearHomePlayerAvatar(){
+  const image=$("#playerHomeAvatar"),fallback=$("#playerHomeAvatarFallback"),remove=$("#playerAvatarRemoveBtn");
+  if(image){image.removeAttribute("src");image.classList.add("hidden")}
+  if(fallback)fallback.classList.remove("hidden");
+  if(remove)remove.classList.add("hidden");
+}
+function renderHomePlayerMeta(p){
+  const el=$("#playerMeta"),name=$("#playerHomeName");
+  if(el)el.textContent=p?.name?(p?.hq_level?`${t("hq")} ${p.hq_level}`:t("connected")):t("to_connect");
+  if(name)name.textContent=String(p?.name||"");
+  const image=$("#playerHomeAvatar"),fallback=$("#playerHomeAvatarFallback"),remove=$("#playerAvatarRemoveBtn");
+  const owner=String(cloudSession?.user?.id||""),data=owner&&String(state?.player_id||"")===owner
+    ?normalizeProfileAvatarDataUrl(p?.profile_avatar_data_url):null;
+  if(image&&data){image.onerror=()=>{if(image.getAttribute("src")===data)clearHomePlayerAvatar()};image.src=data;image.classList.remove("hidden");fallback?.classList.add("hidden")}
+  else clearHomePlayerAvatar();
+  if(remove)remove.classList.toggle("hidden",!data);
+}
+function renderHomeAllianceMeta(p,a){
+  const el=$("#allianceMeta");if(!el)return;
+  const displayName=String(a?.name||"").trim()||String(a?.tag||"").trim();
+  el.textContent=displayName?`${displayName} · ${normalizedRole(p?.role)}`:t("alliance_needs_confirmation");
+}
 function renderPlayerCoreSummary(p,d){if($("#pName"))$("#pName").textContent=canonicalPlayerDisplayName()||p?.name||"—";if($("#pHq"))$("#pHq").textContent=p?.hq_level?`${t("hq")} ${p.hq_level}`:t("to_fill");if($("#pPower"))$("#pPower").textContent=Number(p.power_m)>0?fmtPower(p.power_m):t("to_fill");if($("#pDrone"))$("#pDrone").textContent=d?.level?`${t("level")}${d.level}${d.power_m?` · ${fmtPower(d.power_m)}`:""}`:Number(d?.power_m)>0?fmtPower(d.power_m):t("to_fill")}
 function renderAllianceCoreSummary(p,a){if($("#aTag"))$("#aTag").textContent=a?.tag||"—";if($("#aCount"))$("#aCount").textContent=String(a?.members?.length||0);if($("#aRole"))$("#aRole").textContent=a?.role||"R1";const access=allianceCommandAccess(),cloudAlliance=Boolean(a.id||a.invite_code),canShareAllianceInvite=access.allowed&&(!cloudAlliance||access.cloudAvailable);if($("#inviteCode"))$("#inviteCode").textContent=canShareAllianceInvite?(a?.invite_code||"—"):"—";const inviteNote=$("#inviteNote");if(inviteNote)inviteNote.textContent=t("invite_note_scoped",{server:p?.server_id||"—",alliance:a?.tag||"—"});const shareInvite=$("#shareInviteBtn");if(shareInvite)shareInvite.disabled=!canShareAllianceInvite;if($("#rosterFresh"))$("#rosterFresh").textContent=a?.updated_at?updatedLabel(a.updated_at):t("sync_needed")}
 function renderSeasonCoreSummary(s){const seasonLife=seasonLifecycle(s||{}),seasonActive=seasonIsActive(s||{}),pct=activeSeasonProgress(s||{}),baseSeasonName=s?.name||(s?.number?`S${s.number}`:"—"),seasonHistorical=(seasonLife==="ended"||seasonLife==="interseason");renderSeasonAccess();if($("#seasonMeta"))$("#seasonMeta").textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):baseSeasonName;const seasonDesc=$("#seasonDesc");if(seasonDesc)seasonDesc.textContent=seasonLife==="interseason"?`${t("season_ended_short")} · ${t("season_interseason")}`:seasonLife==="ended"?t("season_ended_short"):t("season_desc");if($("#sName"))$("#sName").textContent=seasonHistorical?`${baseSeasonName} · ${t("season_ended_short")}`:baseSeasonName;if($("#sDay"))$("#sDay").textContent=seasonActive?(s?.day||"—"):"—";if($("#sProfession"))$("#sProfession").textContent=s?.profession||"—";const professionLabel=$("#seasonProfessionLabel"),seasonSectionTitle=$("#seasonSectionTitle");if(professionLabel)professionLabel.textContent=seasonHistorical?t("season_last_profession_short"):t("profession");if(seasonSectionTitle)seasonSectionTitle.textContent=seasonHistorical?t("season_state"):t("season_progress");const bar=$("#seasonProgressBar"),label=$("#seasonProgressLabel"),progressWrap=bar?.closest(".progress");if(progressWrap)progressWrap.classList.toggle("hidden",!seasonActive||pct===null);if(bar)bar.style.width=`${pct??0}%`;if(label)label.textContent=seasonLife==="interseason"?t("season_interseason"):seasonLife==="ended"?t("season_ended_short"):pct===null?t("season_unknown"):`${pct}%`;const lifeSelect=$("#seasonLifecycleSelect");if(lifeSelect)lifeSelect.value=seasonLife;const lifeStatus=seasonLife==="interseason"?t("season_interseason_note",{name:baseSeasonName,profession:s?.profession||"—"}):seasonLife==="ended"?t("season_ended_note",{name:baseSeasonName,profession:s?.profession||"—"}):seasonLife==="unknown"?t("season_unknown_note"):s?.updated_at?`${t("last_update",{ago:fmtAgo(s.updated_at)})} · ${s?.resistance??"—"}`:t("season_wait");if($("#seasonStatus"))$("#seasonStatus").textContent=lifeStatus}
-function maskHomePrivateMeta(){if($("#playerMeta"))$("#playerMeta").textContent=t("to_connect");if($("#allianceMeta"))$("#allianceMeta").textContent="—";if($("#seasonMeta"))$("#seasonMeta").textContent="—"}
+function maskHomePrivateMeta(){if($("#playerMeta"))$("#playerMeta").textContent=t("to_connect");if($("#playerHomeName"))$("#playerHomeName").textContent="";clearHomePlayerAvatar();if($("#allianceMeta"))$("#allianceMeta").textContent="—";if($("#seasonMeta"))$("#seasonMeta").textContent="—"}
 function maskPlayerPrivateSummary(){if($("#pName"))$("#pName").textContent="—";if($("#pHq"))$("#pHq").textContent="—";if($("#pPower"))$("#pPower").textContent="—";if($("#pDrone"))$("#pDrone").textContent="—";const squadList=$("#squadList");if(squadList)squadList.innerHTML="";$("#playerOnboarding")?.classList.add("hidden")}
 function maskAlliancePrivateSummary(){if($("#aTag"))$("#aTag").textContent="—";if($("#aCount"))$("#aCount").textContent="0";if($("#aRole"))$("#aRole").textContent="—";if($("#inviteCode"))$("#inviteCode").textContent="—";if($("#shareInviteBtn"))$("#shareInviteBtn").disabled=true}
 function render(){
@@ -4054,6 +4109,12 @@ function renderScanReview(draft){
   draft.displayRows=markup.rows;
   rows.innerHTML=markup.html;
   renderUnlinkedWeaponReview(draft);
+  if(draft.type==="profile"&&scanImageData&&draft.owner===pendingScanOwner()){
+    if(!profileAvatarCropper?.isFor(draft.owner,draft.request?.revision))
+      profileAvatarCropper?.setCapture(scanImageData,draft.owner,draft.request?.revision);
+  }else{
+    pendingProfileAvatar=null;profileAvatarCropper?.clear();
+  }
    $("#scanReviewMeta").textContent=`${scanSquadId(draft.type)?`${t("squad")} ${scanSquadId(draft.type)} · `:""}${t("scan_review_source")}: Vision · ${t("scan_review_scanned_at")}: ${new Date(draft.scannedAt).toLocaleString(locale||lang)}`;
    const confirm=$("#confirmScanReviewBtn");if(confirm)confirm.textContent=t("scan_review_confirm")+(scanSquadId(draft.type)?` — ${t("squad")} ${scanSquadId(draft.type)}`:"");
   panel.classList.remove("hidden");$("#exclusiveConfirmPanel")?.classList.add("hidden");$("#heroConfirmPanel")?.classList.add("hidden");
@@ -4194,6 +4255,12 @@ function confirmScanReview(){
   }
   let reviewed=result.patch;
   const hqConfirmedAt=new Date().toISOString();
+  if(draft.type==="profile"&&pendingProfileAvatar&&pendingProfileAvatar.owner===draft.owner&&
+    pendingProfileAvatar.revision===draft.request?.revision&&draft.owner===pendingScanOwner()&&
+    String(state?.player_id||"")===String(cloudSession?.user?.id||"")){
+    const avatar=normalizeProfileAvatarDataUrl(pendingProfileAvatar.dataUrl);
+    if(avatar){reviewed.player={...(reviewed.player||{}),profile_avatar_data_url:avatar,profile_avatar_updated_at:hqConfirmedAt}}
+  }
   if(draft.type==="profile"&&reviewed.player&&Object.prototype.hasOwnProperty.call(reviewed.player,"hq_level")){
     const hqLevel=normalizePlayerHqLevel(reviewed.player.hq_level);
     if(hqLevel===null){setScanReviewError("scan_review_invalid_number");return}
@@ -4263,6 +4330,7 @@ function confirmScanReview(){
       recordProgressionSnapshot(`scan_squad${squadIndex+1}`,now);
     }
     if(!saveState())throw new Error("local_scan_save_failed");
+    pendingProfileAvatar=null;profileAvatarCropper?.clear();
     updateSquadCaptureHelp($("#scanType")?.value||"profile");
   }catch(error){
     state=previousState;
@@ -4278,7 +4346,7 @@ function confirmScanReview(){
   else{const status=$("#scanStatus");if(status){if(pendingPowerPaths.length){status.className="notice warn";status.dataset.scanReviewStatusKey="scan_review_power_pending";status.textContent=t("scan_review_power_pending")}else showConfirmedScanStatus(status,"scan_saved")}if(type==="vs")render()}
 }
 $("#confirmScanReviewBtn")?.addEventListener("click",confirmScanReview);
-$("#discardScanReviewBtn")?.addEventListener("click",()=>{discardScanReviewDraft();const status=$("#scanStatus");if(status){status.className="notice";status.dataset.scanReviewStatusKey="scan_review_discarded";status.textContent=t("scan_review_discarded")}});
+$("#discardScanReviewBtn")?.addEventListener("click",()=>{pendingProfileAvatar=null;profileAvatarCropper?.clear();discardScanReviewDraft();const status=$("#scanStatus");if(status){status.className="notice";status.dataset.scanReviewStatusKey="scan_review_discarded";status.textContent=t("scan_review_discarded")}});
 $("#scanReviewRows")?.addEventListener("change",handleScanReviewChange);
 $("#scanUnlinkedWeapons")?.addEventListener("click",event=>{const button=event.target.closest?.("[data-associate-weapon]");if(button)associatePendingSquadWeapon(button)});
 let scanReviewStatusBeforeLanguage=null;
@@ -5258,9 +5326,22 @@ $("#resendOtpBtn")?.addEventListener("click",async()=>{
 }
 $("#betaCodeActivateBtn")?.addEventListener("click",activateBetaCode);
 $("#betaAccessCode")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();activateBetaCode()}});
+$("#playerAvatarRemoveBtn")?.addEventListener("click",async()=>{
+  const userId=String(cloudSession?.user?.id||"");
+  if(!userId||String(state?.player_id||"")!==userId||!normalizeProfileAvatarDataUrl(state?.player?.profile_avatar_data_url))return;
+  const removedAt=new Date().toISOString();
+  state.player=removeProfileAvatar(state.player,removedAt);
+  const status=$("#playerAvatarRemovalStatus");
+  if(status){status.className="notice";status.textContent=t("profile_avatar_removal_pending");status.classList.remove("hidden")}
+  saveState();
+  const result=await pushServerState({userRequested:true});
+  if(String(cloudSession?.user?.id||"")!==userId||String(state?.player_id||"")!==userId)return;
+  if(status){status.textContent=result?.ok?t("profile_avatar_removal_synced"):t("profile_avatar_removal_pending");status.className=`notice${result?.ok?"":" warn"}`;status.classList.remove("hidden")}
+});
 $("#logoutBtn")?.addEventListener("click",async()=>{
   const signedOutUserId=String(cloudSession?.user?.id||""),signOutClient=cloud;
   if(signedOutUserId&&String(state?.player_id||"")===signedOutUserId)rememberAccountState(signedOutUserId,state);
+  clearActiveProfileAvatarFromMemory();
   // Let the Auth adapter emit its synchronous SIGNED_OUT transition while it
   // can still observe the old owner (pending scan/session cleanup).
   let signOutPending;

@@ -110,6 +110,7 @@ function runHandler({patch,edits,owner="fixture-a",current=true,save=true}){
   const error={textContent:"",classList:{remove(){}}},status={textContent:"",dataset:{},replaceChildren(...nodes){this.textContent=nodes.map(node=>node.textContent).join("")}};
   const context=vm.createContext({
     state:clone(base),pendingScanReview:{owner:"fixture-a",type:"squad1",request:{},patch},
+    pendingProfileAvatar:null,profileAvatarCropper:{clear(){}},cloudSession:null,
     lang:"fr",scanSquadId,applyOwnedScanReview,applyReviewedSquad,reviewedSquadPower,scanFieldDescription,squadPendingDescription,uniqueSquadPending,
     stampConfirmedRecord,confirmedHeroPower,repairLegacySquadIdentity,
     pendingScanOwner:()=>owner,scanRequestIsCurrent:()=>current,scanReviewFormEdits:()=>({edits,issues:[]}),

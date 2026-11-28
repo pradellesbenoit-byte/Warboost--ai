@@ -1,6 +1,7 @@
 import {configured,userConfigured,getProfile,getProfileForUser,saveProfileIfUnchanged,saveProfileForUserIfUnchanged,insertSnapshot,insertSnapshotForUser,listSnapshots,listSnapshotsForUser,getAllianceRoster,updateAllianceScopeRoster,joinAlliance} from "../lib/supabase.js";
 import {createSaveDiagnostic,newSaveCorrelation,publicSaveError} from "../lib/cloud-save-diagnostic.js";
 import {getSquadsForUser} from "../lib/supabase.js";
+import {profileStateWithoutAvatar} from "../lib/profile-avatar.js";
 import {createSquadCompareHandler} from "../lib/squad-compare-handler.js";
 import {createSquadReviewResolveHandler} from "../lib/squad-review-resolve-handler.js";
 import {normalizeState} from "../lib/normalize.js";
@@ -270,7 +271,7 @@ export default async function handler(req,res){
     const {user}=await requireProductUser(req,{consent:true,trace}),playerId=user.id,userMode=userConfigured()&&Boolean(access);
     const getOwn=()=>userMode?getProfileForUser(playerId,access):getProfile(playerId);
     const saveOwn=(state,expectedUpdatedAt)=>userMode?saveProfileForUserIfUnchanged(playerId,state,access,expectedUpdatedAt):saveProfileIfUnchanged(playerId,state,expectedUpdatedAt);
-    const snapshotOwn=(state,source)=>userMode?insertSnapshotForUser(playerId,state,access,source):insertSnapshot(playerId,state,source);
+    const snapshotOwn=(state,source)=>{const safeState=profileStateWithoutAvatar(state);return userMode?insertSnapshotForUser(playerId,safeState,access,source):insertSnapshot(playerId,safeState,source)};
     const historyOwn=limit=>userMode?listSnapshotsForUser(playerId,access,limit):listSnapshots(playerId,limit);
 
     if(req.method==="GET"){

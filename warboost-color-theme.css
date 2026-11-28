@@ -28,6 +28,11 @@ html,body{background:#061024;background-image:radial-gradient(ellipse at 12% -5%
 .moduleIcon{display:grid;place-items:center;width:42px;height:42px;font-size:24px;border:1px solid var(--edge);border-radius:12px;background:rgba(255,255,255,.09)}
 .moduleCard h2{color:#fff;font-size:16px;margin:12px 0 5px;line-height:1.25}.moduleCard p{color:#e5f0ff;font-size:12px;line-height:1.4}
 .moduleMeta{border:1px solid rgba(226,236,255,.36);background:rgba(5,17,44,.44);color:#eff6ff}
+.playerHomeIcon{position:relative;overflow:hidden}.playerHomeAvatar{width:100%;height:100%;object-fit:cover;border-radius:10px}.playerHomeName{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:850;color:#eaf7ff}
+.profileAvatarCropPanel{display:grid;gap:8px;padding:12px;border:1px solid rgba(86,158,241,.4);border-radius:15px;background:rgba(7,18,38,.72)}
+.profileAvatarCropCanvas{display:block;width:auto;height:auto;max-width:100%;max-height:360px;margin:0 auto;border:1px solid #42628b;border-radius:10px;background:#071124;touch-action:none;cursor:crosshair}
+.profileAvatarCropPreviewWrap{display:flex;align-items:center;gap:10px;color:#c8d8f0;font-size:12px}.profileAvatarCropPreview{width:76px;height:76px;object-fit:cover;border:2px solid #39ddff;border-radius:14px;background:#0a172b}
+.profileAvatarCropStatus{min-height:1.2em}
 .safeLaunchGrid{gap:12px}.safeLaunchCard{border-radius:17px;border-color:rgba(74,140,237,.35);background:linear-gradient(135deg,rgba(15,34,66,.95),rgba(10,23,46,.97))}.safeLaunchCard.independentCard{border-top:2px solid #43dda8}.safeLaunchCard.updateCard{border-top:2px solid #aa7af0}.safeLinks a{color:#73e0ff}
 .drawer{--accent:#3dcbff;width:min(100%,780px);max-height:95dvh;border:1px solid rgba(71,132,231,.43);border-top:3px solid var(--accent);background:linear-gradient(160deg,#0e2040,#0a152b 55%,#08101f)}
 #playerDrawer{--accent:#41c7ff}#allianceDrawer{--accent:#38efa2}#vsDrawer{--accent:#ff7082}#seasonDrawer{--accent:#b67eff}#qg35CoachDrawer{--accent:#ffd363}#scanDrawer{--accent:#35e0f3}#accountDrawer{--accent:#ffc464}#supportDrawer{--accent:#75d7ff}

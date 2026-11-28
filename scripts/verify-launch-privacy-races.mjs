@@ -16,12 +16,15 @@ function setup(){
       classList:{add(){},remove(){},toggle(){}},addEventListener(_event,cb){this.callback=cb}});
     return nodes.get(id);
   }
-  const state={player_id:"fixture-a",player:{name:"Fixture A",hq_level:9,role:"R4"},
+  const state={player_id:"fixture-a",player:{name:"Fixture A",hq_level:9,role:"R4",
+      profile_avatar_data_url:"data:image/jpeg;base64,/9j/AAAA",profile_avatar_updated_at:"2026-11-27T10:00:00.000Z"},
     alliance:{tag:"TEST_A"},squads:[1,2,3,4].map(id=>({id,confirmed_composition:["A","B","C","D","E"],power:id}))};
   const ctx={state,cloudSession:{user:{id:"fixture-a"},access_token:"synthetic"},cloudRevision:"revision-a",
     cloud:{auth:{signOut:()=>pending.promise}},proState:{active:true},betaState:{allowed:true},
     $:selector=>node(selector),t:key=>key,
     rememberAccountState:(id,value)=>remembered.push({id,state:JSON.parse(JSON.stringify(value))}),
+    clearHomePlayerAvatar(){node("#playerHomeAvatar").src="";node("#playerHomeAvatar").classList.add("hidden");node("#playerHomeAvatarFallback").classList.remove("hidden")},
+    clearActiveProfileAvatarFromMemory(){if(Object.hasOwn(state.player,"profile_avatar_data_url"))state.player.profile_avatar_data_url=null;ctx.maskHomePrivateMeta()},
     clearSignedOutAuthUi(){},renderAuth(){},renderBeta(){},
     render(){ctx.maskHomePrivateMeta();ctx.maskPlayerPrivateSummary();ctx.maskAlliancePrivateSummary()}};
   vm.createContext(ctx);
@@ -59,7 +62,9 @@ test("logout archives only the current owner's data and preserves four confirmed
   const f=setup(),before=JSON.stringify(f.ctx.state),work=f.click();
   f.pending.resolve({error:null});await work;
   assert.equal(f.remembered.length,1);assert.equal(f.remembered[0].id,"fixture-a");
-  assert.equal(JSON.stringify(f.remembered[0].state),before);assert.equal(JSON.stringify(f.ctx.state),before);
+  assert.equal(JSON.stringify(f.remembered[0].state),before);
+  assert.equal(f.ctx.state.player.profile_avatar_data_url,null,"logout clears the in-memory image after preserving the owner's cache");
+  assert.equal(f.ctx.state.player_id,"fixture-a");
   assert.equal(f.ctx.state.squads.length,4);
 });
 test("a mismatched local owner is never archived under the connected account",async()=>{
